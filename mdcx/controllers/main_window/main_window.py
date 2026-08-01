@@ -2932,7 +2932,7 @@ class MyMAinWindow(QMainWindow):
     # 工具-Emby 演员管理器
     def pushButton_emby_actor_manager_clicked(self):
         try:
-            from ..tools.emby_actor_manager_ui import EmbyActorManagerDialog
+            from mdcx.tools.emby_actor_manager_ui import EmbyActorManagerDialog
 
             self._emby_dialog = EmbyActorManagerDialog(self)
             self._emby_dialog.exec()
