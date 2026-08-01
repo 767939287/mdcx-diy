@@ -4,7 +4,8 @@ import asyncio
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
-from PyQt6.QtCore import Qt, QThread, pyqtSignal as Signal
+from PyQt6.QtCore import Qt, QThread
+from PyQt6.QtCore import pyqtSignal as Signal
 from PyQt6.QtGui import QColor, QPixmap
 from PyQt6.QtWidgets import (
     QAbstractItemView,
