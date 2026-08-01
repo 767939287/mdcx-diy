@@ -1585,7 +1585,7 @@
                   <x>0</x>
                   <y>0</y>
                   <width>760</width>
-                  <height>1260</height>
+                  <height>1480</height>
                 </rect>
               </property>
               <property name="autoFillBackground">
@@ -2294,6 +2294,117 @@
                   </property>
                   <property name="text">
                     <string>刮削过程中自动创建软链接</string>
+                  </property>
+                </widget>
+              </widget>
+              <widget class="QGroupBox" name="groupBox_cover_backfill">
+                <property name="geometry">
+                  <rect>
+                    <x>30</x>
+                    <y>1240</y>
+                    <width>701</width>
+                    <height>200</height>
+                  </rect>
+                </property>
+                <property name="title">
+                  <string>封面补图（按番号补齐缺失的封面、缩略图，复用当前配置的各项规则）</string>
+                </property>
+                <widget class="QLabel" name="label_cover_backfill_desc">
+                  <property name="geometry">
+                    <rect>
+                      <x>40</x>
+                      <y>30</y>
+                      <width>621</width>
+                      <height>40</height>
+                    </rect>
+                  </property>
+                  <property name="styleSheet">
+                    <string notr="true">color: rgb(8, 128, 128);</string>
+                  </property>
+                  <property name="text">
+                    <string>输入番号（多个用空格分隔），将自动刮削并补齐封面和缩略图。复用当前配置的站点优先级、命名、裁切、水印规则。输出目录为当前数据目录（可在设置页修改）。</string>
+                  </property>
+                  <property name="wordWrap">
+                    <bool>true</bool>
+                  </property>
+                </widget>
+                <widget class="QLineEdit" name="lineEdit_cover_backfill_numbers">
+                  <property name="geometry">
+                    <rect>
+                      <x>40</x>
+                      <y>80</y>
+                      <width>461</width>
+                      <height>30</height>
+                    </rect>
+                  </property>
+                  <property name="styleSheet">
+                    <string notr="true">border: 1px solid rgba(0,0,0, 50);
+                      border-radius: 15px;
+</string>
+                  </property>
+                  <property name="placeholderText">
+                    <string>例如：SSIS-001 ABF-371 JIMMY-003</string>
+                  </property>
+                </widget>
+                <widget class="QPushButton" name="pushButton_cover_backfill_start">
+                  <property name="geometry">
+                    <rect>
+                      <x>520</x>
+                      <y>80</y>
+                      <width>141</width>
+                      <height>30</height>
+                    </rect>
+                  </property>
+                  <property name="text">
+                    <string>开始补图</string>
+                  </property>
+                </widget>
+                <widget class="QCheckBox" name="checkBox_cover_backfill_overwrite">
+                  <property name="geometry">
+                    <rect>
+                      <x>40</x>
+                      <y>125</y>
+                      <width>161</width>
+                      <height>20</height>
+                    </rect>
+                  </property>
+                  <property name="text">
+                    <string>覆盖已有图片</string>
+                  </property>
+                </widget>
+                <widget class="QCheckBox" name="checkBox_cover_backfill_watermark">
+                  <property name="geometry">
+                    <rect>
+                      <x>220</x>
+                      <y>125</y>
+                      <width>161</width>
+                      <height>20</height>
+                    </rect>
+                  </property>
+                  <property name="text">
+                    <string>添加水印</string>
+                  </property>
+                  <property name="checked">
+                    <bool>true</bool>
+                  </property>
+                </widget>
+                <widget class="QLabel" name="label_cover_backfill_note">
+                  <property name="geometry">
+                    <rect>
+                      <x>40</x>
+                      <y>155</y>
+                      <width>621</width>
+                      <height>31</height>
+                    </rect>
+                  </property>
+                  <property name="styleSheet">
+                    <string notr="true">color: rgb(200, 100, 0);</string>
+                  </property>
+                  <property name="text">
+                    <string>提示：补图结果将输出到日志页，可在日志页查看详细进度和错误信息。</string>
+                  </property>
+                  <property name="wordWrap">
+                    <bool>true</bool>
                   </property>
                 </widget>
               </widget>

@@ -226,6 +226,7 @@ def Init_Singal(self: "MyMAinWindow"):
     self.Ui.pushButton_select_thumb.clicked.connect(self.pushButton_select_thumb_clicked)
     self.Ui.pushButton_find_missing_number.clicked.connect(self.pushButton_find_missing_number_clicked)
     self.Ui.pushButton_creat_symlink.clicked.connect(self.pushButton_creat_symlink_clicked)
+    self.Ui.pushButton_cover_backfill_start.clicked.connect(self.pushButton_cover_backfill_start_clicked)
     self.Ui.pushButton_start_single_file.clicked.connect(self.pushButton_start_single_file_clicked)
     self.Ui.pushButton_select_file_clear_info.clicked.connect(self.pushButton_select_file_clear_info_clicked)
     self.Ui.pushButton_scrape_note.clicked.connect(self.pushButton_scrape_note_clicked)
@@ -332,6 +333,7 @@ def Init_Singal(self: "MyMAinWindow"):
     self.pushButton_check_and_clean_files.connect(self.Ui.pushButton_check_and_clean_files.setText)
     self.pushButton_move_mp4.connect(self.Ui.pushButton_move_mp4.setText)
     self.pushButton_find_missing_number.connect(self.Ui.pushButton_find_missing_number.setText)
+    self.pushButton_cover_backfill_start.connect(self.Ui.pushButton_cover_backfill_start.setText)
     self.label_result.connect(self.Ui.label_result.setText)
     self.label_show_version.connect(self.Ui.label_show_version.setText)  # endregion
 

@@ -1,3 +1,4 @@
+import asyncio
 import html
 import os
 import re
@@ -142,6 +143,7 @@ class MyMAinWindow(QMainWindow):
     pushButton_check_and_clean_files = pyqtSignal(str)
     pushButton_move_mp4 = pyqtSignal(str)
     pushButton_find_missing_number = pyqtSignal(str)
+    pushButton_cover_backfill_start = pyqtSignal(str)
     label_show_version = pyqtSignal(str)
 
     # endregion
@@ -2554,15 +2556,43 @@ class MyMAinWindow(QMainWindow):
                 skip_list.append([file_name, file_path, str(e)])
         if skip_list:
             signal_qt.show_log_text(f"\n{len(skip_list)} file(s) did not move!")
-            i = 0
-            for info in skip_list:
-                i += 1
-                signal_qt.show_log_text(f"[{i}] {info[0]}\n file path: {info[1]}\n {info[2]}\n")
-        signal_qt.show_log_text("Move movies finished!")
-        signal_qt.show_log_text("================================================================================")
-        signal_qt.reset_buttons_status.emit()
 
-    # endregion
+    # 工具-封面补图
+    def pushButton_cover_backfill_start_clicked(self):
+        from scripts.cover_backfill import backfill_cover
+
+        self.pushButton_show_log_clicked()
+        numbers = self.Ui.lineEdit_cover_backfill_numbers.text().strip()
+        if not numbers:
+            signal_qt.show_log_text("🔴 请输入番号")
+            return
+        number_list = [n.strip() for n in numbers.split() if n.strip()]
+        overwrite = self.Ui.checkBox_cover_backfill_overwrite.isChecked()
+        watermark = self.Ui.checkBox_cover_backfill_watermark.isChecked()
+
+        async def run_backfill():
+            results = []
+            for number in number_list:
+                signal_qt.show_log_text(f"开始补图: {number}")
+                try:
+                    result = await backfill_cover(
+                        number,
+                        output_dir=manager.data_folder_path,
+                        overwrite=overwrite,
+                        watermark=watermark,
+                    )
+                    results.append(result)
+                    signal_qt.show_log_text(
+                        f"  ✅ {result.number}: thumb={result.thumb_path}, poster={result.poster_path}"
+                    )
+                except Exception as e:
+                    signal_qt.show_log_text(f"  🔴 {number}: {e}")
+            signal_qt.show_log_text("=" * 60)
+            signal_qt.show_log_text(f"封面补图完成: {len(results)}/{len(number_list)} 成功")
+            self.pushButton_cover_backfill_start.emit("开始补图")
+
+        self.pushButton_cover_backfill_start.emit("补图中...")
+        executor.submit(asyncio.run, run_backfill())
 
     # region 设置页
     # region 选择目录
@@ -3362,6 +3392,7 @@ class MyMAinWindow(QMainWindow):
         self.Ui.pushButton_start_cap2.setStyleSheet(
             "QPushButton#pushButton_start_cap2{color: white;background-color:#DC2626;}QPushButton:hover#pushButton_start_cap2{color: white;background-color:#EF4444;}QPushButton:pressed#pushButton_start_cap2{color: white;background-color:#B91C1C;}"
         )
+        self.Ui.pushButton_cover_backfill_start.setEnabled(False)
 
     def reset_buttons_status(self):
         self.Ui.pushButton_start_cap.setEnabled(True)
@@ -3390,6 +3421,8 @@ class MyMAinWindow(QMainWindow):
         self.pushButton_move_mp4.emit("开始移动")
         self.Ui.pushButton_find_missing_number.setEnabled(True)
         self.pushButton_find_missing_number.emit("检查缺失番号")
+        self.Ui.pushButton_cover_backfill_start.setEnabled(True)
+        self.pushButton_cover_backfill_start.emit("开始补图")
 
         self.Ui.pushButton_start_cap.setStyleSheet(
             "QPushButton#pushButton_start_cap{color: white;background-color:#4C6EFF;}QPushButton:hover#pushButton_start_cap{color: white;background-color: rgba(76,110,255,240)}QPushButton:pressed#pushButton_start_cap{color: white;background-color:#4C6EE0}"
