@@ -23527,7 +23527,7 @@ p, li { white-space: pre-wrap; }
 &lt;ul&gt;
 &lt;li&gt;&lt;b&gt;单文件刮削&lt;/b&gt;：指定某个文件的番号网址进行刮削，当存在相同番号时可手工指定。&lt;/li&gt;
 &lt;li&gt;&lt;b&gt;海报裁剪&lt;/b&gt;：将图片裁剪为 2:3 标准封面图大小，支持加水印。&lt;/li&gt;
-&lt;li&gt;&lt;b&gt;缺失文件检测&lt;/b&gt;：检查资源库中指定演员本地缺失的番号。&lt;/li&gt;
+&lt;li&gt;&lt;b&gt;检查演员缺失番号&lt;/b&gt;：检查资源库中指定演员本地缺失的番号。&lt;/li&gt;
 &lt;li&gt;&lt;b&gt;移动视频/字幕&lt;/b&gt;：将待刮削目录下所有子目录中的视频移动到一个目录中方便查看。&lt;/li&gt;
 &lt;li&gt;&lt;b&gt;软链接助手&lt;/b&gt;：将挂载的网盘文件目录及子目录中的所有视频一键创建软链接到本地。&lt;/li&gt;
 &lt;li&gt;&lt;b&gt;封面补图&lt;/b&gt;：输入番号（多个用空格分隔），自动刮削并补齐缺失的 poster.jpg 和 thumb.jpg，复用当前配置的站点优先级、命名、裁切、水印规则。&lt;/li&gt;
