@@ -21,7 +21,16 @@ from ..base.file import (
     save_success_list,
 )
 from ..base.image import extrafanart_copy2, extrafanart_extras_copy
-from ..config.enums import DownloadableFile, EmbyAction, FixedScrapingType, KeepableFile, NfoInclude, ReadMode, Switch
+from ..config.enums import (
+    DownloadableFile,
+    EmbyAction,
+    FixedScrapingType,
+    KeepableFile,
+    NfoInclude,
+    ReadMode,
+    Switch,
+    TagInclude,
+)
 from ..config.extend import get_movie_path_setting, parse_media_paths
 from ..config.manager import manager
 from ..config.resources import resources
@@ -840,7 +849,7 @@ class Scraper:
                 )
             ]
             tags.append(file_info.mosaic)
-            if file_info.has_sub:
+            if file_info.has_sub and TagInclude.CNWORD in manager.config.nfo_tag_include:
                 tags.append("中文字幕")
             res.tag = ",".join(tags)
 
