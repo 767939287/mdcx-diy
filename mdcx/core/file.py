@@ -252,6 +252,30 @@ def _get_folder_path(success_folder: Path, file_info: FileInfo, res: CrawlersRes
         fields = "、".join(FIELD_DESCRIPTIONS.get(field, field) for field in result.truncated_fields)
         LogBuffer.log().write(f"\n 💡 当前目录名超过最大长度 {folder_name_max}，已智能缩短：{fields}")
 
+    if IS_WINDOWS:
+        MAX_PATH = 260
+        SAFE_MARGIN = 50
+        folder_path_len = len(str(success_folder / folder_new_name))
+        if folder_path_len > MAX_PATH - SAFE_MARGIN:
+            new_max = max(10, folder_name_max - (folder_path_len - (MAX_PATH - SAFE_MARGIN)) - 5)
+            if new_max < folder_name_max:
+                result = render_name(
+                    folder_name,
+                    file_info,
+                    res,
+                    NameRenderOptions(
+                        target=NamingTarget.FOLDER,
+                        show_definition_suffix=manager.config.folder_hd,
+                        show_cnword_suffix=manager.config.folder_cnword,
+                        show_moword_suffix=manager.config.folder_moword,
+                        max_length=new_max,
+                    ),
+                )
+                folder_new_name = result.text
+                if result.truncated_fields:
+                    fields = "、".join(FIELD_DESCRIPTIONS.get(field, field) for field in result.truncated_fields)
+                    LogBuffer.log().write(f"\n 💡 完整路径过长，已将目录名缩短至 {new_max} 字符：{fields}")
+
     return success_folder / folder_new_name, folder_new_name
 
 
