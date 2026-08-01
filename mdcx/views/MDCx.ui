@@ -23523,7 +23523,18 @@ p, li { white-space: pre-wrap; }
 &lt;li&gt;&lt;b&gt;保存日志&lt;/b&gt;：开启后日志写入程序目录下的 Log 文件夹（每次运行一个 txt），可随时删除，不影响运行。&lt;/li&gt;
 &lt;/ul&gt;
 
-&lt;h4&gt;九、常见番号命名参考&lt;/h4&gt;
+&lt;h4&gt;九、工具页面&lt;/h4&gt;
+&lt;ul&gt;
+&lt;li&gt;&lt;b&gt;单文件刮削&lt;/b&gt;：指定某个文件的番号网址进行刮削，当存在相同番号时可手工指定。&lt;/li&gt;
+&lt;li&gt;&lt;b&gt;海报裁剪&lt;/b&gt;：将图片裁剪为 2:3 标准封面图大小，支持加水印。&lt;/li&gt;
+&lt;li&gt;&lt;b&gt;缺失文件检测&lt;/b&gt;：检查资源库中指定演员本地缺失的番号。&lt;/li&gt;
+&lt;li&gt;&lt;b&gt;移动视频/字幕&lt;/b&gt;：将待刮削目录下所有子目录中的视频移动到一个目录中方便查看。&lt;/li&gt;
+&lt;li&gt;&lt;b&gt;软链接助手&lt;/b&gt;：将挂载的网盘文件目录及子目录中的所有视频一键创建软链接到本地。&lt;/li&gt;
+&lt;li&gt;&lt;b&gt;封面补图&lt;/b&gt;：输入番号（多个用空格分隔），自动刮削并补齐缺失的 poster.jpg 和 thumb.jpg，复用当前配置的站点优先级、命名、裁切、水印规则。&lt;/li&gt;
+&lt;li&gt;&lt;b&gt;Emby 演员管理器&lt;/b&gt;：填写 Emby 地址和 API 密钥后连接服务器，获取演员列表并按媒体库筛选；从 Gfriends / minnano-av / 本地文件夹匹配头像和简介，预览后批量同步到 Emby。&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;h4&gt;十、常见番号命名参考&lt;/h4&gt;
 &lt;p&gt;刮削前尽量命名规范、不区分大小写：&lt;/p&gt;
 &lt;ul&gt;
 &lt;li&gt;&lt;b&gt;标准有码&lt;/b&gt;：JavDB / JavBus: SSNI-111；DMM: ssni00111&lt;/li&gt;
@@ -23536,7 +23547,7 @@ p, li { white-space: pre-wrap; }
 &lt;li&gt;&lt;b&gt;外挂字幕&lt;/b&gt;：字幕文件名需与影片一致，支持 srt / ass / sub，方可随影片一起移动&lt;/li&gt;
 &lt;/ul&gt;
 
-&lt;h4&gt;十、获取帮助&lt;/h4&gt;
+&lt;h4&gt;十一、获取帮助&lt;/h4&gt;
 &lt;ul&gt;
 &lt;li&gt;项目主页：https://github.com/cdlongbow/mdcx&lt;/li&gt;
 &lt;li&gt;Release 下载：https://github.com/cdlongbow/mdcx/releases&lt;/li&gt;
