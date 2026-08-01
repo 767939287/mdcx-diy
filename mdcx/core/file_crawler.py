@@ -278,6 +278,7 @@ class FileScraper:
         type_site_set = set(type_sites)
         all_res: dict[tuple[Website, Language], CrawlerResult] = {}
         failed: set[tuple[Website, Language]] = set()  # 记录失败的网站
+        failure_reasons: dict[Website, str] = {}  # 记录各站点的失败原因
         reduced = CrawlersResult.empty()
         req_info: list[str] = []  # 请求信息列表
         try_all_images = bool(
@@ -322,8 +323,10 @@ class FileScraper:
                     all_res[(site, Language.UNDEFINED)] = web_data.data
             except TimeoutError:
                 failed.add(key)
+                failure_reasons.setdefault(site, "请求超时")
             except Exception as e:
                 failed.add(key)
+                failure_reasons.setdefault(site, str(e).strip() or e.__class__.__name__)
 
         pending_keys = [k for k in all_needed_keys if k not in all_res and k not in failed]
         if pending_keys:
@@ -387,10 +390,12 @@ class FileScraper:
                             all_res[(site, Language.UNDEFINED)] = web_data.data
                     except TimeoutError:
                         reduced.field_log += f"\n    🔴 {site:<15} (请求超时)"
+                        failure_reasons.setdefault(site, "请求超时")
                         failed.add(key)
                         continue
                     except Exception as e:
                         reduced.field_log += f"\n    🔴 {site:<15} (失败: {str(e)})"
+                        failure_reasons.setdefault(site, str(e).strip() or e.__class__.__name__)
                         failed.add(key)
                         continue
 
@@ -443,6 +448,11 @@ class FileScraper:
 
         # 所有来源均失败
         if len(all_res) == 0:
+            reason_text = "；".join(f"{site.value}: {reason}" for site, reason in failure_reasons.items())
+            message = "所有刮削来源均未返回可用数据"
+            if reason_text:
+                message += f"。{reason_text}"
+            LogBuffer.error().write(message)
             return None
 
         if use_type_field_config and hasattr(self.config, "get_type_field_config"):

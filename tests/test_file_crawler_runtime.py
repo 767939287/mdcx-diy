@@ -109,6 +109,13 @@ class _FakeConfig:
         return FieldConfig(site_prority=[])
 
 
+class _FailureReasonConfig(_FakeConfig):
+    def get_field_config(self, field: CrawlerResultFields) -> FieldConfig:
+        if field == CrawlerResultFields.TITLE:
+            return FieldConfig(site_prority=[Website.AVBASE, Website.JAVDB])
+        return super().get_field_config(field)
+
+
 class _TypePriorityConfig(_FakeConfig):
     def get_type_field_config(
         self, scraping_type: FixedScrapingType, field: CrawlerResultFields
@@ -382,6 +389,30 @@ async def test_call_crawlers_runtime_skip_zero(monkeypatch: pytest.MonkeyPatch):
     assert result is not None
     assert result.runtime == "55"
     assert result.field_sources[CrawlerResultFields.RUNTIME] == Website.JAVDB.value
+
+
+@pytest.mark.asyncio
+async def test_call_crawlers_records_failure_reasons_when_all_sites_fail(monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setattr(ManualConfig, "REDUCED_FIELDS", (CrawlerResultFields.TITLE,))
+    LogBuffer.error().clear()
+
+    provider = _FakeCrawlerProvider(
+        {
+            Website.AVBASE: (None, RuntimeError("搜索结果未匹配")),
+            Website.JAVDB: (None, TimeoutError()),
+        }
+    )
+    scraper = FileScraper(_FailureReasonConfig(), provider)
+    task_input = CrawlerInput.empty()
+    task_input.number = "JIMMY-003"
+
+    result = await scraper._call_crawlers(task_input, {Website.AVBASE, Website.JAVDB})
+
+    assert result is None
+    error_text = LogBuffer.error().get()
+    assert "所有刮削来源均未返回可用数据" in error_text
+    assert "avbase: 搜索结果未匹配" in error_text
+    assert "javdb: 请求超时" in error_text
 
 
 @pytest.mark.asyncio

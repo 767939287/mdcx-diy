@@ -22,7 +22,42 @@ class FakeOfficialClient:
             )
         if url == "https://s1s1s1.com/works/detail/ssis001":
             return _detail_html(), ""
+        if url == "https://faleno.jp/top/?s=jimmy 003":
+            return (
+                """
+                <html><body>
+                  <div class="text_name">
+                    <a href="https://faleno.jp/top/works/jimmy003/">JIMMY-003</a>
+                  </div>
+                  <a><img src="https://example.test/jimmy003-search.jpg"></a>
+                </body></html>
+                """,
+                "",
+            )
+        if url == "https://faleno.jp/top/works/jimmy003/":
+            return _faleno_detail_html(), ""
         return None, f"unexpected url: {url}"
+
+
+def _faleno_detail_html() -> str:
+    return """
+    <html><body>
+      <h1>Faleno Official Title</h1>
+      <div class="box_works01_text"><p>Faleno outline</p></div>
+      <div class="box_works01_list">
+        <ul>
+          <li class="clearfix"><span>収録時間</span><p>120分</p></li>
+          <li class="clearfix"><span>出演女優</span><p>Actor F</p></li>
+          <li class="clearfix"><span>メーカー</span><p>FALENO</p></li>
+        </ul>
+      </div>
+      <a class="pop_sample" href="https://example.test/jimmy003.mp4">
+        <img src="https://example.test/jimmy003_1200.jpg?output-quality=60">
+      </a>
+      <a class="pop_img" href="https://example.test/jimmy003-extra.jpg"></a>
+      <a class="genre">Drama</a>
+    </body></html>
+    """
 
 
 def _detail_html() -> str:
@@ -87,3 +122,30 @@ async def test_official_crawler_uses_prefix_mapping_and_dynamic_source():
 
 def test_official_crawler_is_registered():
     assert get_crawler(Website.OFFICIAL) is OfficialCrawler
+
+
+@pytest.mark.asyncio
+async def test_official_crawler_jimmy_prefix_routes_to_faleno():
+    crawler = OfficialCrawler(client=FakeOfficialClient())
+    res = await crawler.run(
+        CrawlerInput(
+            appoint_number="",
+            appoint_url="",
+            file_path=None,
+            mosaic="",
+            number="JIMMY-003",
+            short_number="JIMMY-003",
+            language=Language.JP,
+            org_language=Language.JP,
+        )
+    )
+
+    assert res.debug_info.error is None
+    assert res.data is not None
+    assert res.data.source == "faleno"
+    assert res.data.number == "JIMMY-003"
+    assert res.data.title == "Faleno Official Title"
+    assert res.data.actors == ["Actor F"]
+    assert res.data.outline == "Faleno outline"
+    assert "jimmy003" in res.data.thumb
+    assert res.data.extrafanart == ["https://example.test/jimmy003-extra.jpg"]
