@@ -533,7 +533,7 @@ class Ui_MDCx(object):
         self.scrollArea_10.setWidgetResizable(False)
         self.scrollArea_10.setObjectName("scrollArea_10")
         self.scrollAreaWidgetContents_gongju = QtWidgets.QWidget()
-        self.scrollAreaWidgetContents_gongju.setGeometry(QtCore.QRect(0, 0, 760, 1480))
+        self.scrollAreaWidgetContents_gongju.setGeometry(QtCore.QRect(0, 0, 760, 1580))
         self.scrollAreaWidgetContents_gongju.setAutoFillBackground(True)
         self.scrollAreaWidgetContents_gongju.setObjectName("scrollAreaWidgetContents_gongju")
         self.groupBox_7 = QtWidgets.QGroupBox(parent=self.scrollAreaWidgetContents_gongju)
