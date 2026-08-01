@@ -828,8 +828,11 @@ class Ui_MDCx(object):
         self.label_cover_backfill_note.setStyleSheet("color: rgb(200, 100, 0);")
         self.label_cover_backfill_note.setWordWrap(True)
         self.label_cover_backfill_note.setObjectName("label_cover_backfill_note")
-        self.pushButton_emby_actor_manager = QtWidgets.QPushButton(parent=self.groupBox_cover_backfill)
-        self.pushButton_emby_actor_manager.setGeometry(QtCore.QRect(30, 1710, 731, 50))
+        self.groupBox_emby_actor_manager = QtWidgets.QGroupBox(parent=self.scrollAreaWidgetContents_gongju)
+        self.groupBox_emby_actor_manager.setGeometry(QtCore.QRect(30, 1460, 701, 90))
+        self.groupBox_emby_actor_manager.setObjectName("groupBox_emby_actor_manager")
+        self.pushButton_emby_actor_manager = QtWidgets.QPushButton(parent=self.groupBox_emby_actor_manager)
+        self.pushButton_emby_actor_manager.setGeometry(QtCore.QRect(30, 25, 641, 50))
         self.pushButton_emby_actor_manager.setStyleSheet("QPushButton{background-color: #1565c0;color: #ffffff;font-size: 15px;font-weight: bold;border-radius: 6px;}QPushButton:hover{background-color: #1976d2;}QPushButton:pressed{background-color: #0d47a1;}")
         self.pushButton_emby_actor_manager.setObjectName("pushButton_emby_actor_manager")
         self.scrollArea_10.setWidget(self.scrollAreaWidgetContents_gongju)
@@ -10550,6 +10553,7 @@ class Ui_MDCx(object):
         self.checkBox_cover_backfill_overwrite.setText(_translate("MDCx", "覆盖已有图片"))
         self.checkBox_cover_backfill_watermark.setText(_translate("MDCx", "添加水印"))
         self.label_cover_backfill_note.setText(_translate("MDCx", "提示：补图结果将输出到日志页，可在日志页查看详细进度和错误信息。"))
+        self.groupBox_emby_actor_manager.setTitle(_translate("MDCx", "Emby 演员管理"))
         self.pushButton_emby_actor_manager.setText(_translate("MDCx", "🎭 Emby 演员管理器（管理演员头像和简介）"))
         self.pushButton_emby_actor_manager.setToolTip(_translate("MDCx", "使用说明：\n"
 "1. 填写 Emby 地址和 API 密钥，点击「连接 Emby」\n"

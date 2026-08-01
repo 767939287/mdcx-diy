@@ -2407,12 +2407,25 @@
                     <bool>true</bool>
                   </property>
                 </widget>
+              </widget>
+              <widget class="QGroupBox" name="groupBox_emby_actor_manager">
+                <property name="geometry">
+                  <rect>
+                    <x>30</x>
+                    <y>1460</y>
+                    <width>701</width>
+                    <height>90</height>
+                  </rect>
+                </property>
+                <property name="title">
+                  <string>Emby 演员管理</string>
+                </property>
                 <widget class="QPushButton" name="pushButton_emby_actor_manager">
                   <property name="geometry">
                     <rect>
                       <x>30</x>
-                      <y>1710</y>
-                      <width>731</width>
+                      <y>25</y>
+                      <width>641</width>
                       <height>50</height>
                     </rect>
                   </property>
