@@ -2407,6 +2407,30 @@
                     <bool>true</bool>
                   </property>
                 </widget>
+                <widget class="QPushButton" name="pushButton_emby_actor_manager">
+                  <property name="geometry">
+                    <rect>
+                      <x>30</x>
+                      <y>1710</y>
+                      <width>731</width>
+                      <height>50</height>
+                    </rect>
+                  </property>
+                  <property name="styleSheet">
+                    <string notr="true">QPushButton{background-color: #1565c0;color: #ffffff;font-size: 15px;font-weight: bold;border-radius: 6px;}QPushButton:hover{background-color: #1976d2;}QPushButton:pressed{background-color: #0d47a1;}</string>
+                  </property>
+                  <property name="text">
+                    <string>🎭 Emby 演员管理器（管理演员头像和简介）</string>
+                  </property>
+                  <property name="toolTip">
+                    <string>使用说明：
+1. 填写 Emby 地址和 API 密钥，点击「连接 Emby」
+2. 点击「获取演员列表」，选择要管理的媒体库
+3. 从下拉框选择获取模式，点击「获取数据」匹配头像和简介
+4. 绿色行表示有更新，点击「开始全部更新同步」写入 Emby
+5. 双击行可查看演员详情</string>
+                  </property>
+                </widget>
               </widget>
             </widget>
           </widget>

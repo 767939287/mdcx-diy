@@ -140,6 +140,7 @@ class MyMAinWindow(QMainWindow):
     pushButton_add_actor_pic = pyqtSignal(str)
     pushButton_add_actor_pic_kodi = pyqtSignal(str)
     pushButton_del_actor_folder = pyqtSignal(str)
+    pushButton_emby_actor_manager = pyqtSignal(str)
     pushButton_check_and_clean_files = pyqtSignal(str)
     pushButton_move_mp4 = pyqtSignal(str)
     pushButton_find_missing_number = pyqtSignal(str)
@@ -2927,6 +2928,12 @@ class MyMAinWindow(QMainWindow):
             executor.submit(creat_kodi_actors(False))
         except Exception:
             signal_qt.show_log_text(traceback.format_exc())
+
+    # 工具-Emby 演员管理器
+    def pushButton_emby_actor_manager_clicked(self):
+        from ..tools.emby_actor_manager_ui import open_emby_actor_manager
+
+        open_emby_actor_manager(self)
 
     # 设置-演员 查看演员列表按钮
     def pushButton_show_pic_actor_clicked(self):
