@@ -4,9 +4,9 @@ import asyncio
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
-from PySide6.QtCore import Qt, QThread, Signal
-from PySide6.QtGui import QColor, QPixmap
-from PySide6.QtWidgets import (
+from PyQt6.QtCore import Qt, QThread, pyqtSignal as Signal
+from PyQt6.QtGui import QColor, QPixmap
+from PyQt6.QtWidgets import (
     QAbstractItemView,
     QCheckBox,
     QComboBox,
@@ -81,7 +81,7 @@ class LibrarySelectDialog(QDialog):
         btn_layout.addWidget(btn_none)
         btn_layout.addStretch()
         layout.addLayout(btn_layout)
-        buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
+        buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
         buttons.accepted.connect(self.accept)
         buttons.rejected.connect(self.reject)
         layout.addWidget(buttons)
