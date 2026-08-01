@@ -53,6 +53,7 @@ check = "scripts.check:main"
 
 [dependency-groups]
 dev = [
+    "altgraph>=0.17.5",   # 0.17.4 引入 pkg_resources(已从 setuptools 83 移除), 0.17.5 修复
     "ipykernel>=6.30.1",
     "numpy>=2.4.3",
     "opencv-contrib-python-headless>=4.13.0.92",
