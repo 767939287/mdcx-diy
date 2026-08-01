@@ -223,6 +223,7 @@ def test_old_config_gets_default_amazon_strict_pic_verify():
 
     assert config.amazon_skip_poster_size_precheck is False
     assert config.amazon_strict_pic_verify is False
+    assert config.compress_downloaded_images is False
     assert config.field_priority_try_all_images is False
 
 

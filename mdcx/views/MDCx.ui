@@ -8833,6 +8833,16 @@
                             </property>
                           </widget>
                         </item>
+                        <item>
+                          <widget class="QCheckBox" name="checkBox_compress_downloaded_images">
+                            <property name="toolTip">
+                              <string>下载后压缩图片；关闭后不执行图片压缩和缩放</string>
+                            </property>
+                            <property name="text">
+                              <string>压缩</string>
+                            </property>
+                          </widget>
+                        </item>
                       </layout>
                     </widget>
                     <widget class="QWidget" name="layoutWidget">

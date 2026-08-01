@@ -37,6 +37,7 @@ from ..tools.emby_actor_info import creat_kodi_actors
 from ..utils import executor, get_current_time, get_real_time, get_used_time, split_path
 from ..utils.dataclass import update
 from ..utils.file import copy_file_async, move_file_async
+from ..utils.image import compress_images_in_folder_async
 from ..utils.path import is_any_descendant
 from .file import (
     _generate_file_name,
@@ -1087,6 +1088,9 @@ class Scraper:
             other.fanart_path = fanart_final_path
             if not await aiofiles.os.path.exists(thumb_final_path) and await aiofiles.os.path.exists(fanart_final_path):
                 other.thumb_path = fanart_final_path
+
+        # 所有图片及相关文件处理完成后，最后统一压缩最终输出目录中的图片。
+        await compress_images_in_folder_async(folder_new_path, manager.config.compress_downloaded_images)
 
         return res, other
 
