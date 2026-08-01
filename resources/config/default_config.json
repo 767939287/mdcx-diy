@@ -141,6 +141,7 @@
     "ignore_guochan",
     "ignore_size"
   ],
+  "compress_downloaded_images": false,
   "keep_files": [
     "trailer",
     "theme_videos"

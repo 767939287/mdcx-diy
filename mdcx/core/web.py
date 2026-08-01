@@ -221,6 +221,13 @@ def _select_best_poster_candidate(
         LogBuffer.log().write("\n 🖼 Poster选优: 无可比较的 Poster 尺寸，保持原策略")
         return candidates[0] if candidates else None
 
+    if _is_known_image_size(crop_size):
+        portrait_candidates = [each for each in known_candidates if each.size[1] >= each.size[0]]
+        if not portrait_candidates:
+            LogBuffer.log().write("\n 🖼 Poster选优: 直下候选均为横图，改用 thumb 右裁剪")
+            return None
+        known_candidates = portrait_candidates
+
     best = max(known_candidates, key=lambda item: _image_area(item.size))
     if _is_known_image_size(crop_size):
         best_area = _image_area(best.size)

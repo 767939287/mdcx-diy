@@ -568,6 +568,7 @@ def load_config(self: "MyMAinWindow"):
             (self.Ui.checkBox_ignore_guochan, DownloadableFile.IGNORE_GUOCHAN),
             (self.Ui.checkBox_ignore_size, DownloadableFile.IGNORE_SIZE),
         )
+        self.Ui.checkBox_compress_downloaded_images.setChecked(manager.config.compress_downloaded_images)
         # 保留文件
         set_checkboxes(
             manager.config.keep_files,

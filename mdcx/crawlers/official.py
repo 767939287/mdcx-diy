@@ -16,6 +16,7 @@ from .prestige import PrestigeCrawler
 OFFICIAL_CRAWLER_BY_PREFIX = {
     "DLDSS": DahliaCrawler,
     "FNS": FalenoCrawler,
+    "JIMMY": FalenoCrawler,
 }
 
 DIRECTOR_PLACEHOLDER_CHARS = frozenset("-—－ー―‐~～·•. ")

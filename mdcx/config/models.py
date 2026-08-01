@@ -326,6 +326,7 @@ class Config(BaseModel):
         ],
         title="下载文件类型",
     )
+    compress_downloaded_images: bool = Field(default=False, title="Compress downloaded images")
     keep_files: list[KeepableFile] = Field(
         default_factory=lambda: [
             KeepableFile.TRAILER,
