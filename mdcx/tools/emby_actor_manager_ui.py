@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import tempfile
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
@@ -137,7 +138,7 @@ class PreparePreviewThread(QThread):
         self.actors = []
         self.mode = "missing_all"
         self.gfriends_index = None
-        self.cache_dir = Path("/tmp")
+        self.cache_dir = Path(tempfile.gettempdir())
         self.minnano_cache = None
         self.image_sources = ["gfriends", "minnano", "local"]
         self.info_sources = ["minnano", "local_db"]
@@ -265,7 +266,7 @@ class EmbyActorManagerDialog(QDialog):
         self.setWindowTitle("Emby 演员管理器")
         self.setMinimumSize(1100, 700)
         self.setStyleSheet(self._load_stylesheet())
-        self.cache_dir = Path("/tmp/emby_actor_cache")
+        self.cache_dir = Path(tempfile.gettempdir()) / "emby_actor_cache"
         self.cache_dir.mkdir(parents=True, exist_ok=True)
         self._actors: list[ActorInfo] = []
         self._gfriends_index = None
