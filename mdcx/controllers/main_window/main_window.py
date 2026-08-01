@@ -2931,9 +2931,15 @@ class MyMAinWindow(QMainWindow):
 
     # 工具-Emby 演员管理器
     def pushButton_emby_actor_manager_clicked(self):
-        from ..tools.emby_actor_manager_ui import open_emby_actor_manager
+        try:
+            from ..tools.emby_actor_manager_ui import EmbyActorManagerDialog
 
-        open_emby_actor_manager(self)
+            self._emby_dialog = EmbyActorManagerDialog(self)
+            self._emby_dialog.exec()
+        except Exception as e:
+            import traceback
+
+            signal_qt.show_log_text(f"❌ Emby 演员管理器打开失败: {e}\n{traceback.format_exc()}")
 
     # 设置-演员 查看演员列表按钮
     def pushButton_show_pic_actor_clicked(self):

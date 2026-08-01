@@ -271,6 +271,11 @@ class BuildManager:
             self._app_icon_path(),
             "--hidden-import",
             "_cffi_backend",
+            # Emby 演员管理器(延迟导入, 需显式打包, 否则运行时报 ModuleNotFound 崩溃)
+            "--hidden-import",
+            "mdcx.tools.emby_actor_manager",
+            "--hidden-import",
+            "mdcx.tools.emby_actor_manager_ui",
             "--collect-all",
             "defusedxml",
             "--collect-all",
