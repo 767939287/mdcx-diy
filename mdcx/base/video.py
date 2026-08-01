@@ -7,7 +7,7 @@ import aiofiles.os
 from ..config.extend import get_movie_path_setting
 from ..config.manager import manager
 from ..signals import signal
-from ..utils.file import copy_file_async, move_file_async
+from ..utils.file import copy_file_async
 from .file import movie_lists
 
 
@@ -45,7 +45,7 @@ async def add_del_extras(mode: str) -> None:
                     file_new_name = file.replace("jpg", "mp4")
                     file_path = extrafanart_copy_folder_path / file
                     file_new_path = extrafanart_copy_folder_path / file_new_name
-                    await move_file_async(file_path, file_new_path)
+                    await copy_file_async(file_path, file_new_path)
                 signal.show_log_text(f" {count} new extras: \n  {extrafanart_copy_folder_path}")
                 new_count += 1
             else:

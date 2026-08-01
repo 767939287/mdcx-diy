@@ -15,7 +15,7 @@ from ..config.resources import resources
 from ..models.log_buffer import LogBuffer
 from ..signals import signal
 from ..utils import get_used_time
-from ..utils.file import check_pic_async, move_file_async
+from ..utils.file import check_pic_async, copy_file_async, move_file_async
 from .file import movie_lists
 
 
@@ -86,7 +86,7 @@ async def extrafanart_extras_copy(folder_path: Path):
         file_new_name = each.replace("jpg", "mp4")
         file_path = extrafanart_extra_path / each
         file_new_path = extrafanart_extra_path / file_new_name
-        await move_file_async(file_path, file_new_path)
+        await copy_file_async(file_path, file_new_path)
     LogBuffer.log().write(f"\n 🍀 Extrafanart_extras done! (copy extrafanart)({get_used_time(start_time)}s)")
     return True
 
