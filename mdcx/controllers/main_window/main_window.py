@@ -2579,7 +2579,7 @@ class MyMAinWindow(QMainWindow):
                 try:
                     result = await backfill_cover(
                         number,
-                        output_dir=manager.data_folder_path,
+                        output_dir=manager.data_folder,
                         overwrite=overwrite,
                         watermark=watermark,
                     )
