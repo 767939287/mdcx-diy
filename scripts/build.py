@@ -279,6 +279,15 @@ class BuildManager:
             # 演员库维护工具(延迟导入)
             "--hidden-import",
             "mdcx.tools.actor_db_tool",
+            # 工具页槽函数中延迟导入的工具模块
+            "--hidden-import",
+            "mdcx.tools.emby_actor_image",
+            "--hidden-import",
+            "mdcx.tools.emby_actor_info",
+            "--hidden-import",
+            "mdcx.tools.sync_gfriends",
+            "--hidden-import",
+            "scripts.cover_backfill",
             "--collect-all",
             "defusedxml",
             "--collect-all",
