@@ -486,7 +486,11 @@ def _get_db_path() -> Path:
 
 
 def _format_db_worksheet(ws) -> None:
-    """格式化演员数据库工作表：固定表头、自动筛选、列宽、边框、超链接、表头样式。"""
+    """格式化演员数据库工作表。
+
+    首次创建时做全格式化（表头样式、边框、字体、列宽、超链接）；
+    后续增量 save 只更新 auto_filter 范围 + 校验超链接（跳过边框/字体/列宽）。
+    """
     try:
         import openpyxl
         from openpyxl.utils import get_column_letter
@@ -499,23 +503,53 @@ def _format_db_worksheet(ws) -> None:
         max_row = ws.max_row if ws.max_row else 1
         ws.auto_filter.ref = f"A1:{last_col}{max_row}"
 
-        # 表头样式
-        header_fill = openpyxl.styles.PatternFill("solid", fgColor="F2F2F2")
-        header_font = openpyxl.styles.Font(bold=True, size=11)
-        header_align = openpyxl.styles.Alignment(horizontal="center", vertical="center", wrap_text=True)
-        for cell in ws[1]:
-            cell.fill = header_fill
-            cell.font = header_font
-            cell.alignment = header_align
+        # 判断是否已格式化（表头第一格有浅灰背景则跳过全格式化）
+        first_header = ws.cell(row=1, column=1)
+        already_formatted = (
+            first_header.fill is not None
+            and first_header.fill.fgColor is not None
+            and first_header.fill.fgColor.rgb is not None
+            and "F2F2F2" in str(first_header.fill.fgColor.rgb)
+        )
 
-        # 表格边框
-        thin = openpyxl.styles.Side(style="thin", color="D0D0D0")
-        border = openpyxl.styles.Border(left=thin, right=thin, top=thin, bottom=thin)
-        for row in ws.iter_rows(min_row=1, max_row=ws.max_row, min_col=1, max_col=len(DB_HEADERS)):
-            for cell in row:
-                cell.border = border
+        if not already_formatted:
+            # 表头样式
+            header_fill = openpyxl.styles.PatternFill("solid", fgColor="F2F2F2")
+            header_font = openpyxl.styles.Font(bold=True, size=11)
+            header_align = openpyxl.styles.Alignment(horizontal="center", vertical="center", wrap_text=True)
+            for cell in ws[1]:
+                cell.fill = header_fill
+                cell.font = header_font
+                cell.alignment = header_align
 
-        # 链接列和 tmdb url 列超链接：每次保存都校验并修复
+            # 表格边框
+            thin = openpyxl.styles.Side(style="thin", color="D0D0D0")
+            border = openpyxl.styles.Border(left=thin, right=thin, top=thin, bottom=thin)
+            for row in ws.iter_rows(min_row=1, max_row=ws.max_row, min_col=1, max_col=len(DB_HEADERS)):
+                for cell in row:
+                    cell.border = border
+
+            # 数据行字体统一为 11pt
+            data_font = openpyxl.styles.Font(size=11)
+            for row in ws.iter_rows(min_row=2, max_row=ws.max_row, min_col=1, max_col=len(DB_HEADERS)):
+                for cell in row:
+                    cell.font = data_font
+
+            # 自动列宽
+            caps = {1: 25, 2: 15, 3: 15, 4: 60, 5: 50, 6: 12, 7: 42}
+            col_max = [0] * (len(DB_HEADERS) + 1)
+            for row in ws.iter_rows(min_row=2, values_only=True):
+                for ci, cell in enumerate(row, 1):
+                    if cell is None or ci > len(DB_HEADERS):
+                        continue
+                    s = str(cell)
+                    width = sum(2 if "\u3040" <= c <= "\u30ff" or "\u4e00" <= c <= "\u9fff" else 1 for c in s)
+                    col_max[ci] = max(col_max[ci], width)
+            for ci in range(1, len(DB_HEADERS) + 1):
+                letter = get_column_letter(ci)
+                ws.column_dimensions[letter].width = min(col_max[ci] + 2, caps.get(ci, 80))
+
+        # 超链接校验（每次 save 都跑，确保 tmdb_url 正确）
         for row in ws.iter_rows(min_row=2, values_only=False):
             href_cell = row[COL_HREF]
             tmdb_cell = row[COL_TMDB_URL]
@@ -538,31 +572,6 @@ def _format_db_worksheet(ws) -> None:
                 if existing_target != tmdb_val:
                     tmdb_cell.style = "Hyperlink"
                     tmdb_cell.hyperlink = tmdb_val
-
-        # 超链接处理会覆盖边框，重新设置
-        for row in ws.iter_rows(min_row=1, max_row=ws.max_row, min_col=1, max_col=len(DB_HEADERS)):
-            for cell in row:
-                cell.border = border
-
-        # 数据行字体统一为 11pt
-        data_font = openpyxl.styles.Font(size=11)
-        for row in ws.iter_rows(min_row=2, max_row=ws.max_row, min_col=1, max_col=len(DB_HEADERS)):
-            for cell in row:
-                cell.font = data_font
-
-        # 自动列宽
-        caps = {1: 25, 2: 15, 3: 15, 4: 60, 5: 50, 6: 12, 7: 42}
-        col_max = [0] * (len(DB_HEADERS) + 1)
-        for row in ws.iter_rows(min_row=2, values_only=True):
-            for ci, cell in enumerate(row, 1):
-                if cell is None or ci > len(DB_HEADERS):
-                    continue
-                s = str(cell)
-                width = sum(2 if "\u3040" <= c <= "\u30ff" or "\u4e00" <= c <= "\u9fff" else 1 for c in s)
-                col_max[ci] = max(col_max[ci], width)
-        for ci in range(1, len(DB_HEADERS) + 1):
-            letter = get_column_letter(ci)
-            ws.column_dimensions[letter].width = min(col_max[ci] + 2, caps.get(ci, 80))
     except Exception as e:
         LogBuffer.log().write(f"  ⚠️ [演员数据库] 工作表格式化失败: {e}")
 
