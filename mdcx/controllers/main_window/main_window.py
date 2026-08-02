@@ -2633,7 +2633,7 @@ class MyMAinWindow(QMainWindow):
                 if not actor_names:
                     signal_qt.show_log_text("🔴 未收集到任何演员")
                     return
-                await run(actor_names, translate=translate, link=link, output_dir=None)
+                await run(actor_names, translate=translate, link=link)
             except Exception as e:
                 signal_qt.show_log_text(f"🔴 演员库维护异常: {e}")
             finally:

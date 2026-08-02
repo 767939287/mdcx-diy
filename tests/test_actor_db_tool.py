@@ -6,8 +6,6 @@ from openpyxl import load_workbook
 from mdcx.core import tmdb_actor
 from mdcx.tools import actor_db_tool
 
-pytestmark = pytest.mark.network
-
 
 @pytest.fixture
 def _tmp_actor_db(monkeypatch: pytest.MonkeyPatch, tmp_path: Path):

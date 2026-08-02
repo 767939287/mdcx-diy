@@ -91,7 +91,6 @@ async def run(
     actor_names: list[str],
     translate: bool = True,
     link: bool = True,
-    output_dir: Path | None = None,
 ) -> ActorDbToolResult:
     """批量维护演员库：补全翻译（中文/繁体）与 LibreDMM 链接。"""
     result = ActorDbToolResult(total=len(actor_names))
