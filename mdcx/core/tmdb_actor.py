@@ -870,15 +870,13 @@ async def migrate_xml_to_xlsx() -> bool:
 # ============= TMDB API 查询 =============
 
 
-async def fetch_actor_tmdb_ids(actors: list[str], client: Any) -> dict[str, int]:
-    if not actors:
-        return {}
-
+def _resolve_tmdb_config() -> tuple[str, str]:
+    """解析 TMDB API 配置，返回 (base_url, api_key)。未配置 API Key 时返回 ("", "")。"""
     tmdb_api_base = manager.config.tmdb_api_base.strip()
     tmdb_api_key = manager.config.tmdb_api_key.strip()
 
     if not tmdb_api_key:
-        return {}
+        return "", ""
 
     if not tmdb_api_base:
         tmdb_api_base = "api.tmdb.org"
@@ -891,6 +889,17 @@ async def fetch_actor_tmdb_ids(actors: list[str], client: Any) -> dict[str, int]
         tmdb_api_base = tmdb_api_base[8:]
 
     base_url = f"{protocol}{tmdb_api_base}" if tmdb_api_base else "https://api.tmdb.org"
+    return base_url, tmdb_api_key
+
+
+async def fetch_actor_tmdb_ids(actors: list[str], client: Any) -> dict[str, int]:
+    if not actors:
+        return {}
+
+    base_url, tmdb_api_key = _resolve_tmdb_config()
+
+    if not tmdb_api_key:
+        return {}
 
     result: dict[str, int] = {}
     need_query: list[tuple[str, str]] = []

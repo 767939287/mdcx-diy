@@ -170,5 +170,42 @@ async def test_run_skips_when_translate_disabled(monkeypatch: pytest.MonkeyPatch
     assert call_count["translations"] == 0
 
 
+@pytest.mark.asyncio
+async def test_run_translate_and_link_together(monkeypatch: pytest.MonkeyPatch, _tmp_actor_db: Path):
+    await tmdb_actor.update_actor_db_row(jp="三上悠亜", zh_cn="", zh_tw="", href="", tmdbid=12345)
+    tmdb_actor.resources.actor_db = {
+        "三上悠亜": {"zh_cn": "", "zh_tw": "", "keyword": "", "href": "", "tmdbid": 12345, "tmdb_url": ""}
+    }
+    tmdb_actor.resources.actor_db_reverse_index = None
+
+    monkeypatch.setattr(tmdb_actor.manager.config, "tmdb_api_key", "fake-key")
+    monkeypatch.setattr(tmdb_actor.manager.config, "tmdb_api_base", "api.tmdb.org")
+
+    async def _fake_translations(pid, base_url, api_key, client):
+        return {"zh_cn": "三上悠亚", "zh_tw": "三上悠亞"}
+
+    async def _fake_link(actor_name: str) -> str:
+        return "https://www.libredmm.com/actresses/mikami-yua"
+
+    monkeypatch.setattr(actor_db_tool, "_fetch_person_translations", _fake_translations)
+    monkeypatch.setattr(actor_db_tool, "fetch_libredmm_link", _fake_link)
+
+    result = await actor_db_tool.run(["三上悠亜"], translate=True, link=True)
+
+    assert result.total == 1
+    assert result.translated == 1
+    assert result.linked == 1
+
+    wb = load_workbook(_tmp_actor_db)
+    ws = wb.active
+    for row in ws.iter_rows(min_row=2, values_only=True):
+        if str(row[0] or "").strip() == "三上悠亜":
+            assert row[1] == "三上悠亚", f"zh_cn actual: {row[1]}"
+            assert row[2] == "三上悠亞", f"zh_tw actual: {row[2]}"
+            assert row[4] == "https://www.libredmm.com/actresses/mikami-yua", f"href actual: {row[4]}"
+            break
+    wb.close()
+
+
 async def _no_link(actor_name: str) -> str:
     return ""

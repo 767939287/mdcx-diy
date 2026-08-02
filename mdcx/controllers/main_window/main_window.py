@@ -2614,22 +2614,31 @@ class MyMAinWindow(QMainWindow):
             signal_qt.show_log_text("🔴 请输入演员名单或选择 nfo 目录")
             return
 
+        if not self.Ui.pushButton_actor_db_start.isEnabled():
+            return
+
+        self.Ui.pushButton_actor_db_start.setEnabled(False)
+
         def _split_names(text: str) -> list[str]:
             return [n.strip() for n in re.split(r"[ ;；,，\n]+", text) if n.strip()]
 
         async def run_tool():
-            actor_names = _split_names(names_text)
-            if nfo_dir:
-                collected = await collect_actors_from_nfo_dir(Path(nfo_dir))
-                signal_qt.show_log_text(f"📂 从 nfo 目录收集到 {len(collected)} 个演员")
-                seen = set(actor_names)
-                actor_names.extend(n for n in collected if n not in seen)
-            if not actor_names:
-                signal_qt.show_log_text("🔴 未收集到任何演员")
+            try:
+                actor_names = _split_names(names_text)
+                if nfo_dir:
+                    collected = await collect_actors_from_nfo_dir(Path(nfo_dir))
+                    signal_qt.show_log_text(f"📂 从 nfo 目录收集到 {len(collected)} 个演员")
+                    seen = set(actor_names)
+                    actor_names.extend(n for n in collected if n not in seen)
+                if not actor_names:
+                    signal_qt.show_log_text("🔴 未收集到任何演员")
+                    return
+                await run(actor_names, translate=translate, link=link, output_dir=None)
+            except Exception as e:
+                signal_qt.show_log_text(f"🔴 演员库维护异常: {e}")
+            finally:
+                self.Ui.pushButton_actor_db_start.setEnabled(True)
                 self.pushButton_actor_db_start.emit("开始维护")
-                return
-            await run(actor_names, translate=translate, link=link, output_dir=None)
-            self.pushButton_actor_db_start.emit("开始维护")
 
         self.pushButton_actor_db_start.emit("维护中...")
         executor.submit(asyncio.run, run_tool())
@@ -3474,6 +3483,8 @@ class MyMAinWindow(QMainWindow):
         self.Ui.pushButton_find_missing_number.setEnabled(True)
         self.pushButton_find_missing_number.emit("检查缺失番号")
         self.Ui.pushButton_cover_backfill_start.setEnabled(True)
+        self.Ui.pushButton_actor_db_start.setEnabled(True)
+        self.pushButton_actor_db_start.emit("开始维护")
         self.pushButton_cover_backfill_start.emit("开始补图")
 
         self.Ui.pushButton_start_cap.setStyleSheet(
