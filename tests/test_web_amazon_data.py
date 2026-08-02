@@ -2,9 +2,23 @@ from types import SimpleNamespace
 
 import pytest
 
-import mdcx.base.web as web_module
 from mdcx.base.web import _AdaptiveRequestThrottle, _amazon_request_throttle, get_amazon_data
 from mdcx.config.manager import manager
+
+
+def _monotonic_factory(values: iter):
+    """Return a monotonic() mock that yields from values, falling back to last value."""
+    last = [0.0]
+
+    def _monotonic():
+        try:
+            v = next(values)
+            last[0] = v
+            return v
+        except StopIteration:
+            return last[0]
+
+    return _monotonic
 
 
 @pytest.mark.asyncio
@@ -81,7 +95,6 @@ async def test_get_amazon_data_dynamic_backoff_after_429(monkeypatch: pytest.Mon
 
 
 @pytest.mark.asyncio
-@pytest.mark.network
 async def test_adaptive_request_throttle_coalesces_same_burst_429(monkeypatch: pytest.MonkeyPatch):
     throttle = _AdaptiveRequestThrottle(
         base_spacing=0.18,
@@ -93,8 +106,8 @@ async def test_adaptive_request_throttle_coalesces_same_burst_429(monkeypatch: p
     )
     monotonic_values = iter([10.0, 10.6, 11.8, 14.8])
 
-    monkeypatch.setattr(web_module, "random", SimpleNamespace(uniform=lambda _a, _b: 0.0))
-    monkeypatch.setattr(web_module, "time", SimpleNamespace(monotonic=lambda: next(monotonic_values)))
+    monkeypatch.setattr("mdcx.utils.rate_limit.random", SimpleNamespace(uniform=lambda _a, _b: 0.0))
+    monkeypatch.setattr("time.monotonic", _monotonic_factory(monotonic_values))
 
     cooldown1, level1, escalated1 = await throttle.register_result(throttled=True)
     cooldown2, level2, escalated2 = await throttle.register_result(throttled=True)
@@ -119,7 +132,6 @@ async def test_adaptive_request_throttle_coalesces_same_burst_429(monkeypatch: p
 
 
 @pytest.mark.asyncio
-@pytest.mark.network
 async def test_adaptive_request_throttle_recovers_after_success(monkeypatch: pytest.MonkeyPatch):
     throttle = _AdaptiveRequestThrottle(
         base_spacing=0.2,
@@ -129,8 +141,8 @@ async def test_adaptive_request_throttle_recovers_after_success(monkeypatch: pyt
     )
     monotonic_values = iter([20.0, 24.0, 24.1, 24.2])
 
-    monkeypatch.setattr(web_module, "random", SimpleNamespace(uniform=lambda _a, _b: 0.0))
-    monkeypatch.setattr(web_module, "time", SimpleNamespace(monotonic=lambda: next(monotonic_values)))
+    monkeypatch.setattr("mdcx.utils.rate_limit.random", SimpleNamespace(uniform=lambda _a, _b: 0.0))
+    monkeypatch.setattr("time.monotonic", _monotonic_factory(monotonic_values))
 
     _, level1, _ = await throttle.register_result(throttled=True)
     _, level2, _ = await throttle.register_result(throttled=True)
