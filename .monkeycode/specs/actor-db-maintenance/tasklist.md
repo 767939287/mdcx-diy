@@ -29,7 +29,7 @@
   - [x] 5.2 检查点 - 运行全部测试（ruff + pytest），确认无回归
   - [ ] 5.3 UI 验证（人工）：工具页滚动到底部，确认新 groupBox 与 Emby groupBox 完整可见、无重叠
 
-- [ ] 6. 提交推送与文档同步
-  - [ ] 6.1 git commit + push（含剥离逻辑、新工具、UI、槽函数、测试、build.py）
-  - [ ] 6.2 更新 `docs/changelog.md`（新增功能条目）
-  - [ ] 6.3 更新 `docs/FEATURES.md`（工具章节补充演员库维护）
+- [x] 6. 提交推送与文档同步
+  - [x] 6.1 git commit + push（含剥离逻辑、新工具、UI、槽函数、测试、build.py）
+  - [x] 6.2 更新 `docs/changelog.md`（新增功能条目）
+  - [x] 6.3 更新 `docs/FEATURES.md`（工具章节补充演员库维护）
