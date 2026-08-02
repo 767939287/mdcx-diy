@@ -2374,31 +2374,27 @@ class MyMAinWindow(QMainWindow):
 
     # 工具页面本地资源库点选择目录
     def pushButton_select_local_library_clicked(self):
-        media_folder_path = self._get_select_folder_path(self.Ui.lineEdit_local_library_path)
-        if media_folder_path:
-            self.Ui.lineEdit_local_library_path.setText(media_folder_path)
-            self.pushButton_save_config_clicked()
+        from .tool_handlers import pushButton_select_local_library_clicked
+
+        pushButton_select_local_library_clicked(self)
 
     # 工具页面网盘目录点选择目录
     def pushButton_select_netdisk_path_clicked(self):
-        media_folder_path = self._get_select_folder_path(self.Ui.lineEdit_netdisk_path)
-        if media_folder_path:
-            self.Ui.lineEdit_netdisk_path.setText(media_folder_path)
-            self.pushButton_save_config_clicked()
+        from .tool_handlers import pushButton_select_netdisk_path_clicked
+
+        pushButton_select_netdisk_path_clicked(self)
 
     # 工具页面本地目录点选择目录
     def pushButton_select_localdisk_path_clicked(self):
-        media_folder_path = self._get_select_folder_path(self.Ui.lineEdit_localdisk_path)
-        if media_folder_path:
-            self.Ui.lineEdit_localdisk_path.setText(media_folder_path)
-            self.pushButton_save_config_clicked()
+        from .tool_handlers import pushButton_select_localdisk_path_clicked
+
+        pushButton_select_localdisk_path_clicked(self)
 
     # 工具/设置页面点选择目录
     def pushButton_select_media_folder_clicked(self):
-        media_folder_path = self._get_select_folder_path(self.Ui.lineEdit_movie_path)
-        if media_folder_path:
-            self.Ui.lineEdit_movie_path.setText(media_folder_path)
-            self.pushButton_save_config_clicked()
+        from .tool_handlers import pushButton_select_media_folder_clicked
+
+        pushButton_select_media_folder_clicked(self)
 
     # 工具-软链接助手
     def pushButton_creat_symlink_clicked(self):
@@ -2576,38 +2572,33 @@ class MyMAinWindow(QMainWindow):
     # region 选择目录
     # 设置-目录-软链接目录-点选择目录
     def pushButton_select_softlink_folder_clicked(self):
-        media_folder_path = self._get_select_folder_path(self.Ui.lineEdit_movie_softlink_path)
-        if media_folder_path:
-            self.Ui.lineEdit_movie_softlink_path.setText(media_folder_path)
-            self.pushButton_save_config_clicked()
+        from .tool_handlers import pushButton_select_softlink_folder_clicked
+
+        pushButton_select_softlink_folder_clicked(self)
 
     # 设置-目录-成功输出目录-点选择目录
     def pushButton_select_sucess_folder_clicked(self):
-        media_folder_path = self._get_select_folder_path(self.Ui.lineEdit_success)
-        if media_folder_path:
-            self.Ui.lineEdit_success.setText(media_folder_path)
-            self.pushButton_save_config_clicked()
+        from .tool_handlers import pushButton_select_sucess_folder_clicked
+
+        pushButton_select_sucess_folder_clicked(self)
 
     # 设置-目录-失败输出目录-点选择目录
     def pushButton_select_failed_folder_clicked(self):
-        media_folder_path = self._get_select_folder_path(self.Ui.lineEdit_fail)
-        if media_folder_path:
-            self.Ui.lineEdit_fail.setText(media_folder_path)
-            self.pushButton_save_config_clicked()
+        from .tool_handlers import pushButton_select_failed_folder_clicked
+
+        pushButton_select_failed_folder_clicked(self)
 
     # 设置-字幕-字幕文件目录-点选择目录
     def pushButton_select_subtitle_folder_clicked(self):
-        media_folder_path = self._get_select_folder_path(self.Ui.lineEdit_sub_folder)
-        if media_folder_path:
-            self.Ui.lineEdit_sub_folder.setText(media_folder_path)
-            self.pushButton_save_config_clicked()
+        from .tool_handlers import pushButton_select_subtitle_folder_clicked
+
+        pushButton_select_subtitle_folder_clicked(self)
 
     # 设置-头像-头像文件目录-点选择目录
     def pushButton_select_actor_photo_folder_clicked(self):
-        media_folder_path = self._get_select_folder_path(self.Ui.lineEdit_actor_photo_folder)
-        if media_folder_path:
-            self.Ui.lineEdit_actor_photo_folder.setText(media_folder_path)
-            self.pushButton_save_config_clicked()
+        from .tool_handlers import pushButton_select_actor_photo_folder_clicked
+
+        pushButton_select_actor_photo_folder_clicked(self)
 
     # 设置-演员-Gfriends本地仓库-点选择目录
     def pushButton_select_gfriends_local_clicked(self):

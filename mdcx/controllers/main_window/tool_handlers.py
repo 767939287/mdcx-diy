@@ -189,3 +189,51 @@ def pushButton_show_pic_actor_clicked(self):
         executor.submit(show_emby_actor_list(self.Ui.comboBox_pic_actor.currentIndex()))
     except Exception:
         signal_qt.show_log_text(traceback.format_exc())
+
+
+# ============= 通用目录选择 =============
+
+
+def _pick_folder(self, line_edit_attr: str) -> None:
+    """选择目录并设置到 lineEdit，同时保存配置。"""
+    line_edit = getattr(self.Ui, line_edit_attr)
+    path = self._get_select_folder_path(line_edit)
+    if path:
+        line_edit.setText(path)
+        self.pushButton_save_config_clicked()
+
+
+def pushButton_select_softlink_folder_clicked(self):
+    _pick_folder(self, "lineEdit_movie_softlink_path")
+
+
+def pushButton_select_sucess_folder_clicked(self):
+    _pick_folder(self, "lineEdit_success")
+
+
+def pushButton_select_failed_folder_clicked(self):
+    _pick_folder(self, "lineEdit_fail")
+
+
+def pushButton_select_subtitle_folder_clicked(self):
+    _pick_folder(self, "lineEdit_sub_folder")
+
+
+def pushButton_select_actor_photo_folder_clicked(self):
+    _pick_folder(self, "lineEdit_actor_photo_folder")
+
+
+def pushButton_select_local_library_clicked(self):
+    _pick_folder(self, "lineEdit_local_library_path")
+
+
+def pushButton_select_netdisk_path_clicked(self):
+    _pick_folder(self, "lineEdit_netdisk_path")
+
+
+def pushButton_select_localdisk_path_clicked(self):
+    _pick_folder(self, "lineEdit_localdisk_path")
+
+
+def pushButton_select_media_folder_clicked(self):
+    _pick_folder(self, "lineEdit_movie_path")
