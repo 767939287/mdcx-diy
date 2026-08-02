@@ -276,6 +276,9 @@ class BuildManager:
             "mdcx.tools.emby_actor_manager",
             "--hidden-import",
             "mdcx.tools.emby_actor_manager_ui",
+            # 演员库维护工具(延迟导入)
+            "--hidden-import",
+            "mdcx.tools.actor_db_tool",
             "--collect-all",
             "defusedxml",
             "--collect-all",

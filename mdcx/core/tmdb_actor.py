@@ -894,7 +894,6 @@ async def fetch_actor_tmdb_ids(actors: list[str], client: Any) -> dict[str, int]
 
     result: dict[str, int] = {}
     need_query: list[tuple[str, str]] = []
-    need_translate: list[tuple[str, str, int]] = []
     actor_db = resources.actor_db or {}
 
     # Pre-load workbook for batched writes
@@ -930,12 +929,9 @@ async def fetch_actor_tmdb_ids(actors: list[str], client: Any) -> dict[str, int]
         row = None
         if actor_stripped in actor_db and actor_db[actor_stripped].get("tmdbid"):
             result[actor_stripped] = actor_db[actor_stripped]["tmdbid"]
-            row_data = actor_db[actor_stripped]
             _tmdb_log_line(
                 f"  ✅ [TMDB] '{actor_stripped}' 从 actor_db 直接匹配, tmdbid={actor_db[actor_stripped]['tmdbid']}"
             )
-            if not row_data.get("zh_cn") or not row_data.get("zh_tw"):
-                need_translate.append((actor_stripped, actor_stripped, row_data["tmdbid"]))
             continue
 
         row = search_actor_db_reverse(actor_stripped)
@@ -943,8 +939,6 @@ async def fetch_actor_tmdb_ids(actors: list[str], client: Any) -> dict[str, int]
             result[actor_stripped] = row["tmdbid"]
             _tmdb_log_line(f"  ✅ [TMDB] '{actor_stripped}' 从反查匹配, tmdbid={row['tmdbid']}")
             _tmdb_log_line(f" ℹ️ [TMDB] {actor_stripped} -> tmdbid={row['tmdbid']} (xlsx反查缓存)")
-            if not row.get("zh_cn") or not row.get("zh_tw"):
-                need_translate.append((actor_stripped, row.get("jp", actor_stripped), row["tmdbid"]))
             continue
 
         _tmdb_log_line(f"  ⚠️ [TMDB] '{actor_stripped}' 未匹配，将进入 TMDB API 搜索")
@@ -953,27 +947,8 @@ async def fetch_actor_tmdb_ids(actors: list[str], client: Any) -> dict[str, int]
     async def _query_or_cached(actor_name: str, query_name: str) -> tuple[str, dict | None]:
         return actor_name, await query_single_actor_cached(query_name, base_url, tmdb_api_key, client)
 
-    async def _translate_and_update(actor_name: str, jp_name: str, tid: int) -> None:
-        try:
-            translations = await _fetch_person_translations(tid, base_url, tmdb_api_key, client)
-            zh_cn = _normalize_translation(translations.get("zh_cn", ""))
-            zh_tw = _normalize_translation(translations.get("zh_tw", ""))
-            if not zh_cn and zh_tw:
-                zh_cn = zhconv.convert(zh_tw, "zh-cn")
-            if not zh_tw and zh_cn:
-                zh_tw = zhconv.convert(zh_cn, "zh-hant")
-            if zh_cn or zh_tw:
-                write_status = await update_actor_db_row(
-                    jp=jp_name, zh_cn=zh_cn, zh_tw=zh_tw, tmdbid=tid, overwrite_names=True, _wb=_wb
-                )
-                _tmdb_log_line(
-                    f" 🔄 [TMDB] {actor_name} 翻译补全: zh_cn={zh_cn or '-'} zh_tw={zh_tw or '-'} ({write_status})"
-                )
-        except Exception as e:
-            _tmdb_log_line(f" ⚠️ [TMDB] {actor_name} 翻译补全失败: {e}")
-
     async def _flush_wb() -> None:
-        """把批量预加载的工作簿落盘（翻译/链接补全的写操作都先攒在 _wb 内存里）。"""
+        """把批量预加载的工作簿落盘（查询结果的写操作先攒在 _wb 内存里）。"""
         if _wb is None:
             return
         try:
@@ -983,19 +958,8 @@ async def fetch_actor_tmdb_ids(actors: list[str], client: Any) -> dict[str, int]
             _wb.close()
             resources.reload_actor_db()
         except Exception as e:
-            # 落盘失败绝不能静默吞掉: 否则翻译/链接补全结果会静默全丢且用户无感知
-            _tmdb_log_line(f" ❌ [TMDB] 演员库落盘失败，翻译/链接补全可能未保存: {e}")
-
-    if need_translate:
-        _tmdb_log_line(f" 🔄 [TMDB] 补全 {len(need_translate)} 个已有 tmdbid 演员的翻译")
-        trans_semaphore = asyncio.Semaphore(3)
-
-        async def _limited_translate(actor_name: str, jp_name: str, tid: int) -> None:
-            async with trans_semaphore:
-                await _translate_and_update(actor_name, jp_name, tid)
-
-        trans_tasks = [asyncio.create_task(_limited_translate(a, j, t)) for a, j, t in need_translate]
-        await asyncio.gather(*trans_tasks)
+            # 落盘失败绝不能静默吞掉: 否则查询写库结果会静默全丢且用户无感知
+            _tmdb_log_line(f" ❌ [TMDB] 演员库落盘失败，查询写库可能未保存: {e}")
 
     if not need_query:
         _tmdb_log_line("  ℹ️ [TMDB] 所有演员已在 actor_db 中匹配，无需 API 查询")
@@ -1074,29 +1038,7 @@ async def fetch_actor_tmdb_ids(actors: list[str], client: Any) -> dict[str, int]
         f"本次匹配 {len(result) - cached_before} 个, 共 {len(result)} 个"
     )
 
-    # 统一补链接：有 tmdbid 但 xlsx 链接列为空的演员
-    actor_db = resources.actor_db or {}
-    missing_link = [name for name in result if not (actor_db.get(name, {}).get("href") or "")]
-    if missing_link:
-        _tmdb_log_line(f" 🔗 [LibreDMM] 补全 {len(missing_link)} 个演员的链接")
-        link_semaphore = asyncio.Semaphore(3)
-
-        async def _fetch_and_update(actor_name: str) -> None:
-            async with link_semaphore:
-                try:
-                    row = search_actor_db_reverse(actor_name)
-                    jp_key = row.get("jp", actor_name) if row else actor_name
-                    href = await fetch_libredmm_link(jp_key)
-                    if href:
-                        await update_actor_db_row(jp=jp_key, href=href, _wb=_wb)
-                        _tmdb_log_line(f"  ✅ [LibreDMM] {actor_name} -> {href}")
-                except Exception as e:
-                    _tmdb_log_line(f"  ⚠️ [LibreDMM] {actor_name} 链接补全失败: {e}")
-
-        tasks = [asyncio.create_task(_fetch_and_update(name)) for name in missing_link]
-        await asyncio.gather(*tasks)
-
-    # Flush batched workbook writes (翻译/链接补全都先攒在 _wb 内存里)
+    # Flush batched workbook writes (查询结果的写操作先攒在 _wb 内存里)
     await _flush_wb()
 
     flush_tmdb_query_cache()

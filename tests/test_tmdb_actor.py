@@ -501,7 +501,7 @@ async def test_update_actor_db_row_overwrite_skips_empty_new_values(_tmp_actor_d
 
 
 @pytest.mark.asyncio
-async def test_fetch_actor_tmdb_ids_supplements_translation_for_cached_actor(
+async def test_fetch_actor_tmdb_ids_skips_translation_backfill_for_cached_actor(
     monkeypatch: pytest.MonkeyPatch, _tmp_actor_db: Path
 ):
     await tmdb_actor.update_actor_db_row(jp="三上悠亜", zh_cn="", zh_tw="", tmdbid=12345)
@@ -513,8 +513,11 @@ async def test_fetch_actor_tmdb_ids_supplements_translation_for_cached_actor(
     monkeypatch.setattr(tmdb_actor.manager.config, "tmdb_api_key", "fake-key")
     monkeypatch.setattr(tmdb_actor.manager.config, "tmdb_api_base", "api.tmdb.org")
 
+    call_count = {"translations": 0}
+
     async def _stub_tmdb_request(client, method, url, **kwargs):
         if "/translations" in url:
+            call_count["translations"] += 1
             return tmdb_actor._TmdbResponse(
                 200,
                 '{"translations":[{"iso_639_1":"zh","iso_3166_1":"CN","english_name":"Mikami Yua","data":{"name":"三上悠亚"}},{"iso_639_1":"zh","iso_3166_1":"TW","english_name":"Mikami Yua","data":{"name":"三上悠亞"}}]}',
@@ -526,13 +529,15 @@ async def test_fetch_actor_tmdb_ids_supplements_translation_for_cached_actor(
     result = await tmdb_actor.fetch_actor_tmdb_ids(["三上悠亜"], object())
 
     assert result == {"三上悠亜": 12345}
+    # 剥离后：刮削流程不再为已有 tmdbid 的演员补全翻译（该能力移至独立工具）
+    assert call_count["translations"] == 0
 
     wb = load_workbook(_tmp_actor_db)
     ws = wb.active
     for row in ws.iter_rows(min_row=2, values_only=True):
         if str(row[0] or "").strip() == "三上悠亜":
-            assert row[1] == "三上悠亚"
-            assert row[2] == "三上悠亞"
+            assert not (row[1] or "").strip()
+            assert not (row[2] or "").strip()
             break
     wb.close()
 

@@ -96,12 +96,22 @@ async def run(
 
 | 控件 | 类型 | 说明 |
 |---|---|---|
+| `label_actor_db_desc` | QLabel | 说明文字（青色，仿封面补图），内容：维护 actor_database.xlsx 演员库数据：对已有 tmdbid 的演员补全中文/繁体翻译，并补全 LibreDMM 链接。可输入演员名单（多个用空格或逗号分隔），或选择 nfo 目录自动收集演员。复用当前配置的 TMDB API 与演员映射规则。 |
+| `label_actor_db_note` | QLabel | 提示文字（橙色，仿封面补图），内容：补全结果将输出到日志页，可在日志页查看详细进度和错误信息。 |
 | `lineEdit_actor_db_names` | QLineEdit | 演员名单输入，占位符「例如：三上悠亚 明日花绮罗」 |
-| `pushButton_actor_db_pick_dir` | QPushButton | 选择 nfo 目录，点击后用 QFileDialog 选目录并回填路径 |
+| `pushButton_actor_db_pick_dir` | QPushButton | 「选择 nfo 目录」，点击后用 QFileDialog 选目录并回填路径 |
 | `lineEdit_actor_db_dir` | QLineEdit | 显示已选 nfo 目录（只读或可编辑） |
 | `checkBox_actor_db_translate` | QCheckBox | 「补全翻译（中文/繁体）」，默认勾选 |
 | `checkBox_actor_db_link` | QCheckBox | 「补全 LibreDMM 链接」，默认勾选 |
 | `pushButton_actor_db_start` | QPushButton | 「开始维护」，运行批量任务 |
+
+**说明文字（UI 上必须可见）：**
+
+1. groupBox 标题：`演员库维护（补全演员翻译与链接，复用当前配置的 TMDB API）`
+2. `label_actor_db_desc` 说明：
+   `维护 actor_database.xlsx 演员库数据：对已有 TMDB ID 的演员补全中文/繁体翻译，并补全 LibreDMM 链接。可输入演员名单（多个用空格或逗号分隔），或选择 nfo 目录自动收集演员。`
+3. `label_actor_db_note` 提示：
+   `提示：补全结果将输出到日志页，可在日志页查看详细进度和错误信息。`
 
 **信号接线（在 `init.py` 中）：**
 

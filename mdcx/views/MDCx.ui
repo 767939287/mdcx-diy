@@ -1585,7 +1585,7 @@
                   <x>0</x>
                   <y>0</y>
                   <width>760</width>
-                  <height>1580</height>
+                  <height>1780</height>
                 </rect>
               </property>
               <property name="autoFillBackground">
@@ -2297,11 +2297,159 @@
                   </property>
                 </widget>
               </widget>
-              <widget class="QGroupBox" name="groupBox_cover_backfill">
+              <widget class="QGroupBox" name="groupBox_actor_db_maintenance">
                 <property name="geometry">
                   <rect>
                     <x>30</x>
                     <y>1240</y>
+                    <width>701</width>
+                    <height>200</height>
+                  </rect>
+                </property>
+                <property name="title">
+                  <string>演员库维护（补全演员翻译与链接，复用当前配置的 TMDB API）</string>
+                </property>
+                <widget class="QLabel" name="label_actor_db_desc">
+                  <property name="geometry">
+                    <rect>
+                      <x>40</x>
+                      <y>30</y>
+                      <width>621</width>
+                      <height>40</height>
+                    </rect>
+                  </property>
+                  <property name="styleSheet">
+                    <string notr="true">color: rgb(8, 128, 128);</string>
+                  </property>
+                  <property name="text">
+                    <string>维护 actor_database.xlsx 演员库数据：对已有 TMDB ID 的演员补全中文/繁体翻译，并补全 LibreDMM 链接。可输入演员名单（多个用空格或逗号分隔），或选择 nfo 目录自动收集演员。</string>
+                  </property>
+                  <property name="wordWrap">
+                    <bool>true</bool>
+                  </property>
+                </widget>
+                <widget class="QLineEdit" name="lineEdit_actor_db_names">
+                  <property name="geometry">
+                    <rect>
+                      <x>40</x>
+                      <y>70</y>
+                      <width>461</width>
+                      <height>30</height>
+                    </rect>
+                  </property>
+                  <property name="styleSheet">
+                    <string notr="true">border: 1px solid rgba(0,0,0, 50);
+                      border-radius: 15px;
+</string>
+                  </property>
+                  <property name="placeholderText">
+                    <string>例如：三上悠亚 明日花绮罗</string>
+                  </property>
+                </widget>
+                <widget class="QPushButton" name="pushButton_actor_db_pick_dir">
+                  <property name="geometry">
+                    <rect>
+                      <x>520</x>
+                      <y>70</y>
+                      <width>141</width>
+                      <height>30</height>
+                    </rect>
+                  </property>
+                  <property name="text">
+                    <string>选择 nfo 目录</string>
+                  </property>
+                </widget>
+                <widget class="QLineEdit" name="lineEdit_actor_db_dir">
+                  <property name="geometry">
+                    <rect>
+                      <x>40</x>
+                      <y>105</y>
+                      <width>621</width>
+                      <height>30</height>
+                    </rect>
+                  </property>
+                  <property name="styleSheet">
+                    <string notr="true">border: 1px solid rgba(0,0,0, 50);
+                      border-radius: 15px;
+</string>
+                  </property>
+                  <property name="placeholderText">
+                    <string>选择 nfo 目录后自动收集其中的演员名（与上方名单二选一）</string>
+                  </property>
+                  <property name="readOnly">
+                    <bool>true</bool>
+                  </property>
+                </widget>
+                <widget class="QCheckBox" name="checkBox_actor_db_translate">
+                  <property name="geometry">
+                    <rect>
+                      <x>40</x>
+                      <y>140</y>
+                      <width>181</width>
+                      <height>20</height>
+                    </rect>
+                  </property>
+                  <property name="text">
+                    <string>补全翻译（中文/繁体）</string>
+                  </property>
+                  <property name="checked">
+                    <bool>true</bool>
+                  </property>
+                </widget>
+                <widget class="QCheckBox" name="checkBox_actor_db_link">
+                  <property name="geometry">
+                    <rect>
+                      <x>240</x>
+                      <y>140</y>
+                      <width>181</width>
+                      <height>20</height>
+                    </rect>
+                  </property>
+                  <property name="text">
+                    <string>补全 LibreDMM 链接</string>
+                  </property>
+                  <property name="checked">
+                    <bool>true</bool>
+                  </property>
+                </widget>
+                <widget class="QPushButton" name="pushButton_actor_db_start">
+                  <property name="geometry">
+                    <rect>
+                      <x>520</x>
+                      <y>137</y>
+                      <width>141</width>
+                      <height>30</height>
+                    </rect>
+                  </property>
+                  <property name="text">
+                    <string>开始维护</string>
+                  </property>
+                </widget>
+                <widget class="QLabel" name="label_actor_db_note">
+                  <property name="geometry">
+                    <rect>
+                      <x>40</x>
+                      <y>170</y>
+                      <width>621</width>
+                      <height>26</height>
+                    </rect>
+                  </property>
+                  <property name="styleSheet">
+                    <string notr="true">color: rgb(200, 100, 0);</string>
+                  </property>
+                  <property name="text">
+                    <string>提示：补全结果将输出到日志页，可在日志页查看详细进度和错误信息。</string>
+                  </property>
+                  <property name="wordWrap">
+                    <bool>true</bool>
+                  </property>
+                </widget>
+              </widget>
+              <widget class="QGroupBox" name="groupBox_cover_backfill">
+                <property name="geometry">
+                  <rect>
+                    <x>30</x>
+                    <y>1440</y>
                     <width>701</width>
                     <height>200</height>
                   </rect>
@@ -2412,7 +2560,7 @@
                 <property name="geometry">
                   <rect>
                     <x>30</x>
-                    <y>1460</y>
+                    <y>1660</y>
                     <width>701</width>
                     <height>90</height>
                   </rect>
