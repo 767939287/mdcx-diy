@@ -706,6 +706,8 @@ class Scraper:
                             )
                             res.actor_tmdb_ids = existing_tmdb_ids
                         else:
+                            # 预加载 workbook，所有查询结果的写操作先攒在内存，最后一次性落盘
+                            _wb, _db_path = _load_actor_db_wb()
                             async with aiohttp.ClientSession() as client:
                                 protocol = "https://"
                                 base = tmdb_api_base.strip()
@@ -741,6 +743,7 @@ class Scraper:
                                                 keyword=",".join(aka) if aka else "",
                                                 tmdbid=tmdbid,
                                                 append_keyword=True,
+                                                _wb=_wb,
                                             )
                                             LogBuffer.log().write(
                                                 f"  ✅ [TMDB] {actor_name} -> tmdbid={tmdbid} (读取模式补充)"
@@ -782,6 +785,8 @@ class Scraper:
                                 tasks = [asyncio.create_task(_limited_query(a)) for a in still_missing]
                                 await asyncio.gather(*tasks)
 
+                                if _wb is not None:
+                                    _flush_actor_db_wb(_wb, _db_path)
                                 res.actor_tmdb_ids = existing_tmdb_ids
 
         # 刮削json_data
@@ -1119,6 +1124,42 @@ class Scraper:
         if await aiofiles.os.path.islink(p):
             info_str = f"{'🔴 ' + count + '.':<3} {p} \n    指向文件: {p.resolve()} \n    失败原因: {error_info} \n"
         signal.logs_failed_show.emit(info_str)
+
+
+def _load_actor_db_wb():
+    """加载演员数据库 workbook，返回 (wb, db_path) 或 (None, None)。"""
+    import openpyxl
+
+    from ..config.resources import DB_HEADERS
+    from .tmdb_actor import _get_db_path
+
+    db_path = _get_db_path()
+    if db_path.exists():
+        wb = openpyxl.load_workbook(db_path)
+    else:
+        wb = openpyxl.Workbook()
+        ws = wb.active
+        ws.title = "演员数据库"
+        for col, header in enumerate(DB_HEADERS, 1):
+            ws.cell(row=1, column=col, value=header)
+    return wb, db_path
+
+
+def _flush_actor_db_wb(wb, db_path):
+    """将 workbook 落盘并重载缓存。"""
+    from ..config.resources import resources
+    from .tmdb_actor import _ACTOR_DB_ROW_INDEX, _ACTOR_DB_ROW_INDEX_LOCK, _format_db_worksheet
+
+    try:
+        ws = wb.active
+        _format_db_worksheet(ws)
+        wb.save(db_path)
+        wb.close()
+        with _ACTOR_DB_ROW_INDEX_LOCK:
+            _ACTOR_DB_ROW_INDEX.clear()
+        resources.reload_actor_db()
+    except Exception as e:
+        LogBuffer.log().write(f" ❌ [演员数据库] 落盘失败: {e}")
 
 
 def start_new_scrape(file_mode: FileMode, movie_list: list[Path] | None = None) -> None:
