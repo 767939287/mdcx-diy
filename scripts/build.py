@@ -36,6 +36,13 @@ EXCLUDED_MODULES = [
     "matplotlib_inline",
     "rich",
     "typer",
+    "playwright",
+    "setuptools",
+    "pyright",
+    "virtualenv",
+    "mypy",
+    "jedi",
+    "_pyinstaller_hooks_contrib",
 ]
 
 
