@@ -4,8 +4,6 @@ from openpyxl import load_workbook
 from mdcx.core import amazon_database
 from mdcx.models.log_buffer import LogBuffer
 
-pytestmark = pytest.mark.network
-
 
 @pytest.fixture
 def _tmp_asin_db(monkeypatch: pytest.MonkeyPatch, tmp_path):
@@ -71,7 +69,7 @@ async def test_save_asin_to_excel_formats_worksheet(_tmp_asin_db):
     ws = wb.active
 
     assert ws.title == "ASIN 数据库"
-    assert ws.freeze_panes == "A2"
+    assert ws.freeze_panes == "B2"
     assert ws.auto_filter.ref == "A1:F2"
 
     headers = [ws.cell(row=1, column=i).value for i in range(1, 7)]

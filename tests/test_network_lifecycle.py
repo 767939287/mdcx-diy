@@ -11,8 +11,6 @@ from mdcx.config.models import Config
 from mdcx.crawler import CrawlerProvider
 from mdcx.web_async import AsyncWebClient
 
-pytestmark = pytest.mark.network
-
 
 class _FakeSession:
     def __init__(self):
@@ -33,6 +31,7 @@ class _FakeResponse:
 
 
 @pytest.mark.asyncio
+@pytest.mark.network
 async def test_async_web_client_close_closes_underlying_session():
     client = AsyncWebClient(timeout=1)
     old_session = _FakeSession()
@@ -53,6 +52,7 @@ async def test_async_web_client_close_closes_underlying_session():
 
 
 @pytest.mark.asyncio
+@pytest.mark.network
 async def test_async_web_client_close_when_idle_waits_for_lease():
     client = AsyncWebClient(timeout=1)
     fake_session = _FakeSession()
@@ -79,6 +79,7 @@ async def test_async_web_client_close_when_idle_waits_for_lease():
 
 
 @pytest.mark.asyncio
+@pytest.mark.network
 async def test_async_web_client_lease_allows_requests_after_close_requested(monkeypatch: pytest.MonkeyPatch):
     client = AsyncWebClient(timeout=1)
     fake_session = _FakeSession()
@@ -115,6 +116,7 @@ async def test_crawler_provider_retains_client_until_close():
 
 
 @pytest.mark.asyncio
+@pytest.mark.network
 async def test_stream_failure_response_is_closed(monkeypatch: pytest.MonkeyPatch):
     client = AsyncWebClient(timeout=1, retry=1)
     closed: list[bool] = []
@@ -141,6 +143,7 @@ async def test_stream_failure_response_is_closed(monkeypatch: pytest.MonkeyPatch
 
 
 @pytest.mark.asyncio
+@pytest.mark.network
 async def test_reset_connections_rotates_new_requests_and_closes_old_after_active_request(
     monkeypatch: pytest.MonkeyPatch,
 ):
@@ -189,6 +192,7 @@ async def test_reset_connections_rotates_new_requests_and_closes_old_after_activ
 
 
 @pytest.mark.asyncio
+@pytest.mark.network
 async def test_transport_error_retry_uses_rotated_host_pool(monkeypatch: pytest.MonkeyPatch):
     client = AsyncWebClient(timeout=1, retry=2)
 
@@ -220,6 +224,7 @@ async def test_transport_error_retry_uses_rotated_host_pool(monkeypatch: pytest.
 
 
 @pytest.mark.asyncio
+@pytest.mark.network
 async def test_pool_slot_wait_is_not_counted_by_request_watchdog(monkeypatch: pytest.MonkeyPatch):
     client = AsyncWebClient(timeout=1, retry=1)
     client._pool_manager._max_clients = 1
@@ -251,6 +256,7 @@ async def test_pool_slot_wait_is_not_counted_by_request_watchdog(monkeypatch: py
 
 
 @pytest.mark.asyncio
+@pytest.mark.network
 async def test_stream_response_close_releases_slot_without_explicit_loop(monkeypatch: pytest.MonkeyPatch):
     client = AsyncWebClient(timeout=1, retry=1)
     client._pool_manager._max_clients = 1
@@ -280,6 +286,7 @@ async def test_stream_response_close_releases_slot_without_explicit_loop(monkeyp
 
 
 @pytest.mark.asyncio
+@pytest.mark.network
 async def test_request_watchdog_still_applies_after_pool_slot_is_acquired(monkeypatch: pytest.MonkeyPatch):
     client = AsyncWebClient(timeout=1, retry=1)
     client._pool_manager._max_clients = 1

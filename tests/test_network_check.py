@@ -14,8 +14,6 @@ from mdcx.core.network_check import (
     run_network_check_item,
 )
 
-pytestmark = pytest.mark.network
-
 
 class FakeResponse:
     def __init__(self, status_code: int = 200, text: str = "ok", url: str = "https://example.test"):

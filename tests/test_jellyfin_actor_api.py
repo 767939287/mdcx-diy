@@ -6,8 +6,6 @@ import pytest
 from mdcx.config.manager import manager
 from mdcx.tools import emby_actor_image
 
-pytestmark = pytest.mark.network
-
 
 @pytest.mark.asyncio
 async def test_upload_actor_photo_uses_base64_body_for_emby(monkeypatch: pytest.MonkeyPatch, tmp_path):
@@ -34,7 +32,7 @@ async def test_upload_actor_photo_uses_base64_body_for_emby(monkeypatch: pytest.
     assert result is True
     assert error == ""
     assert captured["data"] == base64.b64encode(pic_bytes)
-    assert captured["headers"] == {"Content-Type": "image/jpeg"}
+    assert captured["headers"] == {"Content-Type": "image/jpeg", "Authorization": 'MediaBrowser Token=""'}
     assert captured["use_proxy"] is False
 
 

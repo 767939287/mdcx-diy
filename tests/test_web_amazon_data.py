@@ -6,8 +6,6 @@ import mdcx.base.web as web_module
 from mdcx.base.web import _AdaptiveRequestThrottle, _amazon_request_throttle, get_amazon_data
 from mdcx.config.manager import manager
 
-pytestmark = pytest.mark.network
-
 
 @pytest.mark.asyncio
 async def test_get_amazon_data_prefers_utf8(monkeypatch: pytest.MonkeyPatch):
@@ -83,6 +81,7 @@ async def test_get_amazon_data_dynamic_backoff_after_429(monkeypatch: pytest.Mon
 
 
 @pytest.mark.asyncio
+@pytest.mark.network
 async def test_adaptive_request_throttle_coalesces_same_burst_429(monkeypatch: pytest.MonkeyPatch):
     throttle = _AdaptiveRequestThrottle(
         base_spacing=0.18,
@@ -120,6 +119,7 @@ async def test_adaptive_request_throttle_coalesces_same_burst_429(monkeypatch: p
 
 
 @pytest.mark.asyncio
+@pytest.mark.network
 async def test_adaptive_request_throttle_recovers_after_success(monkeypatch: pytest.MonkeyPatch):
     throttle = _AdaptiveRequestThrottle(
         base_spacing=0.2,
