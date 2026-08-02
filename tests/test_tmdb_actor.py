@@ -7,8 +7,6 @@ from openpyxl import Workbook, load_workbook
 from mdcx.core import tmdb_actor
 from mdcx.models.log_buffer import LogBuffer
 
-pytestmark = pytest.mark.network
-
 
 @pytest.fixture
 def _tmp_actor_db(monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
@@ -23,6 +21,12 @@ def _tmp_actor_db(monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
 def _reset_tmdb_query_cache():
     tmdb_actor._TMDB_QUERY_CACHE.clear()
     tmdb_actor._TMDB_QUERY_INFLIGHT.clear()
+
+
+@pytest.fixture(autouse=True)
+def _reset_actor_db_row_index():
+    with tmdb_actor._ACTOR_DB_ROW_INDEX_LOCK:
+        tmdb_actor._ACTOR_DB_ROW_INDEX.clear()
 
 
 def test_expand_name_variants_supports_kana_ko_and_kanji_ko():
@@ -664,3 +668,83 @@ async def test_fetch_actor_tmdb_ids_skips_translate_when_both_names_present(
 
     assert result == {"已完整演员": 55555}
     assert call_count["translations"] == 0
+
+
+# ============= _ACTOR_DB_ROW_INDEX 索引缓存测试 =============
+
+
+@pytest.mark.asyncio
+async def test_row_index_built_on_first_call_and_reused(_tmp_actor_db: Path):
+    await tmdb_actor.update_actor_db_row(jp="演员甲", zh_cn="演员甲CN", tmdbid=111)
+    await tmdb_actor.update_actor_db_row(jp="演员乙", zh_cn="演员乙CN", tmdbid=222)
+    # 第二次调用时不应全表扫描；检查索引中有两个条目
+    with tmdb_actor._ACTOR_DB_ROW_INDEX_LOCK:
+        assert tmdb_actor._ACTOR_DB_ROW_INDEX.get("演员甲") == 2
+        assert tmdb_actor._ACTOR_DB_ROW_INDEX.get("演员乙") == 3
+
+
+@pytest.mark.asyncio
+async def test_row_index_updated_on_append(_tmp_actor_db: Path):
+    await tmdb_actor.update_actor_db_row(jp="演员A", tmdbid=10)
+    await tmdb_actor.update_actor_db_row(jp="演员B", tmdbid=20)
+    with tmdb_actor._ACTOR_DB_ROW_INDEX_LOCK:
+        assert tmdb_actor._ACTOR_DB_ROW_INDEX["演员A"] == 2
+        assert tmdb_actor._ACTOR_DB_ROW_INDEX["演员B"] == 3
+
+
+@pytest.mark.asyncio
+async def test_row_index_misses_cleared_after_save_rebuilds(_tmp_actor_db: Path):
+    await tmdb_actor.update_actor_db_row(jp="存量演员", tmdbid=1)
+    # 清除索引模拟外部修改后重新加载
+    with tmdb_actor._ACTOR_DB_ROW_INDEX_LOCK:
+        tmdb_actor._ACTOR_DB_ROW_INDEX.clear()
+    await tmdb_actor.update_actor_db_row(jp="存量演员", tmdbid=1)
+    # 索引应被重建且 pk 不变
+    with tmdb_actor._ACTOR_DB_ROW_INDEX_LOCK:
+        assert tmdb_actor._ACTOR_DB_ROW_INDEX["存量演员"] == 2
+
+
+@pytest.mark.asyncio
+async def test_row_index_append_does_not_disrupt_preexisting_entries(_tmp_actor_db: Path):
+    await tmdb_actor.update_actor_db_row(jp="既有演员", tmdbid=100)
+    await tmdb_actor.update_actor_db_row(jp="既有演员", zh_cn="填写简体")
+    with tmdb_actor._ACTOR_DB_ROW_INDEX_LOCK:
+        assert tmdb_actor._ACTOR_DB_ROW_INDEX["既有演员"] == 2
+    await tmdb_actor.update_actor_db_row(jp="新演员", tmdbid=200)
+    with tmdb_actor._ACTOR_DB_ROW_INDEX_LOCK:
+        assert tmdb_actor._ACTOR_DB_ROW_INDEX["既有演员"] == 2
+        assert tmdb_actor._ACTOR_DB_ROW_INDEX["新演员"] == 3
+
+
+@pytest.mark.asyncio
+async def test_row_index_empty_on_fresh_workbook_after_save(_tmp_actor_db: Path):
+    # 保存 fallthrough (无 _wb) 后索引不清空（进程内缓存，save 后仍可用），
+    # 验证索引依然能命中
+    await tmdb_actor.update_actor_db_row(jp="持久演员", tmdbid=42)
+    with tmdb_actor._ACTOR_DB_ROW_INDEX_LOCK:
+        assert "持久演员" in tmdb_actor._ACTOR_DB_ROW_INDEX
+    status = await tmdb_actor.update_actor_db_row(jp="持久演员", tmdbid=42)
+    assert status == "kept_existing_tmdbid"
+
+
+@pytest.mark.asyncio
+async def test_row_index_works_with_external_wb(_tmp_actor_db: Path):
+    from openpyxl import Workbook
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "演员数据库"
+    ws.append(tmdb_actor.DB_HEADERS)
+    ws.append(["外部A", "", "", "", "", 1, ""])
+    ws.append(["外部B", "", "", "", "", 2, ""])
+    # 清除索引确保重建
+    with tmdb_actor._ACTOR_DB_ROW_INDEX_LOCK:
+        tmdb_actor._ACTOR_DB_ROW_INDEX.clear()
+    await tmdb_actor.update_actor_db_row(jp="外部A", tmdbid=1, _wb=wb)
+    with tmdb_actor._ACTOR_DB_ROW_INDEX_LOCK:
+        assert tmdb_actor._ACTOR_DB_ROW_INDEX.get("外部A") == 2
+        assert tmdb_actor._ACTOR_DB_ROW_INDEX.get("外部B") == 3
+    await tmdb_actor.update_actor_db_row(jp="外部C", tmdbid=3, _wb=wb)
+    with tmdb_actor._ACTOR_DB_ROW_INDEX_LOCK:
+        assert tmdb_actor._ACTOR_DB_ROW_INDEX.get("外部C") == 4
+    wb.close()
