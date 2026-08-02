@@ -42,7 +42,6 @@ EXCLUDED_MODULES = [
     "virtualenv",
     "mypy",
     "jedi",
-    "_pyinstaller_hooks_contrib",
 ]
 
 
