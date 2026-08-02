@@ -3,9 +3,11 @@ import re
 import traceback
 from pathlib import Path
 
+from PyQt6.QtWidgets import QFileDialog, QMessageBox
+
 from mdcx.config.manager import manager
 from mdcx.signals import signal_qt
-from mdcx.utils import executor
+from mdcx.utils import executor, get_current_time
 
 
 def pushButton_cover_backfill_start_clicked(self):
@@ -100,3 +102,90 @@ def pushButton_emby_actor_manager_clicked(self):
         self._emby_dialog.exec()
     except Exception as e:
         signal_qt.show_log_text(f"❌ Emby 演员管理器打开失败: {e}\n{traceback.format_exc()}")
+
+
+# ============= 设置-演员 =============
+
+
+def pushButton_select_gfriends_local_clicked(self):
+    gfriends_path = self._get_select_folder_path(self.Ui.lineEdit_gfriends_local_path)
+    if gfriends_path:
+        self.Ui.lineEdit_gfriends_local_path.setText(gfriends_path)
+        self.pushButton_save_config_clicked()
+
+
+def pushButton_sync_gfriends_clicked(self):
+    local_path = self.Ui.lineEdit_gfriends_local_path.text().strip()
+    if not local_path:
+        QMessageBox.warning(self, "提示", "请先选择 Gfriends 本地仓库目录")
+        return
+    from mdcx.tools.sync_gfriends import sync_gfriends as do_sync
+
+    success, msg = do_sync(local_path)
+    if success:
+        signal_qt.show_scrape_info(f"✅ {msg}")
+    else:
+        QMessageBox.warning(self, "更新失败", msg)
+    self.Ui.label_gfriends_update_time.setText(f"最后更新: {get_current_time()}")
+
+
+def pushButton_select_actor_info_db_clicked(self):
+    database_path, _ = QFileDialog.getOpenFileName(
+        None, "选择数据库文件", manager.data_folder.as_posix(), options=self.options
+    )
+    if database_path:
+        self.Ui.lineEdit_actor_db_path.setText(database_path)
+        self.pushButton_save_config_clicked()
+
+
+def pushButton_add_actor_info_clicked(self):
+    from mdcx.tools.emby_actor_info import update_emby_actor_info
+
+    self.pushButton_save_config_clicked()
+    self.pushButton_show_log_clicked()
+    try:
+        executor.submit(update_emby_actor_info())
+    except Exception:
+        signal_qt.show_log_text(traceback.format_exc())
+
+
+def pushButton_add_actor_pic_clicked(self):
+    from mdcx.tools.emby_actor_image import update_emby_actor_photo
+
+    self.pushButton_save_config_clicked()
+    self.pushButton_show_log_clicked()
+    try:
+        executor.submit(update_emby_actor_photo())
+    except Exception:
+        signal_qt.show_log_text(traceback.format_exc())
+
+
+def pushButton_add_actor_pic_kodi_clicked(self):
+    from mdcx.tools.emby_actor_info import creat_kodi_actors
+
+    self.pushButton_save_config_clicked()
+    self.pushButton_show_log_clicked()
+    try:
+        executor.submit(creat_kodi_actors(True))
+    except Exception:
+        signal_qt.show_log_text(traceback.format_exc())
+
+
+def pushButton_del_actor_folder_clicked(self):
+    from mdcx.tools.emby_actor_info import creat_kodi_actors
+
+    self.pushButton_show_log_clicked()
+    try:
+        executor.submit(creat_kodi_actors(False))
+    except Exception:
+        signal_qt.show_log_text(traceback.format_exc())
+
+
+def pushButton_show_pic_actor_clicked(self):
+    from mdcx.tools.emby_actor_info import show_emby_actor_list
+
+    self.pushButton_show_log_clicked()
+    try:
+        executor.submit(show_emby_actor_list(self.Ui.comboBox_pic_actor.currentIndex()))
+    except Exception:
+        signal_qt.show_log_text(traceback.format_exc())

@@ -64,8 +64,6 @@ from mdcx.models.flags import Flags
 from mdcx.models.types import CrawlersResult, FileInfo, OtherInfo, ShowData
 from mdcx.signals import signal_qt
 from mdcx.tools.actress_db import ActressDB
-from mdcx.tools.emby_actor_image import update_emby_actor_photo
-from mdcx.tools.emby_actor_info import creat_kodi_actors, show_emby_actor_list, update_emby_actor_info
 from mdcx.tools.missing import check_missing_number
 from mdcx.tools.subtitle import add_sub_for_all_video
 from mdcx.utils import (
@@ -2613,25 +2611,15 @@ class MyMAinWindow(QMainWindow):
 
     # 设置-演员-Gfriends本地仓库-点选择目录
     def pushButton_select_gfriends_local_clicked(self):
-        gfriends_path = self._get_select_folder_path(self.Ui.lineEdit_gfriends_local_path)
-        if gfriends_path:
-            self.Ui.lineEdit_gfriends_local_path.setText(gfriends_path)
-            self.pushButton_save_config_clicked()
+        from .tool_handlers import pushButton_select_gfriends_local_clicked
+
+        pushButton_select_gfriends_local_clicked(self)
 
     # 设置-演员-Gfriends本地仓库-点更新
     def pushButton_sync_gfriends_clicked(self):
-        local_path = self.Ui.lineEdit_gfriends_local_path.text().strip()
-        if not local_path:
-            QMessageBox.warning(self, "提示", "请先选择 Gfriends 本地仓库目录")
-            return
-        from mdcx.tools.sync_gfriends import sync_gfriends as do_sync
+        from .tool_handlers import pushButton_sync_gfriends_clicked
 
-        success, msg = do_sync(local_path)
-        if success:
-            signal_qt.show_scrape_info(f"✅ {msg}")
-        else:
-            QMessageBox.warning(self, "更新失败", msg)
-        self.Ui.label_gfriends_update_time.setText(f"最后更新: {get_current_time()}")
+        pushButton_sync_gfriends_clicked(self)
 
     # 设置-其他-配置文件目录-点选择目录
     def pushButton_select_config_folder_clicked(self):
@@ -2659,12 +2647,9 @@ class MyMAinWindow(QMainWindow):
 
     # 设置-演员-补全信息-演员信息数据库-选择文件按钮
     def pushButton_select_actor_info_db_clicked(self):
-        database_path, _ = QFileDialog.getOpenFileName(
-            None, "选择数据库文件", manager.data_folder.as_posix(), options=self.options
-        )
-        if database_path:
-            self.Ui.lineEdit_actor_db_path.setText(database_path)
-            self.pushButton_save_config_clicked()
+        from .tool_handlers import pushButton_select_actor_info_db_clicked
+
+        pushButton_select_actor_info_db_clicked(self)
 
     # region 设置-问号
     def pushButton_tips_normal_mode_clicked(self):
@@ -2875,38 +2860,27 @@ class MyMAinWindow(QMainWindow):
     # region 设置-演员
     # 设置-演员 补全演员信息
     def pushButton_add_actor_info_clicked(self):
-        self.pushButton_save_config_clicked()
-        self.pushButton_show_log_clicked()  # 点按钮后跳转到日志页面
-        try:
-            executor.submit(update_emby_actor_info())
-        except Exception:
-            signal_qt.show_log_text(traceback.format_exc())
+        from .tool_handlers import pushButton_add_actor_info_clicked
+
+        pushButton_add_actor_info_clicked(self)
 
     # 设置-演员 补全演员头像按钮
     def pushButton_add_actor_pic_clicked(self):
-        self.pushButton_save_config_clicked()
-        self.pushButton_show_log_clicked()  # 点按钮后跳转到日志页面
-        try:
-            executor.submit(update_emby_actor_photo())
-        except Exception:
-            signal_qt.show_log_text(traceback.format_exc())
+        from .tool_handlers import pushButton_add_actor_pic_clicked
+
+        pushButton_add_actor_pic_clicked(self)
 
     # 设置-演员 补全演员头像按钮 kodi
     def pushButton_add_actor_pic_kodi_clicked(self):
-        self.pushButton_save_config_clicked()
-        self.pushButton_show_log_clicked()  # 点按钮后跳转到日志页面
-        try:
-            executor.submit(creat_kodi_actors(True))
-        except Exception:
-            signal_qt.show_log_text(traceback.format_exc())
+        from .tool_handlers import pushButton_add_actor_pic_kodi_clicked
+
+        pushButton_add_actor_pic_kodi_clicked(self)
 
     # 设置-演员 清除演员头像按钮 kodi
     def pushButton_del_actor_folder_clicked(self):
-        self.pushButton_show_log_clicked()  # 点按钮后跳转到日志页面
-        try:
-            executor.submit(creat_kodi_actors(False))
-        except Exception:
-            signal_qt.show_log_text(traceback.format_exc())
+        from .tool_handlers import pushButton_del_actor_folder_clicked
+
+        pushButton_del_actor_folder_clicked(self)
 
     # 工具-Emby 演员管理器
     def pushButton_emby_actor_manager_clicked(self):
@@ -2916,11 +2890,9 @@ class MyMAinWindow(QMainWindow):
 
     # 设置-演员 查看演员列表按钮
     def pushButton_show_pic_actor_clicked(self):
-        self.pushButton_show_log_clicked()  # 点按钮后跳转到日志页面
-        try:
-            executor.submit(show_emby_actor_list(self.Ui.comboBox_pic_actor.currentIndex()))
-        except Exception:
-            signal_qt.show_log_text(traceback.format_exc())
+        from .tool_handlers import pushButton_show_pic_actor_clicked
+
+        pushButton_show_pic_actor_clicked(self)
 
     # endregion
 
