@@ -214,6 +214,10 @@ async def run(
             _wb.save(db_path)
             _wb.close()
             resources.reload_actor_db()
+            from mdcx.core.tmdb_actor import _ACTOR_DB_ROW_INDEX, _ACTOR_DB_ROW_INDEX_LOCK
+
+            with _ACTOR_DB_ROW_INDEX_LOCK:
+                _ACTOR_DB_ROW_INDEX.clear()
             _log_line(" ✅ [演员库维护] 已保存 actor_database.xlsx 并重载内存缓存")
         except Exception as e:
             _log_line(f" ❌ [演员库维护] 落盘失败，写入可能未保存: {e}")

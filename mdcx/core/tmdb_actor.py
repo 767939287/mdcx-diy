@@ -7,6 +7,7 @@
 import asyncio
 import json
 import os
+import threading
 import time
 from pathlib import Path
 from typing import Any
@@ -41,6 +42,22 @@ _TMDB_QUERY_CACHE: dict[str, tuple[float, dict | None]] = {}
 _TMDB_QUERY_INFLIGHT: dict[str, asyncio.Task[dict | None]] = {}
 _TMDB_QUERY_STATE_LOCK = asyncio.Lock()
 _TMDB_QUERY_CACHE_IO_LOCK = asyncio.Lock()
+
+# (jp_name) -> row_index 的懒加载索引，避免每次 update_actor_db_row 全表扫描
+_ACTOR_DB_ROW_INDEX: dict[str, int] = {}
+_ACTOR_DB_ROW_INDEX_LOCK = threading.Lock()
+
+
+def _rebuild_actor_db_row_index(ws) -> None:
+    """从 worksheet 重建 (jp_name) -> row_index 映射，跳过快抬头。"""
+    global _ACTOR_DB_ROW_INDEX
+    _ACTOR_DB_ROW_INDEX.clear()
+    for row_idx, row in enumerate(ws.iter_rows(min_col=1, max_col=7, values_only=True), start=1):
+        if row_idx == 1:
+            continue
+        jp_val = str(row[0] or "").strip()
+        if jp_val:
+            _ACTOR_DB_ROW_INDEX[jp_val] = row_idx
 
 
 async def _read_text_file(path: Path, encoding: str = "utf-8") -> str:
@@ -651,6 +668,7 @@ async def update_actor_db_row(
     当 overwrite_names=True 时，zh_cn/zh_tw 允许用新值覆盖已有值（用于已有 tmdbid 演员翻译补全）。
     当 _wb 不为 None 时，使用预加载的工作簿，跳过最终 save/close/reload。
     """
+    global _ACTOR_DB_ROW_INDEX
     db_path = _get_db_path()
     db_path.parent.mkdir(parents=True, exist_ok=True)
     async with _actor_db_write_lock:
@@ -678,13 +696,12 @@ async def update_actor_db_row(
             if ws.title != "演员数据库":
                 ws.title = "演员数据库"
 
-            existing_row = None
-            for row_idx, row in enumerate(ws.iter_rows(min_col=1, max_col=7, values_only=True), start=1):
-                if row_idx == 1:
-                    continue
-                if str(row[0] or "").strip() == jp:
-                    existing_row = row_idx
-                    break
+            # 重建行索引（空表或新加载工作簿时）
+            with _ACTOR_DB_ROW_INDEX_LOCK:
+                if not _ACTOR_DB_ROW_INDEX:
+                    _rebuild_actor_db_row_index(ws)
+
+            existing_row = _ACTOR_DB_ROW_INDEX.get(jp)
 
             if existing_row:
                 existing_zh_cn = ws.cell(row=existing_row, column=COL_ZH_CN + 1).value
@@ -729,6 +746,8 @@ async def update_actor_db_row(
                 ws.append([jp, zh_cn, zh_tw, keyword, href, tmdbid or "", ""])
                 write_status = "inserted_new_row"
                 last_row = ws.max_row
+                with _ACTOR_DB_ROW_INDEX_LOCK:
+                    _ACTOR_DB_ROW_INDEX[jp] = last_row
                 if tmdbid:
                     tmdb_url = _tmdb_person_url(tmdbid)
                     ws.cell(row=last_row, column=COL_TMDB_URL + 1).value = None
@@ -966,6 +985,8 @@ async def fetch_actor_tmdb_ids(actors: list[str], client: Any) -> dict[str, int]
             _wb.save(_db_path)
             _wb.close()
             resources.reload_actor_db()
+            with _ACTOR_DB_ROW_INDEX_LOCK:
+                _ACTOR_DB_ROW_INDEX.clear()
         except Exception as e:
             # 落盘失败绝不能静默吞掉: 否则查询写库结果会静默全丢且用户无感知
             _tmdb_log_line(f" ❌ [TMDB] 演员库落盘失败，查询写库可能未保存: {e}")
