@@ -748,3 +748,96 @@ async def test_row_index_works_with_external_wb(_tmp_actor_db: Path):
     with tmdb_actor._ACTOR_DB_ROW_INDEX_LOCK:
         assert tmdb_actor._ACTOR_DB_ROW_INDEX.get("外部C") == 4
     wb.close()
+
+
+# ============= _load_actor_db_wb / _flush_actor_db_wb 测试 =============
+
+
+def test_load_actor_db_wb_creates_new_when_not_exists(_tmp_actor_db: Path):
+    from mdcx.core.scraper import _load_actor_db_wb
+
+    wb, db_path = _load_actor_db_wb()
+    try:
+        assert db_path == _tmp_actor_db
+        ws = wb.active
+        assert ws.title == "演员数据库"
+        assert ws.cell(row=1, column=1).value == "日文原名"
+    finally:
+        wb.close()
+        if db_path.exists():
+            db_path.unlink()
+
+
+def test_load_actor_db_wb_loads_existing(_tmp_actor_db: Path):
+    import openpyxl
+
+    from mdcx.config.resources import DB_HEADERS
+
+    wb1 = openpyxl.Workbook()
+    ws1 = wb1.active
+    ws1.title = "演员数据库"
+    ws1.append(DB_HEADERS)
+    ws1.append(["测试演员"])
+    wb1.save(_tmp_actor_db)
+    wb1.close()
+
+    from mdcx.core.scraper import _load_actor_db_wb
+
+    wb2, db_path = _load_actor_db_wb()
+    try:
+        assert db_path == _tmp_actor_db
+        rows = list(wb2.active.iter_rows(min_row=2, max_row=2, values_only=True))
+        assert rows[0][0] == "测试演员"
+    finally:
+        wb2.close()
+
+
+def test_flush_actor_db_wb_saves_and_clears_index(_tmp_actor_db: Path, monkeypatch: pytest.MonkeyPatch):
+    import openpyxl
+
+    from mdcx.config.resources import DB_HEADERS
+
+    monkeypatch.setattr(tmdb_actor.resources, "actor_db", {})
+    monkeypatch.setattr(tmdb_actor.resources, "actor_db_reverse_index", None)
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "演员数据库"
+    ws.append(DB_HEADERS)
+    ws.append(["演员A"])
+    ws.append(["演员B"])
+
+    with tmdb_actor._ACTOR_DB_ROW_INDEX_LOCK:
+        tmdb_actor._ACTOR_DB_ROW_INDEX["演员A"] = 2
+        tmdb_actor._ACTOR_DB_ROW_INDEX["演员B"] = 3
+
+    from mdcx.core.scraper import _flush_actor_db_wb
+
+    _flush_actor_db_wb(wb, _tmp_actor_db)
+
+    assert _tmp_actor_db.exists()
+    wb2 = openpyxl.load_workbook(_tmp_actor_db)
+    rows = list(wb2.active.iter_rows(min_row=2, values_only=True))
+    assert len(rows) == 2
+    wb2.close()
+
+    with tmdb_actor._ACTOR_DB_ROW_INDEX_LOCK:
+        assert tmdb_actor._ACTOR_DB_ROW_INDEX == {}
+
+
+def test_flush_actor_db_wb_handles_save_error(_tmp_actor_db: Path, monkeypatch: pytest.MonkeyPatch):
+    import openpyxl
+
+    from mdcx.config.resources import DB_HEADERS
+    from mdcx.core.scraper import _flush_actor_db_wb
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "演员数据库"
+    ws.append(DB_HEADERS)
+    ws.append(["演员X"])
+
+    read_only_path = Path("/nonexistent/dir/db.xlsx")
+    _flush_actor_db_wb(wb, read_only_path)
+    assert not read_only_path.exists()
+    wb.close()
