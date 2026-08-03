@@ -71,13 +71,15 @@ def _enable_crash_dump() -> None:
     """注册崩溃转储：Python 异常 traceback + C 层 segfault 堆栈 + stdout/stderr 落盘。
 
     用于诊断 onefile 无控制台环境下程序静默退出的问题。仅诊断用，失败不阻断启动。
+    日志写入 MAIN_PATH/crash/ 目录，正常运行时无任何文件生成。
     """
     try:
         import faulthandler
         import traceback as _tb
         from datetime import datetime
 
-        log_dir = MAIN_PATH
+        log_dir = MAIN_PATH / "crash"
+        log_dir.mkdir(parents=True, exist_ok=True)
         ts = datetime.now().strftime("%Y%m%d_%H%M%S")
 
         # 1) 重定向 stdout/stderr 到文件（onefile 无控制台时 print/异常输出会丢失）

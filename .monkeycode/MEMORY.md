@@ -102,7 +102,7 @@ Agent 在任务执行过程中发现的条目应遵循以下格式：
 - Category: 排错调试
 - Instructions:
   - PyInstaller onefile + `-w`（无控制台）环境下，Python 普通的 TypeError/AttributeError 异常会被静默吞掉——`sys.__stderr__` 不存在，`print()` 到空 stdout，`main()` 的 `except` 分支输出丢失，PyQt 信号槽异常调用 `sys.excepthook` 默认也输出到 stderr。最终表现是"程序直接退出"，被误判为 C 扩展 segfault。
-  - 标准诊断三件套必须在 main.py 启动时注册：`faulthandler.enable()` 抓 C 层崩溃堆栈、`sys.excepthook` 写文件抓 Python 异常、`sys.stdout`/`sys.stderr` 重定向到文件抓 print 输出。参见 `main.py:_enable_crash_dump()`。
+  - 标准诊断三件套必须在 main.py 启动时注册：`faulthandler.enable()` 抓 C 层崩溃堆栈、`sys.excepthook` 写文件抓 Python 异常、`sys.stdout`/`sys.stderr` 重定向到文件抓 print 输出。日志文件写进 `MAIN_PATH/crash/` 目录（正常运行时无文件生成）。
   - 事件查看器没有崩溃记录本身就是关键线索——说明不是系统级 segfault（WER 会记录），而是程序正常退出（Python 异常导致 `sys.exit`）。
   - 另一个易混淆场景：工具内部日志走 `LogBuffer.log().write()`（只存内存），不走 `signal_qt.show_log_text`（GUI+文件）。用户看到"开始扫描"后无后续输出，以为卡死，实则是工具已跑完但日志通道不通。修复：所有工具内部日志输出必须走 `signal_qt.show_log_text`。检查项目其他只写 LogBuffer 不写 GUI 通道的代码。
 
