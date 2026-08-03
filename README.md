@@ -75,10 +75,9 @@ uv run check --skip-hook-install
 
 ## 上游项目
 
-* [yoshiko2/Movie_Data_Capture](https://github.com/yoshiko2/Movie_Data_Capture) — 命令行工具，已不活跃
-* [moyy996/AVDC](https://github.com/moyy996/AVDC) — 上述项目的 PyQt 分支，已停维护
-* [@sqzw-x/mdcx](https://github.com/sqzw-x/mdcx) — 本项目前身
-* 本项目基于 @sqzw-x/mdcx 继续维护和优化
+* [sqzw-x/mdcx](https://github.com/sqzw-x/mdcx) — Hazard804/mdcx项目前身，当前暂时停止维护
+* [Hazard804/mdcx](https://github.com/Hazard804/mdcx) — 基于 sqzw-x/mdcx, 继续进行维护及优化
+* [ZiPenOk/mdcx](https://github.com/ZiPenOk/mdcx) — 基于 Hazard804/mdcx, 进行优化改进
 
 ## 授权许可
 
