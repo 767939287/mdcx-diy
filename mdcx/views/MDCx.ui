@@ -23691,15 +23691,16 @@ p, li { white-space: pre-wrap; }
 &lt;/ul&gt;
 
 &lt;h4&gt;九、工具页面&lt;/h4&gt;
-&lt;ul&gt;
-&lt;li&gt;&lt;b&gt;单文件刮削&lt;/b&gt;：指定某个文件的番号网址进行刮削，当存在相同番号时可手工指定。&lt;/li&gt;
-&lt;li&gt;&lt;b&gt;海报裁剪&lt;/b&gt;：将图片裁剪为 2:3 标准封面图大小，支持加水印。&lt;/li&gt;
-&lt;li&gt;&lt;b&gt;检查演员缺失番号&lt;/b&gt;：检查资源库中指定演员本地缺失的番号。&lt;/li&gt;
-&lt;li&gt;&lt;b&gt;移动视频/字幕&lt;/b&gt;：将待刮削目录下所有子目录中的视频移动到一个目录中方便查看。&lt;/li&gt;
-&lt;li&gt;&lt;b&gt;软链接助手&lt;/b&gt;：将挂载的网盘文件目录及子目录中的所有视频一键创建软链接到本地。&lt;/li&gt;
-&lt;li&gt;&lt;b&gt;封面补图&lt;/b&gt;：输入番号（多个用空格分隔），自动刮削并补齐缺失的 poster.jpg 和 thumb.jpg，复用当前配置的站点优先级、命名、裁切、水印规则。&lt;/li&gt;
-&lt;li&gt;&lt;b&gt;Emby 演员管理器&lt;/b&gt;：填写 Emby 地址和 API 密钥后连接服务器，获取演员列表并按媒体库筛选；从 Gfriends / minnano-av / 本地文件夹匹配头像和简介，预览后批量同步到 Emby。&lt;/li&gt;
-&lt;/ul&gt;
+ &lt;ul&gt;
+ &lt;li&gt;&lt;b&gt;演员库维护&lt;/b&gt;：直接操作 actor_database.xlsx，四个按钮——补全中文名（按 TMDB ID 补翻译）、补全 LibreDMM 链接、同步别名（用 TMDB 最新别名刷新 keyword 列）、打开数据库（用默认程序打开 xlsx 供手工编辑）。网络请求自动并发，进度实时显示。&lt;/li&gt;
+ &lt;li&gt;&lt;b&gt;Emby 演员管理器&lt;/b&gt;：填写 Emby 地址和 API 密钥后连接服务器，获取演员列表并按媒体库筛选；从 Gfriends / minnano-av / 本地文件夹匹配头像和简介，预览后批量同步到 Emby。&lt;/li&gt;
+ &lt;li&gt;&lt;b&gt;单文件刮削&lt;/b&gt;：指定某个文件的番号网址进行刮削，当存在相同番号时可手工指定。&lt;/li&gt;
+ &lt;li&gt;&lt;b&gt;封面补图&lt;/b&gt;：输入番号（多个用空格分隔），自动刮削并补齐缺失的 poster.jpg 和 thumb.jpg，复用当前配置的站点优先级、命名、裁切、水印规则。&lt;/li&gt;
+ &lt;li&gt;&lt;b&gt;海报裁剪&lt;/b&gt;：将图片裁剪为 2:3 标准封面图大小，支持加水印。&lt;/li&gt;
+ &lt;li&gt;&lt;b&gt;软链接助手&lt;/b&gt;：将挂载的网盘文件目录及子目录中的所有视频一键创建软链接到本地。&lt;/li&gt;
+ &lt;li&gt;&lt;b&gt;移动视频/字幕&lt;/b&gt;：将待刮削目录下所有子目录中的视频移动到一个目录中方便查看。&lt;/li&gt;
+ &lt;li&gt;&lt;b&gt;检查演员缺失番号&lt;/b&gt;：检查资源库中指定演员本地缺失的番号。&lt;/li&gt;
+ &lt;/ul&gt;
 
 &lt;h4&gt;十、常见番号命名参考&lt;/h4&gt;
 &lt;p&gt;刮削前尽量命名规范、不区分大小写：&lt;/p&gt;
