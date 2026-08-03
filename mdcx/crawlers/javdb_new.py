@@ -145,6 +145,23 @@ class JavdbCrawler(BaseCrawler):
             return {"cookie": manager.config.javdb}
 
     @staticmethod
+    def _number_key(value: str) -> str:
+        key = value.upper().strip()
+        key = re.sub(r"[\s_\-]+", "", key)
+        return key.replace("FC2PPV", "FC2")
+
+    @classmethod
+    def _search_candidates(cls, number: str) -> list[str]:
+        cleaned = number.strip()
+        candidates = [cleaned]
+        key = cls._number_key(cleaned)
+        if key.startswith("FC2"):
+            digits = re.sub(r"\D", "", key[3:])
+            if digits:
+                candidates.extend([f"FC2-{digits}", digits])
+        return list(dict.fromkeys(candidate for candidate in candidates if candidate))
+
+    @staticmethod
     def _with_locale_zh(url: str) -> str:
         parsed = urlparse(url)
         query_items = [(k, v) for k, v in parse_qsl(parsed.query, keep_blank_values=True) if k.lower() != "locale"]
@@ -188,9 +205,11 @@ class JavdbCrawler(BaseCrawler):
                 new_date = "20" + old_date
                 number = number.replace(old_date, new_date)
 
-        search_url = f"{self.base_url}/search?q={number}&locale=zh"
-        ctx.debug(f"搜索地址: {search_url}")
-        return [search_url]
+        search_urls = [
+            f"{self.base_url}/search?q={candidate}&locale=zh" for candidate in self._search_candidates(number)
+        ]
+        ctx.debug(f"搜索地址: {search_urls}")
+        return search_urls
 
     @override
     async def _parse_search_page(self, ctx, html: Selector, search_url: str) -> list[str] | None:
@@ -246,7 +265,10 @@ class JavdbCrawler(BaseCrawler):
         if not res.originaltitle:
             res.originaltitle = res.title
         res.poster = res.thumb.replace("/covers/", "/thumbs/")
-        res.mosaic = "无码" if any(keyword in res.title for keyword in ["無碼", "無修正", "Uncensored"]) else "有码"
+        is_uncensored = any(keyword in res.title for keyword in ["無碼", "無修正", "Uncensored"])
+        if self._number_key(res.number or "").startswith("FC2"):
+            is_uncensored = True
+        res.mosaic = "无码" if is_uncensored else "有码"
         if res.trailer.startswith("//"):
             res.trailer = "https:" + res.trailer
         return res

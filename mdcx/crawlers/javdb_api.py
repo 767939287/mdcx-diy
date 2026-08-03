@@ -229,6 +229,23 @@ class JavdbApiCrawler(BaseCrawler):
         self._page_request_lock = asyncio.Lock()
         self._last_page_request_at = 0.0
 
+    @staticmethod
+    def _number_key(value: str) -> str:
+        key = value.upper().strip()
+        key = re.sub(r"[\s_\-]+", "", key)
+        return key.replace("FC2PPV", "FC2")
+
+    @classmethod
+    def _search_candidates(cls, number: str) -> list[str]:
+        cleaned = number.strip()
+        candidates = [cleaned]
+        key = cls._number_key(cleaned)
+        if key.startswith("FC2"):
+            digits = re.sub(r"\D", "", key[3:])
+            if digits:
+                candidates.extend([f"FC2-{digits}", digits])
+        return list(dict.fromkeys(candidate for candidate in candidates if candidate))
+
     @classmethod
     @override
     def site(cls) -> Website:
@@ -274,10 +291,12 @@ class JavdbApiCrawler(BaseCrawler):
             if old_date:
                 new_date = "20" + old_date[0]
                 number = number.replace(old_date[0], new_date)
-        params = urlencode({"f": "all", "q": number, "page": "1"})
-        search_url = f"{self.base_url}/search?{params}"
-        ctx.debug(f"JavdbApi 搜索地址: {search_url}")
-        return [search_url]
+        search_urls = [
+            f"{self.base_url}/search?{urlencode({'f': 'all', 'q': candidate, 'page': '1'})}"
+            for candidate in self._search_candidates(number)
+        ]
+        ctx.debug(f"JavdbApi 搜索地址: {search_urls}")
+        return search_urls
 
     @override
     async def _parse_search_page(self, ctx, html: Selector, search_url: str) -> list[str] | None:
@@ -333,7 +352,10 @@ class JavdbApiCrawler(BaseCrawler):
         if not res.originaltitle:
             res.originaltitle = res.title
         res.poster = res.thumb.replace("/covers/", "/thumbs/")
-        res.mosaic = "无码" if any(kw in res.title for kw in ["無碼", "無修正", "Uncensored"]) else "有码"
+        is_uncensored = any(kw in res.title for kw in ["無碼", "無修正", "Uncensored"])
+        if self._number_key(res.number or "").startswith("FC2"):
+            is_uncensored = True
+        res.mosaic = "无码" if is_uncensored else "有码"
         if res.trailer and res.trailer.startswith("//"):
             res.trailer = "https:" + res.trailer
         return res

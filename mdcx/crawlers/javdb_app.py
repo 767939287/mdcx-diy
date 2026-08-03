@@ -3,6 +3,7 @@ import base64
 import hashlib
 import json
 import random
+import re
 import time
 from typing import override
 
@@ -173,6 +174,23 @@ class JavdbAPICrawler(BaseCrawler):
                 return gender == 1
         return True
 
+    @staticmethod
+    def _number_key(value: str) -> str:
+        key = value.upper().strip()
+        key = re.sub(r"[\s_\-]+", "", key)
+        return key.replace("FC2PPV", "FC2")
+
+    @classmethod
+    def _search_candidates(cls, number: str) -> list[str]:
+        cleaned = number.strip()
+        candidates = [cleaned]
+        key = cls._number_key(cleaned)
+        if key.startswith("FC2"):
+            digits = re.sub(r"\D", "", key[3:])
+            if digits:
+                candidates.extend([f"FC2-{digits}", digits])
+        return list(dict.fromkeys(candidate for candidate in candidates if candidate))
+
     async def _request_api(self, path: str, params: dict | None = None) -> dict | None:
         hosts = [_API_BASE] + _API_FALLBACKS
         signature = make_signature()
@@ -211,32 +229,41 @@ class JavdbAPICrawler(BaseCrawler):
         if not number:
             raise CrawlerException("番号为空")
 
-        # Step 1: Search for the movie by number
-        search_resp = await self._request_api("/api/v2/search", {"q": number, "page": "1"})
-        if not search_resp:
-            raise CrawlerException("搜索请求失败")
-
-        # API response wraps data in "data" key
-        search_data_raw = search_resp.get("data", {})
-        movies_raw = search_data_raw.get("movies", [])
-        if not movies_raw:
-            raise CrawlerException("未找到匹配的影片")
-
-        movies = [MovieSummary(**m) for m in movies_raw]
-
-        # Find exact match by number (case-insensitive)
+        # Step 1: Search for the movie by number (依次尝试候选番号)
         movie_id = None
-        for movie in movies:
-            if movie.number and movie.number.upper() == number.upper():
-                movie_id = movie.id
+        last_error = ""
+        for candidate in self._search_candidates(number):
+            search_resp = await self._request_api("/api/v2/search", {"q": candidate, "page": "1"})
+            if not search_resp:
+                last_error = f"{candidate}: 搜索请求失败"
+                continue
+
+            # API response wraps data in "data" key
+            search_data_raw = search_resp.get("data", {})
+            movies_raw = search_data_raw.get("movies", [])
+            if not movies_raw:
+                last_error = f"{candidate}: 未找到匹配的影片"
+                continue
+
+            movies = [MovieSummary(**m) for m in movies_raw]
+
+            # Find exact match by number (normalized, case-insensitive)
+            for movie in movies:
+                if movie.number and self._number_key(movie.number) == self._number_key(number):
+                    movie_id = movie.id
+                    break
+
+            if not movie_id:
+                # Use first result if no exact match
+                movie_id = movies[0].id
+
+            if movie_id:
+                ctx.debug(f"候选番号 {candidate} 命中影片 ID: {movie_id}")
                 break
+            last_error = f"{candidate}: 无法确定影片 ID"
 
         if not movie_id:
-            # Use first result if no exact match
-            movie_id = movies[0].id
-
-        if not movie_id:
-            raise CrawlerException("无法确定影片 ID")
+            raise CrawlerException(f"搜索失败: {last_error}")
 
         ctx.debug(f"找到影片 ID: {movie_id}")
 
@@ -340,4 +367,5 @@ class JavdbAPICrawler(BaseCrawler):
             res.originaltitle = res.title
         if res.runtime:
             res.year = res.release[:4] if res.release else ""
+        res.mosaic = "无码" if self._number_key(res.number or "").startswith("FC2") else "有码"
         return res
