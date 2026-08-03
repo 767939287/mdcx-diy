@@ -1,3 +1,4 @@
+import asyncio
 import html
 import os
 import re
@@ -142,7 +143,9 @@ class MyMAinWindow(QMainWindow):
     pushButton_move_mp4 = pyqtSignal(str)
     pushButton_find_missing_number = pyqtSignal(str)
     pushButton_cover_backfill_start = pyqtSignal(str)
-    pushButton_actor_db_start = pyqtSignal(str)
+    pushButton_actor_db_translate = pyqtSignal(str)
+    pushButton_actor_db_link = pyqtSignal(str)
+    pushButton_actor_db_sync_aliases = pyqtSignal(str)
     label_show_version = pyqtSignal(str)
 
     # endregion
@@ -2563,10 +2566,55 @@ class MyMAinWindow(QMainWindow):
 
         pushButton_actor_db_pick_dir_clicked(self)
 
-    def pushButton_actor_db_start_clicked(self):
-        from .tool_handlers import pushButton_actor_db_start_clicked
+    def pushButton_actor_db_translate_clicked(self):
+        from .tool_handlers import pushButton_actor_db_translate_clicked
 
-        pushButton_actor_db_start_clicked(self)
+        pushButton_actor_db_translate_clicked(self)
+
+    def pushButton_actor_db_link_clicked(self):
+        from .tool_handlers import pushButton_actor_db_link_clicked
+
+        pushButton_actor_db_link_clicked(self)
+
+    def pushButton_actor_db_sync_aliases_clicked(self):
+        from .tool_handlers import pushButton_actor_db_sync_aliases_clicked
+
+        pushButton_actor_db_sync_aliases_clicked(self)
+
+    def _run_actor_db_tool(self, mode: str) -> None:
+        """运行演员库维护工具（新模式：直接操作 xlsx，无需名单/NFO）。
+
+        mode: 'translate' | 'link' | 'sync_aliases'
+        """
+        from mdcx.tools.actor_db_tool import run_actor_db_xlsx
+
+        button_map = {
+            "translate": ("pushButton_actor_db_translate", "补全中文名"),
+            "link": ("pushButton_actor_db_link", "补全链接"),
+            "sync_aliases": ("pushButton_actor_db_sync_aliases", "同步别名"),
+        }
+        btn_name, idle_text = button_map[mode]
+        btn = getattr(self.Ui, btn_name)
+
+        if not btn.isEnabled():
+            return
+
+        btn.setEnabled(False)
+        getattr(self, btn_name).emit("运行中...")
+
+        async def run():
+            try:
+                await run_actor_db_xlsx(mode=mode)
+            except Exception as e:
+                signal_qt.show_log_text(f"🔴 演员库维护异常: {e}")
+                import traceback as tb
+
+                signal_qt.show_log_text(tb.format_exc())
+            finally:
+                btn.setEnabled(True)
+                getattr(self, btn_name).emit(idle_text)
+
+        executor.submit(asyncio.run, run())
 
     # region 设置页
     # region 选择目录
@@ -3342,6 +3390,9 @@ class MyMAinWindow(QMainWindow):
             "QPushButton#pushButton_start_cap2{color: white;background-color:#DC2626;}QPushButton:hover#pushButton_start_cap2{color: white;background-color:#EF4444;}QPushButton:pressed#pushButton_start_cap2{color: white;background-color:#B91C1C;}"
         )
         self.Ui.pushButton_cover_backfill_start.setEnabled(False)
+        self.Ui.pushButton_actor_db_translate.setEnabled(False)
+        self.Ui.pushButton_actor_db_link.setEnabled(False)
+        self.Ui.pushButton_actor_db_sync_aliases.setEnabled(False)
 
     def reset_buttons_status(self):
         self.Ui.pushButton_start_cap.setEnabled(True)
@@ -3371,9 +3422,12 @@ class MyMAinWindow(QMainWindow):
         self.Ui.pushButton_find_missing_number.setEnabled(True)
         self.pushButton_find_missing_number.emit("检查缺失番号")
         self.Ui.pushButton_cover_backfill_start.setEnabled(True)
-        self.Ui.pushButton_actor_db_start.setEnabled(True)
-        self.pushButton_actor_db_start.emit("开始维护")
-        self.pushButton_cover_backfill_start.emit("开始补图")
+        self.Ui.pushButton_actor_db_translate.setEnabled(True)
+        self.Ui.pushButton_actor_db_link.setEnabled(True)
+        self.Ui.pushButton_actor_db_sync_aliases.setEnabled(True)
+        self.pushButton_actor_db_translate.emit("补全中文名")
+        self.pushButton_actor_db_link.emit("补全 LibreDMM 链接")
+        self.pushButton_actor_db_sync_aliases.emit("同步别名")
 
         self.Ui.pushButton_start_cap.setStyleSheet(
             "QPushButton#pushButton_start_cap{color: white;background-color:#4C6EFF;}QPushButton:hover#pushButton_start_cap{color: white;background-color: rgba(76,110,255,240)}QPushButton:pressed#pushButton_start_cap{color: white;background-color:#4C6EE0}"

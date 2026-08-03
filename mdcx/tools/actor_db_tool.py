@@ -10,6 +10,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 import aiofiles.os
+import aiohttp
 import zhconv
 from lxml import etree
 
@@ -127,8 +128,6 @@ async def run(
     start_time = time.time()
     _log_line(f" 🎬 [演员库维护] 开始处理 {len(names)} 个演员 (翻译={translate}, 链接={link})")
 
-    import aiohttp
-
     async with aiohttp.ClientSession() as client:
         semaphore = asyncio.Semaphore(3)
 
@@ -227,3 +226,124 @@ async def run(
         f"链接补全 {result.linked}, 跳过 {result.skipped}, 失败 {len(result.failed)} ({get_used_time(start_time)}s)"
     )
     return result
+
+
+async def run_actor_db_xlsx(mode: str) -> None:
+    """直接扫描 actor_database.xlsx 执行维护，无需演员名单。
+
+    mode:
+      'translate'    — 补全缺中文名的条目
+      'link'         — 补全缺 LibreDMM 链接的条目
+      'sync_aliases' — 同步 TMDB 最新别名到 keyword 列
+    """
+    db_path = _get_db_path()
+    if not db_path.exists():
+        _log_line(" 🔴 actor_database.xlsx 不存在")
+        return
+
+    import openpyxl as _xl
+
+    wb = _xl.load_workbook(db_path)
+    ws = wb.active
+    base_url, tmdb_api_key = _resolve_tmdb_config()
+    if not tmdb_api_key:
+        _log_line(" ⚠️ 未配置 TMDB API Key，部分功能不可用")
+
+    rows_to_process = []
+    for row_idx, row in enumerate(ws.iter_rows(min_row=2, max_col=7, values_only=True), start=2):
+        jp = str(row[0] or "").strip()
+        tmdbid_val = str(row[5] or "").strip()
+        if not jp or not tmdbid_val.isdigit():
+            continue
+        tmdbid = int(tmdbid_val)
+        zh_cn = str(row[1] or "").strip()
+        zh_tw = str(row[2] or "").strip()
+        href = str(row[4] or "").strip()
+
+        if mode == "translate":
+            if not zh_cn or not zh_tw:
+                rows_to_process.append((jp, tmdbid, row_idx))
+        elif mode == "link":
+            if not href:
+                rows_to_process.append((jp, tmdbid, row_idx))
+        elif mode == "sync_aliases":
+            rows_to_process.append((jp, tmdbid, row_idx))
+
+    _log_line(f" 🎬 扫描完成：{len(rows_to_process)} 个演员需要处理 (模式: {mode})")
+    if not rows_to_process:
+        _log_line(" ✅ 没有需要处理的数据")
+        wb.close()
+        return
+
+    start_time = time.time()
+    translated_count = 0
+    linked_count = 0
+
+    async with aiohttp.ClientSession() as client:
+        for jp, tmdbid, row_idx in rows_to_process:
+            try:
+                if mode == "translate" and base_url and tmdb_api_key:
+                    translations = await _fetch_person_translations(tmdbid, base_url, tmdb_api_key, client)
+                    new_zh_cn = _normalize_translation(translations.get("zh_cn", ""))
+                    new_zh_tw = _normalize_translation(translations.get("zh_tw", ""))
+                    if not new_zh_cn and new_zh_tw:
+                        new_zh_cn = zhconv.convert(new_zh_tw, "zh-cn")
+                    if not new_zh_tw and new_zh_cn:
+                        new_zh_tw = zhconv.convert(new_zh_cn, "zh-hant")
+
+                    updated = False
+                    if new_zh_cn:
+                        ws.cell(row=row_idx, column=2, value=new_zh_cn)
+                        updated = True
+                    if new_zh_tw:
+                        ws.cell(row=row_idx, column=3, value=new_zh_tw)
+                        updated = True
+                    if updated:
+                        translated_count += 1
+                        _log_line(f"  ✅ {jp}: zh_cn={new_zh_cn}, zh_tw={new_zh_tw}")
+
+                elif mode == "link":
+                    href_val = await fetch_libredmm_link(jp)
+                    if href_val:
+                        ws.cell(row=row_idx, column=5, value=href_val)
+                        linked_count += 1
+                        _log_line(f"  ✅ {jp} -> {href_val}")
+                    else:
+                        _log_line(f"  ⚠️ {jp} 未在 LibreDMM 找到链接")
+
+                elif mode == "sync_aliases" and base_url and tmdb_api_key:
+                    from mdcx.core.tmdb_actor import query_single_actor_cached
+
+                    query_result = await query_single_actor_cached(jp, base_url, tmdb_api_key, client)
+                    if query_result:
+                        aka = query_result.get("also_known_as", [])
+                        original_name = query_result.get("original_name", "")
+                        name = query_result.get("name", "")
+                        new_keywords = set()
+                        if name:
+                            new_keywords.add(name)
+                        if original_name and original_name != name:
+                            new_keywords.add(original_name)
+                        new_keywords.update(aka)
+
+                        existing_kw = str(ws.cell(row=row_idx, column=4).value or "").strip()
+                        existing_set = {k.strip() for k in existing_kw.split(",") if k.strip()}
+                        merged = existing_set | new_keywords
+                        ws.cell(row=row_idx, column=4, value=",".join(sorted(merged)))
+                        _log_line(f"  ✅ {jp}: 别名已同步 ({len(new_keywords)} 个)")
+                    else:
+                        _log_line(f"  ⚠️ {jp} TMDB 未查询到数据")
+
+            except Exception as e:
+                _log_line(f"  ❌ {jp} 处理失败: {e}")
+
+    _format_db_worksheet(ws)
+    wb.save(db_path)
+    wb.close()
+    resources.reload_actor_db()
+    from mdcx.core.tmdb_actor import _ACTOR_DB_ROW_INDEX, _ACTOR_DB_ROW_INDEX_LOCK
+
+    with _ACTOR_DB_ROW_INDEX_LOCK:
+        _ACTOR_DB_ROW_INDEX.clear()
+
+    _log_line(f" ✅ 完成: 翻译补全={translated_count}, 链接补全={linked_count} ({get_used_time(start_time)}s)")

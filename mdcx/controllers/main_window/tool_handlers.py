@@ -237,3 +237,24 @@ def pushButton_select_localdisk_path_clicked(self):
 
 def pushButton_select_media_folder_clicked(self):
     _pick_folder(self, "lineEdit_movie_path")
+
+
+# ============= 演员库维护（新三按钮） =============
+
+
+def pushButton_actor_db_translate_clicked(self):
+    self.pushButton_show_log_clicked()
+    signal_qt.show_log_text("🔍 开始扫描 actor_database.xlsx：查找已有 TMDB ID 但缺少中文名的条目...")
+    self._run_actor_db_tool("translate")
+
+
+def pushButton_actor_db_link_clicked(self):
+    self.pushButton_show_log_clicked()
+    signal_qt.show_log_text("🔍 开始扫描 actor_database.xlsx：查找已有 TMDB ID 但缺少 LibreDMM 链接的条目...")
+    self._run_actor_db_tool("link")
+
+
+def pushButton_actor_db_sync_aliases_clicked(self):
+    self.pushButton_show_log_clicked()
+    signal_qt.show_log_text("🔍 开始扫描 actor_database.xlsx：同步 TMDB 最新别名到 keyword 列...")
+    self._run_actor_db_tool("sync_aliases")
