@@ -284,67 +284,87 @@ async def run_actor_db_xlsx(mode: str) -> None:
     linked_count = 0
 
     async with aiohttp.ClientSession() as client:
-        # 网络请求并行化：TMDB 请求并发 5，LibreDMM 请求并发 2，避免被限频/封禁
         concurrency = 2 if mode == "link" else 5
-        sem = asyncio.Semaphore(concurrency)
+        task_iter = iter(enumerate(rows_to_process, 1))
+        running_tasks: set[asyncio.Task[None]] = set()
 
-        async def process_one(jp, tmdbid, row_idx):
+        async def _process_one(jp, tmdbid, row_idx):
             nonlocal translated_count, linked_count
-            async with sem:
+            try:
+                if mode == "translate" and base_url and tmdb_api_key:
+                    translations = await _fetch_person_translations(tmdbid, base_url, tmdb_api_key, client)
+                    new_zh_cn = _normalize_translation(translations.get("zh_cn", ""))
+                    new_zh_tw = _normalize_translation(translations.get("zh_tw", ""))
+                    if not new_zh_cn and new_zh_tw:
+                        new_zh_cn = zhconv.convert(new_zh_tw, "zh-cn")
+                    if not new_zh_tw and new_zh_cn:
+                        new_zh_tw = zhconv.convert(new_zh_cn, "zh-hant")
+
+                    updated = False
+                    if new_zh_cn:
+                        ws.cell(row=row_idx, column=2, value=new_zh_cn)
+                        updated = True
+                    if new_zh_tw:
+                        ws.cell(row=row_idx, column=3, value=new_zh_tw)
+                        updated = True
+                    if updated:
+                        translated_count += 1
+                        _log_line(f"  ✅ {jp}: zh_cn={new_zh_cn}, zh_tw={new_zh_tw}")
+
+                elif mode == "link":
+                    href_val = await fetch_libredmm_link(jp)
+                    if href_val:
+                        ws.cell(row=row_idx, column=5, value=href_val)
+                        linked_count += 1
+                        _log_line(f"  ✅ {jp} -> {href_val}")
+                    else:
+                        _log_line(f"  ⚠️ {jp} 未在 LibreDMM 找到链接")
+
+                elif mode == "sync_aliases" and base_url and tmdb_api_key:
+                    from mdcx.core.tmdb_actor import query_single_actor_cached
+
+                    query_result = await query_single_actor_cached(jp, base_url, tmdb_api_key, client)
+                    if query_result:
+                        new_keywords = _merge_keyword_values(
+                            query_result.get("name", ""),
+                            query_result.get("original_name", ""),
+                            query_result.get("also_known_as", []),
+                        )
+
+                        existing_kw = str(ws.cell(row=row_idx, column=4).value or "").strip()
+                        existing_set = {k.strip() for k in existing_kw.split(",") if k.strip()}
+                        merged_set = existing_set | {k for k in new_keywords.split(",") if k.strip()}
+                        ws.cell(row=row_idx, column=4, value=",".join(sorted(merged_set)))
+                        new_count = len([k for k in new_keywords.split(",") if k.strip()])
+                        _log_line(f"  ✅ {jp}: 别名已同步 ({new_count} 个)")
+                    else:
+                        _log_line(f"  ⚠️ {jp} TMDB 未查询到数据")
+
+            except Exception as e:
+                _log_line(f"  ❌ {jp} 处理失败: {e}")
+
+        def _submit_next() -> bool:
+            try:
+                _, (jp, tmdbid, row_idx) = next(task_iter)
+            except StopIteration:
+                return False
+            task = asyncio.create_task(_process_one(jp, tmdbid, row_idx))
+            running_tasks.add(task)
+            return True
+
+        for _ in range(min(concurrency, len(rows_to_process))):
+            _submit_next()
+
+        while running_tasks:
+            done, pending = await asyncio.wait(running_tasks, return_when=asyncio.FIRST_COMPLETED)
+            running_tasks = set(pending)
+            for _ in range(len(done)):
+                _submit_next()
+            for done_task in done:
                 try:
-                    if mode == "translate" and base_url and tmdb_api_key:
-                        translations = await _fetch_person_translations(tmdbid, base_url, tmdb_api_key, client)
-                        new_zh_cn = _normalize_translation(translations.get("zh_cn", ""))
-                        new_zh_tw = _normalize_translation(translations.get("zh_tw", ""))
-                        if not new_zh_cn and new_zh_tw:
-                            new_zh_cn = zhconv.convert(new_zh_tw, "zh-cn")
-                        if not new_zh_tw and new_zh_cn:
-                            new_zh_tw = zhconv.convert(new_zh_cn, "zh-hant")
-
-                        updated = False
-                        if new_zh_cn:
-                            ws.cell(row=row_idx, column=2, value=new_zh_cn)
-                            updated = True
-                        if new_zh_tw:
-                            ws.cell(row=row_idx, column=3, value=new_zh_tw)
-                            updated = True
-                        if updated:
-                            translated_count += 1
-                            _log_line(f"  ✅ {jp}: zh_cn={new_zh_cn}, zh_tw={new_zh_tw}")
-
-                    elif mode == "link":
-                        href_val = await fetch_libredmm_link(jp)
-                        if href_val:
-                            ws.cell(row=row_idx, column=5, value=href_val)
-                            linked_count += 1
-                            _log_line(f"  ✅ {jp} -> {href_val}")
-                        else:
-                            _log_line(f"  ⚠️ {jp} 未在 LibreDMM 找到链接")
-
-                    elif mode == "sync_aliases" and base_url and tmdb_api_key:
-                        from mdcx.core.tmdb_actor import query_single_actor_cached
-
-                        query_result = await query_single_actor_cached(jp, base_url, tmdb_api_key, client)
-                        if query_result:
-                            new_keywords = _merge_keyword_values(
-                                query_result.get("name", ""),
-                                query_result.get("original_name", ""),
-                                query_result.get("also_known_as", []),
-                            )
-
-                            existing_kw = str(ws.cell(row=row_idx, column=4).value or "").strip()
-                            existing_set = {k.strip() for k in existing_kw.split(",") if k.strip()}
-                            merged_set = existing_set | {k for k in new_keywords.split(",") if k.strip()}
-                            ws.cell(row=row_idx, column=4, value=",".join(sorted(merged_set)))
-                            new_count = len([k for k in new_keywords.split(",") if k.strip()])
-                            _log_line(f"  ✅ {jp}: 别名已同步 ({new_count} 个)")
-                        else:
-                            _log_line(f"  ⚠️ {jp} TMDB 未查询到数据")
-
+                    done_task.result()
                 except Exception as e:
-                    _log_line(f"  ❌ {jp} 处理失败: {e}")
-
-        await asyncio.gather(*(process_one(jp, tmdbid, row_idx) for jp, tmdbid, row_idx in rows_to_process))
+                    _log_line(f"  🔴 子任务异常: {e}")
 
     _format_db_worksheet(ws)
     wb.save(db_path)
