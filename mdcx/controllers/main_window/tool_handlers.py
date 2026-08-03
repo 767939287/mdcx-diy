@@ -1,6 +1,7 @@
 import asyncio
 import threading
 import traceback
+from pathlib import Path
 
 from PyQt6.QtWidgets import QFileDialog, QMessageBox
 
@@ -211,22 +212,22 @@ def pushButton_actor_db_sync_aliases_clicked(self):
 
 
 def pushButton_actor_db_open_clicked(self):
-    threading.Thread(target=self._open_actor_db, daemon=True).start()
+    from mdcx.config.resources import resources
 
-
-def _open_actor_db(self):
-    from pathlib import Path
-
-    from mdcx.core.tmdb_actor import _get_db_path
-    from mdcx.utils.file import open_file_thread
-
-    db_path = Path(_get_db_path())
+    db_path = Path(resources.u("actor_database.xlsx"))
     if not db_path.exists():
         signal_qt.show_log_text("🔴 actor_database.xlsx 不存在，请先刮削或执行一次演员库维护生成数据库")
         return
+    signal_qt.show_log_text(f"📂 正在用系统默认程序打开: {db_path}")
+    threading.Thread(target=self._open_actor_db_file, args=(db_path,), daemon=True).start()
+
+
+def _open_actor_db_file(self, db_path):
+    from mdcx.utils.file import open_file_thread
+
     try:
-        open_file_thread(db_path, False)
-        signal_qt.show_log_text(f"📂 已用系统默认程序打开: {db_path}")
+        open_file_thread(Path(db_path), False)
+        signal_qt.show_log_text(f"✅ 已打开 actor_database.xlsx: {db_path}")
     except Exception as e:
         signal_qt.show_log_text(
             f"🔴 无法打开 actor_database.xlsx（{e}）。请先安装 Excel/WPS 或 LibreOffice 等文字处理软件后重试"
