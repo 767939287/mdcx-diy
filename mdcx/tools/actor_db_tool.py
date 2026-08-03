@@ -355,16 +355,23 @@ async def run_actor_db_xlsx(mode: str) -> None:
         for _ in range(min(concurrency, len(rows_to_process))):
             _submit_next()
 
+        total = len(rows_to_process)
+        completed = 0
+        progress_interval = max(1, total // 10)  # 每 10% 输出一次进度
+
         while running_tasks:
             done, pending = await asyncio.wait(running_tasks, return_when=asyncio.FIRST_COMPLETED)
             running_tasks = set(pending)
             for _ in range(len(done)):
                 _submit_next()
             for done_task in done:
+                completed += 1
                 try:
                     done_task.result()
                 except Exception as e:
                     _log_line(f"  🔴 子任务异常: {e}")
+            if completed % progress_interval == 0 or completed == total:
+                _log_line(f"  📊 进度: {completed}/{total}")
 
     _format_db_worksheet(ws)
     wb.save(db_path)
