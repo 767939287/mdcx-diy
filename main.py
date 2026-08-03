@@ -67,7 +67,61 @@ def _create_application() -> tuple[QApplication, MyMAinWindow]:
     return app, ui
 
 
+def _enable_crash_dump() -> None:
+    """注册崩溃转储：Python 异常 traceback + C 层 segfault 堆栈 + stdout/stderr 落盘。
+
+    用于诊断 onefile 无控制台环境下程序静默退出的问题。仅诊断用，失败不阻断启动。
+    """
+    try:
+        import faulthandler
+        import traceback as _tb
+        from datetime import datetime
+
+        log_dir = MAIN_PATH
+        ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+
+        # 1) 重定向 stdout/stderr 到文件（onefile 无控制台时 print/异常输出会丢失）
+        try:
+            sys.stdout = (
+                sys.__stdout__
+                if sys.__stdout__ is not None
+                else open(log_dir / f"crash_{ts}.log", "w", encoding="utf-8")
+            )
+            sys.stderr = open(log_dir / f"crash_{ts}.log", "a", encoding="utf-8")
+        except Exception:
+            pass
+
+        # 2) Python 未捕获异常写文件
+        crash_path = log_dir / f"crash_{ts}_py.log"
+        try:
+            crash_path.write_text("", encoding="utf-8")
+        except Exception:
+            crash_path = None
+
+        def _hook(etype, evalue, etb):
+            try:
+                text = "".join(_tb.format_exception(etype, evalue, etb))
+                print("UNCAUGHT EXCEPTION:\n" + text)
+                if crash_path is not None:
+                    with open(crash_path, "a", encoding="utf-8") as f:
+                        f.write(text)
+            except Exception:
+                pass
+            sys.__excepthook__(etype, evalue, etb)
+
+        sys.excepthook = _hook
+
+        # 3) C 层崩溃 (segfault) 堆栈写文件
+        try:
+            faulthandler.enable(file=open(log_dir / f"crash_{ts}_faulthandler.log", "w", encoding="utf-8"))
+        except Exception:
+            pass
+    except Exception:
+        pass
+
+
 def main() -> int:
+    _enable_crash_dump()
     show_constants()
     _apply_ui_scale_factor()
     app, _ui = _create_application()
@@ -75,7 +129,13 @@ def main() -> int:
         return_code = app.exec()
         return return_code
     except Exception as e:
-        print(e)
+        print("MAIN EXCEPTION:", e)
+        try:
+            import traceback as _tb
+
+            _tb.print_exc()
+        except Exception:
+            pass
         return 1
     finally:
         flush_tmdb_query_cache()
