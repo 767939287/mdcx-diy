@@ -1,4 +1,4 @@
-# MDCx
+# MDCx-diy
 
 ![python](https://img.shields.io/badge/Python-3.13+-3776AB.svg?style=flat&logo=python&logoColor=white)
 ![License](https://img.shields.io/badge/License-GPLv3-blue.svg)
@@ -15,9 +15,9 @@
   </tr>
 </table>
 
-## MDCx 是什么
+## MDCx-diy 是什么
 
-MDCx 是一个桌面工具，自动从 45 个网站抓取视频文件的元数据（标题、演员、封面、简介等），生成标准的 .nfo 文件和整理好的文件夹，给 Emby、Jellyfin、Kodi 这类媒体服务器直接用。
+MDCx-diy 是一个桌面工具，自动从 45 个网站抓取视频文件的元数据（标题、演员、封面、简介等），生成标准的 .nfo 文件和整理好的文件夹，给 Emby、Jellyfin、Kodi 这类媒体服务器直接用。
 
 一句话：把一堆乱七八糟的视频文件，变成媒体服务器能认的整齐资料库。
 
