@@ -2561,11 +2561,6 @@ class MyMAinWindow(QMainWindow):
 
         pushButton_cover_backfill_start_clicked(self)
 
-    def pushButton_actor_db_pick_dir_clicked(self):
-        from .tool_handlers import pushButton_actor_db_pick_dir_clicked
-
-        pushButton_actor_db_pick_dir_clicked(self)
-
     def pushButton_actor_db_translate_clicked(self):
         from .tool_handlers import pushButton_actor_db_translate_clicked
 
