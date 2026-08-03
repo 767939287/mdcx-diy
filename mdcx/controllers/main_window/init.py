@@ -343,6 +343,7 @@ def Init_Singal(self: "MyMAinWindow"):
     self.pushButton_actor_db_translate.connect(self.Ui.pushButton_actor_db_translate.setText)
     self.pushButton_actor_db_link.connect(self.Ui.pushButton_actor_db_link.setText)
     self.pushButton_actor_db_sync_aliases.connect(self.Ui.pushButton_actor_db_sync_aliases.setText)
+    self.actor_db_finished.connect(self._on_actor_db_finished)
     self.label_result.connect(self.Ui.label_result.setText)
     self.label_show_version.connect(self.Ui.label_show_version.setText)  # endregion
 

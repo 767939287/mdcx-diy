@@ -1,4 +1,3 @@
-import asyncio
 import html
 import os
 import re
@@ -146,6 +145,7 @@ class MyMAinWindow(QMainWindow):
     pushButton_actor_db_translate = pyqtSignal(str)
     pushButton_actor_db_link = pyqtSignal(str)
     pushButton_actor_db_sync_aliases = pyqtSignal(str)
+    actor_db_finished = pyqtSignal()
     label_show_version = pyqtSignal(str)
 
     # endregion
@@ -2611,10 +2611,19 @@ class MyMAinWindow(QMainWindow):
 
                 signal_qt.show_log_text(tb.format_exc())
             finally:
-                btn.setEnabled(True)
-                getattr(self, btn_name).emit(idle_text)
+                # 线程安全：仅发信号，由主线程槽恢复按钮状态
+                self.actor_db_finished.emit()
 
-        executor.submit(asyncio.run, run())
+        executor.submit(run())
+
+    def _on_actor_db_finished(self) -> None:
+        """主线程恢复演员库维护按钮状态（由 actor_db_finished 信号触发）。"""
+        self.Ui.pushButton_actor_db_translate.setEnabled(True)
+        self.Ui.pushButton_actor_db_link.setEnabled(True)
+        self.Ui.pushButton_actor_db_sync_aliases.setEnabled(True)
+        self.pushButton_actor_db_translate.emit("补全中文名")
+        self.pushButton_actor_db_link.emit("补全 LibreDMM 链接")
+        self.pushButton_actor_db_sync_aliases.emit("同步别名")
 
     # region 设置页
     # region 选择目录

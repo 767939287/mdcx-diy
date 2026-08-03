@@ -1,4 +1,3 @@
-import asyncio
 import threading
 import traceback
 from pathlib import Path
@@ -42,7 +41,7 @@ def pushButton_cover_backfill_start_clicked(self):
         self.pushButton_cover_backfill_start.emit("开始补图")
 
     self.pushButton_cover_backfill_start.emit("补图中...")
-    executor.submit(asyncio.run, run_backfill())
+    executor.submit(run_backfill())
 
 
 def pushButton_emby_actor_manager_clicked(self):
@@ -219,10 +218,10 @@ def pushButton_actor_db_open_clicked(self):
         signal_qt.show_log_text("🔴 actor_database.xlsx 不存在，请先刮削或执行一次演员库维护生成数据库")
         return
     signal_qt.show_log_text(f"📂 正在用系统默认程序打开: {db_path}")
-    threading.Thread(target=self._open_actor_db_file, args=(db_path,), daemon=True).start()
+    threading.Thread(target=_open_file_thread, args=(db_path,), daemon=True).start()
 
 
-def _open_actor_db_file(self, db_path):
+def _open_file_thread(db_path):
     from mdcx.utils.file import open_file_thread
 
     try:
