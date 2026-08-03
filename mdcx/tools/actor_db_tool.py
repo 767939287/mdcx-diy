@@ -41,6 +41,9 @@ class ActorDbToolResult:
 
 def _log_line(message: str) -> None:
     LogBuffer.log().write(message)
+    from mdcx.signals import signal_qt
+
+    signal_qt.show_log_text(message)
 
 
 async def collect_actors_from_nfo_dir(dir_path: Path) -> list[str]:
