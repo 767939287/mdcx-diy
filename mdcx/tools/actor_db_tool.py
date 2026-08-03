@@ -19,6 +19,7 @@ from ..core.tmdb_actor import (
     _fetch_person_translations,
     _format_db_worksheet,
     _get_db_path,
+    _merge_keyword_values,
     _normalize_translation,
     _resolve_tmdb_config,
     fetch_libredmm_link,
@@ -316,21 +317,18 @@ async def run_actor_db_xlsx(mode: str) -> None:
 
                     query_result = await query_single_actor_cached(jp, base_url, tmdb_api_key, client)
                     if query_result:
-                        aka = query_result.get("also_known_as", [])
-                        original_name = query_result.get("original_name", "")
-                        name = query_result.get("name", "")
-                        new_keywords = set()
-                        if name:
-                            new_keywords.add(name)
-                        if original_name and original_name != name:
-                            new_keywords.add(original_name)
-                        new_keywords.update(aka)
+                        new_keywords = _merge_keyword_values(
+                            query_result.get("name", ""),
+                            query_result.get("original_name", ""),
+                            query_result.get("also_known_as", []),
+                        )
 
                         existing_kw = str(ws.cell(row=row_idx, column=4).value or "").strip()
                         existing_set = {k.strip() for k in existing_kw.split(",") if k.strip()}
-                        merged = existing_set | new_keywords
-                        ws.cell(row=row_idx, column=4, value=",".join(sorted(merged)))
-                        _log_line(f"  ✅ {jp}: 别名已同步 ({len(new_keywords)} 个)")
+                        merged_set = existing_set | {k for k in new_keywords.split(",") if k.strip()}
+                        ws.cell(row=row_idx, column=4, value=",".join(sorted(merged_set)))
+                        new_count = len([k for k in new_keywords.split(",") if k.strip()])
+                        _log_line(f"  ✅ {jp}: 别名已同步 ({new_count} 个)")
                     else:
                         _log_line(f"  ⚠️ {jp} TMDB 未查询到数据")
 
