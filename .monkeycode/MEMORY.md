@@ -39,23 +39,15 @@ Agent 在任务执行过程中发现的条目应遵循以下格式：
   - 面向小白解释问题，给出细致、可执行、易落地的建议。
   - 在发现风险、缺陷、遗漏时主动指出，并尽量给出修复方案和进行验证。
 
-[改动代码和提交推送前必须征得用户同意]
-- Date: 2026-07-18
-- Context: 用户要求每次改动代码和提交推送前必须先问过用户，不能擅自操作
+[提交推送工作流]
+- Date: 2026-07-18 (合并 2026-08-03)
+- Context: 用户要求每次改动代码和提交推送前必须征得同意，且推送前自动运行测试
+- Category: 工作流协作
 - Instructions:
   - 所有代码改动（新建文件、修改代码、删除文件等）必须先向用户说明改动内容和原因，获得同意后再执行。
   - 提交推送前必须先向用户说明要提交什么、推送到哪里，获得同意后再执行 `git add` + `git commit` + `git push`。
   - 本指令优先级高于此前所有"自动执行"类指令，改动代码和提交推送这两件事必须先问后做。
-
-[提交推送前自动运行 ruff + pytest]
-- Date: 2026-07-18
-- Context: 用户希望每次提交推送前自动运行测试，不要手动操作
-- Category: 工作流协作
-- Instructions:
-  - 用户同意推送后，执行 `git push` 前必须先运行 `uv run check --skip-hook-install`（自动执行 ruff format --check + ruff check + pytest --tb=short -m "not network" -x）。
-  - 如果 `uv run check` 失败，修复问题后再推送，不要强行推送。
-  - 不要依赖 git hooks 或 pre-commit 来拦截，由 Agent 手动执行上述检查。
-  - 注意：实际 `git add` + `git commit` + `git push` 操作必须在获得用户明确同意后才能执行。本指令仅限推送前的技术检查步骤。
+  - 用户同意推送后，`git push` 前必须自动运行 `uv run check --skip-hook-install`（ruff format --check + ruff check + pytest --tb=short -m "not network" -x）。失败则修复后再推，不要强行推送。
 
 [每次新会话自动安装 pre-commit 钩子]
 - Date: 2026-07-17
@@ -101,5 +93,34 @@ Agent 在任务执行过程中发现的条目应遵循以下格式：
   - 调整布局后必须验证 `import mdcx.views.MDCx` 可正常导入（UI 里有中文/多行 tooltip，编译易出错）。
   - 注意 tab/groupBox 重叠、遮挡问题：所有 groupBox 在 `page_tool` 的滚动区 `scrollAreaWidgetContents_gongju` 内是绝对定位（x/y/width/height），重排顺序要同时更新各 groupBox 的 y 坐标和滚动区 widget 高度（最后一块底部留 20px 边距），否则底部内容被遮挡。
   - 新增按钮后必须检查三处一致：`MDCx.ui`（定义）、`MDCx.py`（编译产物）、`mdcx/controllers/main_window/init.py`（信号接线：clicked 槽 + setText 防重入信号）。三条链路缺一按钮不生效或运行崩。
-  - 按钮防重入模式：`main_window.py` 定义 delegate 槽，`tool_handlers.py` 定义实现（含 `setEnabled(False)` + `executor.submit(asyncio.run, ...)` + finally 恢复）。
+  - 按钮防重入模式：参见下方 `[executor.submit 与跨线程 Qt 安全]` 条目，使用 `executor.submit(run())` 而非 `executor.submit(asyncio.run, ...)`，且协程内不可直接 `setEnabled()`，必须通过 pyqtSignal 主线程恢复。
   - 删除旧按钮后要清理失联的 delegate/实现死代码，避免引用已删除控件导致 AttributeError。
+
+[Onefile 环境调试要点：静默退出与日志通道]
+- Date: 2026-08-03
+- Context: 4 个按钮点击后程序直接退出（无提示、无事件查看器记录），用户反复打包定位不到；另一按钮点击后无输出误以为卡死
+- Category: 排错调试
+- Instructions:
+  - PyInstaller onefile + `-w`（无控制台）环境下，Python 普通的 TypeError/AttributeError 异常会被静默吞掉——`sys.__stderr__` 不存在，`print()` 到空 stdout，`main()` 的 `except` 分支输出丢失，PyQt 信号槽异常调用 `sys.excepthook` 默认也输出到 stderr。最终表现是"程序直接退出"，被误判为 C 扩展 segfault。
+  - 标准诊断三件套必须在 main.py 启动时注册：`faulthandler.enable()` 抓 C 层崩溃堆栈、`sys.excepthook` 写文件抓 Python 异常、`sys.stdout`/`sys.stderr` 重定向到文件抓 print 输出。参见 `main.py:_enable_crash_dump()`。
+  - 事件查看器没有崩溃记录本身就是关键线索——说明不是系统级 segfault（WER 会记录），而是程序正常退出（Python 异常导致 `sys.exit`）。
+  - 另一个易混淆场景：工具内部日志走 `LogBuffer.log().write()`（只存内存），不走 `signal_qt.show_log_text`（GUI+文件）。用户看到"开始扫描"后无后续输出，以为卡死，实则是工具已跑完但日志通道不通。修复：所有工具内部日志输出必须走 `signal_qt.show_log_text`。检查项目其他只写 LogBuffer 不写 GUI 通道的代码。
+
+[executor.submit 与跨线程 Qt 安全]
+- Date: 2026-08-03
+- Context: 修复演员库工具按钮时发现两处同类 bug：`executor.submit(asyncio.run, run())` 传参错误，以及协程内直接 `btn.setEnabled()` 跨线程操作 QWidget
+- Category: 工作流协作
+- Instructions:
+  - `AsyncBackgroundExecutor.submit(coro)` 只接受单个协程对象，`executor.submit(asyncio.run, run())` 会报 `TypeError: takes 2 positional arguments but 3 were given`。正确写法：`executor.submit(run())`。`mdcx/controllers/main_window/main_window.py:2617` 和 `tool_handlers.py:45` 两处同源 bug 已修复。
+  - 协程在 executor 后台线程事件循环执行，`btn.setEnabled()` / `setText()` 直接操作 QWidget 跨线程不安全。必须用 pyqtSignal 发到主线程执行。正确模式：按钮点击时主线程 setEnabled(False) + emit "运行中"，协程 finally 里发射 `pyqtSignal.emit()`（线程安全），主线程槽负责恢复 setEnabled(True) + setText。参见 `main_window.py:_run_actor_db_tool`/`_on_actor_db_finished`。
+  - `tool_handlers.py` 里的函数是模块级函数（通过 `main_window.py:2580` `from .tool_handlers import ...; pushButton_actor_db_open_clicked(self)` 调用），`self._open_actor_db_file` 不会自动可用——必须确保方法存在在 `MyMAinWindow` 上，或完全不用 `self.xxx`。
+
+[刮削并发架构参考]
+- Date: 2026-08-03
+- Context: 探索 actor_db_tool 并发提速时发现刮削已有成熟的滑动窗口并发
+- Category: 构建方法
+- Instructions:
+  - 正常刮削（`scraper.py`）已经是两层并发：文件间用 `_run_tasks_with_limit`（滑动窗口，`asyncio.wait(..., FIRST_COMPLETED)` 渐进式调度，并发数 = 配置项 `thread_number`）；文件内用 `_call_crawlers` 的 `asyncio.gather` 多站点并发抓取。
+  - 不要误以为刮削是串行的。慢可能是单站点超时拖慢整个文件，而非并发不足。
+  - actor_db_tool 的可复用并发模式已从 `Semaphore+gather` 升级为滑动窗口（`mdcx/tools/actor_db_tool.py`），与刮削同构。后续新增异步批量处理工具时，优先采用滑动窗口模式而非 `Semaphore+gather`。
+  - 滑动窗口优势：内存峰值低（不会同时存在全部协程对象）、取消响应快（最多等当前批次完成）、渐进式调度（大列表不会一次性创建海量协程）。
