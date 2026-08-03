@@ -79,7 +79,7 @@ uv run check --skip-hook-install
 * [Hazard804/mdcx](https://github.com/Hazard804/mdcx) — 基于 sqzw-x/mdcx, 继续进行维护及优化
 * [ZiPenOk/mdcx](https://github.com/ZiPenOk/mdcx) — 基于 Hazard804/mdcx, 进行优化改进
 
-  向相关开发者表示敬意！
+向相关开发者表示敬意！
 
 ## 授权许可
 
