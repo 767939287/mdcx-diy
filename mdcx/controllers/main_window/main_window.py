@@ -2576,6 +2576,11 @@ class MyMAinWindow(QMainWindow):
 
         pushButton_actor_db_sync_aliases_clicked(self)
 
+    def pushButton_actor_db_open_clicked(self):
+        from .tool_handlers import pushButton_actor_db_open_clicked
+
+        pushButton_actor_db_open_clicked(self)
+
     def _run_actor_db_tool(self, mode: str) -> None:
         """运行演员库维护工具（新模式：直接操作 xlsx，无需名单/NFO）。
 

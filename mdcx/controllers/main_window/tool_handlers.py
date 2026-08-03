@@ -1,4 +1,5 @@
 import asyncio
+import threading
 import traceback
 
 from PyQt6.QtWidgets import QFileDialog, QMessageBox
@@ -207,3 +208,26 @@ def pushButton_actor_db_sync_aliases_clicked(self):
     self.pushButton_show_log_clicked()
     signal_qt.show_log_text("🔍 开始扫描 actor_database.xlsx：同步 TMDB 最新别名到 keyword 列...")
     self._run_actor_db_tool("sync_aliases")
+
+
+def pushButton_actor_db_open_clicked(self):
+    threading.Thread(target=self._open_actor_db, daemon=True).start()
+
+
+def _open_actor_db(self):
+    from pathlib import Path
+
+    from mdcx.core.tmdb_actor import _get_db_path
+    from mdcx.utils.file import open_file_thread
+
+    db_path = Path(_get_db_path())
+    if not db_path.exists():
+        signal_qt.show_log_text("🔴 actor_database.xlsx 不存在，请先刮削或执行一次演员库维护生成数据库")
+        return
+    try:
+        open_file_thread(db_path, False)
+        signal_qt.show_log_text(f"📂 已用系统默认程序打开: {db_path}")
+    except Exception as e:
+        signal_qt.show_log_text(
+            f"🔴 无法打开 actor_database.xlsx（{e}）。请先安装 Excel/WPS 或 LibreOffice 等文字处理软件后重试"
+        )

@@ -1,4 +1,4 @@
-# Form implementation generated from reading ui file '/workspace/mdcx/views/MDCx.ui'
+# Form implementation generated from reading ui file 'mdcx/views/MDCx.ui'
 #
 # Created by: PyQt6 UI code generator 6.11.0
 #
@@ -462,7 +462,7 @@ class Ui_MDCx(object):
         self.pushButton_show_hide_logs.setMouseTracking(True)
         self.pushButton_show_hide_logs.setText("")
         icon = QtGui.QIcon()
-        icon.addPixmap(QtGui.QPixmap("/workspace/mdcx/views/../../MDCx-py-20220407/edit.png"), QtGui.QIcon.Mode.Normal, QtGui.QIcon.State.On)
+        icon.addPixmap(QtGui.QPixmap("mdcx/views/../../MDCx-py-20220407/edit.png"), QtGui.QIcon.Mode.Normal, QtGui.QIcon.State.On)
         self.pushButton_show_hide_logs.setIcon(icon)
         self.pushButton_show_hide_logs.setIconSize(QtCore.QSize(30, 30))
         self.pushButton_show_hide_logs.setCheckable(False)
@@ -828,6 +828,13 @@ class Ui_MDCx(object):
         self.label_actor_db_sync_aliases_desc.setGeometry(QtCore.QRect(480, 120, 200, 20))
         self.label_actor_db_sync_aliases_desc.setStyleSheet("color: rgb(160, 160, 160); font-size: 11px;")
         self.label_actor_db_sync_aliases_desc.setObjectName("label_actor_db_sync_aliases_desc")
+        self.pushButton_actor_db_open = QtWidgets.QPushButton(parent=self.groupBox_actor_db_maintenance)
+        self.pushButton_actor_db_open.setGeometry(QtCore.QRect(40, 150, 200, 32))
+        self.pushButton_actor_db_open.setObjectName("pushButton_actor_db_open")
+        self.label_actor_db_open_desc = QtWidgets.QLabel(parent=self.groupBox_actor_db_maintenance)
+        self.label_actor_db_open_desc.setGeometry(QtCore.QRect(260, 155, 410, 20))
+        self.label_actor_db_open_desc.setStyleSheet("color: rgb(160, 160, 160); font-size: 11px;")
+        self.label_actor_db_open_desc.setObjectName("label_actor_db_open_desc")
         self.label_actor_db_note = QtWidgets.QLabel(parent=self.groupBox_actor_db_maintenance)
         self.label_actor_db_note.setGeometry(QtCore.QRect(40, 150, 621, 40))
         self.label_actor_db_note.setStyleSheet("color: rgb(200, 100, 0);")
@@ -10588,6 +10595,8 @@ class Ui_MDCx(object):
         self.label_actor_db_translate_desc.setText(_translate("MDCx", "扫描已有 TMDB ID 缺中文名的条目"))
         self.label_actor_db_link_desc.setText(_translate("MDCx", "扫描已有 TMDB ID 缺链接的条目"))
         self.label_actor_db_sync_aliases_desc.setText(_translate("MDCx", "同步 TMDB 最新别名到 keyword 列"))
+        self.pushButton_actor_db_open.setText(_translate("MDCx", "打开演员数据库"))
+        self.label_actor_db_open_desc.setText(_translate("MDCx", "用默认程序打开 xlsx，供查看与手工编辑（未装 Excel/WPS 等办公软件需先安装）"))
         self.label_actor_db_note.setText(_translate("MDCx", "提示：补全结果将输出到日志页。所有按钮均防重入，运行中按钮禁用。"))
         self.groupBox_cover_backfill.setTitle(_translate("MDCx", "封面补图（按番号补齐缺失的封面、缩略图，复用当前配置的各项规则）"))
         self.label_cover_backfill_desc.setText(_translate("MDCx", "输入番号（多个用空格分隔），将自动刮削并补齐封面和缩略图。复用当前配置的站点优先级、命名、裁切、水印规则。输出目录为当前数据目录（可在设置页修改）。"))

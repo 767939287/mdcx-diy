@@ -2415,6 +2415,35 @@
                     <string>同步 TMDB 最新别名到 keyword 列</string>
                   </property>
                 </widget>
+                <widget class="QPushButton" name="pushButton_actor_db_open">
+                  <property name="geometry">
+                    <rect>
+                      <x>40</x>
+                      <y>150</y>
+                      <width>200</width>
+                      <height>32</height>
+                    </rect>
+                  </property>
+                  <property name="text">
+                    <string>打开演员数据库</string>
+                  </property>
+                </widget>
+                <widget class="QLabel" name="label_actor_db_open_desc">
+                  <property name="geometry">
+                    <rect>
+                      <x>260</x>
+                      <y>155</y>
+                      <width>410</width>
+                      <height>20</height>
+                    </rect>
+                  </property>
+                  <property name="styleSheet">
+                    <string notr="true">color: rgb(160, 160, 160); font-size: 11px;</string>
+                  </property>
+                  <property name="text">
+                    <string>用默认程序打开 xlsx，供查看与手工编辑（未装 Excel/WPS 等办公软件需先安装）</string>
+                  </property>
+                </widget>
                 <widget class="QLabel" name="label_actor_db_note">
                   <property name="geometry">
                     <rect>

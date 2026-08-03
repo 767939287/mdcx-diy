@@ -231,6 +231,7 @@ def Init_Singal(self: "MyMAinWindow"):
     self.Ui.pushButton_actor_db_translate.clicked.connect(self.pushButton_actor_db_translate_clicked)
     self.Ui.pushButton_actor_db_link.clicked.connect(self.pushButton_actor_db_link_clicked)
     self.Ui.pushButton_actor_db_sync_aliases.clicked.connect(self.pushButton_actor_db_sync_aliases_clicked)
+    self.Ui.pushButton_actor_db_open.clicked.connect(self.pushButton_actor_db_open_clicked)
     self.Ui.pushButton_start_single_file.clicked.connect(self.pushButton_start_single_file_clicked)
     self.Ui.pushButton_select_file_clear_info.clicked.connect(self.pushButton_select_file_clear_info_clicked)
     self.Ui.pushButton_scrape_note.clicked.connect(self.pushButton_scrape_note_clicked)
