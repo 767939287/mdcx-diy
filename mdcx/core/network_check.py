@@ -265,6 +265,8 @@ def _format_header() -> list[str]:
     lines.append(f"  {'CF Bypass':<16}{'已配置' if cf_bypass_url else '未配置'}")
     lines.append(f"  {'CF Bypass代理':<16}{'已配置' if cf_bypass_proxy else '未配置'}")
     lines.append(f"  {'诊断超时':<16}{_diagnostic_timeout():.1f}s")
+    lines.append("  " + "-" * 84)
+    lines.append(f"  {'状态':<4} {'站点':<18} {'状态码':>4}  {'耗时':>8}  {'路由':<4} 信息")
     lines.append("=" * 88)
     return lines
 
@@ -274,11 +276,13 @@ def format_result_line(result: NetworkCheckResult) -> str:
     name = result.spec.name[:18]
     status_code = _status_code_text(result.status_code)
     elapsed = _elapsed_text(result.elapsed_ms)
+    proxy = "代理" if result.spec.use_proxy else "直连"
+    proxy = f"{proxy:<4}"
     message = result.message
     if result.error and result.status == NetworkCheckStatus.FAILED:
         if result.error not in message:
             message = f"{message}: {result.error}"
-    return f"  {icon} {name:<18} {status_code:>4}  {elapsed:>8}  {message}"
+    return f"  {icon} {name:<18} {status_code:>4}  {elapsed:>8}  {proxy} {message}"
 
 
 def format_summary(results: list[NetworkCheckResult], elapsed: float, cancelled: bool) -> list[str]:
