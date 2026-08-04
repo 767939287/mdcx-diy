@@ -627,7 +627,7 @@ class EmbyActorManagerDialog(QDialog):
         self._actors = actors
         self._populate_table(actors)
         self._update_statistics(actors)
-        to_sync = [a for a in actors if a.need_update_info or a.need_update_image]
+        to_sync = [a for a in actors if a.need_update_info or a.need_update_image or a.need_update_backdrop]
         self.btn_sync.setEnabled(len(to_sync) > 0)
         self.btn_sync.setText(f"开始全部更新同步({len(to_sync)} 项)")
         self.log(f"✅ 预览准备完成，{len(to_sync)} 项待同步")
@@ -636,14 +636,14 @@ class EmbyActorManagerDialog(QDialog):
         self._set_buttons_enabled(True)
 
     def _on_sync(self):
-        to_sync = [a for a in self._actors if a.need_update_info or a.need_update_image]
+        to_sync = [a for a in self._actors if a.need_update_info or a.need_update_image or a.need_update_backdrop]
         if not to_sync:
             QMessageBox.information(self, "提示", "没有需要同步的项")
             return
         reply = QMessageBox.question(
             self,
             "确认同步",
-            f"将同步 {len(to_sync)} 个演员的信息和头像到 Emby，\n此操作不可撤销，是否继续？",
+            f"将同步 {len(to_sync)} 个演员的信息/头像/背景图到 Emby，\n此操作不可撤销，是否继续？",
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
         )
         if reply != QMessageBox.StandardButton.Yes:
@@ -803,7 +803,7 @@ class EmbyActorManagerDialog(QDialog):
         self.lbl_backdrop.setText(f"有背景图: {backdrop_count}")
 
     def _update_sync_button(self):
-        to_sync = [a for a in self._actors if a.need_update_info or a.need_update_image]
+        to_sync = [a for a in self._actors if a.need_update_info or a.need_update_image or a.need_update_backdrop]
         sync_count = len(to_sync)
         self.btn_sync.setEnabled(sync_count > 0)
         self.btn_sync.setText(f"开始全部更新同步({sync_count} 项)" if sync_count > 0 else "开始全部更新同步")
