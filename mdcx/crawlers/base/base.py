@@ -260,10 +260,22 @@ def get_registered_crawler_sites(*, include_hidden: bool = False) -> list[Websit
     return sites
 
 
+# 已废弃但保留在 Website 枚举中的站点值（为兼容旧配置文件而保留，
+# 对应站点的爬虫已被移除，不应再有爬虫注册）。见 config/migrations.py 的
+# _is_removed_airav_site 与 manual.py 的 SUPPORTED_WEBSITES 排除逻辑。
+_DEPRECATED_WEBSITES: frozenset[str] = frozenset({Website.AIRAV.value})
+
+
 def validate_crawler_registry() -> list[str]:
-    """检查所有 Website 枚举值是否都有对应的已注册爬虫, 返回缺失的网站值列表."""
+    """检查所有 Website 枚举值是否都有对应的已注册爬虫, 返回缺失的网站值列表.
+
+    已废弃的枚举值（见 _DEPRECATED_WEBSITES）不算缺失——它们仅用于兼容
+    旧配置文件, 对应的爬虫已被移除, 不应再要求注册.
+    """
     missing = []
     for site in Website:
+        if site.value in _DEPRECATED_WEBSITES:
+            continue
         if site not in crawler_registry:
             missing.append(site.value)
     return missing
