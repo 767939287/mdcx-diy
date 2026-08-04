@@ -159,3 +159,12 @@ Agent 在任务执行过程中发现的条目应遵循以下格式：
   - **女优混入是最大风险**：レズ片/SILK 女女片会把女优填进 actor 字段（如 `友田彩也香`）。用 actress 字段交叉验证——某名 actress 出现次数 ≥ actor×0.5，或 actor≤3 但 actress>0，判定女优剔除。原则：**宁漏勿误删**。
   - **双通道清洗**：`clean_male_actors` = 名单精确匹配（删无 tmdbid 及 TMDB gender=0 的男优）+ TMDB gender=2 校验。TMDB 局限性：gender=0 的男优（如加藤鷹）TMDB 标不出、永远清不掉，靠名单补。名单命中后不再重复请求 TMDB。`sync_from_avdb` filter_male 同理先名单后 TMDB，且名单过滤不依赖 TMDB key。
   - **低成本两字名**（如テツ）容易误杀，用 AVdb actor-mapping.xml 权威收录交叉验证——仅在 AVdb 有映射的低频两字名才保留。
+
+[specs 目录已删除]
+- Date: 2026-08-04
+- Context: 用户决定清理 .monkeycode/specs/，确认其 4 个 spec（演员库维护/AVdb同步/Emby本地回填/剔除男演员）对应功能均已实现后删除
+- Category: 工作流协作
+- Instructions:
+  - `.monkeycode/specs/` 目录已删除（2026-08-04，提交 f4c52db）。它曾存放已实现功能的 EARS 需求（requirements.md）、技术设计（design.md）、任务清单（tasklist.md）。
+  - 这些功能的实现意图可从代码、`tests/` 与 `docs/changelog.md` 回溯，specs 不再保留。
+  - 未来若用 `/feature-design` skill 为新功能生成规格，产物会重新出现于 `.monkeycode/specs/`——功能实现并验证后可按用户偏好清理或保留。
