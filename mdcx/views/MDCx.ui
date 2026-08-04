@@ -23772,7 +23772,7 @@ p, li { white-space: pre-wrap; }
 &lt;h4&gt;九、工具页面&lt;/h4&gt;
  &lt;ul&gt;
  &lt;li&gt;&lt;b&gt;演员库维护&lt;/b&gt;：直接操作 actor_database.xlsx，四个按钮——补全中文名（按 TMDB ID 补翻译）、补全 LibreDMM 链接、同步别名（用 TMDB 最新别名刷新 keyword 列）、打开数据库（用默认程序打开 xlsx 供手工编辑）。网络请求自动并发，进度实时显示。&lt;/li&gt;
- &lt;li&gt;&lt;b&gt;Emby 演员管理器&lt;/b&gt;：填写 Emby 地址和 API 密钥后连接服务器，获取演员列表并按媒体库筛选；从 Gfriends / minnano-av / 本地文件夹匹配头像和简介，预览后批量同步到 Emby。&lt;/li&gt;
+ &lt;li&gt;&lt;b&gt;Emby 演员管理器&lt;/b&gt;：填写 Emby 地址和 API 密钥后连接服务器，获取演员列表并按媒体库筛选；从 Gfriends / graphis.ne.jp / minnano-av / 本地文件夹匹配头像和背景图，从本地演员库 / 维基百科 / minnano-av / 数据库匹配简介和出生日期，预览后批量同步到 Emby。支持仅补缺失或强制重新获取。&lt;/li&gt;
  &lt;li&gt;&lt;b&gt;单文件刮削&lt;/b&gt;：指定某个文件的番号网址进行刮削，当存在相同番号时可手工指定。&lt;/li&gt;
  &lt;li&gt;&lt;b&gt;封面补图&lt;/b&gt;：输入番号（多个用空格分隔），自动刮削并补齐缺失的 poster.jpg 和 thumb.jpg，复用当前配置的站点优先级、命名、裁切、水印规则。&lt;/li&gt;
  &lt;li&gt;&lt;b&gt;海报裁剪&lt;/b&gt;：将图片裁剪为 2:3 标准封面图大小，支持加水印。&lt;/li&gt;
@@ -23796,12 +23796,12 @@ p, li { white-space: pre-wrap; }
 
 &lt;h4&gt;十一、获取帮助&lt;/h4&gt;
 &lt;ul&gt;
-&lt;li&gt;项目主页：https://github.com/cdlongbow/mdcx&lt;/li&gt;
-&lt;li&gt;Release 下载：https://github.com/cdlongbow/mdcx/releases&lt;/li&gt;
+&lt;li&gt;项目主页：https://github.com/cdlongbow/mdcx-diy&lt;/li&gt;
+&lt;li&gt;Release 下载：https://github.com/cdlongbow/mdcx-diy/releases&lt;/li&gt;
 &lt;li&gt;常见问题：docs/FAQ.md&lt;/li&gt;
 &lt;li&gt;问题反馈：GitHub Issues；交流：Telegram 群&lt;/li&gt;
 &lt;/ul&gt;
-&lt;p style="color:#888888;"&gt;MDCx 由 cdlongbow 基于开源社区项目（Movie_Data_Capture / AVDC / MDCx  lineage）持续维护，仅供学习与技术交流。&lt;/p&gt;
+&lt;p style="color:#888888;"&gt;MDCx-diy 由 cdlongbow 基于开源社区项目（sqzw-x/mdcx → Hazard804/mdcx → ZiPenOk/mdcx）持续维护，仅供学习与技术交流。向相关开发者表示敬意！&lt;/p&gt;
 &lt;/body&gt;&lt;/html&gt;</string>
             </property>
           </widget>
