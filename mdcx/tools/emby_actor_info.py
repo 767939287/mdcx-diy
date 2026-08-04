@@ -103,6 +103,7 @@ async def update_emby_actor_info() -> None:
 
         db = 0
         wiki = 0
+        local = 0
         updated = 0
         for task in asyncio.as_completed(tasks):
             _raise_if_stop_requested()
@@ -110,11 +111,12 @@ async def update_emby_actor_info() -> None:
             _raise_if_stop_requested()
             updated += flag != 0
             wiki += flag & 1
-            db += flag >> 1
+            db += (flag >> 1) & 3
+            local += (flag >> 3) & 1
             signal.show_log_text(msg)
 
         signal.show_log_text(
-            f"\n🎉🎉🎉 补全完成！！！ 用时 {get_used_time(start_time)} 秒 共更新: {updated} Minnano: {sum(1 for t in tasks if t.done() and (t.result()[0] & 4))} Wiki: {wiki} DB: {db}"
+            f"\n🎉🎉🎉 补全完成！！！ 用时 {get_used_time(start_time)} 秒 共更新: {updated} Minnano: {sum(1 for t in tasks if t.done() and (t.result()[0] & 4))} Wiki: {wiki} DB: {db} Local: {local}"
         )
 
         if EmbyAction.ACTOR_INFO_PHOTO in emby_on:
@@ -159,40 +161,74 @@ async def _process_actor_async(actor: dict, emby_on: list[EmbyAction]) -> tuple[
         db_exist = 0
         wiki_found = 0
         minnano_found = 0
-        # minnano-av (优先) + wiki (补充)
+        local_found = 0
+        local_overview = ""
+        local_birth_set = False
+        # minnano-av (优先) + wiki (补充)；本地演员库优先
         logs = []
         _raise_if_stop_requested()
 
-        # 先尝试 wiki 获取简介
-        wiki_intro = ""
-        res_wiki, msg_wiki = await search_wiki(actor_info)
-        logs.append(msg_wiki)
-        if res_wiki is not None:
-            result_wiki, error_wiki = await get_detail(res_wiki, msg_wiki, actor_info)
-            _raise_if_stop_requested()
-            if result_wiki:
-                wiki_intro = res_wiki.get("intro", "") if res_wiki else ""
-                wiki_found = 1
+        # 0) 本地演员库命中回填（最优先，离线可用）
+        try:
+            local_data = resources.get_actor_data(actor_name)
+            if local_data.get("has_name"):
+                bd = (local_data.get("birth_date") or "").strip()
+                bio = (local_data.get("bio") or "").strip()
+                if bd:
+                    actor_info.birthday = bd
+                    actor_info.year = bd[:4]
+                    local_birth_set = True
+                if bio:
+                    local_overview = bio.replace("\n", "<br/>")
+                    actor_info.overview = local_overview
+                if not actor_info.locations:
+                    actor_info.locations = ["日本"]
+                local_found = 1
+                msg_local = f"本地库命中: {actor_name}"
+                if bd:
+                    msg_local += f", 出生日期 {bd}"
+                if bio:
+                    msg_local += f", 简介 {len(bio)} 字"
+                logs.append(msg_local)
+        except Exception:
+            local_found = 0
 
-        # 再用 minnano-av 获取详细信息
         _raise_if_stop_requested()
-        res, msg = await get_minnano_info(actor_info, wiki_intro)
-        logs.append(msg)
-        if res:
-            minnano_found = 1
 
-        # db
-        if manager.config.use_database and not res and wiki_found == 0:
-            if "数据库补全" in overview and EmbyAction.ACTOR_INFO_MISS in emby_on:  # 已有数据库信息
-                db_exist = 0
-                logs.append(f"{actor_name}: 已有数据库信息")
-            else:
+        # 本地命中且简介非空：完全采用本地数据，跳过外部网络来源
+        if not (local_found and local_overview):
+            # 先尝试 wiki 获取简介
+            wiki_intro = ""
+            res_wiki, msg_wiki = await search_wiki(actor_info)
+            logs.append(msg_wiki)
+            if res_wiki is not None:
+                result_wiki, error_wiki = await get_detail(res_wiki, msg_wiki, actor_info)
                 _raise_if_stop_requested()
-                db_exist, msg = ActressDB.update_actor_info_from_db(actor_info)
-                logs.append(msg)
+                if result_wiki:
+                    wiki_intro = res_wiki.get("intro", "") if res_wiki else ""
+                    wiki_found = 1
+
+            # 再用 minnano-av 获取详细信息
+            _raise_if_stop_requested()
+            res, msg = await get_minnano_info(actor_info, wiki_intro)
+            logs.append(msg)
+            if res:
+                minnano_found = 1
+
+            # db
+            if manager.config.use_database and not res and wiki_found == 0:
+                if "数据库补全" in overview and EmbyAction.ACTOR_INFO_MISS in emby_on:
+                    db_exist = 0
+                    logs.append(f"{actor_name}: 已有数据库信息")
+                else:
+                    _raise_if_stop_requested()
+                    db_exist, msg = ActressDB.update_actor_info_from_db(actor_info)
+                    logs.append(msg)
+
         # summary
         summary = "\n    " + "\n".join(logs) if logs else ""
-        if minnano_found or db_exist or wiki_found:
+        local_applied = local_found and (local_overview or local_birth_set)
+        if minnano_found or db_exist or wiki_found or local_applied:
             headers = _build_jellyfin_headers() if _is_jellyfin_server() else None
             async with manager.acquire_computed() as computed:
                 res, error = await computed.async_client.post_text(
@@ -201,7 +237,7 @@ async def _process_actor_async(actor: dict, emby_on: list[EmbyAction]) -> tuple[
             _raise_if_stop_requested()
             if res is not None:
                 return (
-                    wiki_found + (db_exist << 1) + (minnano_found << 2),
+                    (8 if local_applied else 0) + wiki_found + (db_exist << 1) + (minnano_found << 2),
                     f"✅ {actor_name} 更新成功.{summary}\n主页: {actor_homepage}",
                 )
             else:

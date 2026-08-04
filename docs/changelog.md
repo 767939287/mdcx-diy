@@ -8,6 +8,7 @@
 - **演员数据库新增「出生日期」「简介」两列**：`bio_graphy` 解析出结构化出生日期（YYYY-MM-DD）与静态简介，剔除动态「N岁」年龄；老 7 列 xlsx 向后兼容
 - **智能合并写入**：匹配顺序 jp 精确 → 中文精确 → keyword 命中 → 未匹配新建；本地优先只补空缺、绝不覆盖已有数据；keyword 合并去重；tmdbid 冲突视为同一人并入别名而非新建
 - **数据库静态校验脚本**：`scripts/check_actor_db.py` 检查出厂 xlsx 的 jp 重复、keyword 脏数据/重复词、空字段、tmdbid 重复、出生日期格式，挂入 `uv run check`
+- **Emby 演员信息补全接入本地演员库（最高优先）**：自动补全 actor 信息时优先查询本地 `actor_database.xlsx`，命中即用本地「出生日期」填 PremiereDate/ProductionYear、本地「简介」填 Overview（换行转 `<br/>`），本地有简介则彻底跳过 wiki/minnano/数据库网络来源；仅本地简介缺失时才退回外部补齐，生日仍取本地。离线可用、降低外部依赖，返回统计新增 Local 计数
 
 ### 修复
 
