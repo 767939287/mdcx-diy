@@ -383,7 +383,7 @@ class EmbyActorManagerDialog(QDialog):
         grid.addLayout(btn_layout, 1, 0, 1, 4)
         help_label = QLabel(
             "使用说明：① 填写地址和密钥 → ② 连接/获取演员列表 → ③ 选择模式获取数据 → "
-            "④ 绿色行=待更新 → ⑤ 开始同步到 Emby。双击行可查看详情。"
+            "④ 绿色行=待更新 → ⑤ 开始同步到 Emby。双击行可查看当前头像/简介/出生日期/影片数等详情。"
         )
         help_label.setStyleSheet("color: #888888; font-size: 12px; padding: 2px 0;")
         grid.addWidget(help_label, 2, 0, 1, 4)

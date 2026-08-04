@@ -12128,7 +12128,7 @@ class Ui_MDCx(object):
                 "2. 点击「获取演员列表」，选择要管理的媒体库\n"
                 "3. 从下拉框选择获取模式，点击「获取数据」匹配头像和简介\n"
                 "4. 绿色行表示有更新，点击「开始全部更新同步」写入 Emby\n"
-                "5. 双击行可查看演员详情",
+                "5. 双击行可查看演员详情（当前头像、简介、出生日期、影片数等）",
             )
         )
         self.groupBox_16.setTitle(_translate("MDCx", "刮削目录"))
@@ -13441,7 +13441,7 @@ class Ui_MDCx(object):
                 "<h4>九、工具页面</h4>\n"
                 " <ul>\n"
                 " <li><b>演员库维护</b>：直接操作 actor_database.xlsx，四个按钮——补全中文名（按 TMDB ID 补翻译）、补全 LibreDMM 链接、同步别名（用 TMDB 最新别名刷新 keyword 列）、打开数据库（用默认程序打开 xlsx 供手工编辑）。网络请求自动并发，进度实时显示。</li>\n"
-                " <li><b>Emby 演员管理器</b>：填写 Emby 地址和 API 密钥后连接服务器，获取演员列表并按媒体库筛选；从 Gfriends / minnano-av / 本地文件夹匹配头像和简介，预览后批量同步到 Emby。</li>\n"
+                " <li><b>Emby 演员管理器</b>：填写 Emby 地址和 API 密钥后连接服务器，获取演员列表并按媒体库筛选；从 Gfriends / graphis.ne.jp / minnano-av / 本地文件夹匹配头像和背景图，从本地演员库 / 维基百科 / minnano-av / 数据库匹配简介和出生日期，预览后批量同步到 Emby。支持仅补缺失或强制重新获取。</li>\n"
                 " <li><b>单文件刮削</b>：指定某个文件的番号网址进行刮削，当存在相同番号时可手工指定。</li>\n"
                 " <li><b>封面补图</b>：输入番号（多个用空格分隔），自动刮削并补齐缺失的 poster.jpg 和 thumb.jpg，复用当前配置的站点优先级、命名、裁切、水印规则。</li>\n"
                 " <li><b>海报裁剪</b>：将图片裁剪为 2:3 标准封面图大小，支持加水印。</li>\n"
@@ -13465,12 +13465,12 @@ class Ui_MDCx(object):
                 "\n"
                 "<h4>十一、获取帮助</h4>\n"
                 "<ul>\n"
-                "<li>项目主页：https://github.com/cdlongbow/mdcx</li>\n"
-                "<li>Release 下载：https://github.com/cdlongbow/mdcx/releases</li>\n"
+"<li>项目主页：https://github.com/cdlongbow/mdcx-diy</li>\n"
+                 "<li>Release 下载：https://github.com/cdlongbow/mdcx-diy/releases</li>\n"
                 "<li>常见问题：docs/FAQ.md</li>\n"
-                "<li>问题反馈：GitHub Issues；交流：Telegram 群</li>\n"
-                "</ul>\n"
-                '<p style="color:#888888;">MDCx 由 cdlongbow 基于开源社区项目（Movie_Data_Capture / AVDC / MDCx  lineage）持续维护，仅供学习与技术交流。</p>\n'
+"<li>问题反馈：GitHub Issues；交流：Telegram 群</li>\n"
+                 "</ul>\n"
+                 '<p style="color:#888888;">MDCx-diy 由 cdlongbow 基于开源社区项目（sqzw-x/mdcx → Hazard804/mdcx → ZiPenOk/mdcx）持续维护，仅供学习与技术交流。向相关开发者表示敬意！</p>\n'
                 "</body></html>",
             )
         )
