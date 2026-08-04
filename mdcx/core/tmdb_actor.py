@@ -500,6 +500,14 @@ def _format_db_worksheet(ws) -> None:
         # 固定表头
         ws.freeze_panes = "B2"
 
+        # 确保表头齐全（兼容老 7 列库升级为 9 列，补空表头）
+        new_header_cols = []
+        for col in range(1, len(DB_HEADERS) + 1):
+            cell = ws.cell(row=1, column=col)
+            if not str(cell.value or "").strip():
+                cell.value = DB_HEADERS[col - 1]
+                new_header_cols.append(col)
+
         # 自动筛选
         last_col = get_column_letter(len(DB_HEADERS))
         max_row = ws.max_row if ws.max_row else 1
@@ -513,6 +521,14 @@ def _format_db_worksheet(ws) -> None:
             and first_header.fill.fgColor.rgb is not None
             and "F2F2F2" in str(first_header.fill.fgColor.rgb)
         )
+
+        if already_formatted and new_header_cols:
+            # 已格式化库又补了新列表头时，样式保持一致
+            for col in new_header_cols:
+                c = ws.cell(row=1, column=col)
+                c.fill = openpyxl.styles.PatternFill("solid", fgColor="F2F2F2")
+                c.font = openpyxl.styles.Font(bold=True, size=11)
+                c.alignment = openpyxl.styles.Alignment(horizontal="center", vertical="center", wrap_text=True)
 
         if not already_formatted:
             # 表头样式

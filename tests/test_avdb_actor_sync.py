@@ -258,6 +258,15 @@ def test_sync_supports_legacy_seven_column_db(_tmp_actor_db: Path, _avdb_xml: Pa
     assert rows[0][COL_BIRTH_DATE] is None or rows[0][COL_BIRTH_DATE] == ""
 
 
+def test_sync_upgrades_legacy_headers_to_nine_cols(_tmp_actor_db: Path, _avdb_xml: Path):
+    _write_db(_tmp_actor_db, [["阿部涼音", "", "", "", "", "", ""]], headers=DB_HEADERS[:7])
+    asyncio.run(sync_from_avdb("file", str(_avdb_xml)))
+    wb = load_workbook(_tmp_actor_db)
+    headers = [c.value for c in wb.active[1]]
+    wb.close()
+    assert headers == list(DB_HEADERS)
+
+
 def test_sync_local_file_missing(_tmp_actor_db: Path, tmp_path: Path):
     result = asyncio.run(sync_from_avdb("file", str(tmp_path / "none.xml")))
     assert result.failed
