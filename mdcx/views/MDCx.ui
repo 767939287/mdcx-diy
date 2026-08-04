@@ -20106,38 +20106,7 @@
                             <property name="frameShadow">
                               <enum>QFrame::Raised</enum>
                             </property>
-                            <widget class="QWidget" name="layoutWidget_30">
-                              <property name="geometry">
-                                <rect>
-                                  <x>140</x>
-                                  <y>10</y>
-                                  <width>511</width>
-                                  <height>32</height>
-                                </rect>
-                              </property>
-                              <layout class="QHBoxLayout" name="horizontalLayout_153">
-                                <item>
-                                  <widget class="QRadioButton" name="radioButton_actor_info_all_2">
-                                    <property name="minimumSize">
-                                      <size>
-                                        <width>0</width>
-                                        <height>30</height>
-                                      </size>
-                                    </property>
-                                    <property name="text">
-                                      <string>所有女优</string>
-                                    </property>
-                                  </widget>
-                                </item>
-                                <item>
-                                  <widget class="QRadioButton" name="radioButton_actor_info_miss_2">
-                                    <property name="text">
-                                      <string>仅缺少信息的女优</string>
-                                    </property>
-                                  </widget>
-                                </item>
-                              </layout>
-                            </widget>
+
                             <widget class="QLabel" name="label_431">
                               <property name="geometry">
                                 <rect>
@@ -20224,38 +20193,7 @@
                             <property name="frameShadow">
                               <enum>QFrame::Raised</enum>
                             </property>
-                            <widget class="QWidget" name="layoutWidget_38">
-                              <property name="geometry">
-                                <rect>
-                                  <x>140</x>
-                                  <y>10</y>
-                                  <width>511</width>
-                                  <height>32</height>
-                                </rect>
-                              </property>
-                              <layout class="QHBoxLayout" name="horizontalLayout_154">
-                                <item>
-                                  <widget class="QRadioButton" name="radioButton_actor_info_all_3">
-                                    <property name="minimumSize">
-                                      <size>
-                                        <width>0</width>
-                                        <height>30</height>
-                                      </size>
-                                    </property>
-                                    <property name="text">
-                                      <string>所有女优</string>
-                                    </property>
-                                  </widget>
-                                </item>
-                                <item>
-                                  <widget class="QRadioButton" name="radioButton_actor_info_miss_3">
-                                    <property name="text">
-                                      <string>仅缺少信息的女优</string>
-                                    </property>
-                                  </widget>
-                                </item>
-                              </layout>
-                            </widget>
+
                           </widget>
                         </item>
                         <item row="4" column="1">

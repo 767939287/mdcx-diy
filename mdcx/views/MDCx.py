@@ -560,7 +560,7 @@ class Ui_MDCx(object):
         self.scrollArea_10.setWidgetResizable(False)
         self.scrollArea_10.setObjectName("scrollArea_10")
         self.scrollAreaWidgetContents_gongju = QtWidgets.QWidget()
-        self.scrollAreaWidgetContents_gongju.setGeometry(QtCore.QRect(0, 0, 760, 1955))
+        self.scrollAreaWidgetContents_gongju.setGeometry(QtCore.QRect(0, 0, 760, 1995))
         self.scrollAreaWidgetContents_gongju.setAutoFillBackground(True)
         self.scrollAreaWidgetContents_gongju.setObjectName("scrollAreaWidgetContents_gongju")
         self.groupBox_7 = QtWidgets.QGroupBox(parent=self.scrollAreaWidgetContents_gongju)
@@ -929,7 +929,9 @@ class Ui_MDCx(object):
         self.label_actor_db_sync_source_hint.setObjectName("label_actor_db_sync_source_hint")
         self.lineEdit_actor_db_sync_value = QtWidgets.QLineEdit(parent=self.groupBox_actor_db_maintenance)
         self.lineEdit_actor_db_sync_value.setGeometry(QtCore.QRect(40, 272, 300, 30))
-        self.lineEdit_actor_db_sync_value.setStyleSheet("border: 1px solid rgba(0,0,0, 50);\nborder-radius: 15px;\n")
+        self.lineEdit_actor_db_sync_value.setStyleSheet(
+            "border: 1px solid rgba(0,0,0, 50);\n                      border-radius: 15px;\n"
+        )
         self.lineEdit_actor_db_sync_value.setObjectName("lineEdit_actor_db_sync_value")
         self.pushButton_actor_db_pick_xml = QtWidgets.QPushButton(parent=self.groupBox_actor_db_maintenance)
         self.pushButton_actor_db_pick_xml.setGeometry(QtCore.QRect(350, 272, 80, 30))
@@ -9589,19 +9591,6 @@ class Ui_MDCx(object):
         self.frame_8.setFrameShape(QtWidgets.QFrame.Shape.NoFrame)
         self.frame_8.setFrameShadow(QtWidgets.QFrame.Shadow.Raised)
         self.frame_8.setObjectName("frame_8")
-        self.layoutWidget_30 = QtWidgets.QWidget(parent=self.frame_8)
-        self.layoutWidget_30.setGeometry(QtCore.QRect(140, 10, 511, 32))
-        self.layoutWidget_30.setObjectName("layoutWidget_30")
-        self.horizontalLayout_153 = QtWidgets.QHBoxLayout(self.layoutWidget_30)
-        self.horizontalLayout_153.setContentsMargins(0, 0, 0, 0)
-        self.horizontalLayout_153.setObjectName("horizontalLayout_153")
-        self.radioButton_actor_info_all_2 = QtWidgets.QRadioButton(parent=self.layoutWidget_30)
-        self.radioButton_actor_info_all_2.setMinimumSize(QtCore.QSize(0, 30))
-        self.radioButton_actor_info_all_2.setObjectName("radioButton_actor_info_all_2")
-        self.horizontalLayout_153.addWidget(self.radioButton_actor_info_all_2)
-        self.radioButton_actor_info_miss_2 = QtWidgets.QRadioButton(parent=self.layoutWidget_30)
-        self.radioButton_actor_info_miss_2.setObjectName("radioButton_actor_info_miss_2")
-        self.horizontalLayout_153.addWidget(self.radioButton_actor_info_miss_2)
         self.label_431 = QtWidgets.QLabel(parent=self.frame_8)
         self.label_431.setGeometry(QtCore.QRect(0, 0, 130, 41))
         sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Policy.Fixed, QtWidgets.QSizePolicy.Policy.Fixed)
@@ -9649,19 +9638,6 @@ class Ui_MDCx(object):
         self.frame_9.setFrameShape(QtWidgets.QFrame.Shape.NoFrame)
         self.frame_9.setFrameShadow(QtWidgets.QFrame.Shadow.Raised)
         self.frame_9.setObjectName("frame_9")
-        self.layoutWidget_38 = QtWidgets.QWidget(parent=self.frame_9)
-        self.layoutWidget_38.setGeometry(QtCore.QRect(140, 10, 511, 32))
-        self.layoutWidget_38.setObjectName("layoutWidget_38")
-        self.horizontalLayout_154 = QtWidgets.QHBoxLayout(self.layoutWidget_38)
-        self.horizontalLayout_154.setContentsMargins(0, 0, 0, 0)
-        self.horizontalLayout_154.setObjectName("horizontalLayout_154")
-        self.radioButton_actor_info_all_3 = QtWidgets.QRadioButton(parent=self.layoutWidget_38)
-        self.radioButton_actor_info_all_3.setMinimumSize(QtCore.QSize(0, 30))
-        self.radioButton_actor_info_all_3.setObjectName("radioButton_actor_info_all_3")
-        self.horizontalLayout_154.addWidget(self.radioButton_actor_info_all_3)
-        self.radioButton_actor_info_miss_3 = QtWidgets.QRadioButton(parent=self.layoutWidget_38)
-        self.radioButton_actor_info_miss_3.setObjectName("radioButton_actor_info_miss_3")
-        self.horizontalLayout_154.addWidget(self.radioButton_actor_info_miss_3)
         self.gridLayout_14.addWidget(self.frame_9, 4, 0, 1, 1)
         self.horizontalLayout_1581 = QtWidgets.QHBoxLayout()
         self.horizontalLayout_1581.setObjectName("horizontalLayout_1581")
@@ -12078,28 +12054,18 @@ class Ui_MDCx(object):
             _translate("MDCx", "提示：补全结果将输出到日志页。所有按钮均防重入，运行中按钮禁用。")
         )
         self.label_actor_db_avdb_desc.setText(
-            _translate(
-                "MDCx",
-                "从 AVdb (Jav-Actors-Mapping) 同步演员映射，自动补齐中文名/别名/出生日期/简介。",
-            )
+            _translate("MDCx", "从 AVdb (Jav-Actors-Mapping) 同步演员映射，自动补齐中文名/别名/出生日期/简介。")
         )
         self.comboBox_actor_db_sync_source.setItemText(0, _translate("MDCx", "jsDelivr 加速（默认）"))
         self.comboBox_actor_db_sync_source.setItemText(1, _translate("MDCx", "GitHub 直连"))
         self.comboBox_actor_db_sync_source.setItemText(2, _translate("MDCx", "自定义下载地址"))
         self.comboBox_actor_db_sync_source.setItemText(3, _translate("MDCx", "本地 xml 文件"))
-        self.label_actor_db_sync_source_hint.setText(
-            _translate("MDCx", "通过 cdn.jsdelivr.net 拉取，最快")
-        )
-        self.lineEdit_actor_db_sync_value.setPlaceholderText(
-            _translate("MDCx", "自定义地址或本地 xml 路径")
-        )
+        self.label_actor_db_sync_source_hint.setText(_translate("MDCx", "通过 cdn.jsdelivr.net 拉取，最快"))
+        self.lineEdit_actor_db_sync_value.setPlaceholderText(_translate("MDCx", "自定义地址或本地 xml 路径"))
         self.pushButton_actor_db_pick_xml.setText(_translate("MDCx", "选择文件"))
         self.pushButton_actor_db_sync_start.setText(_translate("MDCx", "从 AVdb 同步"))
         self.label_actor_db_sync_note.setText(
-            _translate(
-                "MDCx",
-                "本地优先，只补空缺字段，不覆盖已有数据；tmdbid 冲突视为同一人并入别名。",
-            )
+            _translate("MDCx", "本地优先，只补空缺字段，不覆盖已有数据；tmdbid 冲突视为同一人并入别名。")
         )
         self.pushButton_actor_db_clean_male.setText(_translate("MDCx", "剔除男演员"))
         self.groupBox_cover_backfill.setTitle(
@@ -12128,7 +12094,7 @@ class Ui_MDCx(object):
                 "2. 点击「获取演员列表」，选择要管理的媒体库\n"
                 "3. 从下拉框选择获取模式，点击「获取数据」匹配头像和简介\n"
                 "4. 绿色行表示有更新，点击「开始全部更新同步」写入 Emby\n"
-                "5. 双击行可查看演员详情（当前头像、简介、出生日期、影片数等）",
+                "5. 双击行可查看演员详情",
             )
         )
         self.groupBox_16.setTitle(_translate("MDCx", "刮削目录"))
@@ -13127,12 +13093,8 @@ class Ui_MDCx(object):
         self.radioButton_actor_info_zh_cn.setText(_translate("MDCx", "中文简体"))
         self.radioButton_actor_info_zh_tw.setText(_translate("MDCx", "中文繁体"))
         self.radioButton_actor_info_ja.setText(_translate("MDCx", "日语"))
-        self.radioButton_actor_info_all_2.setText(_translate("MDCx", "所有女优"))
-        self.radioButton_actor_info_miss_2.setText(_translate("MDCx", "仅缺少信息的女优"))
         self.label_431.setText(_translate("MDCx", "演员信息数据库："))
         self.pushButton_select_actor_info_db.setText(_translate("MDCx", "选择文件"))
-        self.radioButton_actor_info_all_3.setText(_translate("MDCx", "所有女优"))
-        self.radioButton_actor_info_miss_3.setText(_translate("MDCx", "仅缺少信息的女优"))
         self.checkBox_actor_db.setText(_translate("MDCx", "使用数据库补全演员信息"))
         self.label_download_actor_db.setText(_translate("MDCx", "点击下载演员数据库"))
         self.label_291.setText(_translate("MDCx", "补全语言："))
@@ -13465,12 +13427,12 @@ class Ui_MDCx(object):
                 "\n"
                 "<h4>十一、获取帮助</h4>\n"
                 "<ul>\n"
-"<li>项目主页：https://github.com/cdlongbow/mdcx-diy</li>\n"
-                 "<li>Release 下载：https://github.com/cdlongbow/mdcx-diy/releases</li>\n"
+                "<li>项目主页：https://github.com/cdlongbow/mdcx-diy</li>\n"
+                "<li>Release 下载：https://github.com/cdlongbow/mdcx-diy/releases</li>\n"
                 "<li>常见问题：docs/FAQ.md</li>\n"
-"<li>问题反馈：GitHub Issues；交流：Telegram 群</li>\n"
-                 "</ul>\n"
-                 '<p style="color:#888888;">MDCx-diy 由 cdlongbow 基于开源社区项目（sqzw-x/mdcx → Hazard804/mdcx → ZiPenOk/mdcx）持续维护，仅供学习与技术交流。向相关开发者表示敬意！</p>\n'
+                "<li>问题反馈：GitHub Issues；交流：Telegram 群</li>\n"
+                "</ul>\n"
+                '<p style="color:#888888;">MDCx-diy 由 cdlongbow 基于开源社区项目（sqzw-x/mdcx → Hazard804/mdcx → ZiPenOk/mdcx）持续维护，仅供学习与技术交流。向相关开发者表示敬意！</p>\n'
                 "</body></html>",
             )
         )
