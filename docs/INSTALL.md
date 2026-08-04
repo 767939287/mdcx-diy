@@ -8,7 +8,7 @@
 
 ## 方法一：用 Release 包（推荐）
 
-去 [GitHub Releases](https://github.com/cdlongbow/mdcx/releases) 下载最新版：
+去 [GitHub Releases](https://github.com/cdlongbow/mdcx-diy/releases) 下载最新版：
 
 | 系统 | 下载什么 |
 |------|---------|
@@ -33,8 +33,8 @@ powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | ie
 curl -LsSf https://astral.sh/uv/install.sh | sh
 
 # 3. 下载代码
-git clone https://github.com/cdlongbow/mdcx.git
-cd mdcx
+git clone https://github.com/cdlongbow/mdcx-diy.git
+cd mdcx-diy
 
 # 4. 安装依赖
 uv sync --dev

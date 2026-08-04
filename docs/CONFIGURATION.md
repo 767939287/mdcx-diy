@@ -172,4 +172,4 @@
 
 默认配置文件在 `resources/config/default_config.json`。
 
-用户数据目录（演员数据库、Amazon ASIN 缓存等）在配置文件同目录的 `userdata/` 下。
+用户数据目录（演员数据库 `actor_database.xlsx`（含日文名/中文名/繁体名/别名/信息链接/TMDB ID/出生日期/简介共 9 列）、Amazon ASIN 缓存等）在配置文件同目录的 `userdata/` 下。

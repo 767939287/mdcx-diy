@@ -180,9 +180,9 @@ MDCx 支持的功能全景。只想快速上手的话，先看 [QUICKSTART.md](Q
 
 ## 八、Emby/Jellyfin 集成
 
-- **Emby 演员管理器**（工具页）：独立对话框，连接 Emby 服务器获取演员列表，表格展示头像/简介/背景图/影片数状态，支持按媒体库筛选
-- **多源头像匹配**：Gfriends 网络头像库 / minnano-av 爬虫 / 本地文件夹，自动匹配并上传
-- **多源信息匹配**：minnano-av 详细资料 / Wikipedia 百科 / 本地 SQLite 数据库，支持出生日期、出生地、标签等字段
+- **Emby 演员管理器**（工具页）：独立对话框，连接 Emby 服务器获取演员列表，表格展示头像/简介/背景图/影片数状态，支持按媒体库筛选，支持仅补缺失或强制重新获取
+- **多源头像匹配**：Gfriends 网络头像库 / graphis.ne.jp / minnano-av 爬虫 / 本地文件夹，自动匹配头像和背景图并上传
+- **多源信息匹配**：本地演员库 `actor_database.xlsx`（最高优先，离线可用）→ Wikipedia 百科 → minnano-av 详细资料 → 本地 SQLite 数据库，支持出生日期、出生地、标签等字段
 - **批量同步**：预览匹配结果后一键同步到 Emby 服务器
 - **演员信息补全**：向 Emby 服务器同步演员简介、头像、元数据；优先使用本地 `actor_database.xlsx` 已入库的简介与出生日期（离线回填 Overview/PremiereDate，换行转 `<br/>`），本地命中且简介存在时跳过 wiki/minnano 网络来源，仅本地简介缺失才退回外部补齐
 - **Kodi 演员 NFO**：生成 Kodi 兼容的演员头像文件
