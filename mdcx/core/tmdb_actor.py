@@ -327,11 +327,21 @@ async def _tmdb_request(client: Any, method: str, url: str, **kwargs) -> _TmdbRe
     status_code = 0
     try:
         if hasattr(client, "request"):
-            resp, err = await client.request(method, url, params=params)
-            if resp is None:
-                return None
-            status_code = int(resp.status_code)
-            return _TmdbResponse(status_code, resp.text)
+            result = await client.request(method, url, params=params)
+            # curl_cffi AsyncWebClient 返回 (resp, err)；aiohttp ClientSession 返回单 response
+            if isinstance(result, tuple):
+                result, _ = result
+                if result is None:
+                    return None
+            status_code = int(result.status_code if hasattr(result, "status_code") else result.status)
+            if hasattr(result, "text"):
+                if callable(result.text):  # aiohttp: text() 方法
+                    text = await result.text()
+                else:  # curl_cffi: text 属性
+                    text = result.text
+            else:
+                text = ""
+            return _TmdbResponse(status_code, text)
         elif hasattr(client, method.lower()):
             send = getattr(client, method.lower())
             resp = await send(url, params=params, allow_redirects=follow_redirects)
