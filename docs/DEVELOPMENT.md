@@ -185,13 +185,20 @@ ASIN 数据库（Excel），搜索到的 ASIN 与番号对应关系持久化，�
   uv run pytest tests/                          # 全部测试
   uv run pytest tests/ --tb=short -m "not network" -x  # 仅不联网测试
   ```
-- **覆盖**：tests/crawlers/ 爬虫测试、tests/core/ 核心测试、NFO 测试、配置测试等
-- **推送前自检**：`uv run check --skip-hook-install`（ruff format + ruff check + pytest）
+- **覆盖**：tests/crawlers/ 爬虫测试、tests/core/ 核心测试、NFO 测试、配置测试、`tests/test_ui_structure.py`（UI 结构）等
+- **UI 结构测试**（`tests/test_ui_structure.py`）：解析 `mdcx/views/MDCx.ui`，离线验证
+  - groupBox 同父容器内不重叠、无负间距、不超出滚动区高度
+  - 用户控件 objectName 唯一（重复控件是无用残留的信号）
+  - `MDCx.py` 与 `MDCx.ui` 同步：用 pyuic6 重编译 + ruff format 后与仓库版文本一致，防止只改 `.py` 不同步 `.ui` 或改 `.ui` 后忘重编译
+  - **规则**：改动 UI 一律先改 `MDCx.ui`，再运行
+    `/workspace/.venv/bin/python3 -m PyQt6.uic.pyuic mdcx/views/MDCx.ui -o mdcx/views/MDCx.py`
+    及 `uv run ruff format mdcx/views/MDCx.py`，不要手工改 `MDCx.py`
+- **推送前自检**：`uv run check --skip-hook-install`（ruff format + ruff check + mypy mdcx/ + pytest + check_actor_db）
 
 ## 代码规范
 
 - **格式化**：ruff（行宽 120，启用 isort/pyupgrade/flake8）
-- **类型检查**：pyright（部分文件豁免）、mypy
+- **类型检查**：mypy（全项目零 `disable_error_code`；`mdcx/controllers/main_window/init.py`、`load_config.py`、`views/`、`gen/` 等豁免）、pyright（部分文件豁免）
 - **Git 钩子**：pre-commit 安装 ruff check + ruff format
 - **检查和修复**：
   ```bash

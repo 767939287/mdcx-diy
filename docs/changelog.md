@@ -18,6 +18,16 @@
 
 - **工具页布局重叠**：增高「演员库维护」组后曾与下方 `groupBox_7` 重叠 110px，连锁下移下方 6 个分组并同步滚动容器高度
 - **漏加 UI 控件**：生成文件 `MDCx.py` 曾漏加「从 AVdb 同步」的提示 label，导致运行时不显示，已补齐
+- **设置页 groupBox 布局重叠**：全面检查所有 tab 发现 2 处历史遗留重叠——命名页 `groupBox_40`（字段命名规则）与 `groupBox_8`（视频命名规则）重叠 181px、下载页 `groupBox_34`（创建剧照副本）与 `groupBox_66`（显示剧照）重叠 21px。连锁下移受影响 groupBox 及下方所有兄弟，统一间距为 19px，同步滚动区高度
+- **重复且无效的补全范围单选按钮**：设置-演员页 `frame_8`/`frame_9` 中误放了 4 个与正确版本（无后缀）视觉重复的"所有女优/仅缺少信息"单选按钮，无代码接线、点击无效，已删除
+- **MDCx.py 与 MDCx.ui 文案漂移**：将手工维护的界面文案（Emby 演员管理器描述含 graphis、项目主页 `mdcx-diy` 链接、帮助尾注）回写 `MDCx.ui` 作为唯一权威源，重编译不再回退文案
+- **`validate_crawler_registry` 误报**：已废弃枚举值 `Website.AIRAV`（仅用于兼容旧配置、无爬虫）不再算作缺失爬虫
+- **网络诊断超时硬上限**：诊断单个站点超时从 5 秒硬上限改为使用用户配置的超时时间（#25）
+- **网络诊断路由列**：诊断结果新增"路由"列，显示每个站点实际走代理还是直连，便于排查代理配置问题（#26）
+- **全面代码审查安全修复**：
+  - `shell=True` 命令注入风险（`utils/file.py` 用 `explorer /select` 打开路径）改为参数数组调用
+  - 移除 11 处 `?api_key=` URL 查询参数暴露（已有 Authorization 头）
+  - 修复 5 处无声 `except`（加 traceback/日志输出），`warm_cache.py` 新增下载 URL 白名单校验（防供应链投毒）
 
 ### 工程质量
 
@@ -34,6 +44,8 @@
   - `emby_actor_manager` 的 `wiki_intro` 未初始化导致 `UnboundLocalError`
   - `cnmdb._run` 解引用 `None` 返回值补 `CrawlerException`
   - 回滚修复 `get_checkbox`/`get_radio_buttons` 默认参数被误删的回归（28 处单参调用会 `TypeError`）
+- **UI 结构自动化测试**：新增 `tests/test_ui_structure.py`（5 个测试）固化 UI 结构约束——groupBox 同父容器不重叠/无负间距/不超滚动区、用户控件 objectName 唯一、`MDCx.py` 与 `MDCx.ui` 重编译同步（防手工漂移）。自动纳入 `uv run check` 与 CI pytest
+- **`validate_crawler_registry` 测试**：新增 `test_validate_crawler_registry_no_missing`，固化"新增 Website 枚举必须注册爬虫"且废弃值 AIRAV 不得有爬虫
 
 ### 文档
 
