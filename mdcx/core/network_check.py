@@ -117,7 +117,7 @@ def _configured_or_default_url(site: Website, default_url: str) -> tuple[str, bo
 
 def _diagnostic_timeout() -> float:
     manager = _manager()
-    return max(min(float(manager.config.timeout or 5), 5.0), 2.0)
+    return max(float(manager.config.timeout or 5), 2.0)
 
 
 def _is_cloudflare_challenge(text: str) -> bool:
