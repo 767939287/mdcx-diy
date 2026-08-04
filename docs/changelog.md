@@ -4,28 +4,14 @@
 
 ### 功能
 
-- **Emby 演员管理器新增 graphis 头像和背景图**：匹配头像时新增 graphis.ne.jp 来源（位于 gfriends 之后、minnano 之前），同时下载 prof.jpg（头像）和 model.jpg（背景图），同步时一并上传到 Emby
-- **Emby 演员管理器接入本地演员库（最高优先）**：`search_actor_info` 优先查询本地 `actor_database.xlsx`，命中即用本地出生日期和简介回填，有简介则彻底跳过网络来源，与信息补全按钮行为一致
-- **Emby 演员管理器跳过逻辑精确化**：`_try_fetch_info` 不再仅靠 `has_overview` 布尔值跳过，改为重新拉取 Emby 当前 Overview 并检查是否为"无维基百科信息"占位符，占位符视为缺失重新获取
-
-### 工程质量
-
-- **清理死代码**：移除 `PreparePreviewThread` 中未使用的 `info_sources` 属性
-
-### 文档
-
-- **使用说明 tab 更新**：项目主页链接修复为 `mdcx-diy`，上游项目信息改为 `sqzw-x/mdcx → Hazard804/mdcx → ZiPenOk/mdcx`
-- **README / INSTALL / FEATURES / USER_GUIDE / CONFIGURATION**：修复 3 处仓库链接，补充 graphis 和本地演员库等新功能描述
-
-## v2.0.4 (2026-08-04)
-
-### 功能
-
 - **从 AVdb 同步演员映射**：演员库维护工具新增「从 AVdb 同步」按钮，消费社区维护的 `actor-mapping.xml`（li-peifeng/Jav-Actors-Mapping），一键补齐中文名/繁体名/别名/出生日期/简介。数据源四选一：jsDelivr 加速（默认）/ GitHub 直连 / 自定义下载地址 / 本地 xml 文件
 - **演员数据库新增「出生日期」「简介」两列**：`bio_graphy` 解析出结构化出生日期（YYYY-MM-DD）与静态简介，剔除动态「N岁」年龄；老 7 列 xlsx 向后兼容
 - **智能合并写入**：匹配顺序 jp 精确 → 中文精确 → keyword 命中 → 未匹配新建；本地优先只补空缺、绝不覆盖已有数据；keyword 合并去重；tmdbid 冲突视为同一人并入别名而非新建
 - **数据库静态校验脚本**：`scripts/check_actor_db.py` 检查出厂 xlsx 的 jp 重复、keyword 脏数据/重复词、空字段、tmdbid 重复、出生日期格式，挂入 `uv run check`
 - **Emby 演员信息补全接入本地演员库（最高优先）**：自动补全 actor 信息时优先查询本地 `actor_database.xlsx`，命中即用本地「出生日期」填 PremiereDate/ProductionYear、本地「简介」填 Overview（换行转 `<br/>`），本地有简介则彻底跳过 wiki/minnano/数据库网络来源；仅本地简介缺失时才退回外部补齐，生日仍取本地。离线可用、降低外部依赖，返回统计新增 Local 计数
+- **Emby 演员管理器新增 graphis 头像和背景图**：匹配头像时新增 graphis.ne.jp 来源（位于 gfriends 之后、minnano 之前），同时下载 prof.jpg（头像）和 model.jpg（背景图），同步时一并上传到 Emby
+- **Emby 演员管理器接入本地演员库（最高优先）**：`search_actor_info` 优先查询本地 `actor_database.xlsx`，命中即用本地出生日期和简介回填，有简介则彻底跳过网络来源，与信息补全按钮行为一致
+- **Emby 演员管理器跳过逻辑精确化**：`_try_fetch_info` 不再仅靠 `has_overview` 布尔值跳过，改为重新拉取 Emby 当前 Overview 并检查是否为"无维基百科信息"占位符，占位符视为缺失重新获取
 - **剔除男演员（TMDB gender 校验）**：`actor_database.xlsx` 数据来自 AVdb 映射，包含男优（加藤鷹、しみけん 等）。新增「剔除男演员」按钮（演员库维护组）：按 tmdbid 调 TMDB `/person/{id}` 取 gender，gender=2（男）的行删除，删除前备份到独立「男优备份」sheet；gender 0/1、请求失败、无 tmdbid 一律保留不误删。支持限量与手动停止。同时 `sync_from_avdb` 新增 `filter_male=True` 源头过滤——待新建条目校验性别，男优直接跳过不写入，本地已有 tmdbid 不重复请求
 
 ### 修复
@@ -35,8 +21,14 @@
 
 ### 工程质量
 
+- **清理死代码**：移除 `PreparePreviewThread` 中未使用的 `info_sources` 属性
 - **AVdb 解析独立模块**：`mdcx/utils/xml_avdb.py`（纯标准库）含解析、出生日期提取、年龄剔除、转义清洗，配套 22 个单元测试
 - **记忆文件更新**：`.monkeycode/MEMORY.md` 合并工具页 UI 改动注意点（连锁下移、手工核对生成控件、comboBox 内部件误报）
+
+### 文档
+
+- **使用说明 tab 更新**：项目主页链接修复为 `mdcx-diy`，上游项目信息改为 `sqzw-x/mdcx → Hazard804/mdcx → ZiPenOk/mdcx`
+- **README / INSTALL / FEATURES / USER_GUIDE / CONFIGURATION**：修复 3 处仓库链接，补充 graphis 和本地演员库等新功能描述
 
 ## v2.0.3 (2026-08-03)
 
