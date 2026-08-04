@@ -24,6 +24,16 @@
 - **清理死代码**：移除 `PreparePreviewThread` 中未使用的 `info_sources` 属性
 - **AVdb 解析独立模块**：`mdcx/utils/xml_avdb.py`（纯标准库）含解析、出生日期提取、年龄剔除、转义清洗，配套 22 个单元测试
 - **记忆文件更新**：`.monkeycode/MEMORY.md` 合并工具页 UI 改动注意点（连锁下移、手工核对生成控件、comboBox 内部件误报）
+- **mypy 严格化（三阶段，彻底移除 `disable_error_code`）**：`pyproject.toml` 中 19 项 `disable_error_code` 全部移除，全项目 mypy 零抑制通过（133 文件）。`scripts/check.py` 的 `check` 命令加入 `mypy mdcx/`，推送前自检覆盖类型检查。各阶段：
+  - 移除 `assignment`/`arg-type`/`return-value` 并修复 43 处类型错误（变量类型冲突、可选值未收窄等）
+  - 移除 `no-redef`/`misc`/`var-annotated`/`list-item`/`func-returns-value`/`attr-defined`/`method-assign`（循环变量复用、except 外 walrus 赋值、重复注解等）
+  - 移除 `override`/`call-arg`/`call-overload`/`union-attr`/`annotation-unchecked`/`import-untyped`：`BaseCrawler` 泛型化使 9 个爬虫类的具体 Context 匹配超类签名；`file_done_dic` 安全默认值用 `cast`；Qt 控件 None 断言收窄；`parse_fanza_resp` None 安全化
+- **顺带修复的类型检查暴露 bug**：
+  - `CrawlerDebugInfo.search_urls/detail_urls` 默认 `None` 改为空列表，消除潜在 `.append()` 崩溃
+  - wiki 简介获取 `res_wiki.get("intro")`（实为 URL 字符串）改为 `actor_info.overview`
+  - `emby_actor_manager` 的 `wiki_intro` 未初始化导致 `UnboundLocalError`
+  - `cnmdb._run` 解引用 `None` 返回值补 `CrawlerException`
+  - 回滚修复 `get_checkbox`/`get_radio_buttons` 默认参数被误删的回归（28 处单参调用会 `TypeError`）
 
 ### 文档
 
