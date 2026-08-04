@@ -171,3 +171,61 @@ def test_clean_idempotent(_tmp_actor_db: Path, monkeypatch):
     result = asyncio.run(actor_db_tool.clean_male_actors())
     assert result.removed_male == 0
     assert len(_read_rows(_tmp_actor_db)) == 1
+
+
+def _mock_male_list(monkeypatch, names: list[str]):
+    monkeypatch.setattr(actor_db_tool, "_load_male_actor_set", lambda: {n.casefold() for n in names})
+
+
+def test_clean_removes_male_by_list_without_tmdbid(_tmp_actor_db: Path, monkeypatch):
+    _write_db(
+        _tmp_actor_db,
+        [
+            ["吉村卓", "吉村卓", "", "", "", "", "", "", ""],
+            ["女优A", "女优A", "", "", "", "", "", "", ""],
+        ],
+    )
+    _mock_tmdb(monkeypatch, {})
+    _mock_male_list(monkeypatch, ["吉村卓"])
+    result = asyncio.run(actor_db_tool.clean_male_actors())
+    assert result.removed_male == 1
+    rows = _read_rows(_tmp_actor_db)
+    assert [r[COL_JP] for r in rows] == ["女优A"]
+    wb = load_workbook(_tmp_actor_db)
+    backup = list(wb["男优备份"].iter_rows(min_row=1, values_only=True))
+    wb.close()
+    assert [b[0] for b in backup] == ["吉村卓"]
+
+
+def test_clean_male_list_beats_tmdb_gender0(_tmp_actor_db: Path, monkeypatch):
+    _write_db(_tmp_actor_db, [["加藤鷹", "加藤鷹", "", "", "", 6001, "", "", ""]])
+    _mock_tmdb(monkeypatch, {6001: 0})  # TMDB 未标性别，但名单命中
+    _mock_male_list(monkeypatch, ["加藤鷹"])
+    result = asyncio.run(actor_db_tool.clean_male_actors())
+    assert result.removed_male == 1
+    assert len(_read_rows(_tmp_actor_db)) == 0
+
+
+def test_clean_male_list_only_name_checked(_tmp_actor_db: Path, monkeypatch):
+    _write_db(_tmp_actor_db, [["吉村卓", "吉村卓", "", "", "", 7001, "", "", ""]])
+    calls = _mock_tmdb(monkeypatch, {7001: 2})
+    _mock_male_list(monkeypatch, ["吉村卓"])
+    asyncio.run(actor_db_tool.clean_male_actors())
+    assert 7001 not in calls  # 名单命中后不应再请求 TMDB
+
+
+def test_sync_skips_male_by_list_without_tmdbid(_tmp_actor_db: Path, _avdb_xml: Path, monkeypatch):
+    _mock_male_list(monkeypatch, ["阿部純子"])
+    result = asyncio.run(actor_db_tool.sync_from_avdb("file", str(_avdb_xml)))
+    assert result.skipped_male == 1
+    assert result.created == 1
+    rows = _read_rows(_tmp_actor_db)
+    assert [r[COL_JP] for r in rows] == ["阿部涼音"]
+
+
+def test_sync_male_list_avoids_tmdb_request(_tmp_actor_db: Path, _avdb_xml: Path, monkeypatch):
+    _mock_male_list(monkeypatch, ["阿部純子"])
+    calls = _mock_tmdb(monkeypatch, {1417328: 2, 1417329: 1})
+    result = asyncio.run(actor_db_tool.sync_from_avdb("file", str(_avdb_xml)))
+    assert result.skipped_male == 1
+    assert 1417328 not in calls  # 名单命中，不应发起 TMDB gender 请求

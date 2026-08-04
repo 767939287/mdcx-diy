@@ -81,6 +81,43 @@ def _log_line(message: str) -> None:
     signal_qt.show_log_text(message)
 
 
+_male_actor_set: set[str] | None = None
+_male_actor_set_path: Path | None = None
+
+
+def _load_male_actor_set() -> set[str]:
+    """加载内置男优名单（resources/userdata/male_actors.txt），懒加载并缓存。
+
+    返回名单的 casefold 归一化集合；文件缺失/空时返回空集。
+    """
+    global _male_actor_set, _male_actor_set_path
+    try:
+        path = resources.r("userdata/male_actors.txt")
+    except AttributeError:
+        path = None
+    if _male_actor_set is not None and _male_actor_set_path == path:
+        return _male_actor_set
+    names: set[str] = set()
+    if path is not None:
+        try:
+            if path.exists():
+                names = {
+                    line.strip().casefold() for line in path.read_text(encoding="utf-8").splitlines() if line.strip()
+                }
+        except OSError:
+            pass
+    _male_actor_set = names
+    _male_actor_set_path = path
+    return names
+
+
+def is_male_actor(name: str) -> bool:
+    """按内置男优名单判断演员是否为男优（不依赖 TMDB，可命中无 tmdbid / gender=0 的男优）。"""
+    if not name or not name.strip():
+        return False
+    return name.strip().casefold() in _load_male_actor_set()
+
+
 async def collect_actors_from_nfo_dir(dir_path: Path) -> list[str]:
     """递归扫描 nfo 目录，解析 //actor/name 收集演员名并去重。"""
     if not await aiofiles.os.path.isdir(dir_path):
@@ -437,8 +474,10 @@ async def sync_from_avdb(source: str, value: str = "", *, filter_male: bool = Tr
       'url'       — 从 value 指定的任意下载地址拉取
       'file'      — 从 value 指定的本地 xml 文件导入
 
-    filter_male: True 时对「待新建且带 tmdb_id」的条目校验 TMDB gender，
-    gender=2 (男) 的条目不写入；TMDB 未配置/请求失败时不校验直接写入（不误删）。
+    filter_male: True 时对「待新建」条目做男优过滤：优先命中内置男优名单
+    (resources/userdata/male_actors.txt) 直接跳过；名单未命中且带 tmdb_id 的
+    再校验 TMDB gender，gender=2 (男) 的条目不写入；TMDB 未配置/请求失败时不
+    校验直接写入（不误删）。
 
     匹配顺序: tmdbid 冲突优先并入 -> jp 精确 -> zh_cn 精确 -> keyword 命中。
     本地已有值优先，仅填充空缺字段；tmdbid 冲突视为同一人并入别名。
@@ -493,12 +532,12 @@ async def sync_from_avdb(source: str, value: str = "", *, filter_male: bool = Tr
     _log_line(f" 🎬 [AVdb同步] 解析 {len(actors)} 条 AVdb 映射, 开始合并")
 
     # ---- 男优过滤配置（filter_male）----
+    # 内置名单过滤不依赖 TMDB，始终可用；TMDB gender 校验仅在配置了 API Key 时启用。
     tmdb_base_url = tmdb_api_key = ""
     if filter_male:
         tmdb_base_url, tmdb_api_key = _resolve_tmdb_config()
         if not tmdb_api_key:
-            _log_line(" ⚠️ [AVdb同步] 未配置 TMDB API Key，男优过滤已关闭")
-            filter_male = False
+            _log_line(" ⚠️ [AVdb同步] 未配置 TMDB API Key，仅使用内置名单过滤男优")
     tmdb_session: aiohttp.ClientSession | None = None
 
     async def _tmdb_client() -> aiohttp.ClientSession:
@@ -602,16 +641,23 @@ async def sync_from_avdb(source: str, value: str = "", *, filter_male: bool = Tr
 
                     # 3) 未匹配 -> 新建
                     if target_row is None:
-                        if filter_male and tmdb_key:
-                            try:
-                                c = await _tmdb_client()
-                                gender = await fetch_person_gender(int(tmdb_key), tmdb_base_url, tmdb_api_key, c)
-                                if gender == 2:
-                                    result.skipped_male += 1
-                                    _log_line(f"  🚫 [AVdb同步] 跳过男优: {entry_name} (tmdbid={tmdb_key})")
-                                    continue
-                            except Exception:
-                                pass
+                        if filter_male:
+                            # 优先按内置男优名单过滤（不依赖 TMDB，可命中无 tmdbid 的男优）
+                            if jp and is_male_actor(jp) or (not jp and zh_cn and is_male_actor(zh_cn)):
+                                result.skipped_male += 1
+                                _log_line(f"  🚫 [AVdb同步] 跳过男优: {entry_name} (名单命中)")
+                                continue
+                            # 名单未命中时，对带 tmdbid 的条目再校验 TMDB gender
+                            if tmdb_key:
+                                try:
+                                    c = await _tmdb_client()
+                                    gender = await fetch_person_gender(int(tmdb_key), tmdb_base_url, tmdb_api_key, c)
+                                    if gender == 2:
+                                        result.skipped_male += 1
+                                        _log_line(f"  🚫 [AVdb同步] 跳过男优: {entry_name} (tmdbid={tmdb_key})")
+                                        continue
+                                except Exception:
+                                    pass
                         tmdb_val = int(tmdb_key) if tmdb_key else ""
                         ws.append(
                             [jp, zh_cn, zh_tw, ",".join(_dedup_keywords(kw_set)), "", tmdb_val, "", birth_date, bio]
@@ -695,9 +741,11 @@ async def sync_from_avdb(source: str, value: str = "", *, filter_male: bool = Tr
 
 
 async def clean_male_actors(*, limit: int = 5000, concurrency: int = 5) -> CleanActorResult:
-    """存量清洗：按 tmdbid 校验 TMDB gender，删除 gender=2（男）的演员行。
+    """存量清洗：按内置男优名单 + TMDB gender 删除男优行。
 
-    - 仅校验含 tmdbid 的行；gender 1/0、请求失败、404、无 tmdbid 一律保留。
+    - 优先按内置男优名单 (resources/userdata/male_actors.txt) 命中判定，无 tmdbid
+      的男优行也能删除。
+    - 名单未命中的含 tmdbid 行再校验 TMDB gender；gender 1/0、请求失败、404 保留。
     - 删除前将男优行追加备份到独立「男优备份」sheet。
     - 支持 limit 限量与手动停止（signal.stop / Flags.stop_requested）。
     """
@@ -729,11 +777,17 @@ async def clean_male_actors(*, limit: int = 5000, concurrency: int = 5) -> Clean
                 wb.create_sheet(backup_name)
             backup_ws = wb[backup_name]
 
-            # 收集含 tmdbid 的行（仅前置扫描，不修改）
+            # 收集行（仅前置扫描，不修改）。含 tmdbid 的行进入 TMDB 校验；
+            # 无 tmdbid 的行若命中内置男优名单同样标记为男优。
             candidate_rows: list[tuple[int, int]] = []
+            name_male_rows: set[int] = set()
             for row_idx, row in enumerate(ws.iter_rows(min_row=2, values_only=True), start=2):
                 if _is_stop_requested():
                     break
+                name = str(row[COL_JP] or row[COL_ZH_CN] or "").strip()
+                if name and is_male_actor(name):
+                    name_male_rows.add(row_idx)
+                    continue
                 if len(row) > COL_TMDBID:
                     tmdb_val = str(row[COL_TMDBID] or "").strip()
                     if tmdb_val.isdigit():
@@ -741,8 +795,17 @@ async def clean_male_actors(*, limit: int = 5000, concurrency: int = 5) -> Clean
             if limit and len(candidate_rows) > limit:
                 candidate_rows = candidate_rows[:limit]
                 _log_line(f" ℹ️ [剔除男演员] 本次限量处理前 {limit} 条，可再次运行继续")
+            if name_male_rows:
+                _log_line(f" 🎬 [剔除男演员] 名单命中男优 {len(name_male_rows)} 人，将直接删除")
             if not candidate_rows:
-                _log_line(" ✅ [剔除男演员] 没有需要校验的 tmdbid 行")
+                _log_line(" ✅ [剔除男演员] 没有需要 TMDB 校验的 tmdbid 行")
+                result.removed_male = len(name_male_rows)
+                if name_male_rows:
+                    for row_idx in sorted(name_male_rows, reverse=True):
+                        backup_ws.append([c.value for c in ws[row_idx]])
+                        ws.delete_rows(row_idx)
+                    _format_db_worksheet(ws)
+                    wb.save(db_path)
                 wb.close()
                 return result
 
@@ -801,19 +864,20 @@ async def clean_male_actors(*, limit: int = 5000, concurrency: int = 5) -> Clean
                         _log_line(f"  📊 [剔除男演员] 进度: {completed}/{total}")
 
             # 阶段二：串行删除（降序删除避免行号漂移），删除前备份
+            all_male_rows = male_row_indexes | name_male_rows
             if _is_stop_requested():
                 _log_line(" ⛔️ [剔除男演员] 已手动停止，未执行删除")
             else:
-                for row_idx in sorted(male_row_indexes, reverse=True):
+                for row_idx in sorted(all_male_rows, reverse=True):
                     if _is_stop_requested():
                         _log_line(" ⛔️ [剔除男演员] 删除阶段被停止，已处理部分")
                         break
                     backup_ws.append([c.value for c in ws[row_idx]])
                     ws.delete_rows(row_idx)
-                result.removed_male = len(male_row_indexes)
+                result.removed_male = len(all_male_rows)
 
-            result.checked = len(candidate_rows)
-            result.kept = total - len(male_row_indexes)
+            result.checked = len(candidate_rows) + len(name_male_rows)
+            result.kept = result.checked - len(all_male_rows)
 
             _format_db_worksheet(ws)
             wb.save(db_path)
