@@ -212,7 +212,7 @@ class PreparePreviewThread(QThread):
                     result = loop.run_until_complete(from_graphis(actor, self.cache_dir))
                 finally:
                     loop.close()
-                if result:
+                if isinstance(result, tuple):
                     avatar_path, backdrop_path = result
                     actor.new_image_path = avatar_path
                     actor.need_update_image = True
