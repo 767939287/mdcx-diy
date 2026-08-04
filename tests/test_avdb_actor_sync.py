@@ -2,10 +2,19 @@ import asyncio
 from pathlib import Path
 
 import pytest
-from openpyxl import load_workbook
+from openpyxl import Workbook, load_workbook
 
-from mdcx.config.resources import COL_BIO, COL_BIRTH_DATE, DB_HEADERS
+from mdcx.config.resources import (
+    COL_BIO,
+    COL_BIRTH_DATE,
+    COL_JP,
+    COL_KEYWORD,
+    COL_TMDBID,
+    COL_ZH_CN,
+    DB_HEADERS,
+)
 from mdcx.core import tmdb_actor
+from mdcx.tools.actor_db_tool import sync_from_avdb
 from mdcx.utils.xml_avdb import (
     clean_actor_value,
     extract_birth_date,
@@ -147,3 +156,140 @@ def test_clean_actor_value_removes_control_and_backslash_escapes():
 def test_clean_actor_value_trim():
     assert clean_actor_value("  三上悠亚  ") == "三上悠亚"
     assert clean_actor_value("") == ""
+
+
+def _write_db(path: Path, rows, headers=DB_HEADERS):
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "演员数据库"
+    for col, header in enumerate(headers, 1):
+        ws.cell(row=1, column=col, value=header)
+    for i, row in enumerate(rows, 2):
+        for j, val in enumerate(row, 1):
+            ws.cell(row=i, column=j, value=val)
+    wb.save(path)
+    wb.close()
+
+
+def _read_rows(path: Path):
+    wb = load_workbook(path)
+    ws = wb.active
+    rows = list(ws.iter_rows(min_row=2, values_only=True))
+    wb.close()
+    return rows
+
+
+@pytest.fixture
+def _avdb_xml(tmp_path: Path):
+    path = tmp_path / "mapping.xml"
+    path.write_text(_SAMPLE_XML, encoding="utf-8")
+    return path
+
+
+def test_sync_from_file_creates_rows(_tmp_actor_db: Path, _avdb_xml: Path):
+    result = asyncio.run(sync_from_avdb("file", str(_avdb_xml)))
+    assert result.downloaded is False
+    assert result.parsed == 3
+    assert result.created == 3
+    assert result.filled == 0
+    assert result.merged == 0
+    assert result.failed == []
+
+    rows = _read_rows(_tmp_actor_db)
+    assert len(rows) == 3
+    first = rows[0]
+    assert first[COL_JP] == "阿部純子"
+    assert first[COL_BIRTH_DATE] == "1993-06-05"
+    assert "身高158cm" in str(first[COL_BIO])
+    assert first[COL_TMDBID] == 1417328
+
+
+def test_sync_keeps_existing_local_values(_tmp_actor_db: Path, _avdb_xml: Path):
+    _write_db(_tmp_actor_db, [["阿部純子", "本地名", "", "", "", "", "", "", ""]])
+    result = asyncio.run(sync_from_avdb("file", str(_avdb_xml)))
+    assert result.created == 2
+    assert result.filled == 1
+
+    rows = _read_rows(_tmp_actor_db)
+    assert len(rows) == 3
+    first = rows[0]
+    assert first[COL_ZH_CN] == "本地名"
+    assert first[COL_BIRTH_DATE] == "1993-06-05"
+
+
+def test_sync_merges_keywords_and_sorts(_tmp_actor_db: Path, _avdb_xml: Path):
+    _write_db(_tmp_actor_db, [["阿部涼音", "", "", "旧别名", "", "", "", "", ""]])
+    result = asyncio.run(sync_from_avdb("file", str(_avdb_xml)))
+    assert result.filled == 1
+
+    rows = _read_rows(_tmp_actor_db)
+    keywords = [k for k in str(rows[0][COL_KEYWORD]).split(",") if k]
+    assert keywords == sorted(["旧别名", "阿部涼音"])
+
+
+def test_sync_tmdbid_conflict_merges_into_existing_row(_tmp_actor_db: Path, _avdb_xml: Path):
+    _write_db(_tmp_actor_db, [["演员A", "演员A", "", "", "", 1417328, "", "", ""]])
+    result = asyncio.run(sync_from_avdb("file", str(_avdb_xml)))
+    assert result.merged == 1
+    assert result.created == 2
+
+    rows = _read_rows(_tmp_actor_db)
+    assert len(rows) == 3
+    assert rows[0][COL_JP] == "演员A"
+    keywords = [k for k in str(rows[0][COL_KEYWORD]).split(",") if k]
+    assert "阿部純子" in keywords
+
+
+def test_sync_supports_legacy_seven_column_db(_tmp_actor_db: Path, _avdb_xml: Path):
+    _write_db(_tmp_actor_db, [["阿部涼音", "", "", "旧别名", "", "", ""]], headers=DB_HEADERS[:7])
+    result = asyncio.run(sync_from_avdb("file", str(_avdb_xml)))
+    assert result.failed == []
+    rows = _read_rows(_tmp_actor_db)
+    assert len(rows) == 3
+    assert rows[0][COL_BIRTH_DATE] is None or rows[0][COL_BIRTH_DATE] == ""
+
+
+def test_sync_local_file_missing(_tmp_actor_db: Path, tmp_path: Path):
+    result = asyncio.run(sync_from_avdb("file", str(tmp_path / "none.xml")))
+    assert result.failed
+    assert result.parsed == 0
+
+
+def test_sync_invalid_xml(_tmp_actor_db: Path, tmp_path: Path):
+    bad = tmp_path / "bad.xml"
+    bad.write_text("<actor-mapping><actor>", encoding="utf-8")
+    result = asyncio.run(sync_from_avdb("file", str(bad)))
+    assert result.failed
+    assert result.parsed == 0
+
+
+def test_sync_unknown_source_uses_github_url(_tmp_actor_db: Path, tmp_path: Path, monkeypatch):
+    _write_db(_tmp_actor_db, [["阿部涼音", "", "", "", "", "", "", "", ""]])
+    captured = {}
+
+    async def _fake_download(url, file_path, folder):
+        captured["url"] = url
+        file_path.write_text(_SAMPLE_XML, encoding="utf-8")
+        return True
+
+    monkeypatch.setattr("mdcx.base.web.download_file_with_filepath", _fake_download)
+    result = asyncio.run(sync_from_avdb("github"))
+    assert result.downloaded is True
+    assert result.failed == []
+    assert captured["url"].startswith("https://raw.githubusercontent.com")
+
+
+def test_sync_jsdelivr_source_uses_mirror_url(_tmp_actor_db: Path, monkeypatch):
+    _write_db(_tmp_actor_db, [["阿部涼音", "", "", "", "", "", "", "", ""]])
+    captured = {}
+
+    async def _fake_download(url, file_path, folder):
+        captured["url"] = url
+        file_path.write_text(_SAMPLE_XML, encoding="utf-8")
+        return True
+
+    monkeypatch.setattr("mdcx.base.web.download_file_with_filepath", _fake_download)
+    result = asyncio.run(sync_from_avdb("jsdelivr"))
+    assert result.downloaded is True
+    assert result.failed == []
+    assert "cdn.jsdelivr.net" in captured["url"]

@@ -19,6 +19,7 @@ COMMANDS = [
         "not network",
         "-x",
     ],
+    [sys.executable, "-m", "scripts.check_actor_db"],
 ]
 
 

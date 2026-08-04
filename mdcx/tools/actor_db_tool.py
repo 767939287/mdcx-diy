@@ -14,8 +14,19 @@ import aiohttp
 import zhconv
 from lxml import etree
 
-from ..config.resources import DB_HEADERS, resources
+from ..config.resources import (
+    COL_BIO,
+    COL_BIRTH_DATE,
+    COL_JP,
+    COL_KEYWORD,
+    COL_TMDBID,
+    COL_ZH_CN,
+    COL_ZH_TW,
+    DB_HEADERS,
+    resources,
+)
 from ..core.tmdb_actor import (
+    _actor_db_write_lock,
     _fetch_person_translations,
     _format_db_worksheet,
     _get_db_path,
@@ -36,6 +47,20 @@ class ActorDbToolResult:
     translated: int = 0
     linked: int = 0
     skipped: int = 0
+    failed: list[tuple[str, str]] = field(default_factory=list)
+
+
+AVDB_MAPPING_URL = "https://raw.githubusercontent.com/li-peifeng/Jav-Actors-Mapping/main/actor-mapping.xml"
+AVDB_MAPPING_URL_MIRROR = "https://cdn.jsdelivr.net/gh/li-peifeng/Jav-Actors-Mapping@main/actor-mapping.xml"
+
+
+@dataclass
+class ActorDbSyncResult:
+    downloaded: bool = False
+    parsed: int = 0
+    created: int = 0
+    filled: int = 0
+    merged: int = 0
     failed: list[tuple[str, str]] = field(default_factory=list)
 
 
@@ -383,3 +408,233 @@ async def run_actor_db_xlsx(mode: str) -> None:
         _ACTOR_DB_ROW_INDEX.clear()
 
     _log_line(f" ✅ 完成: 翻译补全={translated_count}, 链接补全={linked_count} ({get_used_time(start_time)}s)")
+
+
+def _entry_name_of_row(ws, row_idx: int) -> str:
+    for col in (COL_JP, COL_ZH_CN, COL_KEYWORD):
+        val = str(ws.cell(row=row_idx, column=col + 1).value or "").strip()
+        if val:
+            return val.split(",")[0]
+    return f"第{row_idx}行"
+
+
+async def sync_from_avdb(source: str, value: str = "") -> ActorDbSyncResult:
+    """从 AVdb (li-peifeng/Jav-Actors-Mapping) 同步演员映射到本地数据库。
+
+    source:
+      'jsdelivr'  — 通过 cdn.jsdelivr.net 拉取 (默认)
+      'github'    — 通过 GitHub raw 拉取
+      'url'       — 从 value 指定的任意下载地址拉取
+      'file'      — 从 value 指定的本地 xml 文件导入
+
+    匹配顺序: tmdbid 冲突优先并入 -> jp 精确 -> zh_cn 精确 -> keyword 命中。
+    本地已有值优先，仅填充空缺字段；tmdbid 冲突视为同一人并入别名。
+    """
+    from ..base.web import download_file_with_filepath
+    from ..utils.xml_avdb import clean_actor_value, parse_avdb_actor_mapping
+
+    result = ActorDbSyncResult()
+    db_path = _get_db_path()
+
+    # ---- 数据源: 读取 XML 文本 ----
+    xml_text = ""
+    if source == "file":
+        file_path = Path(value)
+        if not file_path.exists():
+            _log_line(f" ❌ [AVdb同步] 本地文件不存在: {file_path}")
+            result.failed.append(("<本地文件>", f"文件不存在: {file_path}"))
+            return result
+        async with aiofiles.open(file_path, encoding="utf-8") as f:
+            xml_text = await f.read()
+    else:
+        url = value or (AVDB_MAPPING_URL_MIRROR if source == "jsdelivr" else AVDB_MAPPING_URL)
+        cache_dir = db_path.parent / "cache"
+        cache_dir.mkdir(parents=True, exist_ok=True)
+        tmp_file = cache_dir / "avdb_actor_mapping.xml"
+        if not await download_file_with_filepath(url, tmp_file, cache_dir):
+            _log_line(f" ❌ [AVdb同步] 下载失败: {url}")
+            result.failed.append((url, "网络下载失败"))
+            return result
+        result.downloaded = True
+        async with aiofiles.open(tmp_file, encoding="utf-8") as f:
+            xml_text = await f.read()
+
+    try:
+        actors = parse_avdb_actor_mapping(xml_text)
+    except ValueError as exc:
+        _log_line(f" ❌ [AVdb同步] XML 解析失败: {exc}")
+        result.failed.append(("<xml>", str(exc)))
+        return result
+    result.parsed = len(actors)
+    _log_line(f" 🎬 [AVdb同步] 解析 {len(actors)} 条 AVdb 映射, 开始合并")
+
+    # ---- 加载/创建 数据库 ----
+    import openpyxl as _xl
+
+    try:
+        async with _actor_db_write_lock:
+            db_path.parent.mkdir(parents=True, exist_ok=True)
+            if db_path.exists():
+                wb = _xl.load_workbook(db_path)
+            else:
+                wb = _xl.Workbook()
+                ws = wb.active
+                ws.title = "演员数据库"
+                for col, header in enumerate(DB_HEADERS, 1):
+                    cell = ws.cell(row=1, column=col, value=header)
+                    cell.font = _xl.styles.Font(bold=True)
+                    cell.fill = _xl.styles.PatternFill("solid", fgColor="C0C0C0")
+                    cell.alignment = _xl.styles.Alignment(horizontal="center")
+            ws = wb.active
+            if ws.title != "演员数据库":
+                ws.title = "演员数据库"
+
+            # ---- 构建本地索引 ----
+            jp_index: dict[str, int] = {}
+            zh_cn_index: dict[str, int] = {}
+            keyword_index: dict[str, int] = {}
+            tmdb_index: dict[str, int] = {}
+            for row_idx, row in enumerate(ws.iter_rows(min_row=2, max_col=len(DB_HEADERS), values_only=True), start=2):
+                if row is None:
+                    continue
+
+                def _cell(values, col_idx):
+                    return str(values[col_idx] or "").strip() if len(values) > col_idx else ""
+
+                jp_val = _cell(row, COL_JP)
+                zh_val = _cell(row, COL_ZH_CN)
+                kw_val = _cell(row, COL_KEYWORD)
+                tmdb_val = _cell(row, COL_TMDBID)
+                if jp_val:
+                    jp_index.setdefault(jp_val.casefold(), row_idx)
+                if zh_val:
+                    zh_cn_index.setdefault(zh_val.casefold(), row_idx)
+                for k in [k.strip() for k in kw_val.split(",") if k.strip()]:
+                    keyword_index.setdefault(k.casefold(), row_idx)
+                if tmdb_val:
+                    tmdb_index.setdefault(tmdb_val, row_idx)
+
+            total = len(actors)
+            progress_interval = max(1, total // 10)  # 每 10% 输出一次进度
+
+            for n, actor in enumerate(actors, 1):
+                try:
+                    jp = clean_actor_value(actor.jp)
+                    zh_cn = clean_actor_value(actor.zh_cn)
+                    zh_tw = clean_actor_value(actor.zh_tw)
+                    keyword = clean_actor_value(actor.keyword)
+                    tmdb_id = clean_actor_value(actor.tmdb_id)
+                    birth_date = clean_actor_value(actor.birth_date)
+                    bio = clean_actor_value(actor.bio)
+
+                    kw_list = [k.strip() for k in keyword.split(",") if k.strip()]
+                    kw_set = set(kw_list)
+                    entry_name = jp or zh_cn or (kw_list[0] if kw_list else "<无名字段>")
+                    if not jp and not zh_cn and not kw_list:
+                        continue
+
+                    def _norm_tmdb(raw: str) -> str:
+                        return raw if raw.isdigit() else ""
+
+                    tmdb_key = _norm_tmdb(tmdb_id)
+
+                    # 1) tmdbid 冲突优先并入
+                    target_row = None
+                    is_tmdb_conflict = False
+                    if tmdb_key:
+                        conflict_row = tmdb_index.get(tmdb_key)
+                        if conflict_row is not None:
+                            target_row = conflict_row
+                            is_tmdb_conflict = True
+
+                    # 2) jp -> zh_cn -> keyword 文本匹配
+                    if target_row is None:
+                        candidate = None
+                        if jp:
+                            candidate = jp_index.get(jp.casefold())
+                        if candidate is None and zh_cn:
+                            candidate = zh_cn_index.get(zh_cn.casefold())
+                        if candidate is None:
+                            for k in kw_list:
+                                candidate = keyword_index.get(k.casefold())
+                                if candidate is not None:
+                                    break
+                        target_row = candidate
+
+                    # 3) 未匹配 -> 新建
+                    if target_row is None:
+                        tmdb_val = int(tmdb_key) if tmdb_key else ""
+                        ws.append([jp, zh_cn, zh_tw, ",".join(sorted(kw_set)), "", tmdb_val, "", birth_date, bio])
+                        new_idx = ws.max_row
+                        if jp:
+                            jp_index.setdefault(jp.casefold(), new_idx)
+                        if zh_cn:
+                            zh_cn_index.setdefault(zh_cn.casefold(), new_idx)
+                        for k in kw_set:
+                            keyword_index.setdefault(k.casefold(), new_idx)
+                        if tmdb_key:
+                            tmdb_index.setdefault(tmdb_key, new_idx)
+                        result.created += 1
+                        continue
+
+                    # 4) 命中 -> 只填空缺值，不覆盖本地
+                    def _fill(row_idx: int, col_idx: int, new_val: str) -> None:
+                        if not new_val:
+                            return
+                        existing = str(ws.cell(row=row_idx, column=col_idx + 1).value or "").strip()
+                        if not existing:
+                            ws.cell(row=row_idx, column=col_idx + 1, value=new_val)
+
+                    _fill(target_row, COL_JP, jp)
+                    _fill(target_row, COL_ZH_CN, zh_cn)
+                    _fill(target_row, COL_ZH_TW, zh_tw)
+                    _fill(target_row, COL_BIRTH_DATE, birth_date)
+                    _fill(target_row, COL_BIO, bio)
+                    if tmdb_key:
+                        existing_tmdb = str(ws.cell(row=target_row, column=COL_TMDBID + 1).value or "").strip()
+                        if not existing_tmdb:
+                            ws.cell(row=target_row, column=COL_TMDBID + 1, value=int(tmdb_key))
+
+                    existing_kw = str(ws.cell(row=target_row, column=COL_KEYWORD + 1).value or "").strip()
+                    existing_set = {k.strip() for k in existing_kw.split(",") if k.strip()}
+                    before = len(existing_set)
+                    existing_set |= kw_set
+                    if len(existing_set) > before:
+                        ws.cell(row=target_row, column=COL_KEYWORD + 1, value=",".join(sorted(existing_set)))
+
+                    if is_tmdb_conflict:
+                        result.merged += 1
+                        _log_line(
+                            f"  🔀 [AVdb同步] tmdbid={tmdb_key} 冲突: {entry_name} 并入 {_entry_name_of_row(ws, target_row)}"
+                        )
+                    else:
+                        result.filled += 1
+
+                    if n % progress_interval == 0 or n == total:
+                        _log_line(f"  📊 [AVdb同步] 进度 {n}/{total}")
+                except Exception as e:
+                    result.failed.append((actor.jp or actor.zh_cn or "<未知>", str(e)))
+                    _log_line(f"  ❌ [AVdb同步] {actor.jp or actor.zh_cn or '<未知>'} 处理失败: {e}")
+
+            _format_db_worksheet(ws)
+            wb.save(db_path)
+            wb.close()
+    except Exception as e:
+        result.failed.append(("<落盘>", str(e)))
+        _log_line(f" ❌ [AVdb同步] 写入数据库失败: {e}")
+        return result
+
+    try:
+        resources.reload_actor_db()
+        from mdcx.core.tmdb_actor import _ACTOR_DB_ROW_INDEX, _ACTOR_DB_ROW_INDEX_LOCK
+
+        with _ACTOR_DB_ROW_INDEX_LOCK:
+            _ACTOR_DB_ROW_INDEX.clear()
+    except Exception as e:
+        _log_line(f" ⚠️ [AVdb同步] 重载内存缓存失败: {e}")
+
+    _log_line(
+        f" 🎬 [AVdb同步] 完成: 解析 {result.parsed}, 新建 {result.created}, 补齐 {result.filled}, "
+        f"冲突合并 {result.merged}, 失败 {len(result.failed)}"
+    )
+    return result

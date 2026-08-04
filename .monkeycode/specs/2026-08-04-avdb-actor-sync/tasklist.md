@@ -19,21 +19,21 @@
   - [x] 3.2 `update_actor_db_row` 追加 `birth_date`/`bio` 可写参数（默认 None，仅本地为空时填充，保持「已有值不覆盖」语义）
   - [x] 3.3 `_format_db_worksheet` 列宽计算由 `len(DB_HEADERS)` 驱动，自动适配 9 列（caps 补 8/9 列）
 
-- [ ] 4. 扩展 `mdcx/tools/actor_db_tool.py` 新增 `sync_from_avdb`
-  - [ ] 4.1 定义 `ActorDbSyncResult`（downloaded/parsed/created/filled/merged/failed）
-  - [ ] 4.2 数据源分发：`source="file"` 读本地；`"jsdelivr"/"github"` 用内置 URL（jsDelivr 为默认）；`"url"` 用传入地址；下载复用 `download_file_with_filepath`
-  - [ ] 4.3 合并逻辑：jp 精确 → zh_cn 精确 → keyword 命中（大小写不敏感）→ 未匹配新建；本地优先只填空缺；keyword 合并去重
-  - [ ] 4.4 tmdbid 冲突：冲突条目不新建，keyword/bio/出生日期并入已占用该 tmdbid 的本地条目
-  - [ ] 4.5 bio_graphy 解析 + `clean_actor_value` 清洗接入全部写入路径
-  - [ ] 4.6 写库串行化复用 `_actor_db_write_lock`，落盘 `_flush_wb` + `resources.reload_actor_db()`
-  - [ ] 4.7 日志页输出汇总（新建/补齐/冲突合并/失败）
-  - [ ] 4.8 单元测试：合并匹配（jp/zh_cn/keyword/新建）、本地不覆盖、tmdbid 冲突并入、老 7 列文件兼容
+- [x] 4. 扩展 `mdcx/tools/actor_db_tool.py` 新增 `sync_from_avdb`
+  - [x] 4.1 定义 `ActorDbSyncResult`（downloaded/parsed/created/filled/merged/failed）
+  - [x] 4.2 数据源分发：`source="file"` 读本地；`"jsdelivr"/"github"` 用内置 URL（jsDelivr 为默认）；`"url"` 用传入地址；下载复用 `download_file_with_filepath`
+  - [x] 4.3 合并逻辑：jp 精确 → zh_cn 精确 → keyword 命中（大小写不敏感）→ 未匹配新建；本地优先只填空缺；keyword 合并去重
+  - [x] 4.4 tmdbid 冲突：冲突条目不新建，keyword/bio/出生日期并入已占用该 tmdbid 的本地条目
+  - [x] 4.5 bio_graphy 解析 + `clean_actor_value` 清洗接入全部写入路径
+  - [x] 4.6 写库串行化复用 `_actor_db_write_lock`，落盘 `_flush_wb` + `resources.reload_actor_db()`
+  - [x] 4.7 日志页输出汇总（新建/补齐/冲突合并/失败）
+  - [x] 4.8 单元测试：合并匹配（jp/zh_cn/keyword/新建）、本地不覆盖、tmdbid 冲突并入、老 7 列文件兼容
 
 ## 阶段二：静态校验
 
-- [ ] 5. 新增 `scripts/check_actor_db.py`
-  - [ ] 5.1 检查项：同 jp 名重复、keyword 首尾/连续逗号与重复词、zh_cn/zh_tw/jp 空字段、tmdbid 重复、出生日期列格式
-  - [ ] 5.2 挂入 `uv run check`（本地数据把关）
+- [x] 5. 新增 `scripts/check_actor_db.py`
+  - [x] 5.1 检查项：同 jp 名重复、keyword 首尾/连续逗号与重复词、zh_cn/zh_tw/jp 空字段、tmdbid 重复、出生日期列格式
+  - [x] 5.2 挂入 `uv run check`（本地数据把关）
 
 ## 阶段三：UI 与信号接线
 
