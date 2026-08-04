@@ -1307,6 +1307,38 @@ async def _fetch_person_translations(pid: int, base_url: str, api_key: str, clie
     return result
 
 
+# ============= TMDB person 性别查询 =============
+
+_PERSON_GENDER_CACHE: dict[int, int] = {}
+
+
+async def fetch_person_gender(pid: int, base_url: str, api_key: str, client: Any) -> int | None:
+    """从 TMDB person detail 获取演员性别。
+
+    返回 gender (0=未标注 / 1=女 / 2=男)；请求失败、404 或未知返回 None。
+    """
+    cached = _PERSON_GENDER_CACHE.get(pid)
+    if cached is not None:
+        return cached
+
+    try:
+        detail_url = f"{base_url}/3/person/{pid}"
+        resp = await _tmdb_request(client, "GET", detail_url, params={"api_key": api_key, "language": "zh-CN"})
+        if resp is None or resp.status_code != 200:
+            return None
+        try:
+            data = resp.json()
+        except (json.JSONDecodeError, ValueError):
+            return None
+        gender = data.get("gender")
+        if isinstance(gender, int) and gender in (0, 1, 2):
+            _PERSON_GENDER_CACHE[pid] = gender
+            return gender
+        return None
+    except Exception:
+        return None
+
+
 # ============= LibreDMM 链接查询 =============
 
 

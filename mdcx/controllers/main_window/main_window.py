@@ -146,6 +146,7 @@ class MyMAinWindow(QMainWindow):
     pushButton_actor_db_link = pyqtSignal(str)
     pushButton_actor_db_sync_aliases = pyqtSignal(str)
     pushButton_actor_db_sync_start = pyqtSignal(str)
+    pushButton_actor_db_clean_male = pyqtSignal(str)
     actor_db_finished = pyqtSignal()
     label_show_version = pyqtSignal(str)
 
@@ -2587,6 +2588,11 @@ class MyMAinWindow(QMainWindow):
 
         pushButton_actor_db_sync_start_clicked(self)
 
+    def pushButton_actor_db_clean_male_clicked(self):
+        from .tool_handlers import pushButton_actor_db_clean_male_clicked
+
+        pushButton_actor_db_clean_male_clicked(self)
+
     def pushButton_actor_db_pick_xml_clicked(self):
         from .tool_handlers import pushButton_actor_db_pick_xml_clicked
 
@@ -2662,16 +2668,43 @@ class MyMAinWindow(QMainWindow):
 
         executor.submit(run())
 
+    def _run_actor_db_clean_male(self) -> None:
+        """运行「剔除男演员」存量清洗（按 tmdbid 校验 TMDB gender，删除男优）。"""
+        from mdcx.tools.actor_db_tool import clean_male_actors
+
+        btn = self.Ui.pushButton_actor_db_clean_male
+        if not btn.isEnabled():
+            return
+
+        btn.setEnabled(False)
+        self.pushButton_actor_db_clean_male.emit("清洗中...")
+
+        async def run():
+            try:
+                await clean_male_actors()
+            except Exception as e:
+                signal_qt.show_log_text(f"🔴 剔除男演员异常: {e}")
+                import traceback as tb
+
+                signal_qt.show_log_text(tb.format_exc())
+            finally:
+                # 线程安全：仅发信号，由主线程槽恢复按钮状态
+                self.actor_db_finished.emit()
+
+        executor.submit(run())
+
     def _on_actor_db_finished(self) -> None:
         """主线程恢复演员库维护按钮状态（由 actor_db_finished 信号触发）。"""
         self.Ui.pushButton_actor_db_translate.setEnabled(True)
         self.Ui.pushButton_actor_db_link.setEnabled(True)
         self.Ui.pushButton_actor_db_sync_aliases.setEnabled(True)
         self.Ui.pushButton_actor_db_sync_start.setEnabled(True)
+        self.Ui.pushButton_actor_db_clean_male.setEnabled(True)
         self.pushButton_actor_db_translate.emit("补全中文名")
         self.pushButton_actor_db_link.emit("补全 LibreDMM 链接")
         self.pushButton_actor_db_sync_aliases.emit("同步别名")
         self.pushButton_actor_db_sync_start.emit("从 AVdb 同步")
+        self.pushButton_actor_db_clean_male.emit("剔除男演员")
 
     # region 设置页
     # region 选择目录

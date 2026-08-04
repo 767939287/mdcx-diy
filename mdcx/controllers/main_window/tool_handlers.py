@@ -296,3 +296,9 @@ def pushButton_actor_db_sync_start_clicked(self):
     )
     signal_qt.show_log_text(f"🎬 从 {source_name} 同步 AVdb 演员映射... ({url})")
     self._run_actor_db_sync()
+
+
+def pushButton_actor_db_clean_male_clicked(self):
+    self.pushButton_show_log_clicked()
+    signal_qt.show_log_text("🎬 开始剔除男演员（按 tmdbid 校验 TMDB gender，删除男优）...")
+    self._run_actor_db_clean_male()

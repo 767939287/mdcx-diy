@@ -165,7 +165,7 @@ MDCx 支持的功能全景。只想快速上手的话，先看 [QUICKSTART.md](Q
 - **自动补全**：通过 TMDB API 查询演员 ID 和多语言名称
 - **数据来源**：TMDB、Wikidata、Gfriends、graphis.ne.jp、AVdb（Jav-Actors-Mapping）
 - **反向查询**：已知中文名找日文名，或反过来
-- **演员库维护工具**（工具页）：直接操作 `actor_database.xlsx`，五个独立按钮——补全中文名（按已有 TMDB ID 补中英繁体翻译）、补全 LibreDMM 链接（补信息链接）、同步别名（用 TMDB 最新 also_known_as 刷新 keyword 列）、从 AVdb 同步（消费社区 `actor-mapping.xml` 补齐中文名/别名/出生日期/简介，数据源可选 jsDelivr 加速 / GitHub / 自定义地址 / 本地文件，匹配 jp→中文→keyword，本地优先只补空缺、tmdbid 冲突并入、写前转义清洗）、打开演员数据库（用系统默认程序打开 xlsx 供查看与手工编辑）。网络请求采用滑动窗口并发（TMDB 并发 5 / LibreDMM 并发 2），日志实时显示在 GUI 日志页。无需输入演员名单或选择 nfo 目录
+- **演员库维护工具**（工具页）：直接操作 `actor_database.xlsx`，六个独立按钮——补全中文名（按已有 TMDB ID 补中英繁体翻译）、补全 LibreDMM 链接（补信息链接）、同步别名（用 TMDB 最新 also_known_as 刷新 keyword 列）、从 AVdb 同步（消费社区 `actor-mapping.xml` 补齐中文名/别名/出生日期/简介，数据源可选 jsDelivr 加速 / GitHub / 自定义地址 / 本地文件，匹配 jp→中文→keyword，本地优先只补空缺、tmdbid 冲突并入、写前转义清洗、filter_male 源头过滤男优）、剔除男演员（按 tmdbid 校验 TMDB gender 删除男优，删前备份到「男优备份」sheet，支持限量/可中断，gender 0/1/未知一律保留）、打开演员数据库（用系统默认程序打开 xlsx 供查看与手工编辑）。网络请求采用滑动窗口并发（TMDB 并发 5 / LibreDMM 并发 2），日志实时显示在 GUI 日志页。无需输入演员名单或选择 nfo 目录
 
 ## 七、文件命名系统
 

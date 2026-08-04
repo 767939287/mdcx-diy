@@ -1585,7 +1585,7 @@
                   <x>0</x>
                   <y>0</y>
                   <width>760</width>
-                  <height>1955</height>
+                  <height>1995</height>
                 </rect>
               </property>
               <property name="autoFillBackground">
@@ -1595,7 +1595,7 @@
                 <property name="geometry">
                   <rect>
                     <x>30</x>
-                    <y>480</y>
+                    <y>520</y>
                     <width>701</width>
                     <height>271</height>
                   </rect>
@@ -1728,7 +1728,7 @@
                 <property name="geometry">
                   <rect>
                     <x>30</x>
-                    <y>771</y>
+                    <y>811</y>
                     <width>701</width>
                     <height>141</height>
                   </rect>
@@ -1776,7 +1776,7 @@
                 <property name="geometry">
                   <rect>
                     <x>30</x>
-                    <y>1674</y>
+                    <y>1714</y>
                     <width>701</width>
                     <height>241</height>
                   </rect>
@@ -1949,7 +1949,7 @@
                 <property name="geometry">
                   <rect>
                     <x>30</x>
-                    <y>1483</y>
+                    <y>1523</y>
                     <width>701</width>
                     <height>171</height>
                   </rect>
@@ -2025,7 +2025,7 @@
                 <property name="geometry">
                   <rect>
                     <x>30</x>
-                    <y>1152</y>
+                    <y>1192</y>
                     <width>701</width>
                     <height>311</height>
                   </rect>
@@ -2303,7 +2303,7 @@
                     <x>30</x>
                     <y>130</y>
                     <width>701</width>
-                    <height>330</height>
+                    <height>370</height>
                   </rect>
                 </property>
                 <property name="title">
@@ -2591,12 +2591,25 @@
                     <bool>true</bool>
                   </property>
                 </widget>
+                <widget class="QPushButton" name="pushButton_actor_db_clean_male">
+                  <property name="geometry">
+                    <rect>
+                      <x>40</x>
+                      <y>336</y>
+                      <width>200</width>
+                      <height>30</height>
+                    </rect>
+                  </property>
+                  <property name="text">
+                    <string>剔除男演员</string>
+                  </property>
+                </widget>
               </widget>
               <widget class="QGroupBox" name="groupBox_cover_backfill">
                 <property name="geometry">
                   <rect>
                     <x>30</x>
-                    <y>932</y>
+                    <y>972</y>
                     <width>701</width>
                     <height>200</height>
                   </rect>

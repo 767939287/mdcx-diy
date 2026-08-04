@@ -34,6 +34,7 @@ from ..core.tmdb_actor import (
     _normalize_translation,
     _resolve_tmdb_config,
     fetch_libredmm_link,
+    fetch_person_gender,
     search_actor_db_reverse,
     update_actor_db_row,
 )
@@ -61,6 +62,15 @@ class ActorDbSyncResult:
     created: int = 0
     filled: int = 0
     merged: int = 0
+    skipped_male: int = 0
+    failed: list[tuple[str, str]] = field(default_factory=list)
+
+
+@dataclass
+class CleanActorResult:
+    checked: int = 0
+    removed_male: int = 0
+    kept: int = 0
     failed: list[tuple[str, str]] = field(default_factory=list)
 
 
@@ -418,7 +428,7 @@ def _entry_name_of_row(ws, row_idx: int) -> str:
     return f"第{row_idx}行"
 
 
-async def sync_from_avdb(source: str, value: str = "") -> ActorDbSyncResult:
+async def sync_from_avdb(source: str, value: str = "", *, filter_male: bool = True) -> ActorDbSyncResult:
     """从 AVdb (li-peifeng/Jav-Actors-Mapping) 同步演员映射到本地数据库。
 
     source:
@@ -426,6 +436,9 @@ async def sync_from_avdb(source: str, value: str = "") -> ActorDbSyncResult:
       'github'    — 通过 GitHub raw 拉取
       'url'       — 从 value 指定的任意下载地址拉取
       'file'      — 从 value 指定的本地 xml 文件导入
+
+    filter_male: True 时对「待新建且带 tmdb_id」的条目校验 TMDB gender，
+    gender=2 (男) 的条目不写入；TMDB 未配置/请求失败时不校验直接写入（不误删）。
 
     匹配顺序: tmdbid 冲突优先并入 -> jp 精确 -> zh_cn 精确 -> keyword 命中。
     本地已有值优先，仅填充空缺字段；tmdbid 冲突视为同一人并入别名。
@@ -478,6 +491,21 @@ async def sync_from_avdb(source: str, value: str = "") -> ActorDbSyncResult:
         return result
     result.parsed = len(actors)
     _log_line(f" 🎬 [AVdb同步] 解析 {len(actors)} 条 AVdb 映射, 开始合并")
+
+    # ---- 男优过滤配置（filter_male）----
+    tmdb_base_url = tmdb_api_key = ""
+    if filter_male:
+        tmdb_base_url, tmdb_api_key = _resolve_tmdb_config()
+        if not tmdb_api_key:
+            _log_line(" ⚠️ [AVdb同步] 未配置 TMDB API Key，男优过滤已关闭")
+            filter_male = False
+    tmdb_session: aiohttp.ClientSession | None = None
+
+    async def _tmdb_client() -> aiohttp.ClientSession:
+        nonlocal tmdb_session
+        if tmdb_session is None:
+            tmdb_session = aiohttp.ClientSession()
+        return tmdb_session
 
     # ---- 加载/创建 数据库 ----
     import openpyxl as _xl
@@ -574,6 +602,16 @@ async def sync_from_avdb(source: str, value: str = "") -> ActorDbSyncResult:
 
                     # 3) 未匹配 -> 新建
                     if target_row is None:
+                        if filter_male and tmdb_key:
+                            try:
+                                c = await _tmdb_client()
+                                gender = await fetch_person_gender(int(tmdb_key), tmdb_base_url, tmdb_api_key, c)
+                                if gender == 2:
+                                    result.skipped_male += 1
+                                    _log_line(f"  🚫 [AVdb同步] 跳过男优: {entry_name} (tmdbid={tmdb_key})")
+                                    continue
+                            except Exception:
+                                pass
                         tmdb_val = int(tmdb_key) if tmdb_key else ""
                         ws.append(
                             [jp, zh_cn, zh_tw, ",".join(_dedup_keywords(kw_set)), "", tmdb_val, "", birth_date, bio]
@@ -636,6 +674,9 @@ async def sync_from_avdb(source: str, value: str = "") -> ActorDbSyncResult:
         result.failed.append(("<落盘>", str(e)))
         _log_line(f" ❌ [AVdb同步] 写入数据库失败: {e}")
         return result
+    finally:
+        if tmdb_session is not None:
+            await tmdb_session.close()
 
     try:
         resources.reload_actor_db()
@@ -648,6 +689,149 @@ async def sync_from_avdb(source: str, value: str = "") -> ActorDbSyncResult:
 
     _log_line(
         f" 🎬 [AVdb同步] 完成: 解析 {result.parsed}, 新建 {result.created}, 补齐 {result.filled}, "
-        f"冲突合并 {result.merged}, 失败 {len(result.failed)}"
+        f"冲突合并 {result.merged}, 跳过男优 {result.skipped_male}, 失败 {len(result.failed)}"
+    )
+    return result
+
+
+async def clean_male_actors(*, limit: int = 5000, concurrency: int = 5) -> CleanActorResult:
+    """存量清洗：按 tmdbid 校验 TMDB gender，删除 gender=2（男）的演员行。
+
+    - 仅校验含 tmdbid 的行；gender 1/0、请求失败、404、无 tmdbid 一律保留。
+    - 删除前将男优行追加备份到独立「男优备份」sheet。
+    - 支持 limit 限量与手动停止（signal.stop / Flags.stop_requested）。
+    """
+    from ..core.tmdb_actor import _ACTOR_DB_ROW_INDEX, _ACTOR_DB_ROW_INDEX_LOCK, _format_db_worksheet
+    from ..models.flags import Flags
+    from ..signals import signal
+
+    def _is_stop_requested() -> bool:
+        return signal.stop or Flags.stop_requested
+
+    import openpyxl as _xl
+
+    result = CleanActorResult()
+    db_path = _get_db_path()
+    base_url, tmdb_api_key = _resolve_tmdb_config()
+    if not tmdb_api_key:
+        _log_line(" ❌ [剔除男演员] 未配置 TMDB API Key，无法校验性别")
+        return result
+    if not db_path.exists():
+        _log_line(" ❌ [剔除男演员] actor_database.xlsx 不存在")
+        return result
+
+    try:
+        async with _actor_db_write_lock:
+            wb = _xl.load_workbook(db_path)
+            ws = wb.active
+            backup_name = "男优备份"
+            if backup_name not in wb.sheetnames:
+                wb.create_sheet(backup_name)
+            backup_ws = wb[backup_name]
+
+            # 收集含 tmdbid 的行（仅前置扫描，不修改）
+            candidate_rows: list[tuple[int, int]] = []
+            for row_idx, row in enumerate(ws.iter_rows(min_row=2, values_only=True), start=2):
+                if _is_stop_requested():
+                    break
+                if len(row) > COL_TMDBID:
+                    tmdb_val = str(row[COL_TMDBID] or "").strip()
+                    if tmdb_val.isdigit():
+                        candidate_rows.append((row_idx, int(tmdb_val)))
+            if limit and len(candidate_rows) > limit:
+                candidate_rows = candidate_rows[:limit]
+                _log_line(f" ℹ️ [剔除男演员] 本次限量处理前 {limit} 条，可再次运行继续")
+            if not candidate_rows:
+                _log_line(" ✅ [剔除男演员] 没有需要校验的 tmdbid 行")
+                wb.close()
+                return result
+
+            _log_line(f" 🎬 [剔除男演员] 开始校验 {len(candidate_rows)} 个 tmdbid (并发 {concurrency})")
+
+            # 阶段一：并发校验 gender，收集需删除的行
+            male_row_indexes: set[int] = set()
+            kept_indexes: set[int] = set()
+            async with aiohttp.ClientSession() as client:
+                task_iter = iter(enumerate(candidate_rows, 1))
+                running_tasks: set[asyncio.Task[None]] = set()
+
+                async def _check_one(seq, row_idx, tmdbid):
+                    try:
+                        gender = await fetch_person_gender(tmdbid, base_url, tmdb_api_key, client)
+                        if gender == 2:
+                            male_row_indexes.add(row_idx)
+                        else:
+                            kept_indexes.add(row_idx)
+                    except Exception:
+                        kept_indexes.add(row_idx)
+                        result.failed.append((str(tmdbid), "校验失败"))
+
+                def _submit_next() -> bool:
+                    try:
+                        _, (row_idx, tmdbid) = next(task_iter)
+                    except StopIteration:
+                        return False
+                    task = asyncio.create_task(_check_one(0, row_idx, tmdbid))
+                    running_tasks.add(task)
+                    return True
+
+                for _ in range(min(concurrency, len(candidate_rows))):
+                    _submit_next()
+
+                total = len(candidate_rows)
+                completed = 0
+                progress_interval = max(1, total // 10)
+                while running_tasks:
+                    if _is_stop_requested():
+                        for t in running_tasks:
+                            t.cancel()
+                    done, pending = await asyncio.wait(running_tasks, return_when=asyncio.FIRST_COMPLETED)
+                    running_tasks = set(pending)
+                    for _ in range(len(done)):
+                        _submit_next()
+                    for done_task in done:
+                        completed += 1
+                        try:
+                            done_task.result()
+                        except asyncio.CancelledError:
+                            pass
+                        except Exception as e:
+                            _log_line(f"  🔴 [剔除男演员] 子任务异常: {e}")
+                    if completed % progress_interval == 0 or completed == total:
+                        _log_line(f"  📊 [剔除男演员] 进度: {completed}/{total}")
+
+            # 阶段二：串行删除（降序删除避免行号漂移），删除前备份
+            if _is_stop_requested():
+                _log_line(" ⛔️ [剔除男演员] 已手动停止，未执行删除")
+            else:
+                for row_idx in sorted(male_row_indexes, reverse=True):
+                    if _is_stop_requested():
+                        _log_line(" ⛔️ [剔除男演员] 删除阶段被停止，已处理部分")
+                        break
+                    backup_ws.append([c.value for c in ws[row_idx]])
+                    ws.delete_rows(row_idx)
+                result.removed_male = len(male_row_indexes)
+
+            result.checked = len(candidate_rows)
+            result.kept = total - len(male_row_indexes)
+
+            _format_db_worksheet(ws)
+            wb.save(db_path)
+            wb.close()
+    except Exception as e:
+        result.failed.append(("<落盘>", str(e)))
+        _log_line(f" ❌ [剔除男演员] 失败: {e}")
+        return result
+
+    try:
+        resources.reload_actor_db()
+        with _ACTOR_DB_ROW_INDEX_LOCK:
+            _ACTOR_DB_ROW_INDEX.clear()
+    except Exception as e:
+        _log_line(f" ⚠️ [剔除男演员] 重载内存缓存失败: {e}")
+
+    _log_line(
+        f" ✅ [剔除男演员] 完成: 校验 {result.checked}, 删除男优 {result.removed_male}, "
+        f"保留 {result.kept}, 失败 {len(result.failed)}"
     )
     return result
