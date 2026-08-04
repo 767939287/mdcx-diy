@@ -642,8 +642,9 @@ async def sync_from_avdb(source: str, value: str = "", *, filter_male: bool = Tr
                     # 3) 未匹配 -> 新建
                     if target_row is None:
                         if filter_male:
-                            # 优先按内置男优名单过滤（不依赖 TMDB，可命中无 tmdbid 的男优）
-                            if jp and is_male_actor(jp) or (not jp and zh_cn and is_male_actor(zh_cn)):
+                            # 优先按内置男优名单过滤（不依赖 TMDB，可命中无 tmdbid 的男优）；
+                            # jp / zh_cn 任一命中即判定男优
+                            if (jp and is_male_actor(jp)) or (zh_cn and is_male_actor(zh_cn)):
                                 result.skipped_male += 1
                                 _log_line(f"  🚫 [AVdb同步] 跳过男优: {entry_name} (名单命中)")
                                 continue
@@ -762,8 +763,7 @@ async def clean_male_actors(*, limit: int = 5000, concurrency: int = 5) -> Clean
     db_path = _get_db_path()
     base_url, tmdb_api_key = _resolve_tmdb_config()
     if not tmdb_api_key:
-        _log_line(" ❌ [剔除男演员] 未配置 TMDB API Key，无法校验性别")
-        return result
+        _log_line(" ℹ️ [剔除男演员] 未配置 TMDB API Key，仅按内置名单清理男优")
     if not db_path.exists():
         _log_line(" ❌ [剔除男演员] actor_database.xlsx 不存在")
         return result
@@ -792,6 +792,9 @@ async def clean_male_actors(*, limit: int = 5000, concurrency: int = 5) -> Clean
                     tmdb_val = str(row[COL_TMDBID] or "").strip()
                     if tmdb_val.isdigit():
                         candidate_rows.append((row_idx, int(tmdb_val)))
+            if not tmdb_api_key:
+                # 未配置 TMDB key：不校验 gender，所有含 tmdbid 行保留
+                candidate_rows.clear()
             if limit and len(candidate_rows) > limit:
                 candidate_rows = candidate_rows[:limit]
                 _log_line(f" ℹ️ [剔除男演员] 本次限量处理前 {limit} 条，可再次运行继续")
@@ -799,7 +802,9 @@ async def clean_male_actors(*, limit: int = 5000, concurrency: int = 5) -> Clean
                 _log_line(f" 🎬 [剔除男演员] 名单命中男优 {len(name_male_rows)} 人，将直接删除")
             if not candidate_rows:
                 _log_line(" ✅ [剔除男演员] 没有需要 TMDB 校验的 tmdbid 行")
+                result.checked = len(name_male_rows)
                 result.removed_male = len(name_male_rows)
+                result.kept = 0
                 if name_male_rows:
                     for row_idx in sorted(name_male_rows, reverse=True):
                         backup_ws.append([c.value for c in ws[row_idx]])

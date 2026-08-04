@@ -152,6 +152,22 @@ def test_clean_no_tmdb_key_noop(_tmp_actor_db: Path, monkeypatch):
     assert len(_read_rows(_tmp_actor_db)) == 1
 
 
+def test_clean_male_list_works_without_tmdb_key(_tmp_actor_db: Path, monkeypatch):
+    _write_db(
+        _tmp_actor_db,
+        [
+            ["吉村卓", "吉村卓", "", "", "", "", "", "", ""],
+            ["女优A", "女优A", "", "", "", "", "", "", ""],
+        ],
+    )
+    monkeypatch.setattr(actor_db_tool, "_resolve_tmdb_config", lambda: ("", ""))
+    _mock_male_list(monkeypatch, ["吉村卓"])
+    result = asyncio.run(actor_db_tool.clean_male_actors())
+    assert result.removed_male == 1
+    rows = _read_rows(_tmp_actor_db)
+    assert [r[COL_JP] for r in rows] == ["女优A"]
+
+
 def test_clean_limit_applies(_tmp_actor_db: Path, monkeypatch):
     _write_db(
         _tmp_actor_db,
