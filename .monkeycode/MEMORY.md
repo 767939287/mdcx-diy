@@ -1,33 +1,15 @@
 # 用户指令记忆
 
-本文件记录了用户的指令、偏好和教导，用于在未来的交互中提供参考。
+本文件记录用户的指令、偏好和教导，用于未来交互参考。
 
 ## 格式
 
-### 用户指令条目
-用户指令条目应遵循以下格式：
-
-[用户指令摘要]
-- Date: [YYYY-MM-DD]
-- Context: [提及的场景或时间]
-- Instructions:
-  - [用户教导或指示的内容，逐行描述]
-
-### 项目知识条目
-Agent 在任务执行过程中发现的条目应遵循以下格式：
-
-[项目知识摘要]
-- Date: [YYYY-MM-DD]
-- Context: Agent 在执行 [具体任务描述] 时发现
-- Category: [运维部署|构建方法|测试方法|排错调试|工作流协作|环境配置]
-- Instructions:
-  - [具体的知识点，逐行描述]
+- **用户指令条目**：`[摘要]` / `- Date` / `- Context` / `- Instructions: 逐行`
+- **项目知识条目**：同用户指令 + `- Category: [运维部署|构建方法|测试方法|排错调试|工作流协作|环境配置]`
 
 ## 去重策略
-- 添加新条目前，检查是否存在相似或相同的指令
-- 若发现重复，跳过新条目或与已有条目合并
-- 合并时，更新上下文或日期信息
-- 这有助于避免冗余条目，保持记忆文件整洁
+
+添加前先查重；重复则合并（更新 Context/Date），保持文件精简。
 
 ## 条目
 
@@ -59,13 +41,12 @@ Agent 在任务执行过程中发现的条目应遵循以下格式：
 
 [环境 Python 版本升级到 >= 3.13.4]
 - Date: 2026-07-17 (更新 2026-08-04)
-- Context: 项目要求 Python >= 3.13.4（使用 type parameter defaults 语法），但沙箱环境默认只有 Python 3.11，无法运行测试和导入项目。2026-08-04 环境重置后工具链已变化。
+- Context: 项目要求 Python >= 3.13.4（使用 type parameter defaults 语法），沙箱默认 python3 是 3.11 无法解析
 - Category: 环境配置
 - Instructions:
-  - 项目只能 `uv run` 执行测试（`pytest tests/ --tb=short -m "not network"`），因为 sandbox 默认 python3 是 3.11，无法解析 3.12+ 的 `class Rename[TRaw = str, TNew = TRaw]` 语法。
-  - 环境重置后 `/opt/python3.13` 与预置 `uv` 均不存在，按以下恢复：`pip install --break-system-packages uv` 安装 uv 到 `/usr/local/bin/uv`，再执行 `uv sync`（自动下载合适的 Python 并创建 `.venv`，2026-08-04 实际装到 python3.14，pytest/ruff 均可用）。
-  - 跑 pytest 前若报 `ImportError: libglib-2.0.so.0 / libGL.so.1 / libEGL.so.1 / libfontconfig.so.1` 缺失，说明 PyQt6 系统库没装，执行：`DEBIAN_FRONTEND=noninteractive apt-get install -y libglib2.0-0 libgl1 libegl1 libopengl0 libfontconfig1 libqt6gui6 libqt6widgets6 libqt6core6 libqt6network6 libqt6xml6`。
-  - 依赖安装后可以运行 `uv run pytest tests/ --tb=short -m "not network"` 验证。
+  - 测试一律用 `uv run` 执行（`uv run pytest tests/ --tb=short -m "not network"`），sandbox 默认 python3 是 3.11 无法解析 3.12+ 语法。
+  - 环境重置后恢复：`pip install --break-system-packages uv` 安装 uv，再 `uv sync`（自动下载合适 Python 建 `.venv`，当前为 python3.14）。
+  - 跑 pytest 若报 `ImportError: libglib-2.0.so.0 / libGL.so.1 / libEGL.so.1 / libfontconfig.so.1` 缺失，说明 PyQt6 系统库没装，执行：`DEBIAN_FRONTEND=noninteractive apt-get install -y libglib2.0-0 libgl1 libegl1 libopengl0 libfontconfig1 libqt6gui6 libqt6widgets6 libqt6core6 libqt6network6 libqt6xml6`。
 
 [Windows exe 打包依赖约束]
 - Date: 2026-08-03
@@ -87,12 +68,11 @@ Agent 在任务执行过程中发现的条目应遵循以下格式：
 - Context: 用户在多次调整工具页 UI（新增/重排 groupBox、增删按钮）时提出的约束；2026-08-04 在增高 actor_db groupBox 时补充
 - Category: 环境配置
 - Instructions:
-  - UI 布局定义在 `mdcx/views/MDCx.ui`，改完后必须用 pyuic6 重编译生成 `MDCx.py`，命令：`/workspace/.venv/bin/python3 -m PyQt6.uic.pyuic mdcx/views/MDCx.ui -o mdcx/views/MDCx.py`，否则改动不生效。
+  - UI 布局定义在 `mdcx/views/MDCx.ui`。**规范流程**：改动一律先改 `MDCx.ui`，再运行 `/workspace/.venv/bin/python3 -m PyQt6.uic.pyuic mdcx/views/MDCx.ui -o mdcx/views/MDCx.py` 重编译，最后 `uv run ruff format mdcx/views/MDCx.py` 对齐格式（可把 diff 从数千行压到几十行）。**不要手工修改 MDCx.py**——有 `tests/test_ui_structure.py::test_mdcx_py_in_sync_with_ui` 在 CI 把关，手工改 `.py` 不同步 `.ui` 会红。
   - 调整布局后必须验证 `import mdcx.views.MDCx` 可正常导入（UI 里有中文/多行 tooltip，编译易出错）。
   - 注意 tab/groupBox 重叠、遮挡问题：所有 groupBox 在 `page_tool` 的滚动区 `scrollAreaWidgetContents_gongju` 内是绝对定位（x/y/width/height），重排顺序要同时更新各 groupBox 的 y 坐标和滚动区 widget 高度（最后一块底部留 20px 边距），否则底部内容被遮挡。
   - **UI 结构有自动化测试**（`tests/test_ui_structure.py`，已挂入 `uv run check` 与 CI）：解析 `MDCx.ui` 检查 groupBox 同父容器不重叠/无负间距/不超滚动区、用户控件 objectName 唯一、`MDCx.py` 与 `MDCx.ui` 重编译同步。改 UI 后跑 `uv run check` 或 `uv run pytest tests/test_ui_structure.py -q` 即可自动验证，无需手写 Qt offscreen 几何检查脚本。
   - 增高某一 groupBox 后，必须连锁把**其下方所有兄弟 groupBox** 的 y 同步 +delta，并同步增高滚动区 widget 高度，最后做 Qt offscreen 几何验证确认两两无重叠。踩坑：曾只检查与紧邻下方 group 的空隙、漏了中间一个 group，导致 110px 重叠；下方 group 不止紧邻的那一个。
-  - `MDCx.py` 虽由 pyuic 生成，但仓库版曾被另行整理格式。**规范流程**：改动一律先改 `MDCx.ui`，再用 `/workspace/.venv/bin/python3 -m PyQt6.uic.pyuic mdcx/views/MDCx.ui -o mdcx/views/MDCx.py` 重编译，最后 `uv run ruff format mdcx/views/MDCx.py` 对齐格式（可把 diff 从数千行压到几十行）。**不要手工修改 MDCx.py**——有 `tests/test_ui_structure.py::test_mdcx_py_in_sync_with_ui` 在 CI 把关，手工改 `.py` 不同步 `.ui` 会红。
   - **重编译会回退 MDCx.py 的手工文案**：pyuic6 用 `MDCx.ui` 里的旧文案覆盖 MDCx.py 中可能手工更新过的文本（曾遇到项目主页 `mdcx-diy` 链接、graphis 描述等被回退）。根治方式是把新文案**回写 `MDCx.ui` 源文件**，让 `.ui` 成为唯一权威源。另注意 pyuic6 会把输入路径写进头部注释，同步对比测试必须用相对路径编译。
   - 用 `findChildren` 做几何重叠/溢出检查时，comboBox 的 popup 内部子部件（QListView/QScrollBar/qt_scrollarea_viewport 等，坐标为 0,0/100x30/640x480）会误报为"重叠/溢出"，需排除这些 Qt 内部件；长文本 label 的显示完整性用 `fontMetrics().boundingRect(0,0,w,1e6,flags,text).height()` 与控件高度对比，横向用 `horizontalAdvance`。
   - 新增按钮后必须检查三处一致：`MDCx.ui`（定义）、`MDCx.py`（编译产物）、`mdcx/controllers/main_window/init.py`（信号接线：clicked 槽 + setText 防重入信号）。三条链路缺一按钮不生效或运行崩。
@@ -123,10 +103,8 @@ Agent 在任务执行过程中发现的条目应遵循以下格式：
 - Context: 探索 actor_db_tool 并发提速时发现刮削已有成熟的滑动窗口并发
 - Category: 构建方法
 - Instructions:
-  - 正常刮削（`scraper.py`）已经是两层并发：文件间用 `_run_tasks_with_limit`（滑动窗口，`asyncio.wait(..., FIRST_COMPLETED)` 渐进式调度，并发数 = 配置项 `thread_number`）；文件内用 `_call_crawlers` 的 `asyncio.gather` 多站点并发抓取。
-  - 不要误以为刮削是串行的。慢可能是单站点超时拖慢整个文件，而非并发不足。
-  - actor_db_tool 的可复用并发模式已从 `Semaphore+gather` 升级为滑动窗口（`mdcx/tools/actor_db_tool.py`），与刮削同构。后续新增异步批量处理工具时，优先采用滑动窗口模式而非 `Semaphore+gather`。
-  - 滑动窗口优势：内存峰值低（不会同时存在全部协程对象）、取消响应快（最多等当前批次完成）、渐进式调度（大列表不会一次性创建海量协程）。
+  - **刮削已是两层并发**：文件间 `_run_tasks_with_limit`（滑动窗口，`asyncio.wait(FIRST_COMPLETED)`，并发数=配置 `thread_number`）；文件内 `_call_crawlers` 多站点 `asyncio.gather`。慢常是单站点超时拖累，而非并发不足。
+  - 后续新增异步批量处理工具时，**优先用滑动窗口而非 `Semaphore+gather`**（`mdcx/tools/actor_db_tool.py` 已用）：内存峰值低、取消响应快、大列表不一次性创建海量协程。
 
 [演员/用户态数据双库结构与 AVdb 同步]
 - Date: 2026-08-04
@@ -154,11 +132,11 @@ Agent 在任务执行过程中发现的条目应遵循以下格式：
 - Context: 用 avdanyuwiki 作品数据提取男优名单接入 `filter_male` 与 `clean_male_actors`，审查中发现名单噪声多、易混入女优
 - Category: 构建方法
 - Instructions:
-  - **数据源**：`resources/userdata/male_actors.txt`（625 个男优）从 avdanyuwiki 作品 JSON（`*_avdanyuwiki.com.json`）的 `actor` 字段提取；生成脚本 `scripts/build_male_actor_list.py` 可复现，文档 `docs/male_actor_list.md`。JSON 由用户浏览器油猴脚本 `avdanyuwiki-extract-1.0.user.js` 生成，字段含 banko/title/actress/actor/date/director/maker/tag。
-  - **actor 字段噪声大**：含标签词（主観/完全主観/素人/覆面/モザイク/触手）、括号注释（`主観（トニー大木）`）、多个名字空格连接（`田淵正浩 日高涼`）、合并名（`森林原人桜井ちんたろう`）、`×`已故标记、`？`噪声。清洗必须：括号内外拆解、超长(>8)剔除、标签黑名单、去后缀。
-  - **女优混入是最大风险**：レズ片/SILK 女女片会把女优填进 actor 字段（如 `友田彩也香`）。用 actress 字段交叉验证——某名 actress 出现次数 ≥ actor×0.5，或 actor≤3 但 actress>0，判定女优剔除。原则：**宁漏勿误删**。
-  - **双通道清洗**：`clean_male_actors` = 名单精确匹配（删无 tmdbid 及 TMDB gender=0 的男优）+ TMDB gender=2 校验。TMDB 局限性：gender=0 的男优（如加藤鷹）TMDB 标不出、永远清不掉，靠名单补。名单命中后不再重复请求 TMDB。`sync_from_avdb` filter_male 同理先名单后 TMDB，且名单过滤不依赖 TMDB key。
-  - **低成本两字名**（如テツ）容易误杀，用 AVdb actor-mapping.xml 权威收录交叉验证——仅在 AVdb 有映射的低频两字名才保留。
+  - **男优名单来源**：`resources/userdata/male_actors.txt`（625 人），生成脚本 `scripts/build_male_actor_list.py` 可复现，文档 `docs/male_actor_list.md`。
+  - **actor 字段噪声大**：含标签词、括号注释、多名字空格连接、合并名、`×`已故标记、`？`噪声。清洗：括号内外拆解、超长(>8)剔除、标签黑名单、去后缀。
+  - **女优混入是最大风险**（レズ片会把女优填进 actor 字段）：用 actress 字段交叉验证（某名 actress 次数 ≥ actor×0.5，或 actor≤3 但 actress>0 判定女优）。原则：**宁漏勿误删**。
+  - **双通道清洗**：`clean_male_actors` = 名单精确匹配 + TMDB gender=2 校验（gender=0 男优如加藤鷹 TMDB 标不出，靠名单补；名单命中不再重复请求 TMDB）。`sync_from_avdb` filter_male 同理先名单后 TMDB。
+  - **低成本两字名**（如テツ）易误杀：用 AVdb actor-mapping.xml 权威收录交叉验证，仅在 AVdb 有映射的低频两字名才保留。
 
 [specs 目录已删除]
 - Date: 2026-08-04
