@@ -58,15 +58,13 @@ Agent 在任务执行过程中发现的条目应遵循以下格式：
   - 安装完成后确认 `.git/hooks/pre-commit` 文件存在且可执行。
 
 [环境 Python 版本升级到 >= 3.13.4]
-- Date: 2026-07-17
-- Context: 项目要求 Python >= 3.13.4（使用 type parameter defaults 语法），但沙箱环境默认只有 Python 3.11，导致无法运行测试和导入项目。
+- Date: 2026-07-17 (更新 2026-08-04)
+- Context: 项目要求 Python >= 3.13.4（使用 type parameter defaults 语法），但沙箱环境默认只有 Python 3.11，无法运行测试和导入项目。2026-08-04 环境重置后工具链已变化。
 - Category: 环境配置
 - Instructions:
   - 项目只能 `uv run` 执行测试（`pytest tests/ --tb=short -m "not network"`），因为 sandbox 默认 python3 是 3.11，无法解析 3.12+ 的 `class Rename[TRaw = str, TNew = TRaw]` 语法。
-  - Python 3.13.14 已安装到 `/opt/python3.13`，`uv` 已安装到 `/usr/local/bin/uv`。
-  - 每次新会话开始时，检查 `/opt/python3.13` 是否存在：
-    - 若存在，直接使用 `uv run pytest` 跑测试。
-    - 若不存在，需要下载并安装：从 `https://github.com/astral-sh/python-build-standalone` 下载最新 `cpython-3.13.x-x86_64-unknown-linux-gnu-install_only_stripped.tar.gz`，解压到 `/opt/python3.13`，创建 `/usr/local/bin/uv` 和 `/usr/local/bin/python3.13` 软链接，然后执行 `uv sync` 安装项目依赖。
+  - 环境重置后 `/opt/python3.13` 与预置 `uv` 均不存在，按以下恢复：`pip install --break-system-packages uv` 安装 uv 到 `/usr/local/bin/uv`，再执行 `uv sync`（自动下载合适的 Python 并创建 `.venv`，2026-08-04 实际装到 python3.14，pytest/ruff 均可用）。
+  - 跑 pytest 前若报 `ImportError: libglib-2.0.so.0 / libGL.so.1 / libEGL.so.1 / libfontconfig.so.1` 缺失，说明 PyQt6 系统库没装，执行：`DEBIAN_FRONTEND=noninteractive apt-get install -y libglib2.0-0 libgl1 libegl1 libopengl0 libfontconfig1 libqt6gui6 libqt6widgets6 libqt6core6 libqt6network6 libqt6xml6`。
   - 依赖安装后可以运行 `uv run pytest tests/ --tb=short -m "not network"` 验证。
 
 [Windows exe 打包依赖约束]
