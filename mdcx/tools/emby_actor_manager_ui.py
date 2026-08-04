@@ -36,8 +36,10 @@ from PyQt6.QtWidgets import (
 from ..config.manager import manager
 from .emby_actor_manager import (
     ActorInfo,
+    fetch_actor_detail,
     fetch_all_actors,
     from_gfriends,
+    from_graphis,
     from_local_avatar,
     from_minnano_image,
     get_gfriends_index,
@@ -140,8 +142,7 @@ class PreparePreviewThread(QThread):
         self.gfriends_index = None
         self.cache_dir = Path(tempfile.gettempdir())
         self.minnano_cache = None
-        self.image_sources = ["gfriends", "minnano", "local"]
-        self.info_sources = ["minnano", "local_db"]
+        self.image_sources = ["gfriends", "graphis", "minnano", "local"]
         self.local_avatar_dir = ""
         self._cancel = False
 
@@ -205,6 +206,20 @@ class PreparePreviewThread(QThread):
                     actor.new_image_path = result
                     actor.need_update_image = True
                     return
+            elif src == "graphis":
+                loop = asyncio.new_event_loop()
+                try:
+                    result = loop.run_until_complete(from_graphis(actor, self.cache_dir))
+                finally:
+                    loop.close()
+                if result:
+                    avatar_path, backdrop_path = result
+                    actor.new_image_path = avatar_path
+                    actor.need_update_image = True
+                    if backdrop_path:
+                        actor.new_backdrop_path = backdrop_path
+                        actor.need_update_backdrop = True
+                    return
             elif src == "minnano":
                 loop = asyncio.new_event_loop()
                 try:
@@ -224,7 +239,15 @@ class PreparePreviewThread(QThread):
 
     def _try_fetch_info(self, actor: ActorInfo, force: bool):
         if not force and actor.has_overview:
-            return
+            loop = asyncio.new_event_loop()
+            try:
+                detail = loop.run_until_complete(fetch_actor_detail(actor.name))
+            finally:
+                loop.close()
+            if detail:
+                overview = (detail.get("Overview") or "").strip()
+                if overview and "无维基百科信息" not in overview:
+                    return
         loop = asyncio.new_event_loop()
         try:
             result = loop.run_until_complete(search_actor_info(actor))
@@ -590,8 +613,8 @@ class EmbyActorManagerDialog(QDialog):
         self._preview_thread.mode = mode
         self._preview_thread.gfriends_index = self._gfriends_index
         self._preview_thread.cache_dir = self.cache_dir
-        self._preview_thread.image_sources = ["gfriends", "minnano", "local"]
-        self._preview_thread.info_sources = ["minnano", "local_db"]
+        self._preview_thread.image_sources = ["gfriends", "graphis", "minnano", "local"]
+
         self._preview_thread.local_avatar_dir = (
             manager.config.actor_photo_folder if hasattr(manager.config, "actor_photo_folder") else ""
         )
@@ -665,6 +688,9 @@ class EmbyActorManagerDialog(QDialog):
             if a.need_update_info:
                 a.has_overview = bool(a.new_overview and a.new_overview.strip())
                 a.need_update_info = False
+            if a.need_update_backdrop:
+                a.has_backdrop = bool(a.new_backdrop_path)
+                a.need_update_backdrop = False
         self._populate_table(self._actors)
         self._update_statistics(self._actors)
 

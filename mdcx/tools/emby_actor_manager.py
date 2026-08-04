@@ -60,11 +60,13 @@ class ActorInfo:
     new_production_locations: list[str] = field(default_factory=list)
     new_provider_ids: dict[str, str] = field(default_factory=dict)
     new_image_path: str | None = None
+    new_backdrop_path: str | None = None
     movie_count: int = 0
     movie_titles: list[str] = field(default_factory=list)
     has_backdrop: bool = False
     need_update_info: bool = False
     need_update_image: bool = False
+    need_update_backdrop: bool = False
 
     @property
     def status_text(self) -> str:
@@ -424,8 +426,49 @@ async def delete_actor_image(actor: ActorInfo) -> tuple[bool, str]:
     from ..models.computed import ComputedManager
 
     async with ComputedManager() as computed:
-        ok, err = await computed.async_client.request("DELETE", url, headers=headers, use_proxy=False)
+        await computed.async_client.request("DELETE", url, headers=headers, use_proxy=False)
     return True, f"✅ {actor.name} 旧头像已删除"
+
+
+async def delete_actor_backdrop(actor: ActorInfo) -> tuple[bool, str]:
+    base_url = str(manager.config.emby_url).rstrip("/")
+    if "emby" == manager.config.server_type:
+        url = f"{base_url}/emby/Items/{actor.actor_id}/Images/Backdrop/0?api_key={manager.config.api_key}"
+    else:
+        url = f"{base_url}/Items/{actor.actor_id}/Images/Backdrop/0?api_key={manager.config.api_key}"
+    headers = _build_jellyfin_headers()
+    from ..models.computed import ComputedManager
+
+    async with ComputedManager() as computed:
+        await computed.async_client.request("DELETE", url, headers=headers, use_proxy=False)
+    return True, f"✅ {actor.name} 旧背景已删除"
+
+
+async def upload_actor_backdrop(actor: ActorInfo, image_path: str | Path) -> tuple[bool, str]:
+    _, _, _, backdrop_url, _, _ = _generate_server_url(
+        {"Name": actor.name, "Id": actor.actor_id, "ServerId": actor.server_id}
+    )
+    img_path = Path(image_path)
+    if not img_path.exists():
+        return False, f"❌ 背景图片文件不存在: {image_path}"
+    try:
+        async with aiofiles.open(img_path, "rb") as f:
+            img_data = await f.read()
+        b64_data = base64.b64encode(img_data).decode("ascii")
+        content_type = "image/jpeg" if img_path.suffix.lower() in (".jpg", ".jpeg") else "image/png"
+        header = {"Content-Type": content_type}
+        header = _build_jellyfin_headers(header)
+        from ..models.computed import ComputedManager
+
+        async with ComputedManager() as computed:
+            ok, err = await computed.async_client.post_content(
+                url=backdrop_url, data=b64_data, headers=header, use_proxy=False
+            )
+        if ok:
+            return True, f"✅ {actor.name} 背景上传成功"
+        return False, f"❌ {actor.name} 背景上传失败: {err}"
+    except Exception as e:
+        return False, f"❌ {actor.name} 背景上传异常: {e}"
 
 
 def gfriends_find_actor(gfriends_index: dict[str, str], name: str) -> str | None:
@@ -444,6 +487,45 @@ async def from_gfriends(actor: ActorInfo, gfriends_index: dict[str, str], cache_
         return None
     if local_path.exists():
         return str(local_path)
+    return None
+
+
+async def from_graphis(actor: ActorInfo, cache_dir: Path) -> tuple[str, str | None] | None:
+    from urllib.parse import quote
+
+    from parsel import Selector
+
+    local_data = resources.get_actor_data(actor.name)
+    jp_name = actor.name
+    if local_data.get("has_name"):
+        jp_name = local_data.get("jp", actor.name)
+
+    urls = [
+        f"https://graphis.ne.jp/monthly/?K={quote(jp_name)}",
+        f"https://graphis.ne.jp/monthly/?S=1&K={quote(jp_name)}",
+    ]
+    for url in urls:
+        from ..models.computed import ComputedManager
+
+        async with ComputedManager() as computed:
+            res, _ = await computed.async_client.get_text(url)
+        if res is None:
+            continue
+        html = Selector(res)
+        src = html.xpath("//div[@class='gp-model-box']/ul/li/a/img/@src").getall()
+        names = html.xpath("//li[@class='name-jp']/span/text()").getall()
+        if jp_name in names:
+            idx = names.index(jp_name)
+            if idx < len(src):
+                small_pic = src[idx]
+                big_pic = small_pic.replace("/prof.jpg", "/model.jpg")
+                avatar_path = cache_dir / f"{actor.name}_graphis.jpg"
+                if await download_file_with_filepath(small_pic, avatar_path, cache_dir):
+                    if avatar_path.exists():
+                        backdrop_path = cache_dir / f"{actor.name}_graphis_bg.jpg"
+                        backdrop_ok = await download_file_with_filepath(big_pic, backdrop_path, cache_dir)
+                        backdrop = str(backdrop_path) if backdrop_ok and backdrop_path.exists() else None
+                        return str(avatar_path), backdrop
     return None
 
 
@@ -477,16 +559,39 @@ async def search_actor_info(actor: ActorInfo, wiki_intro: str = "") -> bool:
     from ..models.emby import EMbyActressInfo
 
     info = EMbyActressInfo(name=actor.name, server_id=actor.server_id, id=actor.actor_id)
-    res_wiki, _ = await search_wiki(info)
-    wiki_found = False
-    if res_wiki is not None:
-        result_wiki, _ = await get_detail(res_wiki, "", info)
-        if result_wiki:
-            wiki_intro = res_wiki.get("intro", "")
-            wiki_found = True
-    res, _ = await get_minnano_info(info, wiki_intro)
-    if not res and not wiki_found and manager.config.use_database:
-        _, _ = ActressDB.update_actor_info_from_db(info)
+
+    # 0) 本地演员库命中回填（最优先，离线可用）
+    local_found = False
+    local_overview = ""
+    try:
+        local_data = resources.get_actor_data(actor.name)
+        if local_data.get("has_name"):
+            bd = (local_data.get("birth_date") or "").strip()
+            bio = (local_data.get("bio") or "").strip()
+            if bd:
+                info.birthday = bd
+                info.year = bd[:4]
+            if bio:
+                local_overview = bio.replace("\n", "<br/>")
+                info.overview = local_overview
+            if not info.locations:
+                info.locations = ["日本"]
+            local_found = True
+    except Exception:
+        local_found = False
+
+    # 本地命中且简介非空：完全采用本地数据，跳过外部网络来源
+    if not (local_found and local_overview):
+        res_wiki, _ = await search_wiki(info)
+        wiki_found = False
+        if res_wiki is not None:
+            result_wiki, _ = await get_detail(res_wiki, "", info)
+            if result_wiki:
+                wiki_intro = res_wiki.get("intro", "")
+                wiki_found = True
+        res, _ = await get_minnano_info(info, wiki_intro)
+        if not res and not wiki_found and manager.config.use_database:
+            _, _ = ActressDB.update_actor_info_from_db(info)
     if hasattr(info, "dump"):
         data = info.dump() if callable(info.dump) else info.__dict__
         actor.new_overview = data.get("overview", data.get("new_overview", ""))
@@ -528,6 +633,14 @@ def sync_actor(actor: ActorInfo, sync_type: str = "both") -> tuple[bool, str]:
                     logs.append(msg)
                 finally:
                     loop.close()
+        if actor.need_update_backdrop and actor.new_backdrop_path:
+            loop = asyncio.new_event_loop()
+            try:
+                loop.run_until_complete(delete_actor_backdrop(actor))
+                ok, msg = loop.run_until_complete(upload_actor_backdrop(actor, actor.new_backdrop_path))
+                logs.append(msg)
+            finally:
+                loop.close()
     success = all("成功" in log for log in logs) if logs else True
     return success, "\n".join(logs)
 
