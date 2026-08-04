@@ -232,6 +232,10 @@ def Init_Singal(self: "MyMAinWindow"):
     self.Ui.pushButton_actor_db_link.clicked.connect(self.pushButton_actor_db_link_clicked)
     self.Ui.pushButton_actor_db_sync_aliases.clicked.connect(self.pushButton_actor_db_sync_aliases_clicked)
     self.Ui.pushButton_actor_db_open.clicked.connect(self.pushButton_actor_db_open_clicked)
+    self.Ui.pushButton_actor_db_sync_start.clicked.connect(self.pushButton_actor_db_sync_start_clicked)
+    self.Ui.pushButton_actor_db_pick_xml.clicked.connect(self.pushButton_actor_db_pick_xml_clicked)
+    self.Ui.comboBox_actor_db_sync_source.currentIndexChanged.connect(self.comboBox_actor_db_sync_source_changed)
+    self.comboBox_actor_db_sync_source_changed(0)
     self.Ui.pushButton_start_single_file.clicked.connect(self.pushButton_start_single_file_clicked)
     self.Ui.pushButton_select_file_clear_info.clicked.connect(self.pushButton_select_file_clear_info_clicked)
     self.Ui.pushButton_scrape_note.clicked.connect(self.pushButton_scrape_note_clicked)
@@ -343,6 +347,7 @@ def Init_Singal(self: "MyMAinWindow"):
     self.pushButton_actor_db_translate.connect(self.Ui.pushButton_actor_db_translate.setText)
     self.pushButton_actor_db_link.connect(self.Ui.pushButton_actor_db_link.setText)
     self.pushButton_actor_db_sync_aliases.connect(self.Ui.pushButton_actor_db_sync_aliases.setText)
+    self.pushButton_actor_db_sync_start.connect(self.Ui.pushButton_actor_db_sync_start.setText)
     self.actor_db_finished.connect(self._on_actor_db_finished)
     self.label_result.connect(self.Ui.label_result.setText)
     self.label_show_version.connect(self.Ui.label_show_version.setText)  # endregion

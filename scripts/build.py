@@ -285,6 +285,9 @@ class BuildManager:
             # 演员库维护工具(延迟导入)
             "--hidden-import",
             "mdcx.tools.actor_db_tool",
+            # AVdb 映射解析器(延迟导入)
+            "--hidden-import",
+            "mdcx.utils.xml_avdb",
             # 工具页槽函数中延迟导入的工具模块
             "--hidden-import",
             "mdcx.tools.emby_actor_image",

@@ -37,11 +37,11 @@
 
 ## 阶段三：UI 与信号接线
 
-- [ ] 6. UI 与信号接线
-  - [ ] 6.1 `mdcx/views/MDCx.ui` 在 `groupBox_actor_db_maintenance` 内新增：说明 label、数据源 comboBox、URL/本地路径输入框、选择按钮、同步按钮
-  - [ ] 6.2 pyuic6 重新编译生成 `MDCx.py`，验证 `import mdcx.views.MDCx` 可导入
-  - [ ] 6.3 `init.py` 信号接线（sync/pick_xml/combo 切换）+ `main_window.py` 槽函数（executor.submit + pyqtSignal 恢复，跨线程 Qt 安全）
-  - [ ] 6.4 `scripts/build.py` 新增 `--hidden-import mdcx.utils.xml_avdb`
+- [x] 6. UI 与信号接线
+  - [x] 6.1 `mdcx/views/MDCx.ui` 在 `groupBox_actor_db_maintenance` 内新增：说明 label、数据源 comboBox、URL/本地路径输入框、选择按钮、同步按钮
+  - [x] 6.2 pyuic6 重新编译生成 `MDCx.py`，验证 `import mdcx.views.MDCx` 可导入
+  - [x] 6.3 `init.py` 信号接线（sync/pick_xml/combo 切换）+ `main_window.py` 槽函数（executor.submit + pyqtSignal 恢复，跨线程 Qt 安全）
+  - [x] 6.4 `scripts/build.py` 新增 `--hidden-import mdcx.utils.xml_avdb`
 
 ## 阶段四：整体验证与文档
 

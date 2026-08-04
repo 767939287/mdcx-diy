@@ -83,13 +83,16 @@ Agent 在任务执行过程中发现的条目应遵循以下格式：
   - 已知：排除 rich/typer 后，唯一使用它们的是独立 CLI 调试脚本 `mdcx/cmd/crawl.py`，它无 GUI 入口引用、不被打包，排除安全。
 
 [UI 改动注意事项]
-- Date: 2026-08-03
-- Context: 用户在多次调整工具页 UI（新增/重排 groupBox、增删按钮）时提出的约束
+- Date: 2026-08-03（2026-08-04 更新）
+- Context: 用户在多次调整工具页 UI（新增/重排 groupBox、增删按钮）时提出的约束；2026-08-04 在增高 actor_db groupBox 时补充
 - Category: 环境配置
 - Instructions:
   - UI 布局定义在 `mdcx/views/MDCx.ui`，改完后必须用 pyuic6 重编译生成 `MDCx.py`，命令：`/workspace/.venv/bin/python3 -m PyQt6.uic.pyuic mdcx/views/MDCx.ui -o mdcx/views/MDCx.py`，否则改动不生效。
   - 调整布局后必须验证 `import mdcx.views.MDCx` 可正常导入（UI 里有中文/多行 tooltip，编译易出错）。
   - 注意 tab/groupBox 重叠、遮挡问题：所有 groupBox 在 `page_tool` 的滚动区 `scrollAreaWidgetContents_gongju` 内是绝对定位（x/y/width/height），重排顺序要同时更新各 groupBox 的 y 坐标和滚动区 widget 高度（最后一块底部留 20px 边距），否则底部内容被遮挡。
+  - 增高某一 groupBox 后，必须连锁把**其下方所有兄弟 groupBox** 的 y 同步 +delta，并同步增高滚动区 widget 高度，最后做 Qt offscreen 几何验证确认两两无重叠。踩坑：曾只检查与紧邻下方 group 的空隙、漏了中间一个 group，导致 110px 重叠；下方 group 不止紧邻的那一个。
+  - `MDCx.py` 虽由 pyuic 生成，但仓库版曾被另行整理格式，整体重编译会产生数千行格式噪声 diff。手工增改 MDCx.py 时，务必把 UI 里新增的每个控件在 MDCx.py 的「创建段」和「retranslateUi 翻译段」各加一遍，并逐个 `grep` 核对存在——漏加控件**不会报错只会不显示**；工具页是 QScrollArea 滚动区，增高内容靠滚动条访问即可，无需改 tab/scrollArea 视口高度。
+  - 用 `findChildren` 做几何重叠/溢出检查时，comboBox 的 popup 内部子部件（QListView/QScrollBar/qt_scrollarea_viewport 等，坐标为 0,0/100x30/640x480）会误报为"重叠/溢出"，需排除这些 Qt 内部件；长文本 label 的显示完整性用 `fontMetrics().boundingRect(0,0,w,1e6,flags,text).height()` 与控件高度对比，横向用 `horizontalAdvance`。
   - 新增按钮后必须检查三处一致：`MDCx.ui`（定义）、`MDCx.py`（编译产物）、`mdcx/controllers/main_window/init.py`（信号接线：clicked 槽 + setText 防重入信号）。三条链路缺一按钮不生效或运行崩。
   - 按钮防重入模式：参见下方 `[executor.submit 与跨线程 Qt 安全]` 条目，使用 `executor.submit(run())` 而非 `executor.submit(asyncio.run, ...)`，且协程内不可直接 `setEnabled()`，必须通过 pyqtSignal 主线程恢复。
   - 删除旧按钮后要清理失联的 delegate/实现死代码，避免引用已删除控件导致 AttributeError。
