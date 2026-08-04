@@ -436,6 +436,17 @@ async def sync_from_avdb(source: str, value: str = "") -> ActorDbSyncResult:
     result = ActorDbSyncResult()
     db_path = _get_db_path()
 
+    def _dedup_keywords(*groups: set[str]) -> list[str]:
+        seen: set[str] = set()
+        out: list[str] = []
+        for group in groups:
+            for k in sorted(group):
+                key = k.casefold()
+                if key not in seen:
+                    seen.add(key)
+                    out.append(k)
+        return out
+
     # ---- 数据源: 读取 XML 文本 ----
     xml_text = ""
     if source == "file":
@@ -564,7 +575,9 @@ async def sync_from_avdb(source: str, value: str = "") -> ActorDbSyncResult:
                     # 3) 未匹配 -> 新建
                     if target_row is None:
                         tmdb_val = int(tmdb_key) if tmdb_key else ""
-                        ws.append([jp, zh_cn, zh_tw, ",".join(sorted(kw_set)), "", tmdb_val, "", birth_date, bio])
+                        ws.append(
+                            [jp, zh_cn, zh_tw, ",".join(_dedup_keywords(kw_set)), "", tmdb_val, "", birth_date, bio]
+                        )
                         new_idx = ws.max_row
                         if jp:
                             jp_index.setdefault(jp.casefold(), new_idx)
@@ -596,11 +609,11 @@ async def sync_from_avdb(source: str, value: str = "") -> ActorDbSyncResult:
                             ws.cell(row=target_row, column=COL_TMDBID + 1, value=int(tmdb_key))
 
                     existing_kw = str(ws.cell(row=target_row, column=COL_KEYWORD + 1).value or "").strip()
-                    existing_set = {k.strip() for k in existing_kw.split(",") if k.strip()}
-                    before = len(existing_set)
-                    existing_set |= kw_set
-                    if len(existing_set) > before:
-                        ws.cell(row=target_row, column=COL_KEYWORD + 1, value=",".join(sorted(existing_set)))
+                    existing_elems = [k.strip() for k in existing_kw.split(",") if k.strip()]
+                    merged = _dedup_keywords(set(existing_elems), kw_set)
+                    merged_str = ",".join(merged)
+                    if merged_str != existing_kw:
+                        ws.cell(row=target_row, column=COL_KEYWORD + 1, value=merged_str)
 
                     if is_tmdb_conflict:
                         result.merged += 1

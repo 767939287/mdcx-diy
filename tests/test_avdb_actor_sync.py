@@ -227,6 +227,15 @@ def test_sync_merges_keywords_and_sorts(_tmp_actor_db: Path, _avdb_xml: Path):
     assert keywords == sorted(["旧别名", "阿部涼音"])
 
 
+def test_sync_keeps_keyword_casefold_dedup(_tmp_actor_db: Path, _avdb_xml: Path):
+    _write_db(_tmp_actor_db, [["阿部純子", "", "", "ABE JUNKO", "", "", "", "", ""]])
+    asyncio.run(sync_from_avdb("file", str(_avdb_xml)))
+    rows = _read_rows(_tmp_actor_db)
+    row = next(r for r in rows if r[COL_JP] == "阿部純子")
+    kws = [k for k in str(row[COL_KEYWORD]).split(",") if k]
+    assert kws == sorted(["ABE JUNKO", "阿部純子"])
+
+
 def test_sync_tmdbid_conflict_merges_into_existing_row(_tmp_actor_db: Path, _avdb_xml: Path):
     _write_db(_tmp_actor_db, [["演员A", "演员A", "", "", "", 1417328, "", "", ""]])
     result = asyncio.run(sync_from_avdb("file", str(_avdb_xml)))
