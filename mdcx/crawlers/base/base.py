@@ -226,9 +226,9 @@ class GenericBaseCrawler[T: Context = Context](ABC):
         return None
 
 
-class BaseCrawler(GenericBaseCrawler[Context]):
-    def new_context(self, input: CrawlerInput) -> Context:
-        return Context(input=input)
+class BaseCrawler[T: Context = Context](GenericBaseCrawler[T]):
+    def new_context(self, input: CrawlerInput) -> T:
+        return Context(input=input)  # type: ignore[return-value]
 
 
 crawler_registry: dict[Website, type[GenericBaseCrawler[Never]]] = {}

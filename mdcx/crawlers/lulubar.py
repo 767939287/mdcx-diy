@@ -117,7 +117,7 @@ class LulubarContext(Context):
     search_poster: str = ""
 
 
-class LulubarCrawler(BaseCrawler):
+class LulubarCrawler(BaseCrawler[LulubarContext]):
     @classmethod
     @override
     def site(cls) -> Website:

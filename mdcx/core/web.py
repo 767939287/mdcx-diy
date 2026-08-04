@@ -10,6 +10,7 @@ from asyncio import to_thread
 from dataclasses import dataclass
 from io import BytesIO
 from pathlib import Path
+from typing import cast
 
 import aiofiles
 import aiofiles.os
@@ -27,7 +28,7 @@ from ..config.enums import DownloadableFile, FixedScrapingType, HDPicSource, Kee
 from ..config.manager import manager
 from ..config.resource_policy import resource_policy
 from ..manual import ManualConfig
-from ..models.flags import Flags
+from ..models.flags import FileDoneDict, Flags
 from ..models.log_buffer import LogBuffer
 from ..models.types import CrawlersResult, OtherInfo
 from ..signals import signal
@@ -554,7 +555,7 @@ async def trailer_download(
 
     # 选择保留文件，当存在文件时，不下载。（done trailer path 未设置时，把当前文件设置为 done trailer path，以便其他分集复制）
     if trailer_policy.should_keep and await aiofiles.os.path.exists(trailer_file_path):
-        if not Flags.file_done_dic.get(result.number, {}).get("trailer"):
+        if not Flags.file_done_dic.get(result.number, cast(FileDoneDict, {})).get("trailer"):
             Flags.file_done_dic[result.number].update({"trailer": trailer_file_path})
             # 带文件名时，删除掉新、旧文件夹，用不到了。（其他分集如果没有，可以复制第一个文件的预告片。此时不删，没机会删除了）
             if not trailer_name:
@@ -568,7 +569,7 @@ async def trailer_download(
 
     # 带文件名时，选择下载不保留，或者选择保留但没有预告片，检查是否有其他分集已下载或本地预告片
     # 选择下载不保留，当没有下载成功时，不会删除不保留的文件
-    done_trailer_path = Flags.file_done_dic.get(result.number, {}).get("trailer")
+    done_trailer_path = Flags.file_done_dic.get(result.number, cast(FileDoneDict, {})).get("trailer")
     if not trailer_name and done_trailer_path and await aiofiles.os.path.exists(done_trailer_path):
         if await aiofiles.os.path.exists(trailer_file_path):
             await delete_file_async(trailer_file_path)
@@ -608,7 +609,7 @@ async def trailer_download(
                 if trailer_file_path_temp != trailer_file_path:
                     await move_file_async(trailer_file_path_temp, trailer_file_path)
                     await delete_file_async(trailer_file_path_temp)
-                done_trailer_path = Flags.file_done_dic.get(result.number, {}).get("trailer")
+                done_trailer_path = Flags.file_done_dic.get(result.number, cast(FileDoneDict, {})).get("trailer")
                 if not done_trailer_path:
                     Flags.file_done_dic[result.number].update({"trailer": trailer_file_path})
                     if trailer_name == 0:  # 带文件名，已下载成功，删除掉那些不用的文件夹即可
@@ -629,7 +630,7 @@ async def trailer_download(
         LogBuffer.log().write(f"\n 🟠 Trailer download failed! ({trailer_url}) ")
 
     if await aiofiles.os.path.exists(trailer_file_path):  # 使用旧文件
-        done_trailer_path = Flags.file_done_dic.get(result.number, {}).get("trailer")
+        done_trailer_path = Flags.file_done_dic.get(result.number, cast(FileDoneDict, {})).get("trailer")
         if not done_trailer_path:
             Flags.file_done_dic[result.number].update({"trailer": trailer_file_path})
             if trailer_name == 0:  # 带文件名，已下载成功，删除掉那些不用的文件夹即可
@@ -769,7 +770,7 @@ async def thumb_download(
 
     # 尝试复制其他分集。看分集有没有下载，如果下载完成则可以复制，否则就自行下载
     if cd_part:
-        done_thumb_path = Flags.file_done_dic.get(result.number, {}).get("thumb")
+        done_thumb_path = Flags.file_done_dic.get(result.number, cast(FileDoneDict, {})).get("thumb")
         if (
             done_thumb_path
             and await aiofiles.os.path.exists(done_thumb_path)
@@ -990,7 +991,7 @@ async def poster_download(
 
     # 尝试复制其他分集。看分集有没有下载，如果下载完成则可以复制，否则就自行下载
     if cd_part:
-        done_poster_path = Flags.file_done_dic.get(result.number, {}).get("poster")
+        done_poster_path = Flags.file_done_dic.get(result.number, cast(FileDoneDict, {})).get("poster")
         if (
             done_poster_path
             and await aiofiles.os.path.exists(done_poster_path)
@@ -1172,7 +1173,7 @@ async def fanart_download(
 
     # 尝试复制其他分集。看分集有没有下载，如果下载完成则可以复制，否则就自行下载
     if cd_part:
-        done_fanart_path = Flags.file_done_dic.get(number, {}).get("fanart")
+        done_fanart_path = Flags.file_done_dic.get(number, cast(FileDoneDict, {})).get("fanart")
         if (
             done_fanart_path
             and await aiofiles.os.path.exists(done_fanart_path)

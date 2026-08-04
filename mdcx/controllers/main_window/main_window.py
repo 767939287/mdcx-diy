@@ -744,9 +744,9 @@ class MyMAinWindow(QMainWindow):
 
     def _bind_system_theme_refresh(self) -> None:
         try:
-            QGuiApplication.styleHints().colorSchemeChanged.connect(
-                lambda *_args: apply_application_palette(self.dark_mode)
-            )
+            style_hints = QGuiApplication.styleHints()
+            if style_hints is not None:
+                style_hints.colorSchemeChanged.connect(lambda *_args: apply_application_palette(self.dark_mode))
         except Exception:
             pass
 
@@ -1493,9 +1493,15 @@ class MyMAinWindow(QMainWindow):
         box.setStandardButtons(
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No | QMessageBox.StandardButton.Cancel
         )
-        box.button(QMessageBox.StandardButton.Yes).setText("写入并继续")
-        box.button(QMessageBox.StandardButton.No).setText("仅创建")
-        box.button(QMessageBox.StandardButton.Cancel).setText("取消")
+        yes_button = box.button(QMessageBox.StandardButton.Yes)
+        assert yes_button is not None
+        yes_button.setText("写入并继续")
+        no_button = box.button(QMessageBox.StandardButton.No)
+        assert no_button is not None
+        no_button.setText("仅创建")
+        cancel_button = box.button(QMessageBox.StandardButton.Cancel)
+        assert cancel_button is not None
+        cancel_button.setText("取消")
         box.setDefaultButton(QMessageBox.StandardButton.Yes)
         reply = box.exec()
         if reply == QMessageBox.StandardButton.Cancel:
@@ -1743,7 +1749,7 @@ class MyMAinWindow(QMainWindow):
         for root_item in (self.item_succ, self.item_fail):
             for i in range(root_item.childCount()):
                 child = root_item.child(i)
-                if child.text(0) == show_name:
+                if child is not None and child.text(0) == show_name:
                     return child
         return None
 

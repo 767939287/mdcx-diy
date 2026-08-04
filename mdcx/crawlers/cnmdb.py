@@ -94,6 +94,8 @@ class CnmdbCrawler(BaseCrawler):
     @override
     async def _run(self, ctx) -> CrawlerResult:
         data = await self._crawl_cnmdb(ctx)
+        if data is None:
+            raise CrawlerException("CNMDB 刮削失败: 未获取到数据")
         data.source = self.site().value
         return data.to_result()
 

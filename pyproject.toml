@@ -136,12 +136,4 @@ exclude = [
     "mdcx/controllers/main_window/site_priority_dialog\\.py",
     "tests/",
 ]
-disable_error_code = [
-    "annotation-unchecked",
-    "import-untyped",
-    "union-attr",
-    "call-arg",
-    "call-overload",
-    "override",
-]
 

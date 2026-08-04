@@ -132,7 +132,7 @@ class JavdayContext(Context):
     file_path_text: str = ""
 
 
-class JavdayCrawler(BaseCrawler):
+class JavdayCrawler(BaseCrawler[JavdayContext]):
     @classmethod
     @override
     def site(cls) -> Website:

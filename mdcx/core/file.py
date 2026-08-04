@@ -4,6 +4,7 @@ import re
 import shutil
 import traceback
 from pathlib import Path
+from typing import cast
 
 import aiofiles
 import aiofiles.os
@@ -13,7 +14,7 @@ from ..config.enums import CDChar, Switch
 from ..config.manager import manager
 from ..consts import IS_MAC, IS_WINDOWS
 from ..models.enums import FileMode
-from ..models.flags import Flags
+from ..models.flags import FileDoneDict, Flags
 from ..models.log_buffer import LogBuffer
 from ..models.types import BaseCrawlerResult, CrawlersResult, FileInfo, OtherInfo
 from ..number import get_file_number, get_number_letters, is_uncensored
@@ -871,7 +872,7 @@ async def deal_old_files(
     """
 
     # poster 处理：寻找对应文件放到最终路径上。这样避免刮削失败时，旧的图片被删除
-    done_poster_path = Flags.file_done_dic.get(number, {}).get("poster")
+    done_poster_path = Flags.file_done_dic.get(number, cast(FileDoneDict, {})).get("poster")
     done_poster_path_copy = True
     try:
         # 图片最终路径等于已下载路径时，图片是已下载的，不需要处理
@@ -913,14 +914,14 @@ async def deal_old_files(
                 poster_final_path
             ).lower() and await aiofiles.os.path.exists(poster_new_path_with_filename):
                 await delete_file_async(poster_new_path_with_filename)
-        elif p := Flags.file_done_dic.get(number, {}).get("local_poster"):
+        elif p := Flags.file_done_dic.get(number, cast(FileDoneDict, {})).get("local_poster"):
             await copy_file_async(p, poster_final_path)
 
     except Exception:
         signal.show_log_text(traceback.format_exc())
 
     # thumb 处理：寻找对应文件放到最终路径上。这样避免刮削失败时，旧的图片被删除
-    done_thumb_path = Flags.file_done_dic.get(number, {}).get("thumb")
+    done_thumb_path = Flags.file_done_dic.get(number, cast(FileDoneDict, {})).get("thumb")
     done_thumb_path_copy = True
     try:
         # 图片最终路径等于已下载路径时，图片是已下载的，不需要处理
@@ -962,14 +963,14 @@ async def deal_old_files(
                 thumb_final_path
             ).lower() and await aiofiles.os.path.exists(thumb_new_path_with_filename):
                 await delete_file_async(thumb_new_path_with_filename)
-        elif p := Flags.file_done_dic.get(number, {}).get("local_thumb"):
+        elif p := Flags.file_done_dic.get(number, cast(FileDoneDict, {})).get("local_thumb"):
             await copy_file_async(p, thumb_final_path)
 
     except Exception:
         signal.show_log_text(traceback.format_exc())
 
     # fanart 处理：寻找对应文件放到最终路径上。这样避免刮削失败时，旧的图片被删除
-    done_fanart_path = Flags.file_done_dic.get(number, {}).get("fanart")
+    done_fanart_path = Flags.file_done_dic.get(number, cast(FileDoneDict, {})).get("fanart")
     done_fanart_path_copy = True
     try:
         # 图片最终路径等于已下载路径时，图片是已下载的，不需要处理
@@ -1011,7 +1012,7 @@ async def deal_old_files(
                 fanart_new_path_with_filename
             ):
                 await delete_file_async(fanart_new_path_with_filename)
-        elif p := Flags.file_done_dic.get(number, {}).get("local_fanart"):
+        elif p := Flags.file_done_dic.get(number, cast(FileDoneDict, {})).get("local_fanart"):
             await copy_file_async(p, fanart_final_path)
 
     except Exception:
@@ -1103,7 +1104,7 @@ async def deal_old_files(
             ):
                 await delete_file_async(trailer_old_file_path_with_filename)
         else:
-            local_trailer = Flags.file_done_dic.get(number, {}).get("local_trailer")
+            local_trailer = Flags.file_done_dic.get(number, cast(FileDoneDict, {})).get("local_trailer")
             if local_trailer and await aiofiles.os.path.exists(local_trailer):
                 await copy_file_async(local_trailer, trailer_new_file_path_with_filename)
 

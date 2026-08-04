@@ -53,7 +53,7 @@ class HscangkuContext(Context):
     matched_number: str = ""
 
 
-class HscangkuCrawler(BaseCrawler):
+class HscangkuCrawler(BaseCrawler[HscangkuContext]):
     @classmethod
     @override
     def site(cls) -> Website:

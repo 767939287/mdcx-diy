@@ -172,7 +172,7 @@ class MdtvContext(Context):
     file_path_text: str = ""
 
 
-class MdtvCrawler(BaseCrawler):
+class MdtvCrawler(BaseCrawler[MdtvContext]):
     @classmethod
     @override
     def site(cls) -> Website:

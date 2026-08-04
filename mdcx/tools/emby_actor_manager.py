@@ -528,7 +528,7 @@ async def from_minnano_image(actor: ActorInfo, cache_dir: Path) -> str | None:
     from ..models.emby import EMbyActressInfo
     from .minnano_crawler import get_minnano_info
 
-    info = EMbyActressInfo(name=actor.name)
+    info = EMbyActressInfo(name=actor.name, server_id="", id="")
     res, _ = await get_minnano_info(info, "")
     if res and hasattr(info, "avatar_url") and info.avatar_url:
         local_path = cache_dir / f"{actor.name}_minnano.jpg"

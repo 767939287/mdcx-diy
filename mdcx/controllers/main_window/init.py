@@ -146,9 +146,11 @@ def _setup_combo_boxes(self: "MyMAinWindow") -> None:
         view.setMaximumHeight(322)
         combo_box.setMaxVisibleItems(10)
         combo_box.setView(view)
-        combo_box.view().setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
-        combo_box.view().setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        combo_box.view().setVerticalScrollMode(QAbstractItemView.ScrollMode.ScrollPerPixel)
+        combo_view = combo_box.view()
+        assert combo_view is not None
+        combo_view.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAsNeeded)
+        combo_view.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        combo_view.setVerticalScrollMode(QAbstractItemView.ScrollMode.ScrollPerPixel)
 
 
 def Init_Singal(self: "MyMAinWindow"):

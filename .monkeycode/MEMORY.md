@@ -47,7 +47,7 @@ Agent 在任务执行过程中发现的条目应遵循以下格式：
   - 所有代码改动（新建文件、修改代码、删除文件等）必须先向用户说明改动内容和原因，获得同意后再执行。
   - 提交推送前必须先向用户说明要提交什么、推送到哪里，获得同意后再执行 `git add` + `git commit` + `git push`。
   - 本指令优先级高于此前所有"自动执行"类指令，改动代码和提交推送这两件事必须先问后做。
-  - 用户同意推送后，`git push` 前必须自动运行 `uv run check --skip-hook-install`（ruff format --check + ruff check + pytest --tb=short -m "not network" -x）。失败则修复后再推，不要强行推送。
+  - 用户同意推送后，`git push` 前必须自动运行 `uv run check --skip-hook-install`（ruff format --check + ruff check + mypy mdcx/ + pytest --tb=short -m "not network" -x + check_actor_db）。失败则修复后再推，不要强行推送。
 
 [每次新会话自动安装 pre-commit 钩子]
 - Date: 2026-07-17

@@ -323,7 +323,7 @@ class IqqtvCrawler(BaseCrawler):
         if language == "jp":
             data = jp_data
         else:
-            zh_url = jp_data.external_id.replace("/jp/", "/cn/" if language == "zh_cn" else "/")
+            zh_url = str(jp_data.external_id).replace("/jp/", "/cn/" if language == "zh_cn" else "/")
             data = await self._fetch_language(ctx, ctx.input.number, zh_url, language)
             data.originaltitle = jp_data.originaltitle
             data.originalplot = jp_data.originalplot

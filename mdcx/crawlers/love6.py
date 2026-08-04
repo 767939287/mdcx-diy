@@ -128,7 +128,7 @@ class Love6Context(Context):
     search_poster: str = ""
 
 
-class Love6Crawler(BaseCrawler):
+class Love6Crawler(BaseCrawler[Love6Context]):
     @classmethod
     def site(cls) -> Website:
         return Website.LOVE6

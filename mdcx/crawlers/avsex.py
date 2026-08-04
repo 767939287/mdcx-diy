@@ -161,7 +161,7 @@ class AvsexContext(Context):
     poster_url: str = ""
 
 
-class AvsexCrawler(BaseCrawler):
+class AvsexCrawler(BaseCrawler[AvsexContext]):
     UTF8_PARSER = etree.HTMLParser(encoding="utf-8")
 
     @classmethod

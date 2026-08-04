@@ -30,7 +30,7 @@ class XcityContext(Context):
     cached_program: dict[str, Any] | None = None
 
 
-class XcityCrawler(BaseCrawler):
+class XcityCrawler(BaseCrawler[XcityContext]):
     @override
     def new_context(self, input: CrawlerInput) -> XcityContext:
         return XcityContext(input=input)

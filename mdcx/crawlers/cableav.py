@@ -48,7 +48,7 @@ class CableavContext(Context):
     matched_number: str = ""
 
 
-class CableavCrawler(BaseCrawler):
+class CableavCrawler(BaseCrawler[CableavContext]):
     @classmethod
     @override
     def site(cls) -> Website:

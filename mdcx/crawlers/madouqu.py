@@ -131,7 +131,7 @@ class MadouquContext(Context):
     search_cover_url: str = ""
 
 
-class MadouquCrawler(BaseCrawler):
+class MadouquCrawler(BaseCrawler[MadouquContext]):
     @classmethod
     @override
     def site(cls) -> Website:

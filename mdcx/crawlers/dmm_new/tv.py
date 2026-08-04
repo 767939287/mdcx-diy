@@ -263,30 +263,36 @@ class DmmTvResponse(BaseModel):
 
 
 def parse_fanza_resp(resp: FanzaResp):
-    api_data = resp.data.fanzaTvPlus.content
-    title = api_data.title
-    outline = api_data.description
-    actors = [actress.name for actress in api_data.actresses]
+    api_data = resp.data.fanzaTvPlus.content if resp.data and resp.data.fanzaTvPlus else None
+    if api_data is None:
+        raise ValueError("Fanza TV 响应缺少 content 数据")
+    title = api_data.title or ""
+    outline = api_data.description or ""
+    actors = [actress.name for actress in (api_data.actresses or []) if actress is not None]
     actor = ",".join(actor for actor in actors if actor is not None)
-    poster_url = api_data.packageImage
-    cover_url = api_data.packageLargeImage
-    tags = [genre.name for genre in api_data.genres]
+    poster_url = api_data.packageImage or ""
+    cover_url = api_data.packageLargeImage or ""
+    tags = [genre.name for genre in (api_data.genres or []) if genre is not None]
     tag = ",".join(tag for tag in tags if tag is not None)
-    runtime = str(int(api_data.playInfo.duration / 60))
-    score = str(api_data.reviewSummary.averagePoint)
-    series = api_data.series.name
-    directors = api_data.directors
-    studio = api_data.maker.name
+    runtime = str(int(api_data.playInfo.duration / 60)) if api_data.playInfo else "0"
+    score = str(api_data.reviewSummary.averagePoint) if api_data.reviewSummary else ""
+    series = api_data.series.name if api_data.series else ""
+    directors = api_data.directors or []
+    studio = api_data.maker.name if api_data.maker else ""
 
-    publisher = api_data.label.name
+    publisher = api_data.label.name if api_data.label else ""
 
     extrafanart = []
-    for sample_pic in api_data.samplePictures:
-        if sample_pic.imageLarge:
+    for sample_pic in api_data.samplePictures or []:
+        if sample_pic is not None and sample_pic.imageLarge:
             extrafanart.append(sample_pic.imageLarge)
 
     # https://cc3001.dmm.co.jp/hlsvideo/freepv/s/ssi/ssis00497/playlist.m3u8
-    trailer_url = api_data.sampleMovie.url.replace("hlsvideo", "litevideo")
+    trailer_url = (
+        api_data.sampleMovie.url.replace("hlsvideo", "litevideo")
+        if api_data.sampleMovie and api_data.sampleMovie.url
+        else ""
+    )
     cid_match = re.search(r"/([^/]+)/playlist.m3u8", trailer_url)
     if cid_match:
         cid = cid_match.group(1)
