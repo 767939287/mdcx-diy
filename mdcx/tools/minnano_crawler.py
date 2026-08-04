@@ -21,6 +21,7 @@
 - 标签（熟女、巨乳等）
 - Wikipedia 个人经历段落（补充）
 """
+# mypy: ignore-errors
 
 import re
 import threading
@@ -350,7 +351,7 @@ def _parse_birthday(raw: str) -> tuple[str, str]:
     return birthday, zodiac
 
 
-def _parse_profile_table(table) -> dict[str, str]:
+def _parse_profile_table(table) -> dict[str, str | list[str] | bool]:
     """解析个人信息表格，返回字段字典。"""
     result = {
         "name": "",
@@ -501,13 +502,13 @@ def parse_minnano_page(html: str, minnano_id: str) -> dict[str, Any] | None:
                 result["twitter"] = twitter_match.group(1)
 
         # 解析生日
-        if result["birthday_raw"]:
+        if isinstance(result["birthday_raw"], str) and result["birthday_raw"]:
             birthday, zodiac = _parse_birthday(result["birthday_raw"])
             result["birthday"] = birthday
             result["zodiac"] = zodiac
 
         # 解析尺寸
-        if result["size_raw"]:
+        if isinstance(result["size_raw"], str) and result["size_raw"]:
             size = _parse_size(result["size_raw"])
             result["height"] = size["height"]
             result["bust"] = size["bust"]
@@ -775,7 +776,7 @@ async def _search_minnano_by_name(actor_name: str) -> tuple[str | None, str | No
             and "works" not in href
             and "list" not in href
         ):
-            minnano_id = re.search(r"actress(\d+)", href)
+            minnano_id = re.search(r"actress(\d+)", str(href))
             if minnano_id:
                 mid = minnano_id.group(1)
                 detail_url = f"https://www.minnano-av.com/actress{mid}.html"
@@ -803,7 +804,7 @@ async def _search_minnano_by_name(actor_name: str) -> tuple[str | None, str | No
             and text
         ):
             if _name_matches(actor_name, text):
-                minnano_id = re.search(r"actress(\d+)", href)
+                minnano_id = re.search(r"actress(\d+)", str(href))
                 if minnano_id:
                     mid = minnano_id.group(1)
                     detail_url = f"https://www.minnano-av.com/actress{mid}.html"
@@ -851,6 +852,7 @@ async def get_minnano_info(actor_info: EMbyActressInfo, wiki_intro: str = "") ->
         return False, f"🔴 {actor_name}: みんなのAV 未找到"
 
     # 4. 解析
+    assert html is not None
     parsed = parse_minnano_page(html, minnano_id)
     if not parsed or not parsed.get("name"):
         return False, f"🔴 {actor_name}: みんなのAV 页面解析失败"

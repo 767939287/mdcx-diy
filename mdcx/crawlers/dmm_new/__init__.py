@@ -434,7 +434,7 @@ class DmmCrawler(GenericBaseCrawler[DMMContext]):
                 elif method.upper() == "HEAD":
                     response, error = await self.async_client.request("HEAD", url, **request_kwargs)
                 else:
-                    response, error = await self.async_client.request(method, url, **request_kwargs)
+                    response, error = await self.async_client.request(method, url, **request_kwargs)  # type: ignore[arg-type]
 
                 # 如果请求成功，直接返回
                 if response is not None:
@@ -773,7 +773,7 @@ class DmmCrawler(GenericBaseCrawler[DMMContext]):
             preferred_poster = str(image_source.poster).strip() if is_valid(image_source.poster) else ""
             if preferred_poster:
                 res.poster = preferred_poster
-            if is_valid(image_source.extrafanart):
+            if is_valid(image_source.extrafanart) and isinstance(image_source.extrafanart, list):
                 res.extrafanart = list(image_source.extrafanart)
 
         if res is not None:
@@ -958,7 +958,7 @@ class DmmCrawler(GenericBaseCrawler[DMMContext]):
         ]
 
         for method, headers in checks:
-            response, error = await self.async_client.request(method, trailer_url, headers=headers, cookies=cookies)
+            response, error = await self.async_client.request(method, trailer_url, headers=headers, cookies=cookies)  # type: ignore[arg-type]
             if response is None:
                 ctx.debug(f"trailer 校验失败: {method} {trailer_url} {error=}")
                 continue
@@ -1091,11 +1091,11 @@ class DmmCrawler(GenericBaseCrawler[DMMContext]):
         )
 
     async def fetch_dmm_tv(self, ctx: Context, detail_url: str) -> CrawlerData:
-        season_id = re.search(r"seasonId=(\d+)", detail_url)
-        if not season_id:
+        season_id_match = re.search(r"seasonId=(\d+)", detail_url)
+        if not season_id_match:
             ctx.debug(f"无法从 DMM TV URL 提取 seasonId: {detail_url}")
             return CrawlerData()
-        season_id = season_id.group(1)
+        season_id = season_id_match.group(1)
 
         # 使用带重试的 HTTP 请求
         response, error = await self._http_request_with_retry(
@@ -1181,7 +1181,7 @@ class DmmCrawler(GenericBaseCrawler[DMMContext]):
             release = release[:10]
 
         runtime = str(int(data.duration / 60)) if data.duration else ""
-        outline = self._clean_html_text(data.description)
+        outline = self._clean_html_text(data.description or "")
         sample_images = [str(item.largeImageUrl or "").strip() for item in (data.sampleImages or []) if item]
 
         ctx.debug(f"digital GraphQL 请求成功: {content_id=} {detail_url=}")

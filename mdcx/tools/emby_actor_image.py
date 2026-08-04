@@ -207,7 +207,7 @@ async def _get_gfriends_actor_data() -> dict[str, str] | Literal[False] | None:
         _raise_if_stop_requested()
         if response is None:
             signal.show_log_text("🔴 Gfriends 查询最新数据更新时间失败！")
-            net_float = 0
+            net_float = 0.0
             update_data = True
         else:
             try:
@@ -250,13 +250,13 @@ async def _get_gfriends_actor_data() -> dict[str, str] | Literal[False] | None:
             signal.show_log_text("⏳ 开始缓存 Gfriends 最新数据表...")
             filetree_url = f"{raw_url}/master/Filetree.json"
             async with manager.acquire_computed() as computed:
-                response, error = await computed.async_client.get_content(filetree_url)
+                filetree_response, error = await computed.async_client.get_content(filetree_url)
             _raise_if_stop_requested()
-            if response is None:
+            if filetree_response is None:
                 signal.show_log_text("🔴 Gfriends 数据表获取失败！补全已停止！")
                 return False
             async with aiofiles.open(gfriends_json_path, "wb") as f:
-                await f.write(response)
+                await f.write(filetree_response)
             signal.show_log_text("✅ Gfriends 数据表已缓存！")
             try:
                 async with aiofiles.open(gfriends_json_path, encoding="utf-8") as f:
@@ -318,35 +318,6 @@ async def _get_graphis_pic(actor_name: str) -> tuple[Path | None, Path | None, s
         if EmbyAction.GRAPHIS_BACKDROP not in emby_on:
             return not pic_cached
         return not (pic_cached and bd_cached)
-
-    def _download_and_return(
-        pic_p: Path, bd_p: Path, small: str, big: str, logs_list: list
-    ) -> tuple[Path | None, Path | None, str] | None:
-        """下载图片并返回结果"""
-        pic_ok = asyncio.get_event_loop().run_in_executor(
-            None, lambda: download_file_with_filepath(small, pic_p, actor_folder)
-        )
-        if not isinstance(pic_ok, bool):
-            pic_ok = asyncio.run(pic_ok)
-        bd_ok = False
-        if EmbyAction.GRAPHIS_BACKDROP in emby_on:
-            bd_ok = asyncio.get_event_loop().run_in_executor(
-                None, lambda: download_file_with_filepath(big, bd_p, actor_folder)
-            )
-            if not isinstance(bd_ok, bool):
-                bd_ok = asyncio.run(bd_ok)
-        if pic_ok:
-            logs_list.append("🍊 使用 graphis.ne.jp 头像！ ")
-            if EmbyAction.GRAPHIS_BACKDROP not in emby_on:
-                asyncio.get_event_loop().run_in_executor(None, lambda: aiofiles.os.path.isfile(bd_p))
-                if not asyncio.run(aiofiles.os.path.isfile(bd_p)):
-                    asyncio.get_event_loop().run_in_executor(None, lambda: fix_pic_async(pic_p, bd_p))
-        if bd_ok:
-            logs_list.append("🍊 使用 graphis.ne.jp 背景！ ")
-            asyncio.get_event_loop().run_in_executor(None, lambda: fix_pic_async(bd_p, bd_p))
-        if pic_ok or bd_ok:
-            return pic_p, bd_p, "".join(logs_list)
-        return None
 
     # --- 辅助函数：检查是否需要网络请求 ---
     prim_pic_cached = await aiofiles.os.path.isfile(pic_primary)
@@ -472,7 +443,8 @@ async def _update_emby_actor_photo_execute(actor_list: list[dict], gfriends_acto
             jp_name = actor_name_data["jp"]
 
         # graphis 判断
-        pic_path, backdrop_path, logs = None, None, ""
+        pic_path: Path | str | None
+        backdrop_path, logs = None, ""
         if (
             EmbyAction.ACTOR_PHOTO_NET in emby_on
             and has_name
@@ -480,6 +452,8 @@ async def _update_emby_actor_photo_execute(actor_list: list[dict], gfriends_acto
         ):
             pic_path, backdrop_path, logs = await _get_graphis_pic(jp_name)
             _raise_if_stop_requested()
+        else:
+            pic_path = None
 
         # 要上传的头像图片未找到时
         if not pic_path:
@@ -506,8 +480,8 @@ async def _update_emby_actor_photo_execute(actor_list: list[dict], gfriends_acto
         # 头像需要下载时
         if isinstance(pic_path, str) and "https://" in pic_path:
             file_name = pic_path.split("/")[-1]
-            file_name = re.search(r"^[^?]+", file_name)
-            file_name = file_name.group(0) if file_name else f"{actor_name}.jpg"
+            file_name_match = re.search(r"^[^?]+", file_name)
+            file_name = file_name_match.group(0) if file_name_match else f"{actor_name}.jpg"
             file_path = actor_folder / file_name
             if not await aiofiles.os.path.isfile(file_path):
                 if not await download_file_with_filepath(pic_path, file_path, actor_folder):

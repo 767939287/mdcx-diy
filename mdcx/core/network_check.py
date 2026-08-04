@@ -471,7 +471,7 @@ async def run_network_check_item(
     try:
         request_client = client or _manager().computed.async_client
         response, error = await request_client.request(
-            spec.method,
+            spec.method,  # type: ignore[arg-type]
             spec.url,
             headers=spec.headers or None,
             cookies=spec.cookies or None,

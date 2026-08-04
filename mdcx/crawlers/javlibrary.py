@@ -159,7 +159,7 @@ class JavlibraryCrawler(BaseCrawler):
         jp_url = ctx.input.appoint_url.replace("/cn/", "/ja/").replace("/tw/", "/ja/")
         jp_data = await self._scrape_language(ctx, Language.JP, jp_url)
         target_language = requested_language if requested_language in {Language.ZH_CN, Language.ZH_TW} else None
-        target_language = target_language or self._needs_localized_language()
+        target_language = target_language or self._needs_localized_language()  # type: ignore[assignment]
         if not target_language:
             result = jp_data.to_result()
             result.source = self.site().value

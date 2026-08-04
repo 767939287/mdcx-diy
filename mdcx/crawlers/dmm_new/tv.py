@@ -267,11 +267,11 @@ def parse_fanza_resp(resp: FanzaResp):
     title = api_data.title
     outline = api_data.description
     actors = [actress.name for actress in api_data.actresses]
-    actor = ",".join(actors)
+    actor = ",".join(actor for actor in actors if actor is not None)
     poster_url = api_data.packageImage
     cover_url = api_data.packageLargeImage
     tags = [genre.name for genre in api_data.genres]
-    tag = ",".join(tags)
+    tag = ",".join(tag for tag in tags if tag is not None)
     runtime = str(int(api_data.playInfo.duration / 60))
     score = str(api_data.reviewSummary.averagePoint)
     series = api_data.series.name

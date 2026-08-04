@@ -6,7 +6,7 @@ from itertools import chain
 from typing import TYPE_CHECKING
 
 from ..config.enums import FixedScrapingType
-from ..config.models import Language, Website
+from ..config.models import FieldConfig, FieldPriorityConfig, Language, Website
 from ..gen.field_enums import CrawlerResultFields
 from ..manual import ManualConfig
 from ..models.enums import FileMode
@@ -291,6 +291,7 @@ class FileScraper:
         all_needed_keys: set[tuple[Website, Language]] = set()
         for field in ManualConfig.REDUCED_FIELDS:
             f_config = self.config.get_field_config(field)
+            type_field_config: FieldConfig | FieldPriorityConfig
             if use_type_field_config and hasattr(self.config, "get_type_field_config"):
                 type_field_config = self.config.get_type_field_config(classification.scraping_type, field)
             else:
@@ -336,6 +337,7 @@ class FileScraper:
         for field in ManualConfig.REDUCED_FIELDS:
             # 获取该字段的优先级列表
             f_config = self.config.get_field_config(field)
+            type_field_config: FieldConfig | FieldPriorityConfig
             if use_type_field_config and hasattr(self.config, "get_type_field_config"):
                 type_field_config = self.config.get_type_field_config(classification.scraping_type, field)
             else:
@@ -455,6 +457,7 @@ class FileScraper:
             LogBuffer.error().write(message)
             return None
 
+        poster_priority_config: FieldConfig | FieldPriorityConfig
         if use_type_field_config and hasattr(self.config, "get_type_field_config"):
             poster_priority_config = self.config.get_type_field_config(
                 classification.scraping_type, CrawlerResultFields.POSTER
@@ -507,7 +510,7 @@ class FileScraper:
             reduced.year = ""
 
         # 处理 mosaic
-        for site, result in all_res.items():
+        for _site_key, result in all_res.items():
             if mosaic := normalize_mosaic(result.mosaic):
                 reduced.mosaic = mosaic
                 break
@@ -624,7 +627,7 @@ class FileScraper:
         file_number = task_input.number
         leak = task_input.leak
         mosaic = task_input.mosaic
-        wuma = task_input.wuma
+        wuma = bool(task_input.wuma)
         youma = task_input.youma
 
         # ================================================网站规则添加开始================================================

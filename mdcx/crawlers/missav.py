@@ -592,7 +592,7 @@ class MissavCrawler(BaseCrawler):
 
         input_code = self._code_from_value(ctx.input.number)
         canonical_code = self._code_from_value(self._extract_slug(final_detail_url))
-        data_code = self._code_from_value(data.number)
+        data_code = self._code_from_value(str(data.number) if data.number else "")
         target_code = canonical_code or data_code
         if input_code and target_code and input_code != target_code:
             raise CrawlerException(

@@ -95,10 +95,10 @@ def get_movie_path_setting(
             temp_path = softlink_path
         if "first_folder_name" in success_folder.as_posix() or "first_folder_name" in failed_folder.as_posix():
             try:
-                first_folder_name = file_path.relative_to(temp_path).parts
+                first_folder_parts = file_path.relative_to(temp_path).parts
             except ValueError:
-                first_folder_name = ()
-            first_folder_name = first_folder_name[0] if first_folder_name else ""
+                first_folder_parts = ()
+            first_folder_name = first_folder_parts[0] if first_folder_parts else ""
             success_folder = Path(success_folder.as_posix().replace("first_folder_name", first_folder_name))
             failed_folder = Path(failed_folder.as_posix().replace("first_folder_name", first_folder_name))
 

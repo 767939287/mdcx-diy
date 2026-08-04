@@ -593,7 +593,7 @@ async def get_file_info_v2(file_path: Path, copy_sub: bool = True) -> FileInfo:
         for sub_type in sub_type_list:  # 查找本地字幕, 可能多个
             sub_type_chs = ".chs" + sub_type
             sub_path_chs = folder_path / (file_name + sub_type_chs)
-            sub_path = folder_path / (file_name + sub_type)
+            sub_path: Path | None = folder_path / (file_name + sub_type)
             if await aiofiles.os.path.exists(sub_path_chs):
                 sub_list.append(sub_type_chs)
                 c_word = cnword_style  # 中文字幕影片后缀

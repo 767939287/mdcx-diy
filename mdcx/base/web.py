@@ -854,7 +854,7 @@ async def download_content_with_filepath(url: str, file_path: Path, folder_new_p
         img = Image.open(byte_stream)
         try:
             if img.mode == "RGBA":
-                img = img.convert("RGB")
+                img = img.convert("RGB")  # type: ignore[assignment]
             img.save(file_path, quality=95, subsampling=0)
         finally:
             img.close()
@@ -902,7 +902,7 @@ async def download_dmm_extrafanart_with_filepath(url: str, file_path: Path, fold
         img = Image.open(byte_stream)
         try:
             if img.mode == "RGBA":
-                img = img.convert("RGB")
+                img = img.convert("RGB")  # type: ignore[assignment]
             img.save(file_path, quality=95, subsampling=0)
         finally:
             img.close()

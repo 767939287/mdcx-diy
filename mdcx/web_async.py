@@ -41,13 +41,15 @@ from .utils import collapse_inline_script_splits
 try:
     from .cf_bypass import LocalBypassServer
 except ImportError:
-    LocalBypassServer = None
+    LocalBypassServer = None  # type: ignore[assignment]
 
 
 def _safe_float(value: object, default: float) -> float:
     """安全地把外部来源的值转 float, 解析失败(非数字/None)时回退 default, 避免抛异常。"""
     try:
-        return float(value)
+        if isinstance(value, (str, bytes, int, float)):
+            return float(value)
+        return default
     except (TypeError, ValueError):
         return default
 
@@ -311,7 +313,7 @@ class HostPoolManager:
             if await pool.is_idle():
                 expired.append(key)
         for key in expired:
-            pool = self._pools.pop(key, None)
+            pool = self._pools.pop(key, None)  # type: ignore[arg-type]
             if pool is not None:
                 await pool.close()
 
@@ -337,7 +339,7 @@ class AsyncWebClient:
         self.proxy_sites = [s.strip() for s in (proxy_sites or []) if s.strip()]
         self.max_clients = 100
         self.verify_ssl = verify_ssl
-        self._session_kwargs = {
+        self._session_kwargs: dict[str, int | bool | float] = {
             "max_clients": self.max_clients,
             "verify": self.verify_ssl,
             "max_redirects": 20,
@@ -447,8 +449,11 @@ class AsyncWebClient:
             else random.choice(["chrome123", "chrome124", "chrome131", "chrome136", "firefox133", "firefox135"])
         )
         return AsyncSession(
-            **self._session_kwargs,
-            impersonate=impersonate,
+            max_clients=int(self._session_kwargs["max_clients"]),
+            verify=bool(self._session_kwargs["verify"]),
+            max_redirects=int(self._session_kwargs["max_redirects"]),
+            timeout=self._session_kwargs["timeout"],
+            impersonate=impersonate,  # type: ignore[arg-type]
         )
 
     def _is_proxy_host(self, host: str) -> bool:

@@ -276,10 +276,10 @@ def get_file_number(filepath: str, escape_string_list: list[str]) -> str:
         file_number = a + "-" + b
 
     elif (
-        (r := re.findall(r"([A-Z]{3,}).*?(\d{2,})", filename))  # 3个及以上字母，2个及以上数字
-        or (r := re.findall(r"([A-Z]{2,}).*?(\d{3,})", filename))  # 2个及以上字母，3个及以上数字
+        (r_findall := re.findall(r"([A-Z]{3,}).*?(\d{2,})", filename))  # 3个及以上字母，2个及以上数字
+        or (r_findall := re.findall(r"([A-Z]{2,}).*?(\d{3,})", filename))  # 2个及以上字母，3个及以上数字
     ):
-        temp = r[0]
+        temp = r_findall[0]
         file_number = temp[0] + "-" + temp[1]
 
     else:

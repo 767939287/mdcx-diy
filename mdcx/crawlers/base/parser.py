@@ -19,10 +19,11 @@ def extract_text(html: Selector, *selector: SelectorType) -> str:
         提取并清理后的文本, 未找到则返回空字符串.
     """
     try:
+        result: str | None = ""
         for s in selector:
             if isinstance(s, re.Pattern):
-                result = html.re(s)
-                result = result[0] if result else ""
+                result_list = html.re(s)
+                result = result_list[0] if result_list else ""
             elif isinstance(s, CSSSelector):
                 result = html.css(s).get()
             else:

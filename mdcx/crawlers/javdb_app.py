@@ -248,9 +248,9 @@ class JavdbAPICrawler(BaseCrawler):
             movies = [MovieSummary(**m) for m in movies_raw]
 
             # Find exact match by number (normalized, case-insensitive)
-            for movie in movies:
-                if movie.number and self._number_key(movie.number) == self._number_key(number):
-                    movie_id = movie.id
+            for summary_movie in movies:
+                if summary_movie.number and self._number_key(summary_movie.number) == self._number_key(number):
+                    movie_id = summary_movie.id
                     break
 
             if not movie_id:

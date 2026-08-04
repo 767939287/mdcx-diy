@@ -72,12 +72,14 @@ class HscangkuCrawler(BaseCrawler):
         response, error = await self.async_client.get_text(url)
         if response is None:
             return None
-        if (redirected_url := re.search(r'"(https?://.*?)"', response)) is None:
+        if (redirected_url_match := re.search(r'"(https?://.*?)"', response)) is None:
             return None
-        redirected_url = redirected_url.group(1)
-        response, error = await self.async_client.request("GET", f"{redirected_url}{url}&p=", allow_redirects=False)
-        if response and response.redirect_url:
-            return response.redirect_url
+        redirected_url = redirected_url_match.group(1)
+        redirect_response, redirect_error = await self.async_client.request(
+            "GET", f"{redirected_url}{url}&p=", allow_redirects=False
+        )
+        if redirect_response and redirect_response.redirect_url:
+            return redirect_response.redirect_url
         return None
 
     @override

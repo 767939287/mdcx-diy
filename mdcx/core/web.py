@@ -521,7 +521,7 @@ async def trailer_download(
 
         # 预告片文件夹已在已处理列表时，返回（这时只需要下载一个，其他分集不需要下载）
         if trailer_folder_path in Flags.trailer_deal_set:
-            return
+            return None
         Flags.trailer_deal_set.add(trailer_folder_path)
         await _cleanup_download_part_files(trailer_file_path, trailer_file_path.with_suffix(".[DOWNLOAD].mp4"))
 
@@ -530,7 +530,7 @@ async def trailer_download(
             # 删除目标文件夹即可，其他文件夹和文件已经删除了
             if await aiofiles.os.path.exists(trailer_folder_path):
                 await to_thread(shutil.rmtree, trailer_folder_path, ignore_errors=True)
-            return
+            return None
 
     else:
         # 预告片带文件名（每个视频都有机会下载，如果已有下载好的，则使用已下载的）
@@ -550,7 +550,7 @@ async def trailer_download(
                 trailer_new_folder_path
             ):
                 await to_thread(shutil.rmtree, trailer_new_folder_path, ignore_errors=True)
-            return
+            return None
 
     # 选择保留文件，当存在文件时，不下载。（done trailer path 未设置时，把当前文件设置为 done trailer path，以便其他分集复制）
     if trailer_policy.should_keep and await aiofiles.os.path.exists(trailer_file_path):
@@ -574,11 +574,11 @@ async def trailer_download(
             await delete_file_async(trailer_file_path)
         await copy_file_async(done_trailer_path, trailer_file_path)
         LogBuffer.log().write(f"\n 🍀 Trailer done! (copy trailer)({get_used_time(start_time)}s)")
-        return
+        return None
 
     # 不下载时返回（选择不下载保留，但本地并不存在，此时返回）
     if not trailer_policy.should_download:
-        return
+        return None
 
     if ".fc2.com/" in trailer_url and "mid=" in trailer_url and "/up/" in trailer_url:
         tips = "🟡 FC2 预告片链接为带 mid 参数的临时地址，建议仅用于当前任务立即下载，后续直接复用远程链接可能失效。"
@@ -1230,7 +1230,7 @@ async def extrafanart_download(extrafanart: list[str], extrafanart_from: str, fo
     if extrafanart_policy.should_remove_existing:
         if await aiofiles.os.path.exists(extrafanart_folder_path):
             await to_thread(shutil.rmtree, extrafanart_folder_path, ignore_errors=True)
-        return
+        return None
 
     # 本地存在 extrafanart_folder，且勾选保留旧文件时，不下载
     if extrafanart_policy.should_keep and await aiofiles.os.path.exists(extrafanart_folder_path):

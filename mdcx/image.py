@@ -178,9 +178,9 @@ async def get_pixmap(pic_path: Path, poster=True, pic_from=""):
     try:
         # 使用 QImageReader 加载，适合加载大文件，pixmap适合显示
         # 判断是否可读取
-        img = QImageReader(pic_path.as_posix())
-        if img.canRead():
-            img = img.read()
+        reader = QImageReader(pic_path.as_posix())
+        if reader.canRead():
+            img = reader.read()
             pix = QPixmap(img)
             pic_width = img.size().width()
             pic_height = img.size().height()
@@ -272,7 +272,7 @@ def fix_pic(pic_path: Path, new_path: Path):
         else:  # 下面对齐
             ax, ay, bx, by = int(w * 0.0155), int(h * 0.0888), int(w * 0.9833), int(h * 0.9955)
             pic_new = pic.convert("RGB")
-            pic = pic_new.crop((ax, ay, bx, by))
+            pic = pic_new.crop((ax, ay, bx, by))  # type: ignore[assignment]
             backdrop_w = bx - ax
             backdrop_h = int((bx - ax) / 1.156)
             foreground_x = 0

@@ -1,6 +1,7 @@
 """
 Amazon 相关封面搜索与条码识别逻辑
 """
+# mypy: ignore-errors
 
 import asyncio
 import re

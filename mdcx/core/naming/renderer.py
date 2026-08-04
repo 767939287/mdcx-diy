@@ -1,6 +1,7 @@
 import re
 from dataclasses import dataclass, field
 from enum import Enum
+from typing import Any
 
 from ...models.types import CrawlersResult, FileInfo
 from .fields import TRUNCATE_PRIORITY, NamingContext, build_naming_context
@@ -77,13 +78,13 @@ def _finalize_text(text: str, target: NamingTarget) -> str:
     return sanitize_name(text, allow_path_separator=target == NamingTarget.FOLDER)
 
 
-def _render_with_values(template: str, values: dict[str, str], target: NamingTarget) -> str:
+def _render_with_values(template: str, values: dict[str, Any], target: NamingTarget) -> str:
     return _finalize_text(render_template(template, values), target)
 
 
 def _smart_truncate(
     template: str,
-    values: dict[str, str],
+    values: dict[str, Any],
     target: NamingTarget,
     max_length: int,
 ) -> tuple[str, list[str]]:
@@ -125,7 +126,7 @@ def render_name(
         show_moword_suffix=options.show_moword_suffix,
         escape_path_separator=options.target != NamingTarget.NFO_TITLE,
     )
-    values = context.values.copy()
+    values: dict[str, Any] = context.values.copy()
     values["fields"] = context.values
 
     text, truncated_fields = _smart_truncate(

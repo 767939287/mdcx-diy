@@ -133,12 +133,12 @@ class Kin8Crawler(BaseCrawler):
         number = ctx.input.number
         detail_url = ctx.input.appoint_url
         if detail_url:
-            key = re.findall(r"\d{3,}", detail_url)
-            key = key[0] if key else ""
+            key_matches = re.findall(r"\d{3,}", detail_url)
+            key = key_matches[0] if key_matches else ""
             number = f"KIN8-{key}" if key else number
         else:
-            key = re.findall(r"KIN8(TENGOKU)?-?(\d{3,})", number.upper())
-            key = key[0][1] if key else ""
+            key_matches = re.findall(r"KIN8(TENGOKU)?-?(\d{3,})", number.upper())
+            key = key_matches[0][1] if key_matches else ""
             if not key:
                 raise CrawlerException(f"番号中未识别到 KIN8 番号: {number}")
             number = f"KIN8-{key}"

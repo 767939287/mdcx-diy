@@ -1,3 +1,5 @@
+from typing import Any
+
 from jinja2 import Environment, StrictUndefined, meta
 from jinja2.sandbox import SandboxedEnvironment
 
@@ -9,7 +11,7 @@ _ENV: Environment = SandboxedEnvironment(
 )
 
 
-def render_template(template: str, values: dict[str, str]) -> str:
+def render_template(template: str, values: dict[str, Any]) -> str:
     """使用标准 Jinja2 语法渲染命名模板。"""
 
     return _ENV.from_string(str(template or "")).render(**values)

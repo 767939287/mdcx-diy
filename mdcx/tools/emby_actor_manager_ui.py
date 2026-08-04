@@ -211,11 +211,11 @@ class PreparePreviewThread(QThread):
             elif src == "graphis":
                 loop = asyncio.new_event_loop()
                 try:
-                    result = loop.run_until_complete(from_graphis(actor, self.cache_dir))
+                    graphis_result = loop.run_until_complete(from_graphis(actor, self.cache_dir))
                 finally:
                     loop.close()
-                if isinstance(result, tuple):
-                    avatar_path, backdrop_path = result
+                if isinstance(graphis_result, tuple):
+                    avatar_path, backdrop_path = graphis_result
                     actor.new_image_path = avatar_path
                     actor.need_update_image = True
                     if backdrop_path:

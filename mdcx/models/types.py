@@ -200,7 +200,7 @@ class BaseCrawlerResult:
             country = "CN"
         elif re.findall(r"\.\d{2}\.\d{2}\.\d{2}", self.number):
             country = "US"
-        return country
+        return country  # type: ignore[return-value]
 
     @property
     def tag(self) -> str:

@@ -16,7 +16,7 @@ def load_v1(path: str | Path) -> tuple[dict[str, Any], list[str]]:
     field_types = {f.name: f.type for f in fields(ConfigV1)}
     errors = []
     unknown_fields: dict[str, str] = {}  # 原样保留未知字段
-    d = {}
+    d: dict[str, Any] = {}
     for section in reader.sections():
         for key, value in reader.items(section):
             try:

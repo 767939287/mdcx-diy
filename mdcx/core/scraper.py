@@ -725,7 +725,7 @@ class Scraper:
                                 async def _query_one_actor(actor_name: str) -> None:
                                     nonlocal _read_mode_error_count
                                     row = search_actor_db_reverse(actor_name)
-                                    jp_name = row.get("jp") if row else actor_name
+                                    jp_name = str(row.get("jp")) if row and row.get("jp") else actor_name
                                     try:
                                         query_result = await query_single_actor_cached(
                                             jp_name, base_url, tmdb_api_key, client
@@ -865,9 +865,10 @@ class Scraper:
             crawl_task = file_info.crawl_task()
             crawl_task.media_context = media_context
             scraper = FileScraper(manager.config, self.crawler_provider)
-            res = await scraper.run(crawl_task, file_mode)
-            if res is None:
+            crawl_result = await scraper.run(crawl_task, file_mode)
+            if crawl_result is None:
                 return None, None
+            res = crawl_result
             # 处理 FileInfo 和 CrawlersResult 的共同字段, 即 number/mosaic/letters
             # todo 理想情况, crawl 后应该以 res 为准, 后续不应再访问 file_info 的相关字段
             # todo 注意, 实际上目前各 crawler 返回的 mosaic 和 number 字段并未被使用

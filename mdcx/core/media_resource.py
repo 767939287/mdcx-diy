@@ -197,10 +197,11 @@ class MediaResourceContext:
             self._content_lengths[normalized_url] = length
             return length
 
-        length = await self._fetch_content_length(normalized_url)
-        if length is not None:
-            self._content_lengths[normalized_url] = length
-        return length
+        fetched_length = await self._fetch_content_length(normalized_url)
+        if fetched_length is not None:
+            self._content_lengths[normalized_url] = fetched_length
+            return fetched_length
+        return fetched_length
 
     async def _fetch_content_length(self, url: str) -> int | None:
         retry_delays = _configured_retry_delays(0.5)

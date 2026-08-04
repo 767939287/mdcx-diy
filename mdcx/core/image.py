@@ -138,7 +138,7 @@ def cut_thumb_to_poster(
     if os.path.exists(poster_path):
         delete_file_sync(poster_path)
 
-    img = None
+    img: Image.Image | None = None
     img_new = None
     img_new_png = None
     # 打开图片, 获取图片尺寸

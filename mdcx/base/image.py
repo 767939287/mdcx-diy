@@ -113,7 +113,7 @@ async def _add_to_pic(pic_path: Path, img_pic: Image.Image, mark_size: int, coun
 
     if mark_pic_path:
         try:
-            img_subt = Image.open(mark_pic_path)
+            img_subt: Image.Image = Image.open(mark_pic_path)
             img_subt = img_subt.convert("RGBA")
             scroll_high = int(img_pic.height * mark_size / 40)
             scroll_width = int(scroll_high * img_subt.width / img_subt.height)

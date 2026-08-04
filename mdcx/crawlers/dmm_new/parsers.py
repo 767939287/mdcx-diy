@@ -275,9 +275,9 @@ class DigitalParser(DetailPageParser):
     @override
     async def parse(self, ctx: Context, html: Selector, **kwargs) -> CrawlerData:
         d = await super().parse(ctx, html, **kwargs)
-        json_data = extract_text(html, '//script[@type="application/ld+json"]/text()')
+        json_text = extract_text(html, '//script[@type="application/ld+json"]/text()')
         try:
-            json_data = DmmJsonSchema.model_validate_json(json_data)
+            json_data = DmmJsonSchema.model_validate_json(json_text)
             if json_data.name:
                 d.title = json_data.name
             if json_data.description:

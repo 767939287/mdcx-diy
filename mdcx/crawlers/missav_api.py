@@ -185,8 +185,8 @@ class MissavApiCrawler(BaseCrawler):
 
         data = self._build_data(item, number)
         data.source = self.site().value
-        data = data.to_result()
-        return await self.post_process(ctx, data)
+        result = data.to_result()
+        return await self.post_process(ctx, result)
 
     # 以下三个抽象方法本爬虫用不到(已重写 _run 完全自定义流程),
     # 但基类以 @abstractmethod 声明, 必须提供实现方可实例化.

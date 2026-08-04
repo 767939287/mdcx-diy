@@ -358,7 +358,7 @@ async def update_person_info(actor: ActorInfo) -> tuple[bool, str]:
         {"Name": actor.name, "Id": actor.actor_id, "ServerId": actor.server_id}
     )
     overview = (actor.new_overview or actor.existing_overview or "").replace("\n", "<br/>")
-    payload = {
+    payload: dict[str, object] = {
         "Name": actor.name,
         "Id": actor.actor_id,
         "ServerId": actor.server_id,

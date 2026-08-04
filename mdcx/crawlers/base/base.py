@@ -127,8 +127,8 @@ class GenericBaseCrawler[T: Context = Context](ABC):
         if not data:
             raise CrawlerException("获取详情页数据失败")
         data.source = self.site().value  # todo use Enum directly
-        data = data.to_result()
-        return await self.post_process(ctx, data)
+        result = data.to_result()
+        return await self.post_process(ctx, result)
 
     async def _search(self, ctx: T, search_urls: list[str]) -> list[str] | None:
         for search_url in search_urls:

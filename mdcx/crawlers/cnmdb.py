@@ -97,7 +97,7 @@ class CnmdbCrawler(BaseCrawler):
         data.source = self.site().value
         return data.to_result()
 
-    async def _crawl_cnmdb(self, ctx) -> CrawlerData:
+    async def _crawl_cnmdb(self, ctx) -> CrawlerData | None:
         file_path = str(ctx.input.file_path or "")
         if ctx.input.appoint_url:
             detail_url = ctx.input.appoint_url

@@ -21,7 +21,7 @@ def get_checkboxes[T](*component_value_pairs: tuple[QCheckBox | QRadioButton | b
     return result
 
 
-def get_checkbox[T](component: QCheckBox | QRadioButton, on_value: T = True, off_value: T = False) -> T:
+def get_checkbox[T](component: QCheckBox | QRadioButton, on_value: T, off_value: T) -> T:
     """
     根据二值输入组件返回开启或关闭的配置值
 
@@ -36,7 +36,7 @@ def get_checkbox[T](component: QCheckBox | QRadioButton, on_value: T = True, off
     return on_value if component.isChecked() else off_value
 
 
-def get_radio_buttons[T](*radio_mappings: tuple[QRadioButton, T], default: T = "") -> T:
+def get_radio_buttons[T](*radio_mappings: tuple[QRadioButton, T], default: T) -> T:
     """
     根据一组单选按钮的选中状态生成配置值
 

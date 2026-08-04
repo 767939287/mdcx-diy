@@ -8,6 +8,7 @@ import re
 import shutil
 import time
 import traceback
+from typing import Literal
 
 import aiofiles
 import aiofiles.os
@@ -55,6 +56,7 @@ async def creat_kodi_actors(add: bool, *, manage_button_state: bool = True) -> N
     try:
         _raise_if_stop_requested()
         signal.show_log_text(f"📂 待刮削目录: {get_movie_path_setting().movie_path}")
+        gfriends_actor_data: dict[str, str] | Literal[False] | None | bool
         if add:
             signal.show_log_text(
                 "💡 将为待刮削目录中的每个视频创建 .actors 文件夹，并补全演员图片到 .actors 文件夹中\n"
@@ -94,6 +96,8 @@ async def update_emby_actor_info() -> None:
         for actor in actor_list:
             _raise_if_stop_requested()
             actor_name = actor.get("Name")
+            if not isinstance(actor_name, str):
+                continue
             # 名字含有空格时跳过
             if re.search(r"[ .·・-]", actor_name):
                 signal.show_log_text(f"🔍 {actor_name}: 名字含有空格等分隔符，识别为非女优，跳过！")
@@ -105,9 +109,9 @@ async def update_emby_actor_info() -> None:
         wiki = 0
         local = 0
         updated = 0
-        for task in asyncio.as_completed(tasks):
+        for done_task in asyncio.as_completed(tasks):
             _raise_if_stop_requested()
-            flag, msg = await task
+            flag, msg = await done_task
             _raise_if_stop_requested()
             updated += flag != 0
             wiki += flag & 1
@@ -210,13 +214,13 @@ async def _process_actor_async(actor: dict, emby_on: list[EmbyAction]) -> tuple[
 
             # 再用 minnano-av 获取详细信息
             _raise_if_stop_requested()
-            res, msg = await get_minnano_info(actor_info, wiki_intro)
+            minnano_ok, msg = await get_minnano_info(actor_info, wiki_intro)
             logs.append(msg)
-            if res:
+            if minnano_ok:
                 minnano_found = 1
 
             # db
-            if manager.config.use_database and not res and wiki_found == 0:
+            if manager.config.use_database and not minnano_ok and wiki_found == 0:
                 if "数据库补全" in overview and EmbyAction.ACTOR_INFO_MISS in emby_on:
                     db_exist = 0
                     logs.append(f"{actor_name}: 已有数据库信息")
@@ -231,11 +235,11 @@ async def _process_actor_async(actor: dict, emby_on: list[EmbyAction]) -> tuple[
         if minnano_found or db_exist or wiki_found or local_applied:
             headers = _build_jellyfin_headers() if _is_jellyfin_server() else None
             async with manager.acquire_computed() as computed:
-                res, error = await computed.async_client.post_text(
+                post_res, error = await computed.async_client.post_text(
                     update_url, json_data=actor_info.dump(), headers=headers, use_proxy=False
                 )
             _raise_if_stop_requested()
-            if res is not None:
+            if post_res is not None:
                 return (
                     (8 if local_applied else 0) + wiki_found + (db_exist << 1) + (minnano_found << 2),
                     f"✅ {actor_name} 更新成功.{summary}\n主页: {actor_homepage}",

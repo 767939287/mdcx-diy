@@ -3273,8 +3273,8 @@ class MyMAinWindow(QMainWindow):
                     tips = f"❌ 连接失败！请检查网络或代理设置！ {response}"
             else:
                 if "The owner of this website has banned your access based on your browser's behaving" in response:
-                    ip_adress = re.findall(r"(\d+\.\d+\.\d+\.\d+)", response)
-                    ip_adress = ip_adress[0] + " " if ip_adress else ""
+                    ip_adress_list = re.findall(r"(\d+\.\d+\.\d+\.\d+)", response)
+                    ip_adress = ip_adress_list[0] + " " if ip_adress_list else ""
                     tips = f"❌ 你的 IP {ip_adress}被 JavDb 封了！"
                 elif "Due to copyright restrictions" in response or "Access denied" in response:
                     tips = "❌ 当前 IP 被禁止访问！请使用非日本节点！"

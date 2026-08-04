@@ -21,8 +21,8 @@ from .naming import NameRenderOptions, NamingTarget, render_name
 def replace_word(json_data: BaseCrawlerResult):
     # 常见字段替换的字符
     for key, value in ManualConfig.ALL_REP_WORD.items():
-        for each in ManualConfig.ALL_KEY_WORD:
-            setattr(json_data, each, getattr(json_data, each).replace(key, value))
+        for field_name in ManualConfig.ALL_KEY_WORD:
+            setattr(json_data, field_name, getattr(json_data, field_name).replace(key, value))
 
     # 简体时替换的字符
     key_word = []
@@ -32,8 +32,8 @@ def replace_word(json_data: BaseCrawlerResult):
         key_word.append("outline")
 
     for key, value in ManualConfig.CHINESE_REP_WORD.items():
-        for each in key_word:
-            setattr(json_data, each, getattr(json_data, each).replace(key, value))
+        for cn_field_name in key_word:
+            setattr(json_data, cn_field_name, getattr(json_data, cn_field_name).replace(key, value))
 
     # 替换标题的上下集信息
     for field in (CrawlerResultFields.TITLE, CrawlerResultFields.ORIGINALTITLE):

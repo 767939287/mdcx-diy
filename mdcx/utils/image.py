@@ -43,7 +43,7 @@ def _encode_image(image: Image.Image, save_format: str, quality: int = IMAGE_QUA
             save_kwargs["optimize"] = True
     else:
         save_kwargs.update({"optimize": True, "compress_level": 9})
-    image.save(output, **save_kwargs)
+    image.save(output, **save_kwargs)  # type: ignore[arg-type]
     return output.getvalue()
 
 
@@ -66,7 +66,7 @@ def compress_image(file_path: Path, enabled: bool = True) -> bool:
             if save_format not in {"JPEG", "PNG", "WEBP"}:
                 return False
 
-            source_image = image
+            source_image: Image.Image = image
             if save_format == "JPEG" and source_image.mode not in {"RGB", "L"}:
                 converted_image = source_image.convert("RGB")
                 source_image = converted_image

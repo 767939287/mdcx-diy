@@ -170,7 +170,7 @@ def _tmdb_query_cache_set_and_persist(name: str, value: dict | None) -> None:
     # Persist is deferred to explicit flush_tmdb_query_cache() call at batch boundaries
 
 
-def _tmdb_query_cache_path() -> Path:
+def _tmdb_query_cache_path() -> Path | None:
     cache_path = getattr(resources, "tmdb_query_cache_path", None)
     if isinstance(cache_path, Path):
         if cache_path == Path() or str(cache_path) in (".", "./"):
@@ -1015,7 +1015,7 @@ async def fetch_actor_tmdb_ids(actors: list[str], client: Any) -> dict[str, int]
             continue
 
         _tmdb_log_line(f"  ⚠️ [TMDB] '{actor_stripped}' 未匹配，将进入 TMDB API 搜索")
-        need_query.append((actor_stripped, row.get("jp") if row and row.get("jp") else actor_stripped))
+        need_query.append((actor_stripped, str(row.get("jp")) if row and row.get("jp") else actor_stripped))
 
     async def _query_or_cached(actor_name: str, query_name: str) -> tuple[str, dict | None]:
         return actor_name, await query_single_actor_cached(query_name, base_url, tmdb_api_key, client)

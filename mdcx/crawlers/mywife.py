@@ -118,8 +118,8 @@ class MywifeCrawler(BaseCrawler):
         global seesaawiki_request_fail_flag
         number = ctx.input.number
         real_url = ctx.input.appoint_url
-        key = re.findall(r"NO\.(\d*)", number.upper())
-        key = key[0] if key else ""
+        key_matches = re.findall(r"NO\.(\d*)", number.upper())
+        key = key_matches[0] if key_matches else ""
         if not key:
             key_match = re.findall(r"\d{3,}", number)
             if key_match:
