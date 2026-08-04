@@ -340,7 +340,7 @@ async def _filter_dmm_extrafanart(image_urls: list[str], *, media_context=None, 
         for (index, _), validated in zip(remaining_candidates, remaining_results, strict=True):
             validated_by_index[index] = validated
 
-    valid_urls: list[str] = []
+    valid_urls = []
     for index in range(len(candidates)):
         validated_url = validated_by_index.get(index, "")
         if validated_url and validated_url not in valid_urls:

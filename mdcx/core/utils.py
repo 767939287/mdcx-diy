@@ -267,7 +267,9 @@ def add_definition_tag(res: BaseCrawlerResult, definition, codec):
         tag = tag.replace(each_key, "").replace(each_key.lower(), "")
     tag_list = re.split(r"[,，]", tag)
     new_tag_list = []
-    [new_tag_list.append(i) for i in tag_list if i]
+    for i in tag_list:
+        if i:
+            new_tag_list.append(i)
     if definition and TagInclude.DEFINITION in manager.config.nfo_tag_include:
         new_tag_list.insert(0, definition)
         if manager.config.hd_get == "video" and codec and codec not in new_tag_list:

@@ -330,7 +330,7 @@ class IqqtvCrawler(BaseCrawler):
 
         result = data.to_result()
         result.source = self.site().value
-        ctx.debug_info.detail_urls = [data.external_id]
+        ctx.debug_info.detail_urls = [str(data.external_id)]
         ctx.debug("数据获取成功！")
         return result
 

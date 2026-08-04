@@ -6,7 +6,7 @@ import re
 from collections import defaultdict
 from collections.abc import Sequence
 from dataclasses import dataclass, field
-from typing import override
+from typing import cast, override
 from urllib.parse import parse_qsl, urlencode, urljoin, urlsplit, urlunsplit
 
 from parsel import Selector
@@ -265,7 +265,7 @@ class DmmCrawler(GenericBaseCrawler[DMMContext]):
             for (index, _), validated in zip(remaining_candidates, remaining_results, strict=True):
                 validated_by_index[index] = validated
 
-        valid_urls: list[str] = []
+        valid_urls = []
         for index in range(len(candidates)):
             image_url = validated_by_index.get(index, "")
             if image_url and image_url not in valid_urls:
@@ -741,7 +741,7 @@ class DmmCrawler(GenericBaseCrawler[DMMContext]):
             ]
         )
         candidate_results = [
-            (category, detail_url, item)
+            (category, detail_url, cast("CrawlerData | Exception", item))
             for (category, detail_url, _), item in zip(candidate_results, sanitized_results, strict=True)
         ]
         res, best_trailer = self._merge_detail_results(
@@ -1121,7 +1121,7 @@ class DmmCrawler(GenericBaseCrawler[DMMContext]):
             actors=[item.actorName for item in data.casts],
             poster=data.packageImage,
             thumb=data.keyVisualImage,
-            tags=[item.name for item in data.genres],
+            tags=[name for item in data.genres if (name := item.name) is not None],
             release=data.startPublicAt,  # 2025-05-17T20:00:00Z
             year=str(data.productionYear),
             score=str(data.reviewSummary.averagePoint),

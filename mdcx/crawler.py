@@ -1,6 +1,6 @@
 import asyncio
 from collections.abc import Callable
-from typing import TYPE_CHECKING, Never, Protocol
+from typing import TYPE_CHECKING, Any, Never, Protocol
 
 from .config.enums import Website
 from .crawlers.base import GenericBaseCrawler, get_crawler
@@ -11,6 +11,8 @@ if TYPE_CHECKING:
 
 
 class CrawlerProviderProtocol(Protocol):
+    client: Any
+
     async def get(self, site: Website) -> "GenericBaseCrawler[Never]": ...
     async def close(self) -> None: ...
 

@@ -5,7 +5,7 @@ try:
     from warnings import deprecated
 except ImportError:
 
-    def deprecated(_message):
+    def deprecated(_message):  # type: ignore[no-redef]
         def decorator(func):
             return func
 
@@ -14,7 +14,7 @@ except ImportError:
 
 class LogBuffer:
     _lock = threading.Lock()
-    all_buffers = {}
+    all_buffers: dict[int, dict[str, "LogBuffer"]] = {}
     global_buffer = None
 
     @staticmethod

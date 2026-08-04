@@ -315,8 +315,8 @@ class CrawlerResult(BaseCrawlerResult):
 class CrawlerDebugInfo:
     execution_time: float = 0.0
     error: Exception | None = None
-    search_urls: list[str] | None = None
-    detail_urls: list[str] | None = None
+    search_urls: list[str] = field(default_factory=list)
+    detail_urls: list[str] = field(default_factory=list)
     logs: list[str] = field(default_factory=list)
 
 

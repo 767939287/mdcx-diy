@@ -56,7 +56,7 @@ class LibrarySelectDialog(QDialog):
         self.setMinimumWidth(420)
         self.setMinimumHeight(320)
         self._libraries = libraries
-        self._checkboxes = []
+        self._checkboxes: list[QCheckBox] = []
         self._init_ui()
 
     def _init_ui(self):

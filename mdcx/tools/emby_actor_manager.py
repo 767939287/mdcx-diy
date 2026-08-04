@@ -579,10 +579,11 @@ async def search_actor_info(actor: ActorInfo, wiki_intro: str = "") -> bool:
     if not (local_found and local_overview):
         res_wiki, _ = await search_wiki(info)
         wiki_found = False
+        wiki_intro = ""
         if res_wiki is not None:
             result_wiki, _ = await get_detail(res_wiki, "", info)
             if result_wiki:
-                wiki_intro = res_wiki.get("intro", "")
+                wiki_intro = info.overview or ""
                 wiki_found = True
         res, _ = await get_minnano_info(info, wiki_intro)
         if not res and not wiki_found and manager.config.use_database:

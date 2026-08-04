@@ -209,7 +209,7 @@ async def _process_actor_async(actor: dict, emby_on: list[EmbyAction]) -> tuple[
                 result_wiki, error_wiki = await get_detail(res_wiki, msg_wiki, actor_info)
                 _raise_if_stop_requested()
                 if result_wiki:
-                    wiki_intro = res_wiki.get("intro", "") if res_wiki else ""
+                    wiki_intro = actor_info.overview or ""
                     wiki_found = 1
 
             # 再用 minnano-av 获取详细信息

@@ -427,7 +427,7 @@ class AvbaseCrawler(BaseCrawler):
             for (index, _), validated in zip(remaining_candidates, remaining_results, strict=True):
                 validated_by_index[index] = validated
 
-        valid_urls: list[str] = []
+        valid_urls = []
         for index in range(len(candidates)):
             normalized = validated_by_index.get(index, "")
             if normalized and normalized not in valid_urls:

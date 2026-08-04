@@ -24,7 +24,7 @@ from curl_cffi.requests.session import HttpMethod
 try:
     from curl_cffi.requests.utils import not_set
 except ImportError:  # curl_cffi >= 0.12 renamed the sentinel to NOT_SET
-    from curl_cffi.requests.utils import NOT_SET as not_set
+    from curl_cffi.requests.utils import NOT_SET as not_set  # type: ignore[attr-defined, no-redef]
 from PIL import Image
 
 from .network_fingerprint import (
@@ -41,7 +41,7 @@ from .utils import collapse_inline_script_splits
 try:
     from .cf_bypass import LocalBypassServer
 except ImportError:
-    LocalBypassServer = None  # type: ignore[assignment]
+    LocalBypassServer = None  # type: ignore[assignment, misc]
 
 
 def _safe_float(value: object, default: float) -> float:

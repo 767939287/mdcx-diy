@@ -138,7 +138,8 @@ def get_actress_video_list(html: etree._Element, base_url: str) -> dict:
             "has_next": True/False
         }
     """
-    result = {"videos": [], "has_next": False}
+    videos_result: list[dict] = []
+    result: dict[str, list[dict] | bool] = {"videos": videos_result, "has_next": False}
 
     # 基于JAVBus搜索页面的模式，推测演员详情页可能使用类似结构
     # 可能的XPath模式（按优先级排序）
@@ -172,7 +173,7 @@ def get_actress_video_list(html: etree._Element, base_url: str) -> dict:
             # 尝试多种XPath模式提取视频信息
             video_data = _extract_actress_video_info(video, base_url)
             if video_data and video_data.get("number"):
-                result["videos"].append(video_data)
+                videos_result.append(video_data)
         except Exception:
             # 单个视频解析失败不影响其他视频
             continue

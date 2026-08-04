@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 import re
-from typing import override
+from typing import cast, override
 
 from lxml import etree
 
@@ -136,7 +136,7 @@ class OfficialCrawler(BaseCrawler):
             return result
 
         number_letters = get_number_letters(number)
-        official_crawler_cls = OFFICIAL_CRAWLER_BY_PREFIX.get(number_letters.upper())
+        official_crawler_cls = cast("type[BaseCrawler]", OFFICIAL_CRAWLER_BY_PREFIX.get(number_letters.upper()))
         if official_crawler_cls is not None:
             child_response = await official_crawler_cls(client=self.async_client).run(ctx.input)
             ctx.debug_info.logs.extend(child_response.debug_info.logs)

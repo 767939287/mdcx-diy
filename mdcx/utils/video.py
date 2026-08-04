@@ -46,7 +46,7 @@ def get_video_metadata_ffmpeg(p: Path) -> tuple[int, str]:
     creationflags = 0
     # Windows use CREATE_NO_WINDOW to suppress the console window
     if os.name == "nt":
-        creationflags = subprocess.CREATE_NO_WINDOW
+        creationflags = subprocess.CREATE_NO_WINDOW  # type: ignore[attr-defined]
 
     result = subprocess.run(cmd, capture_output=True, text=True, creationflags=creationflags)
 

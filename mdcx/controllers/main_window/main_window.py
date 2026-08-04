@@ -3560,12 +3560,12 @@ class MyMAinWindow(QMainWindow):
 
 
 # region 外部方法定义
-MyMAinWindow.load_config = load_config
-MyMAinWindow.save_config = save_config
-MyMAinWindow.Init_QSystemTrayIcon = Init_QSystemTrayIcon
-MyMAinWindow.Init_Ui = Init_Ui
-MyMAinWindow.Init_Singal = Init_Singal
-MyMAinWindow.init_QTreeWidget = init_QTreeWidget
-MyMAinWindow.set_style = set_style
-MyMAinWindow.set_dark_style = set_dark_style
+MyMAinWindow.load_config = load_config  # type: ignore[method-assign]
+MyMAinWindow.save_config = save_config  # type: ignore[method-assign]
+MyMAinWindow.Init_QSystemTrayIcon = Init_QSystemTrayIcon  # type: ignore[method-assign]
+MyMAinWindow.Init_Ui = Init_Ui  # type: ignore[method-assign]
+MyMAinWindow.Init_Singal = Init_Singal  # type: ignore[method-assign]
+MyMAinWindow.init_QTreeWidget = init_QTreeWidget  # type: ignore[method-assign]
+MyMAinWindow.set_style = set_style  # type: ignore[method-assign]
+MyMAinWindow.set_dark_style = set_dark_style  # type: ignore[method-assign]
 # endregion

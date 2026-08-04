@@ -139,18 +139,9 @@ exclude = [
 disable_error_code = [
     "annotation-unchecked",
     "import-untyped",
-    "var-annotated",
     "union-attr",
-    "no-redef",
-    "attr-defined",
-    "misc",
     "call-arg",
     "call-overload",
-    "operator",
-    "index",
-    "method-assign",
-    "list-item",
-    "no-any-return",
     "override",
-    "func-returns-value",
 ]
+

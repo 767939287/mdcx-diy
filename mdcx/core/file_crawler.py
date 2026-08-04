@@ -337,7 +337,6 @@ class FileScraper:
         for field in ManualConfig.REDUCED_FIELDS:
             # 获取该字段的优先级列表
             f_config = self.config.get_field_config(field)
-            type_field_config: FieldConfig | FieldPriorityConfig
             if use_type_field_config and hasattr(self.config, "get_type_field_config"):
                 type_field_config = self.config.get_type_field_config(classification.scraping_type, field)
             else:
@@ -604,8 +603,8 @@ class FileScraper:
                 continue
 
             if web_data.data is None:
-                if e := web_data.debug_info.error:
-                    failed_info.append(f"{website.value}(失败: {e})")
+                if dbg_error := web_data.debug_info.error:
+                    failed_info.append(f"{website.value}(失败: {dbg_error})")
                 else:
                     failed_info.append(f"{website.value}(返回空数据)")
                 continue

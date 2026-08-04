@@ -102,7 +102,7 @@ def apply_application_palette(dark: bool) -> None:
         palette.setColor(QPalette.ColorRole.Accent, QColor(t["accent"]))
     except AttributeError:
         pass
-    app.setPalette(palette)
+    app.setPalette(palette)  # type: ignore[attr-defined]
 
 
 def build_tree_widget_style(dark: bool) -> str:

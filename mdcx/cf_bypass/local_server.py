@@ -14,6 +14,11 @@ from urllib.parse import parse_qs, urlparse
 
 from mdcx.consts import IS_PYINSTALLER
 
+try:
+    import uvicorn  # type: ignore[import-untyped]
+except ImportError:  # 仅在冻结模式(in-process)下需要
+    uvicorn = None  # type: ignore[assignment, no-redef]
+
 logger = logging.getLogger(__name__)
 LOCAL_BYPASS_HOST = "127.0.0.1"
 SERVER_START_TIMEOUT = 60
@@ -123,7 +128,7 @@ class LocalBypassServer:
     def __init__(self, log_fn: Callable[[str], None] | None = None):
         self._process: asyncio.subprocess.Process | None = None
         self._thread: threading.Thread | None = None
-        self._server = None  # uvicorn.Server, 仅冻结模式(in-process)使用
+        self._server: "uvicorn.Server | None" = None  # noqa: UP037  # uvicorn.Server, 仅冻结模式(in-process)使用
         self._in_process: bool = False
         self._port: int = 0
         self._url: str = ""
@@ -333,6 +338,7 @@ class LocalBypassServer:
                 log_level="warning",
             )
             self._server = uvicorn.Server(config)  # type: ignore[assignment]
+            assert self._server is not None
             self._thread = threading.Thread(target=self._server.run, daemon=True)
             self._thread.start()
         except Exception as e:

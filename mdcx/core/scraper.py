@@ -863,7 +863,7 @@ class Scraper:
             # res = await crawl(file_info.crawl_task(), file_mode)
 
             crawl_task = file_info.crawl_task()
-            crawl_task.media_context = media_context
+            crawl_task.media_context = media_context  # type: ignore[attr-defined]
             scraper = FileScraper(manager.config, self.crawler_provider)
             crawl_result = await scraper.run(crawl_task, file_mode)
             if crawl_result is None:
