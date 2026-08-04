@@ -125,3 +125,14 @@ Agent 在任务执行过程中发现的条目应遵循以下格式：
   - 不要误以为刮削是串行的。慢可能是单站点超时拖慢整个文件，而非并发不足。
   - actor_db_tool 的可复用并发模式已从 `Semaphore+gather` 升级为滑动窗口（`mdcx/tools/actor_db_tool.py`），与刮削同构。后续新增异步批量处理工具时，优先采用滑动窗口模式而非 `Semaphore+gather`。
   - 滑动窗口优势：内存峰值低（不会同时存在全部协程对象）、取消响应快（最多等当前批次完成）、渐进式调度（大列表不会一次性创建海量协程）。
+
+[演员/用户态数据双库结构与 AVdb 同步]
+- Date: 2026-08-04
+- Context: 为演员库引入 AVdb 演员映射同步并入库时，梳理清楚本地 actor 数据的分发与读写路径
+- Category: 运维部署
+- Instructions:
+  - **两层 actor 库**：出厂模板 `resources/userdata/actor_database.xlsx`（git 跟踪，作为分发默认库，新用户首次启动复制到运行时目录）；运行时实际读写库 `manager.data_folder/userdata/actor_database.xlsx`（在 `mdcx/core/tmdb_actor.py:_get_db_path`），该目录默认被 git 忽略——改运行时库不会出现在 `git status`。用户态开发环境里 `manager.data_folder` 指向 `/workspace`，因此运行时库是 `/workspace/userdata/`，与出厂模板 `resources/userdata/` 是两份。
+  - **改库要分清目标**：要「给用户实际用」改运行时库即可；要「进 git 作为新装默认」改出厂模板并提交。出厂模板已升级为 9 列全量 AVdb 合并库（25436 条，`COL_BIRTH_DATE=7`/`COL_BIO=8`，出生日期 `YYYY-MM-DD`/简介中文）。
+  - **AVdb 同步幂等**：`sync_from_avdb(source, value)` 可反复跑——匹配后只填空缺、不覆盖本地已有值，第二次同源同步 `created=0`。匹配顺序 tmdbid 冲突并入 → jp → zh_cn → keyword（均 casefold）。keyword 合并做 casefold 去重保留首次写法。
+  - **get_actor_data(name)**（`resources.py`）按名反查本地库，返回 `birth_date`/`bio`/`has_name`，非空即有、空即缺；是 Emby 补全等下游复用的统一查询入口。
+  - **Emby 演员信息补全本地优先**：`emby_actor_info._process_actor_async` 在 wiki/minnano/ActressDB 兜底前先用 `get_actor_data` 查本地库，命中且简介非空即跳过外部来源，本地简介空才退回外部（生日仍取本地）；返回标志 bit3(值 8) 表示本地命中。
