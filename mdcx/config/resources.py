@@ -29,8 +29,10 @@ COL_KEYWORD = 3
 COL_HREF = 4
 COL_TMDBID = 5
 COL_TMDB_URL = 6
+COL_BIRTH_DATE = 7
+COL_BIO = 8
 
-DB_HEADERS = ["日文原名", "中文名", "繁体名", "别名", "链接", "tmdbid", "tmdb url"]
+DB_HEADERS = ["日文原名", "中文名", "繁体名", "别名", "链接", "tmdbid", "tmdb url", "出生日期", "简介"]
 
 
 def _tmdb_person_url(tmdbid: int | str) -> str:
@@ -65,6 +67,8 @@ def read_actor_db_xlsx(db_path: Path) -> dict[str, dict]:
             "href": str(row[COL_HREF] or "").strip() if len(row) > COL_HREF else "",
             "tmdbid": tmdbid_val,
             "tmdb_url": tmdb_url,
+            "birth_date": str(row[COL_BIRTH_DATE] or "").strip() if len(row) > COL_BIRTH_DATE else "",
+            "bio": str(row[COL_BIO] or "").strip() if len(row) > COL_BIO else "",
         }
     wb.close()
     return db
@@ -154,6 +158,8 @@ class Resources:
             "jp": actor,
             "keyword": [actor],
             "href": "",
+            "birth_date": "",
+            "bio": "",
             "has_name": False,
         }
 
@@ -169,6 +175,8 @@ class Resources:
                 kw = row.get("keyword") or ""
                 actor_data["keyword"] = [k.strip() for k in kw.split(",") if k.strip()] if kw else [actor_data["jp"]]
                 actor_data["href"] = row.get("href") or ""
+                actor_data["birth_date"] = row.get("birth_date") or ""
+                actor_data["bio"] = row.get("bio") or ""
                 actor_data["has_name"] = True
                 return actor_data
         return actor_data

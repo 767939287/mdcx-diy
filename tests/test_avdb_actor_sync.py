@@ -1,9 +1,71 @@
+import asyncio
+from pathlib import Path
+
+import pytest
+from openpyxl import load_workbook
+
+from mdcx.config.resources import COL_BIO, COL_BIRTH_DATE, DB_HEADERS
+from mdcx.core import tmdb_actor
 from mdcx.utils.xml_avdb import (
     clean_actor_value,
     extract_birth_date,
     parse_avdb_actor_mapping,
     strip_age_and_birth,
 )
+
+
+@pytest.fixture
+def _tmp_actor_db(monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
+    monkeypatch.setattr(tmdb_actor.manager, "data_folder", tmp_path)
+    monkeypatch.setattr(tmdb_actor.resources, "actor_db", {})
+    userdata = tmp_path / "userdata"
+    userdata.mkdir(parents=True, exist_ok=True)
+    return userdata / "actor_database.xlsx"
+
+
+@pytest.fixture(autouse=True)
+def _reset_actor_db_row_index():
+    with tmdb_actor._ACTOR_DB_ROW_INDEX_LOCK:
+        tmdb_actor._ACTOR_DB_ROW_INDEX.clear()
+
+
+def test_db_headers_has_nine_columns():
+    assert len(DB_HEADERS) == 9
+    assert DB_HEADERS[7] == "出生日期"
+    assert DB_HEADERS[8] == "简介"
+    assert COL_BIRTH_DATE == 7
+    assert COL_BIO == 8
+
+
+def test_update_actor_db_row_writes_birth_date_and_bio(_tmp_actor_db: Path):
+    status = asyncio.run(
+        tmdb_actor.update_actor_db_row(
+            jp="新演员",
+            zh_cn="新演员",
+            tmdbid=99999,
+            birth_date="1990-01-01",
+            bio="身高160cm",
+        )
+    )
+    assert status == "inserted_new_row"
+
+    wb = load_workbook(_tmp_actor_db)
+    ws = wb.active
+    assert ws.cell(row=2, column=COL_BIRTH_DATE + 1).value == "1990-01-01"
+    assert ws.cell(row=2, column=COL_BIO + 1).value == "身高160cm"
+    wb.close()
+
+
+def test_update_actor_db_row_keeps_existing_birth_date(_tmp_actor_db: Path):
+    asyncio.run(tmdb_actor.update_actor_db_row(jp="演员A", birth_date="1990-01-01", bio="旧简介"))
+    asyncio.run(tmdb_actor.update_actor_db_row(jp="演员A", birth_date="2000-02-02", bio="新简介"))
+
+    wb = load_workbook(_tmp_actor_db)
+    ws = wb.active
+    assert ws.cell(row=2, column=COL_BIRTH_DATE + 1).value == "1990-01-01"
+    assert ws.cell(row=2, column=COL_BIO + 1).value == "旧简介"
+    wb.close()
+
 
 _SAMPLE_XML = """<?xml version="1.0" encoding="UTF-8"?>
 <actor-mapping>

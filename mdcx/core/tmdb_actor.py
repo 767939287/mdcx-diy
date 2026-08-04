@@ -18,6 +18,8 @@ from parsel import Selector
 
 from ..config.manager import manager
 from ..config.resources import (
+    COL_BIO,
+    COL_BIRTH_DATE,
     COL_HREF,
     COL_KEYWORD,
     COL_TMDB_URL,
@@ -536,7 +538,7 @@ def _format_db_worksheet(ws) -> None:
                     cell.font = data_font
 
             # 自动列宽
-            caps = {1: 25, 2: 15, 3: 15, 4: 60, 5: 50, 6: 12, 7: 42}
+            caps = {1: 25, 2: 15, 3: 15, 4: 60, 5: 50, 6: 12, 7: 42, 8: 14, 9: 60}
             col_max = [0] * (len(DB_HEADERS) + 1)
             for row in ws.iter_rows(min_row=2, values_only=True):
                 for ci, cell in enumerate(row, 1):
@@ -668,6 +670,8 @@ async def update_actor_db_row(
     tmdbid: int | None = None,
     append_keyword: bool = False,
     overwrite_names: bool = False,
+    birth_date: str = "",
+    bio: str = "",
     _wb: Any = None,
 ) -> str:
     """
@@ -742,6 +746,10 @@ async def update_actor_db_row(
 
                 if not ws.cell(row=existing_row, column=COL_HREF + 1).value and href:
                     ws.cell(row=existing_row, column=COL_HREF + 1, value=href)
+                if not ws.cell(row=existing_row, column=COL_BIRTH_DATE + 1).value and birth_date:
+                    ws.cell(row=existing_row, column=COL_BIRTH_DATE + 1, value=birth_date)
+                if not ws.cell(row=existing_row, column=COL_BIO + 1).value and bio:
+                    ws.cell(row=existing_row, column=COL_BIO + 1, value=bio)
                 if tmdbid is not None and not ws.cell(row=existing_row, column=COL_TMDBID + 1).value:
                     ws.cell(row=existing_row, column=COL_TMDBID + 1, value=tmdbid)
                     write_status = "inserted_tmdbid"
@@ -752,7 +760,7 @@ async def update_actor_db_row(
                 elif tmdbid is not None and write_status == "unchanged":
                     write_status = "kept_existing_tmdbid"
             else:
-                ws.append([jp, zh_cn, zh_tw, keyword, href, tmdbid or "", ""])
+                ws.append([jp, zh_cn, zh_tw, keyword, href, tmdbid or "", "", birth_date, bio])
                 write_status = "inserted_new_row"
                 last_row = ws.max_row
                 with _ACTOR_DB_ROW_INDEX_LOCK:
@@ -876,7 +884,7 @@ async def migrate_xml_to_xlsx() -> bool:
 
                     tmdbid = old_tmdb_cache.get(jp)
 
-                    ws.append([jp, zh_cn, zh_tw, keyword, href, tmdbid or "", ""])
+                    ws.append([jp, zh_cn, zh_tw, keyword, href, tmdbid or "", "", "", ""])
                     if tmdbid:
                         last_row = ws.max_row
                         tmdb_url = _tmdb_person_url(tmdbid)

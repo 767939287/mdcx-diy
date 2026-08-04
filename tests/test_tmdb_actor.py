@@ -207,7 +207,7 @@ async def test_update_actor_db_row_writes_tmdbid_and_tmdb_url(_tmp_actor_db: Pat
     assert ws.cell(row=2, column=7).hyperlink.target == "https://www.themoviedb.org/person/12345"
     assert ws.title == "演员数据库"
     assert ws.freeze_panes == "B2"
-    assert ws.auto_filter.ref == "A1:G2"
+    assert ws.auto_filter.ref == "A1:I2"
     wb.close()
 
 
@@ -387,7 +387,7 @@ async def test_update_actor_db_row_formats_headers_and_href_hyperlink(_tmp_actor
 
     wb = load_workbook(_tmp_actor_db)
     ws = wb.active
-    headers = [ws.cell(row=1, column=i).value for i in range(1, 8)]
+    headers = [ws.cell(row=1, column=i).value for i in range(1, len(tmdb_actor.DB_HEADERS) + 1)]
 
     assert headers == tmdb_actor.DB_HEADERS
     assert ws.cell(row=2, column=5).hyperlink.target == "https://example.com/actor/mikami-yua"

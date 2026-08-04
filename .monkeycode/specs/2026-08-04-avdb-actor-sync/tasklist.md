@@ -2,22 +2,22 @@
 
 ## 阶段一：核心逻辑（无 UI，先跑通数据链路）
 
-- [ ] 1. 新增 `mdcx/utils/xml_avdb.py` 解析模块
-  - [ ] 1.1 定义 `AvdbActor` 数据类（zh_cn/zh_tw/jp/keyword/tmdb_id/bio_graphy/birth_date/bio）
-  - [ ] 1.2 实现 `parse_avdb_actor_mapping(xml_text)`：标准库 xml.etree 解析 `<a>` 节点，忽略 `<actor-blacklist>`，缺失字段一律空值化，绝不抛错
-  - [ ] 1.3 实现 `extract_birth_date(bio_graphy)`：正则覆盖 `YYYY年M月D日`/`YYYY.M.D`/`YYYY/M/D` 变体，归一化为 `YYYY-MM-DD`，无日期返回空串
-  - [ ] 1.4 实现 `strip_age_and_birth(bio_graphy, birth_date)`：剔除 `\d+岁` 年龄片段与已提取的出生段
-  - [ ] 1.5 实现 `clean_actor_value(value)`：html.unescape 解码重复实体 → 去换行/`\t`/`\x00-\x1F` 控制字符 → 剥离字面 `\uXXXX`/`\xNN`/`\n` 反斜杠串 → trim
-  - [ ] 1.6 编写单元测试 `tests/tools/test_avdb_actor_sync.py`：解析（含缺字段/blacklist）、出生日期提取多变体、年龄剔除、转义清洗
+- [x] 1. 新增 `mdcx/utils/xml_avdb.py` 解析模块
+  - [x] 1.1 定义 `AvdbActor` 数据类（zh_cn/zh_tw/jp/keyword/tmdb_id/bio_graphy/birth_date/bio）
+  - [x] 1.2 实现 `parse_avdb_actor_mapping(xml_text)`：标准库 xml.etree 解析 `<a>` 节点，忽略 `<actor-blacklist>`，缺失字段一律空值化，绝不抛错
+  - [x] 1.3 实现 `extract_birth_date(bio_graphy)`：正则覆盖 `YYYY年M月D日`/`YYYY.M.D`/`YYYY/M/D` 变体，归一化为 `YYYY-MM-DD`，无日期返回空串
+  - [x] 1.4 实现 `strip_age_and_birth(bio_graphy, birth_date)`：剔除 `\d+岁` 年龄片段与已提取的出生段
+  - [x] 1.5 实现 `clean_actor_value(value)`：html.unescape 解码重复实体 → 去换行/`\t`/`\x00-\x1F` 控制字符 → 剥离字面 `\uXXXX`/`\xNN`/`\n` 反斜杠串 → trim
+  - [x] 1.6 编写单元测试 `tests/test_avdb_actor_sync.py`：解析（含缺字段/blacklist）、出生日期提取多变体、年龄剔除、转义清洗
 
-- [ ] 2. 扩展 `mdcx/config/resources.py` 列常量
-  - [ ] 2.1 `DB_HEADERS` 末尾追加「出生日期」「简介」，新增 `COL_BIRTH_DATE=7` / `COL_BIO=8`（不改动既有列索引）
-  - [ ] 2.2 `get_actor_data` 返回值新增 `birth_date`、`bio` 键（默认空串）
+- [x] 2. 扩展 `mdcx/config/resources.py` 列常量
+  - [x] 2.1 `DB_HEADERS` 末尾追加「出生日期」「简介」，新增 `COL_BIRTH_DATE=7` / `COL_BIO=8`（不改动既有列索引）
+  - [x] 2.2 `get_actor_data` 返回值新增 `birth_date`、`bio` 键（默认空串）
 
-- [ ] 3. `mdcx/core/tmdb_actor.py` 老文件兼容与写入扩展
-  - [ ] 3.1 `read_actor_db_xlsx` / `load_actor_db`：列数不足时缺失列按空值处理，不报错
-  - [ ] 3.2 `update_actor_db_row` 追加 `birth_date`/`bio` 可写参数（默认 None，仅本地为空时填充，保持「已有值不覆盖」语义）
-  - [ ] 3.3 `_format_db_worksheet` 列宽计算由 `len(DB_HEADERS)` 驱动，自动适配 9 列
+- [x] 3. `mdcx/core/tmdb_actor.py` 老文件兼容与写入扩展
+  - [x] 3.1 `read_actor_db_xlsx` / `load_actor_db`：列数不足时缺失列按空值处理，不报错
+  - [x] 3.2 `update_actor_db_row` 追加 `birth_date`/`bio` 可写参数（默认 None，仅本地为空时填充，保持「已有值不覆盖」语义）
+  - [x] 3.3 `_format_db_worksheet` 列宽计算由 `len(DB_HEADERS)` 驱动，自动适配 9 列（caps 补 8/9 列）
 
 - [ ] 4. 扩展 `mdcx/tools/actor_db_tool.py` 新增 `sync_from_avdb`
   - [ ] 4.1 定义 `ActorDbSyncResult`（downloaded/parsed/created/filled/merged/failed）
