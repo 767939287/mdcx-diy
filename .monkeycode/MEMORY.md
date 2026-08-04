@@ -90,8 +90,10 @@ Agent 在任务执行过程中发现的条目应遵循以下格式：
   - UI 布局定义在 `mdcx/views/MDCx.ui`，改完后必须用 pyuic6 重编译生成 `MDCx.py`，命令：`/workspace/.venv/bin/python3 -m PyQt6.uic.pyuic mdcx/views/MDCx.ui -o mdcx/views/MDCx.py`，否则改动不生效。
   - 调整布局后必须验证 `import mdcx.views.MDCx` 可正常导入（UI 里有中文/多行 tooltip，编译易出错）。
   - 注意 tab/groupBox 重叠、遮挡问题：所有 groupBox 在 `page_tool` 的滚动区 `scrollAreaWidgetContents_gongju` 内是绝对定位（x/y/width/height），重排顺序要同时更新各 groupBox 的 y 坐标和滚动区 widget 高度（最后一块底部留 20px 边距），否则底部内容被遮挡。
+  - **UI 结构有自动化测试**（`tests/test_ui_structure.py`，已挂入 `uv run check` 与 CI）：解析 `MDCx.ui` 检查 groupBox 同父容器不重叠/无负间距/不超滚动区、用户控件 objectName 唯一、`MDCx.py` 与 `MDCx.ui` 重编译同步。改 UI 后跑 `uv run check` 或 `uv run pytest tests/test_ui_structure.py -q` 即可自动验证，无需手写 Qt offscreen 几何检查脚本。
   - 增高某一 groupBox 后，必须连锁把**其下方所有兄弟 groupBox** 的 y 同步 +delta，并同步增高滚动区 widget 高度，最后做 Qt offscreen 几何验证确认两两无重叠。踩坑：曾只检查与紧邻下方 group 的空隙、漏了中间一个 group，导致 110px 重叠；下方 group 不止紧邻的那一个。
-  - `MDCx.py` 虽由 pyuic 生成，但仓库版曾被另行整理格式，整体重编译会产生数千行格式噪声 diff。手工增改 MDCx.py 时，务必把 UI 里新增的每个控件在 MDCx.py 的「创建段」和「retranslateUi 翻译段」各加一遍，并逐个 `grep` 核对存在——漏加控件**不会报错只会不显示**；工具页是 QScrollArea 滚动区，增高内容靠滚动条访问即可，无需改 tab/scrollArea 视口高度。
+  - `MDCx.py` 虽由 pyuic 生成，但仓库版曾被另行整理格式。**规范流程**：改动一律先改 `MDCx.ui`，再用 `/workspace/.venv/bin/python3 -m PyQt6.uic.pyuic mdcx/views/MDCx.ui -o mdcx/views/MDCx.py` 重编译，最后 `uv run ruff format mdcx/views/MDCx.py` 对齐格式（可把 diff 从数千行压到几十行）。**不要手工修改 MDCx.py**——有 `tests/test_ui_structure.py::test_mdcx_py_in_sync_with_ui` 在 CI 把关，手工改 `.py` 不同步 `.ui` 会红。
+  - **重编译会回退 MDCx.py 的手工文案**：pyuic6 用 `MDCx.ui` 里的旧文案覆盖 MDCx.py 中可能手工更新过的文本（曾遇到项目主页 `mdcx-diy` 链接、graphis 描述等被回退）。根治方式是把新文案**回写 `MDCx.ui` 源文件**，让 `.ui` 成为唯一权威源。另注意 pyuic6 会把输入路径写进头部注释，同步对比测试必须用相对路径编译。
   - 用 `findChildren` 做几何重叠/溢出检查时，comboBox 的 popup 内部子部件（QListView/QScrollBar/qt_scrollarea_viewport 等，坐标为 0,0/100x30/640x480）会误报为"重叠/溢出"，需排除这些 Qt 内部件；长文本 label 的显示完整性用 `fontMetrics().boundingRect(0,0,w,1e6,flags,text).height()` 与控件高度对比，横向用 `horizontalAdvance`。
   - 新增按钮后必须检查三处一致：`MDCx.ui`（定义）、`MDCx.py`（编译产物）、`mdcx/controllers/main_window/init.py`（信号接线：clicked 槽 + setText 防重入信号）。三条链路缺一按钮不生效或运行崩。
   - 按钮防重入模式：参见下方 `[executor.submit 与跨线程 Qt 安全]` 条目，使用 `executor.submit(run())` 而非 `executor.submit(asyncio.run, ...)`，且协程内不可直接 `setEnabled()`，必须通过 pyqtSignal 主线程恢复。
@@ -112,9 +114,9 @@ Agent 在任务执行过程中发现的条目应遵循以下格式：
 - Context: 修复演员库工具按钮时发现两处同类 bug：`executor.submit(asyncio.run, run())` 传参错误，以及协程内直接 `btn.setEnabled()` 跨线程操作 QWidget
 - Category: 工作流协作
 - Instructions:
-  - `AsyncBackgroundExecutor.submit(coro)` 只接受单个协程对象，`executor.submit(asyncio.run, run())` 会报 `TypeError: takes 2 positional arguments but 3 were given`。正确写法：`executor.submit(run())`。`mdcx/controllers/main_window/main_window.py:2617` 和 `tool_handlers.py:45` 两处同源 bug 已修复。
+  - `AsyncBackgroundExecutor.submit(coro)` 只接受单个协程对象，`executor.submit(asyncio.run, run())` 会报 `TypeError: takes 2 positional arguments but 3 were given`。正确写法：`executor.submit(run())`。`main_window.py` 的 `_run_actor_db_tool` 等和 `tool_handlers.py` 的 cover_backfill 两处同源 bug 曾因此修复。
   - 协程在 executor 后台线程事件循环执行，`btn.setEnabled()` / `setText()` 直接操作 QWidget 跨线程不安全。必须用 pyqtSignal 发到主线程执行。正确模式：按钮点击时主线程 setEnabled(False) + emit "运行中"，协程 finally 里发射 `pyqtSignal.emit()`（线程安全），主线程槽负责恢复 setEnabled(True) + setText。参见 `main_window.py:_run_actor_db_tool`/`_on_actor_db_finished`。
-  - `tool_handlers.py` 里的函数是模块级函数（通过 `main_window.py:2580` `from .tool_handlers import ...; pushButton_actor_db_open_clicked(self)` 调用），`self._open_actor_db_file` 不会自动可用——必须确保方法存在在 `MyMAinWindow` 上，或完全不用 `self.xxx`。
+  - `tool_handlers.py` 里的函数是模块级函数（通过 `main_window.py` `from .tool_handlers import ...; pushButton_xxx_clicked(self)` 调用），`self._open_actor_db_file` 不会自动可用——必须确保方法存在在 `MyMAinWindow` 上，或完全不用 `self.xxx`。
 
 [刮削并发架构参考]
 - Date: 2026-08-03
