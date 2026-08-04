@@ -45,8 +45,8 @@
 
 ## 阶段四：整体验证与文档
 
-- [ ] 7. 整体验证
-  - [ ] 7.1 `uv run check --skip-hook-install` 全绿（ruff + pytest）
-  - [ ] 7.2 UI 人工验证：工具页控件无重叠遮挡
+- [x] 7. 整体验证
+  - [x] 7.1 `uv run check --skip-hook-install` 全绿（ruff + pytest）
+  - [x] 7.2 UI 人工验证：工具页控件无重叠遮挡
   - [ ] 7.3 打包验证（人工）：exe 运行确认 `mdcx.utils.xml_avdb` 可导入
-  - [ ] 7.4 更新 `docs/changelog.md` 与 `docs/FEATURES.md`
+  - [x] 7.4 更新 `docs/changelog.md` 与 `docs/FEATURES.md`
