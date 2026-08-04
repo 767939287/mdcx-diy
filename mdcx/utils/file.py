@@ -187,7 +187,7 @@ def check_pic_sync(p: str):
 def open_file_thread(p: Path, is_dir: bool) -> None:
     if IS_WINDOWS:
         if is_dir:
-            subprocess.Popen(f'explorer /select,"{p}"', shell=True)
+            subprocess.Popen(["explorer", "/select,", str(p)])
         else:
             subprocess.Popen(["explorer", str(p)])
     elif IS_MAC:

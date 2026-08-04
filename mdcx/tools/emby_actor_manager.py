@@ -166,9 +166,9 @@ async def get_media_folders() -> list[dict]:
     base_url = str(manager.config.emby_url).rstrip("/")
     headers = _build_jellyfin_headers()
     if "emby" == manager.config.server_type:
-        url = f"{base_url}/emby/Library/MediaFolders?api_key={manager.config.api_key}"
+        url = f"{base_url}/emby/Library/MediaFolders"
     else:
-        url = f"{base_url}/Library/MediaFolders?api_key={manager.config.api_key}"
+        url = f"{base_url}/Library/MediaFolders"
     from ..models.computed import ComputedManager
 
     async with ComputedManager() as computed:
@@ -185,7 +185,7 @@ async def fetch_actor_detail(actor_name: str) -> dict | None:
 
     name_encoded = quote(actor_name, safe="")
     if "emby" == manager.config.server_type:
-        url = f"{base_url}/emby/Persons/{name_encoded}?api_key={manager.config.api_key}"
+        url = f"{base_url}/emby/Persons/{name_encoded}"
     else:
         url = _append_query(
             f"{base_url}/Persons/{name_encoded}",
@@ -210,20 +210,14 @@ async def fetch_person_item_stats(
     if parent_ids:
         for lib_id in parent_ids:
             if "emby" == manager.config.server_type:
-                urls.append(
-                    f"{base_url}/emby/Items?Recursive=true&Fields=People&ParentId={lib_id}&Limit=100000&api_key={manager.config.api_key}"
-                )
+                urls.append(f"{base_url}/emby/Items?Recursive=true&Fields=People&ParentId={lib_id}&Limit=100000")
             else:
-                urls.append(
-                    f"{base_url}/Items?Recursive=true&Fields=People&ParentId={lib_id}&Limit=100000&api_key={manager.config.api_key}"
-                )
+                urls.append(f"{base_url}/Items?Recursive=true&Fields=People&ParentId={lib_id}&Limit=100000")
     else:
         if "emby" == manager.config.server_type:
-            urls.append(
-                f"{base_url}/emby/Items?Recursive=true&Fields=People&Limit=100000&api_key={manager.config.api_key}"
-            )
+            urls.append(f"{base_url}/emby/Items?Recursive=true&Fields=People&Limit=100000")
         else:
-            urls.append(f"{base_url}/Items?Recursive=true&Fields=People&Limit=100000&api_key={manager.config.api_key}")
+            urls.append(f"{base_url}/Items?Recursive=true&Fields=People&Limit=100000")
     from ..models.computed import ComputedManager
 
     async with ComputedManager() as computed:
@@ -327,7 +321,7 @@ async def get_gfriends_index() -> dict[str, str] | None:
                             result[filename] = f"{raw_url}/master/Content/{category}/{filepath}"
                 return result
             except Exception:
-                pass
+                signal.show_log_text("⚠️ 本地 Gfriends index 读取失败，尝试远程下载")
     gfriends_json_path = resources.u("gfriends.json")
     if not await aiofiles.os.path.exists(gfriends_json_path):
         signal.show_log_text("⏳ 下载 Gfriends 数据表...")
@@ -355,6 +349,7 @@ async def get_gfriends_index() -> dict[str, str] | None:
             return result
         return data
     except Exception:
+        signal.show_log_text("⚠️ Gfriends index 文件解析失败")
         return None
 
 
@@ -419,9 +414,9 @@ async def delete_actor_image(actor: ActorInfo) -> tuple[bool, str]:
     _, _, _, _, _, _ = _generate_server_url({"Name": actor.name, "Id": actor.actor_id, "ServerId": actor.server_id})
     base_url = str(manager.config.emby_url).rstrip("/")
     if "emby" == manager.config.server_type:
-        url = f"{base_url}/emby/Items/{actor.actor_id}/Images/Primary?api_key={manager.config.api_key}"
+        url = f"{base_url}/emby/Items/{actor.actor_id}/Images/Primary"
     else:
-        url = f"{base_url}/Items/{actor.actor_id}/Images/Primary?api_key={manager.config.api_key}"
+        url = f"{base_url}/Items/{actor.actor_id}/Images/Primary"
     headers = _build_jellyfin_headers()
     from ..models.computed import ComputedManager
 
@@ -433,9 +428,9 @@ async def delete_actor_image(actor: ActorInfo) -> tuple[bool, str]:
 async def delete_actor_backdrop(actor: ActorInfo) -> tuple[bool, str]:
     base_url = str(manager.config.emby_url).rstrip("/")
     if "emby" == manager.config.server_type:
-        url = f"{base_url}/emby/Items/{actor.actor_id}/Images/Backdrop/0?api_key={manager.config.api_key}"
+        url = f"{base_url}/emby/Items/{actor.actor_id}/Images/Backdrop/0"
     else:
-        url = f"{base_url}/Items/{actor.actor_id}/Images/Backdrop/0?api_key={manager.config.api_key}"
+        url = f"{base_url}/Items/{actor.actor_id}/Images/Backdrop/0"
     headers = _build_jellyfin_headers()
     from ..models.computed import ComputedManager
 

@@ -24,6 +24,7 @@
 
 import re
 import threading
+import traceback
 import urllib.parse
 from pathlib import Path
 from typing import Any
@@ -734,7 +735,9 @@ def _lookup_japanese_name(actor_name: str) -> str | None:
                     return jp
         wb.close()
     except Exception:
-        pass
+        from ..signals import signal
+
+        signal.show_log_text(f"⚠️ 演员数据库读取失败: {traceback.format_exc()}")
     return None
 
 

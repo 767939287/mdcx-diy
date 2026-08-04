@@ -182,7 +182,9 @@ class PreparePreviewThread(QThread):
                 try:
                     future.result()
                 except Exception:
-                    pass
+                    import traceback
+
+                    self.log(f"🔶 演员处理异常: {traceback.format_exc()}")
                 actor = futures[future]
                 self.progress.emit(completed, total, f"处理中: {actor.name} ({completed}/{total})")
             if cancelled:
@@ -583,7 +585,9 @@ class EmbyActorManagerDialog(QDialog):
             if self._gfriends_index:
                 self.log(f"✅ Gfriends 头像库加载完成，共 {len(self._gfriends_index)} 个头像")
         except Exception:
-            pass
+            import traceback
+
+            self.log(f"🔶 Gfriends 索引加载失败: {traceback.format_exc()}")
         finally:
             loop.close()
 

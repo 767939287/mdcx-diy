@@ -986,7 +986,9 @@ async def fetch_actor_tmdb_ids(actors: list[str], client: Any) -> dict[str, int]
                 _cell.fill = _openpyxl.styles.PatternFill("solid", fgColor="C0C0C0")
                 _cell.alignment = _openpyxl.styles.Alignment(horizontal="center")
     except ImportError:
-        pass
+        import traceback
+
+        LogBuffer.log().write(f"[tmdb_actor] openpyxl 导入失败: {traceback.format_exc()}")
 
     for actor in actors:
         if not actor or not actor.strip():
@@ -1312,7 +1314,9 @@ async def _fetch_person_translations(pid: int, base_url: str, api_key: str, clie
                     if not result["zh_tw"]:
                         result["zh_tw"] = name_to_use
     except Exception:
-        pass
+        import traceback
+
+        LogBuffer.log().write(f"[tmdb_actor] 更新翻译失败: {traceback.format_exc()}")
 
     return result
 
@@ -1375,7 +1379,9 @@ async def fetch_libredmm_link(actor_name: str) -> str:
             if href and href != "/actresses":
                 return f"https://www.libredmm.com{href}"
     except Exception:
-        pass
+        import traceback
+
+        LogBuffer.log().write(f"[tmdb_actor] LibreDMM 查询失败: {traceback.format_exc()}")
     return ""
 
 
