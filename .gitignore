@@ -200,3 +200,6 @@ test_*.xlsx
 
 # Excel 数据库文件在 resources/userdata/ 目录下（由 resources/userdata/.gitignore 管理）
 *.mdcx/
+
+# avdanyuwiki 作品数据（用户上传的原始提取数据，体积大不纳入版本库）
+jav_database/

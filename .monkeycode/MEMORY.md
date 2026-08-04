@@ -136,3 +136,24 @@ Agent 在任务执行过程中发现的条目应遵循以下格式：
   - **AVdb 同步幂等**：`sync_from_avdb(source, value)` 可反复跑——匹配后只填空缺、不覆盖本地已有值，第二次同源同步 `created=0`。匹配顺序 tmdbid 冲突并入 → jp → zh_cn → keyword（均 casefold）。keyword 合并做 casefold 去重保留首次写法。
   - **get_actor_data(name)**（`resources.py`）按名反查本地库，返回 `birth_date`/`bio`/`has_name`，非空即有、空即缺；是 Emby 补全等下游复用的统一查询入口。
   - **Emby 演员信息补全本地优先**：`emby_actor_info._process_actor_async` 在 wiki/minnano/ActressDB 兜底前先用 `get_actor_data` 查本地库，命中且简介非空即跳过外部来源，本地简介空才退回外部（生日仍取本地）；返回标志 bit3(值 8) 表示本地命中。
+
+[openpyxl 删除行后 max_row 虚高与空行残留坑]
+- Date: 2026-08-04
+- Context: 重建出厂 actor_database.xlsx 清理空行时，`ws.delete_rows` 后 `max_row` 不变、空行"删不干净"，反复出现诡异现象
+- Category: 排错调试
+- Instructions:
+  - **症状**：对历史遗留的老 xlsx（多次 openpyxl 增删改后），`ws.delete_rows` 逐行删空后重新加载，`max_row` 仍是旧值、空行依旧存在，即使 `diff` 对比磁盘文件确认已删。根因是行样式/格式残留导致 openpyxl 内部行号状态错乱，`delete_rows` 不清理样式。
+  - **可靠方案**：不要试图用 `delete_rows` 清理大库空行。直接重建工作簿——读出全部非空行（`iter_rows` 过滤 `row[0] is None`），`Workbook()` 新建、`append` 表头+数据、重新设置样式/auto_filter/freeze_panes，再保存。重建后 `max_row` 精确等于数据行+1。
+  - **删除数据行**（如 `clean_male_actors` 删男优）在**干净重建后的库**上正常，不会产生空行残留；历史脏库上才会踩坑。所以清洗逻辑本身没问题，库质量才是关键。
+  - `check_actor_db` 会遍历 `min_row=2` 到 `max_row` 检查 jp 为空——空行残留会直接导致校验失败（报大量"jp 为空"），是发现此问题的主要手段。
+
+[男优名单清洗方法论与双通道清洗]
+- Date: 2026-08-04
+- Context: 用 avdanyuwiki 作品数据提取男优名单接入 `filter_male` 与 `clean_male_actors`，审查中发现名单噪声多、易混入女优
+- Category: 构建方法
+- Instructions:
+  - **数据源**：`resources/userdata/male_actors.txt`（625 个男优）从 avdanyuwiki 作品 JSON（`*_avdanyuwiki.com.json`）的 `actor` 字段提取；生成脚本 `scripts/build_male_actor_list.py` 可复现，文档 `docs/male_actor_list.md`。JSON 由用户浏览器油猴脚本 `avdanyuwiki-extract-1.0.user.js` 生成，字段含 banko/title/actress/actor/date/director/maker/tag。
+  - **actor 字段噪声大**：含标签词（主観/完全主観/素人/覆面/モザイク/触手）、括号注释（`主観（トニー大木）`）、多个名字空格连接（`田淵正浩 日高涼`）、合并名（`森林原人桜井ちんたろう`）、`×`已故标记、`？`噪声。清洗必须：括号内外拆解、超长(>8)剔除、标签黑名单、去后缀。
+  - **女优混入是最大风险**：レズ片/SILK 女女片会把女优填进 actor 字段（如 `友田彩也香`）。用 actress 字段交叉验证——某名 actress 出现次数 ≥ actor×0.5，或 actor≤3 但 actress>0，判定女优剔除。原则：**宁漏勿误删**。
+  - **双通道清洗**：`clean_male_actors` = 名单精确匹配（删无 tmdbid 及 TMDB gender=0 的男优）+ TMDB gender=2 校验。TMDB 局限性：gender=0 的男优（如加藤鷹）TMDB 标不出、永远清不掉，靠名单补。名单命中后不再重复请求 TMDB。`sync_from_avdb` filter_male 同理先名单后 TMDB，且名单过滤不依赖 TMDB key。
+  - **低成本两字名**（如テツ）容易误杀，用 AVdb actor-mapping.xml 权威收录交叉验证——仅在 AVdb 有映射的低频两字名才保留。
