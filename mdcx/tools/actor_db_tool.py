@@ -483,6 +483,7 @@ async def sync_from_avdb(source: str, value: str = "", *, filter_male: bool = Tr
     本地已有值优先，仅填充空缺字段；tmdbid 冲突视为同一人并入别名。
     """
     from ..base.web import download_file_with_filepath
+    from ..utils.actor_clean import clean_actor_keyword, clean_actor_name
     from ..utils.xml_avdb import clean_actor_value, parse_avdb_actor_mapping
 
     result = ActorDbSyncResult()
@@ -604,6 +605,12 @@ async def sync_from_avdb(source: str, value: str = "", *, filter_male: bool = Tr
                     tmdb_id = clean_actor_value(actor.tmdb_id)
                     birth_date = clean_actor_value(actor.birth_date)
                     bio = clean_actor_value(actor.bio)
+
+                    # 语义清洗：剥离名字/别名中的系列标签、年份、标注、作品标题、占位符
+                    jp = clean_actor_name(jp)
+                    zh_cn = clean_actor_name(zh_cn)
+                    zh_tw = clean_actor_name(zh_tw)
+                    keyword = clean_actor_keyword(keyword)
 
                     kw_list = [k.strip() for k in keyword.split(",") if k.strip()]
                     kw_set = set(kw_list)

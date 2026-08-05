@@ -33,6 +33,7 @@ from ..config.resources import (
 )
 from ..models.log_buffer import LogBuffer
 from ..utils import convert_half
+from ..utils.actor_clean import clean_actor_keyword, clean_actor_name
 
 # 演员数据库写锁：防止多个并发任务同时写 xlsx 导致文件损坏
 _actor_db_write_lock = asyncio.Lock()
@@ -707,6 +708,15 @@ async def update_actor_db_row(
     当 overwrite_names=True 时，zh_cn/zh_tw 允许用新值覆盖已有值（用于已有 tmdbid 演员翻译补全）。
     当 _wb 不为 None 时，使用预加载的工作簿，跳过最终 save/close/reload。
     """
+    # 语义清洗：剥离名字/别名中的系列标签、年份、标注、作品标题、占位符
+    jp = clean_actor_name(jp)
+    zh_cn = clean_actor_name(zh_cn)
+    zh_tw = clean_actor_name(zh_tw)
+    if keyword:
+        keyword = clean_actor_keyword(keyword)
+    # 名字/别名全部被清洗为空（纯占位符）→ 无有效内容，跳过写入
+    if not jp and not zh_cn and not zh_tw and not keyword:
+        return "skipped_placeholder"
     global _ACTOR_DB_ROW_INDEX
     db_path = _get_db_path()
     db_path.parent.mkdir(parents=True, exist_ok=True)

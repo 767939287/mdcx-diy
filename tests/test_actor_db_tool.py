@@ -207,3 +207,23 @@ async def test_run_translate_and_link_together(monkeypatch: pytest.MonkeyPatch, 
 
 async def _no_link(actor_name: str) -> str:
     return ""
+
+
+@pytest.mark.asyncio
+async def test_update_actor_db_row_skips_placeholder_name(_tmp_actor_db: Path):
+    """占位符名字被语义清洗为空时应跳过写入。"""
+    status = await tmdb_actor.update_actor_db_row(jp="素人奥様", zh_cn="", zh_tw="", tmdbid=None)
+    assert status == "skipped_placeholder"
+    assert not _tmp_actor_db.exists()  # 未创建数据库文件，即未写入任何行
+
+
+@pytest.mark.asyncio
+async def test_update_actor_db_row_cleans_series_tag(_tmp_actor_db: Path):
+    """写入时剥离名字中的系列标签。"""
+    status = await tmdb_actor.update_actor_db_row(jp="本田仁美(パコパコママ)", zh_cn="", zh_tw="", tmdbid=None)
+    assert status in ("inserted_new_row", "updated_zh_cn")
+    wb = load_workbook(_tmp_actor_db)
+    ws = wb.active
+    rows = list(ws.iter_rows(min_row=2, values_only=True))
+    wb.close()
+    assert rows and rows[0][0] == "本田仁美"
