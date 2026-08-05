@@ -146,3 +146,14 @@
   - `.monkeycode/specs/` 目录已删除（2026-08-04，提交 f4c52db）。它曾存放已实现功能的 EARS 需求（requirements.md）、技术设计（design.md）、任务清单（tasklist.md）。
   - 这些功能的实现意图可从代码、`tests/` 与 `docs/changelog.md` 回溯，specs 不再保留。
   - 未来若用 `/feature-design` skill 为新功能生成规格，产物会重新出现于 `.monkeycode/specs/`——功能实现并验证后可按用户偏好清理或保留。
+
+[AVdb 源数据 tmdbid 错误映射排查方法论]
+- Date: 2026-08-05
+- Context: 用户怀疑 AVdb 同步来的有 id 演员含非 AV 演员（动画录音师/声优/好莱坞演员等），用 TMDB API 全量排查 9251 个有 id 演员后确认并清理
+- Category: 排错调试
+- Instructions:
+  - **AVdb actor-mapping 源数据不可信**：名字模糊匹配 TMDB 人物时会把 AV 演员匹配到同名的非 AV person（如 `阿部智佳子`=动画录音师、`安娜伊德慕絲提`=法国影后、`阿部乃みく` 与 `阿部真琴` 同指 id=2132746 但非同一人）。错误映射会形成"无 tmdbid 但 url 有值"的畸形行。
+  - **判断标准**：TMDB `person/{id}` 的 `adult` 标记——知名 AV 女优（三上悠亜/波多野結衣等）均为 `adult=True`；`adult=False` + `known_for_department` 非 Acting（Sound/Visual Effects/Art 等）= 明确非 AV；`adult=False` + Acting 需再查 `combined_credits` 按作品名判断成人内容。
+  - **沙箱访问 TMDB API**：`api.themoviedb.org` 直连被证书劫持拦截，需用 `api.tmdb.org` 域名 + `Host: api.themoviedb.org` 请求头（项目 `_resolve_tmdb_config` 即此默认域名）。
+  - **处理原则宁缺毋滥**：错误 id 比无 id 更糟——刮削兜底会取到错误人物资料、参与性别校验/重复检测全是错上加错。清除错误 id/删除疑似非 AV 行后，刮削遇同名演员按名字重新搜索，能找回正确的就补上、找不回保持无 id。
+  - **曾执行**（2026-08-05）：清除 7120 行孤儿 url + 删除疑似非 AV 3447 行（出厂库 24243→20796），详见 changelog「TMDB 演员身份排查与清理」。
