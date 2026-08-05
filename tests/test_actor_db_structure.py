@@ -109,3 +109,49 @@ def test_check_actor_db_rejects_backup_sheet_first(tmp_path: Path):
     wb.close()
 
     assert check_xlsx(bad) == 1
+
+
+def test_write_goes_to_main_sheet_even_when_backup_first(monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
+    """男优备份排第一位时，update_actor_db_row 仍写入主 sheet 而非备份 sheet。"""
+    import asyncio
+
+    from mdcx.core import tmdb_actor
+
+    userdata = tmp_path / "userdata"
+    userdata.mkdir(parents=True, exist_ok=True)
+    db_path = userdata / "actor_database.xlsx"
+
+    # 构造男优备份在前的库
+    wb = Workbook()
+    main = wb.active
+    main.title = ACTOR_DB_SHEET
+    for col, header in enumerate(
+        ["日文原名", "中文名", "繁体名", "别名", "链接", "tmdbid", "tmdb url", "出生日期", "简介"], 1
+    ):
+        main.cell(row=1, column=col, value=header)
+    backup = wb.create_sheet("男优备份")
+    backup.cell(row=1, column=1, value="加藤鷹")
+    wb.move_sheet("男优备份", offset=-1)
+    wb.save(db_path)
+    wb.close()
+    assert load_workbook(db_path).sheetnames[0] == "男优备份"
+
+    monkeypatch.setattr(tmdb_actor.manager, "data_folder", tmp_path)
+    monkeypatch.setattr(tmdb_actor.resources, "actor_db", {})
+    tmdb_actor._ACTOR_DB_ROW_INDEX = {}
+
+    async def _write():
+        return await tmdb_actor.update_actor_db_row(jp="测试新演员", zh_cn="", zh_tw="", tmdbid=999)
+
+    status = asyncio.run(_write())
+    assert status == "inserted_new_row"
+
+    wb2 = load_workbook(db_path)
+    main2 = wb2[ACTOR_DB_SHEET]
+    main_names = [r[0] for r in main2.iter_rows(min_row=2, values_only=True) if r[0]]
+    backup2 = wb2["男优备份"]
+    backup_names = [r[0] for r in backup2.iter_rows(min_row=1, values_only=True) if r[0]]
+    wb2.close()
+
+    assert "测试新演员" in main_names  # 写入主 sheet
+    assert backup_names == ["加藤鷹"]  # 备份 sheet 未被污染
