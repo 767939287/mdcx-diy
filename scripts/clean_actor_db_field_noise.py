@@ -28,6 +28,7 @@ from mdcx.utils import actor_clean as ac  # noqa: E402
 
 DB_PATH = ROOT / "resources" / "userdata" / "actor_database.xlsx"
 
+
 def _was_placeholder(name: str) -> bool:
     """判断清洗前是否纯占位符（用于统计置空）。"""
     from mdcx.utils.actor_clean import _is_placeholder_name
@@ -35,16 +36,24 @@ def _was_placeholder(name: str) -> bool:
     return _is_placeholder_name(name)
 
 
-
-
 def main() -> int:
     wb = openpyxl.load_workbook(DB_PATH)
     ws = wb["演员数据库"]
 
-    stat = {"jp_placeholder": 0, "cn_placeholder": 0, "tw_placeholder": 0,
-            "alias_title": 0, "name_tag": 0, "name_year": 0, "name_placeholder": 0,
-            "alias_tag": 0, "bio_short": 0, "alias_extract": 0, "slash_fix": 0,
-            "name_annotation": 0}
+    stat = {
+        "jp_placeholder": 0,
+        "cn_placeholder": 0,
+        "tw_placeholder": 0,
+        "alias_title": 0,
+        "name_tag": 0,
+        "name_year": 0,
+        "name_placeholder": 0,
+        "alias_tag": 0,
+        "bio_short": 0,
+        "alias_extract": 0,
+        "slash_fix": 0,
+        "name_annotation": 0,
+    }
     detail: list[tuple[str, int, str, str]] = []
 
     for row in ws.iter_rows(min_row=2, max_row=ws.max_row):
@@ -96,7 +105,7 @@ def main() -> int:
                 if "/" not in _seg and "／" not in _seg:
                     continue
                 _rhs = _seg.split("/")[-1].split("／")[-1].strip()
-                if (not _rhs or _rhs in {")", "）", "]", "】"} or re.search(r"[）)】\]\u3000]$", _rhs)):
+                if not _rhs or _rhs in {")", "）", "]", "】"} or re.search(r"[）)】\]\u3000]$", _rhs):
                     had_slash_issue = True
                     break
             cleaned = ac.clean_actor_keyword(str(alias))
