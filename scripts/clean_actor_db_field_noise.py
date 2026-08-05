@@ -53,6 +53,7 @@ def main() -> int:
         "alias_extract": 0,
         "slash_fix": 0,
         "name_annotation": 0,
+        "orphan_url_clear": 0,
     }
     detail: list[tuple[str, int, str, str]] = []
 
@@ -121,6 +122,12 @@ def main() -> int:
             row[8].value = None
             stat["bio_short"] += 1
 
+        # 7) 无 tmdbid 但 url 有值 → 清除（AVdb 源数据错误映射残留，反推 id 会固化错误）
+        tid = row[5].value
+        if not tid and row[6].value:
+            row[6].value = None
+            stat["orphan_url_clear"] += 1
+
     wb.save(DB_PATH)
 
     print(f"📊 清洗报告 (共处理 {ws.max_row - 1} 行)")
@@ -133,6 +140,7 @@ def main() -> int:
     print(f"  别名剔除作品标题/标签: {stat['alias_title']}")
     print(f"  别名悬空斜杠/残括号修复: {stat['slash_fix']}")
     print(f"  简介碎片置空: {stat['bio_short']}")
+    print(f"  无tid孤儿url清除: {stat['orphan_url_clear']}")
     print()
     print("详情(前 25 条):")
     for name, col, old, new in detail[:25]:
