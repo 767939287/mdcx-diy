@@ -288,6 +288,9 @@ class BuildManager:
             # AVdb 映射解析器(延迟导入)
             "--hidden-import",
             "mdcx.utils.xml_avdb",
+            # 演员数据语义清洗(延迟导入)
+            "--hidden-import",
+            "mdcx.utils.actor_clean",
             # 工具页槽函数中延迟导入的工具模块
             "--hidden-import",
             "mdcx.tools.emby_actor_image",

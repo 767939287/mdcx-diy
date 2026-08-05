@@ -185,7 +185,8 @@ ASIN 数据库（Excel），搜索到的 ASIN 与番号对应关系持久化，�
   uv run pytest tests/                          # 全部测试
   uv run pytest tests/ --tb=short -m "not network" -x  # 仅不联网测试
   ```
-- **覆盖**：tests/crawlers/ 爬虫测试、tests/core/ 核心测试、NFO 测试、配置测试、`tests/test_ui_structure.py`（UI 结构）等
+- **覆盖**：tests/crawlers/ 爬虫测试、tests/core/ 核心测试、NFO 测试、配置测试、`tests/test_ui_structure.py`（UI 结构）、`tests/test_actor_clean.py`（演员数据语义清洗）等
+- **演员数据清洗测试**（`tests/test_actor_clean.py`）：验证 `mdcx/utils/actor_clean.py` 对名字/别名字段的语义清洗——系列标签/年份/国籍/事务所标注剥离、作品标题剔除、悬空斜杠修复、占位符识别置空，同时确保罗马音/日文映射、读音、韩文别名等合法内容不被误伤。新数据写入（AVdb 同步/刮削）前统一经此模块清洗
 - **UI 结构测试**（`tests/test_ui_structure.py`）：解析 `mdcx/views/MDCx.ui`，离线验证
   - groupBox 同父容器内不重叠、无负间距、不超出滚动区高度
   - 用户控件 objectName 唯一（重复控件是无用残留的信号）
