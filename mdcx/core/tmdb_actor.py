@@ -28,6 +28,7 @@ from ..config.resources import (
     COL_ZH_TW,
     DB_HEADERS,
     _tmdb_person_url,
+    get_actor_db_sheet,
     read_actor_db_xlsx,
     resources,
 )
@@ -741,7 +742,7 @@ async def update_actor_db_row(
                     cell.fill = openpyxl.styles.PatternFill("solid", fgColor="C0C0C0")
                     cell.alignment = openpyxl.styles.Alignment(horizontal="center")
 
-            ws = wb.active
+            ws = get_actor_db_sheet(wb)
             if ws.title != "演员数据库":
                 ws.title = "演员数据库"
 
@@ -1035,7 +1036,7 @@ async def fetch_actor_tmdb_ids(actors: list[str], client: Any) -> dict[str, int]
         if _wb is None:
             return
         try:
-            _ws = _wb.active
+            _ws = get_actor_db_sheet(_wb)
             _format_db_worksheet(_ws)
             _wb.save(_db_path)
             _wb.close()

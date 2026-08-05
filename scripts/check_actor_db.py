@@ -29,6 +29,8 @@ except ModuleNotFoundError:  # pragma: no cover
 MAIN_PATH = Path(__file__).resolve().parent.parent
 DEFAULT_XLSX = MAIN_PATH / "resources" / "userdata" / "actor_database.xlsx"
 
+ACTOR_DB_SHEET = "演员数据库"
+
 BIRTH_DATE_PATTERN = re.compile(r"^\d{4}(-\d{1,2}(-\d{1,2})?)?$")
 
 
@@ -124,7 +126,23 @@ def check_xlsx(xlsx: Path) -> int:
         return 0
 
     wb = load_workbook(xlsx, read_only=True, data_only=True)
-    ws = wb.active
+    try:
+        display_path = xlsx.relative_to(MAIN_PATH)
+    except ValueError:
+        display_path = xlsx
+    # 显式取「演员数据库」sheet，不依赖 sheet 顺序（防止男优备份等辅助 sheet 被误读）
+    if ACTOR_DB_SHEET not in wb.sheetnames:
+        print(f"[check_actor_db] {display_path} 缺少「{ACTOR_DB_SHEET}」sheet，结构异常")
+        wb.close()
+        return 1
+    if wb.sheetnames[0] != ACTOR_DB_SHEET:
+        print(
+            f"[check_actor_db] {display_path} 首个 sheet 应为「{ACTOR_DB_SHEET}」，"
+            f"实际为「{wb.sheetnames[0]}」，防止辅助 sheet 被误读"
+        )
+        wb.close()
+        return 1
+    ws = wb[ACTOR_DB_SHEET]
     rows = list(ws.iter_rows(min_row=2, values_only=True))
     wb.close()
 

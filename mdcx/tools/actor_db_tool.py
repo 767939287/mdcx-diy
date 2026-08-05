@@ -23,6 +23,7 @@ from ..config.resources import (
     COL_ZH_CN,
     COL_ZH_TW,
     DB_HEADERS,
+    get_actor_db_sheet,
     resources,
 )
 from ..core.tmdb_actor import (
@@ -284,7 +285,7 @@ async def run(
     # 落盘 + 重载内存缓存
     if _wb is not None:
         try:
-            _ws = _wb.active
+            _ws = get_actor_db_sheet(_wb)
             _format_db_worksheet(_ws)
             _wb.save(db_path)
             _wb.close()
@@ -320,7 +321,7 @@ async def run_actor_db_xlsx(mode: str) -> None:
     import openpyxl as _xl
 
     wb = _xl.load_workbook(db_path)
-    ws = wb.active
+    ws = get_actor_db_sheet(wb)
     base_url, tmdb_api_key = _resolve_tmdb_config()
     if not tmdb_api_key:
         _log_line(" ⚠️ 未配置 TMDB API Key，部分功能不可用")
@@ -564,7 +565,7 @@ async def sync_from_avdb(source: str, value: str = "", *, filter_male: bool = Tr
                     cell.font = _xl.styles.Font(bold=True)
                     cell.fill = _xl.styles.PatternFill("solid", fgColor="C0C0C0")
                     cell.alignment = _xl.styles.Alignment(horizontal="center")
-            ws = wb.active
+            ws = get_actor_db_sheet(wb)
             if ws.title != "演员数据库":
                 ws.title = "演员数据库"
 
@@ -778,7 +779,7 @@ async def clean_male_actors(*, limit: int = 5000, concurrency: int = 5) -> Clean
     try:
         async with _actor_db_write_lock:
             wb = _xl.load_workbook(db_path)
-            ws = wb.active
+            ws = get_actor_db_sheet(wb)
             backup_name = "男优备份"
             if backup_name not in wb.sheetnames:
                 wb.create_sheet(backup_name)

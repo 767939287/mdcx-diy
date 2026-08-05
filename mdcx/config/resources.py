@@ -3,6 +3,7 @@ import os
 import sys
 import traceback
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import defusedxml  # noqa: F401 - ensure PyInstaller bundles defusedxml for openpyxl XML parsing
 import zhconv
@@ -20,6 +21,9 @@ try:
     import openpyxl
 except ImportError:
     openpyxl = None
+
+if TYPE_CHECKING:
+    from openpyxl.worksheet.worksheet import Worksheet
 
 # 演员数据库 xlsx 列索引（与 tmdb_actor 共享）
 COL_JP = 0
@@ -39,12 +43,25 @@ def _tmdb_person_url(tmdbid: int | str) -> str:
     return f"https://www.themoviedb.org/person/{tmdbid}"
 
 
+ACTOR_DB_SHEET = "演员数据库"
+
+
+def get_actor_db_sheet(wb) -> "Worksheet":
+    """显式取「演员数据库」sheet，不依赖 sheet 顺序（防止男优备份等辅助 sheet 被误读）。
+
+    若工作簿中无该名（新建/异常文件），回退到 active sheet 保持兼容。
+    """
+    if ACTOR_DB_SHEET in wb.sheetnames:
+        return wb[ACTOR_DB_SHEET]
+    return wb.active
+
+
 def read_actor_db_xlsx(db_path: Path) -> dict[str, dict]:
     db: dict[str, dict] = {}
     import openpyxl
 
     wb = openpyxl.load_workbook(db_path, read_only=True, data_only=True)
-    ws = wb.active
+    ws = get_actor_db_sheet(wb)
     for row_idx, row in enumerate(ws.iter_rows(values_only=True), start=1):
         if row_idx == 1:
             continue
