@@ -308,8 +308,8 @@ resources_module.DB_HEADERS = ["日文原名", "中文名", "繁体名", "别名
 resources_module.ACTOR_DB_SHEET = "演员数据库"
 resources_module._tmdb_person_url = lambda tid: f"https://www.themoviedb.org/person/{tid}"
 resources_module.read_actor_db_xlsx = lambda db_path: {}
-resources_module.get_actor_db_sheet = (
-    lambda wb: wb["演员数据库"] if "演员数据库" in getattr(wb, "sheetnames", []) else wb.active
+resources_module.get_actor_db_sheet = lambda wb: (
+    wb["演员数据库"] if "演员数据库" in getattr(wb, "sheetnames", []) else wb.active
 )
 resources_module.resources = _DummyResources()
 sys.modules.setdefault("mdcx.config.resources", resources_module)
