@@ -1335,6 +1335,7 @@ async def _fetch_person_translations(pid: int, base_url: str, api_key: str, clie
 # ============= TMDB person 性别查询 =============
 
 _PERSON_GENDER_CACHE: dict[int, int] = {}
+_PERSON_IDENTITY_CACHE: dict[int, dict] = {}
 
 
 async def fetch_person_gender(pid: int, base_url: str, api_key: str, client: Any) -> int | None:
@@ -1360,6 +1361,36 @@ async def fetch_person_gender(pid: int, base_url: str, api_key: str, client: Any
             _PERSON_GENDER_CACHE[pid] = gender
             return gender
         return None
+    except Exception:
+        return None
+
+
+async def fetch_person_identity(pid: int, base_url: str, api_key: str, client: Any) -> dict | None:
+    """从 TMDB person detail 获取演员身份信息，用于校验 tmdbid 是否与名字匹配。
+
+    返回 {gender, name, original_name, also_known_as}；请求失败、404 返回 None。
+    """
+    cached = _PERSON_IDENTITY_CACHE.get(pid)
+    if cached is not None:
+        return cached
+
+    try:
+        detail_url = f"{base_url}/3/person/{pid}"
+        resp = await _tmdb_request(client, "GET", detail_url, params={"api_key": api_key, "language": "zh-CN"})
+        if resp is None or resp.status_code != 200:
+            return None
+        try:
+            data = resp.json()
+        except (json.JSONDecodeError, ValueError):
+            return None
+        identity = {
+            "gender": data.get("gender"),
+            "name": str(data.get("name") or ""),
+            "original_name": str(data.get("original_name") or ""),
+            "also_known_as": [str(a) for a in (data.get("also_known_as") or []) if a],
+        }
+        _PERSON_IDENTITY_CACHE[pid] = identity
+        return identity
     except Exception:
         return None
 

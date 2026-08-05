@@ -2604,6 +2604,25 @@
                     <string>剔除男演员</string>
                   </property>
                 </widget>
+                <widget class="QCheckBox" name="checkBox_actor_db_verify_tmdbid">
+                  <property name="geometry">
+                    <rect>
+                      <x>260</x>
+                      <y>340</y>
+                      <width>381</width>
+                      <height>22</height>
+                    </rect>
+                  </property>
+                  <property name="toolTip">
+                    <string>同步时用 TMDB person/{id} 反查该 id 对应的名字，与 AVdb 条目名比对；不匹配则丢弃该 id（宁缺毋滥）。需配置 TMDB API Key。</string>
+                  </property>
+                  <property name="text">
+                    <string>校验 tmdbid 与名字匹配（丢弃错误 id）</string>
+                  </property>
+                  <property name="checked">
+                    <bool>true</bool>
+                  </property>
+                </widget>
               </widget>
               <widget class="QGroupBox" name="groupBox_cover_backfill">
                 <property name="geometry">

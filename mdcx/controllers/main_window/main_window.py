@@ -2621,13 +2621,17 @@ class MyMAinWindow(QMainWindow):
         source_map = {0: "jsdelivr", 1: "github", 2: "url", 3: "file"}
         source_key = source_map.get(source, "jsdelivr")
         value = self.Ui.lineEdit_actor_db_sync_value.text().strip()
+        verify_tmdbid = bool(
+            getattr(self.Ui, "checkBox_actor_db_verify_tmdbid", None)
+            and self.Ui.checkBox_actor_db_verify_tmdbid.isChecked()
+        )
 
         btn.setEnabled(False)
         self.pushButton_actor_db_sync_start.emit("同步中...")
 
         async def run():
             try:
-                await sync_from_avdb(source=source_key, value=value)
+                await sync_from_avdb(source=source_key, value=value, verify_tmdbid=verify_tmdbid)
             except Exception as e:
                 signal_qt.show_log_text(f"🔴 AVdb 同步异常: {e}")
                 import traceback as tb

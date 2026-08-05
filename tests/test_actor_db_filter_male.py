@@ -4,7 +4,7 @@ from pathlib import Path
 import pytest
 from openpyxl import Workbook, load_workbook
 
-from mdcx.config.resources import COL_JP, DB_HEADERS
+from mdcx.config.resources import COL_JP, COL_TMDBID, DB_HEADERS
 from mdcx.core import tmdb_actor
 from mdcx.tools import actor_db_tool
 
@@ -58,7 +58,12 @@ def _read_rows(path: Path):
     return rows
 
 
-def _mock_tmdb(monkeypatch, genders: dict[int, int | None]):
+def _mock_tmdb(
+    monkeypatch,
+    genders: dict[int, int | None],
+    identity_names: dict[int, str] | None = None,
+    identity_spy: list[int] | None = None,
+):
     monkeypatch.setattr(actor_db_tool, "_resolve_tmdb_config", lambda: ("http://base", "test-key"))
     calls: list[int] = []
 
@@ -66,7 +71,18 @@ def _mock_tmdb(monkeypatch, genders: dict[int, int | None]):
         calls.append(pid)
         return genders.get(pid)
 
+    async def fake_fetch_identity(pid, base_url, api_key, client):
+        if identity_spy is not None:
+            identity_spy.append(pid)
+        if identity_names is None:
+            return None  # 与旧行为一致：身份不可知 -> 放行
+        name = identity_names.get(pid)
+        if name is None:
+            return None
+        return {"gender": None, "name": name, "original_name": name, "also_known_as": []}
+
     monkeypatch.setattr(actor_db_tool, "fetch_person_gender", fake_fetch)
+    monkeypatch.setattr(actor_db_tool, "fetch_person_identity", fake_fetch_identity)
     return calls
 
 
@@ -245,3 +261,77 @@ def test_sync_male_list_avoids_tmdb_request(_tmp_actor_db: Path, _avdb_xml: Path
     result = asyncio.run(actor_db_tool.sync_from_avdb("file", str(_avdb_xml)))
     assert result.skipped_male == 1
     assert 1417328 not in calls  # 名单命中，不应发起 TMDB gender 请求
+
+
+def test_sync_keeps_tmdbid_when_identity_matches(_tmp_actor_db: Path, _avdb_xml: Path, monkeypatch):
+    calls = _mock_tmdb(
+        monkeypatch,
+        {1417328: 1, 1417329: 1},
+        identity_names={1417328: "阿部純子", 1417329: "阿部涼音"},
+    )
+    result = asyncio.run(actor_db_tool.sync_from_avdb("file", str(_avdb_xml)))
+    assert result.skipped_tmdbid == 0
+    rows = _read_rows(_tmp_actor_db)
+    by_jp = {r[COL_JP]: r[COL_TMDBID] for r in rows}
+    assert by_jp["阿部純子"] == 1417328
+    assert by_jp["阿部涼音"] == 1417329
+    assert 1417328 in calls and 1417329 in calls
+
+
+def test_sync_drops_tmdbid_when_identity_mismatch(_tmp_actor_db: Path, _avdb_xml: Path, monkeypatch):
+    _mock_tmdb(
+        monkeypatch,
+        {1417328: 1, 1417329: 1},
+        identity_names={1417328: "Christa Allen", 1417329: "阿部涼音"},  # 错误映射样本：平山加奈->Christa Allen
+    )
+    result = asyncio.run(actor_db_tool.sync_from_avdb("file", str(_avdb_xml)))
+    assert result.skipped_tmdbid == 1
+    rows = _read_rows(_tmp_actor_db)
+    by_jp = {r[COL_JP]: r[COL_TMDBID] for r in rows}
+    assert by_jp["阿部純子"] in (None, "")  # 身份不匹配，丢弃该 id
+    assert by_jp["阿部涼音"] == 1417329  # 匹配的保留
+
+
+def test_sync_verify_disabled_keeps_tmdbid(_tmp_actor_db: Path, _avdb_xml: Path, monkeypatch):
+    _mock_tmdb(
+        monkeypatch,
+        {1417328: 1, 1417329: 1},
+        identity_names={1417328: "Christa Allen", 1417329: "阿部涼音"},
+    )
+    result = asyncio.run(actor_db_tool.sync_from_avdb("file", str(_avdb_xml), verify_tmdbid=False))
+    assert result.skipped_tmdbid == 0
+    rows = _read_rows(_tmp_actor_db)
+    by_jp = {r[COL_JP]: r[COL_TMDBID] for r in rows}
+    assert by_jp["阿部純子"] == 1417328  # 关闭校验时原样写入
+
+
+def test_sync_identity_match_with_katakana_roman(_tmp_actor_db: Path, _avdb_xml: Path, monkeypatch):
+    """片假名音译 ↔ 英文原名视为同人，不丢弃 id。"""
+    xml = (
+        _XML.replace('tmdb_id="1417328"', 'tmdb_id="1417328"')
+        .replace('jp="阿部純子"', 'jp="キャシー・ヘブン"')
+        .replace('zh_cn="阿部純子"', 'zh_cn="キャシー・ヘブン"')
+    )
+    xml_path = _avdb_xml.parent / "mapping2.xml"
+    xml_path.write_text(xml, encoding="utf-8")
+    _mock_tmdb(
+        monkeypatch,
+        {1417328: 1, 1417329: 1},
+        identity_names={1417328: "Cathy Heaven", 1417329: "阿部涼音"},
+    )
+    result = asyncio.run(actor_db_tool.sync_from_avdb("file", str(xml_path)))
+    assert result.skipped_tmdbid == 0
+    rows = _read_rows(_tmp_actor_db)
+    by_jp = {r[COL_JP]: r[COL_TMDBID] for r in rows}
+    assert by_jp["キャシー・ヘブン"] == 1417328  # 片假名↔英文放行
+
+
+def test_sync_existing_tmdbid_not_requeried_for_identity(_tmp_actor_db: Path, _avdb_xml: Path, monkeypatch):
+    """本地已存在的 tmdbid 不重复做身份反查。"""
+    _write_db(_tmp_actor_db, [["阿部純子", "阿部純子", "", "", "", 1417328, "", "", ""]])
+    spy: list[int] = []
+    _mock_tmdb(monkeypatch, {1417328: 2, 1417329: 1}, identity_spy=spy)
+    result = asyncio.run(actor_db_tool.sync_from_avdb("file", str(_avdb_xml)))
+    assert result.skipped_tmdbid == 0
+    assert 1417328 not in spy  # 已在库中的 id 不重复反查
+    assert 1417329 in spy  # 新 id 需要校验

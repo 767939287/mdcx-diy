@@ -5,6 +5,7 @@
 """
 
 import asyncio
+import re
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -28,14 +29,17 @@ from ..config.resources import (
 )
 from ..core.tmdb_actor import (
     _actor_db_write_lock,
+    _expand_name_variants,
     _fetch_person_translations,
     _format_db_worksheet,
     _get_db_path,
     _merge_keyword_values,
+    _norm_name_set,
     _normalize_translation,
     _resolve_tmdb_config,
     fetch_libredmm_link,
     fetch_person_gender,
+    fetch_person_identity,
     search_actor_db_reverse,
     update_actor_db_row,
 )
@@ -64,6 +68,7 @@ class ActorDbSyncResult:
     filled: int = 0
     merged: int = 0
     skipped_male: int = 0
+    skipped_tmdbid: int = 0
     failed: list[tuple[str, str]] = field(default_factory=list)
 
 
@@ -466,7 +471,65 @@ def _entry_name_of_row(ws, row_idx: int) -> str:
     return f"第{row_idx}行"
 
 
-async def sync_from_avdb(source: str, value: str = "", *, filter_male: bool = True) -> ActorDbSyncResult:
+_KATAKANA_RE = re.compile(r"[\u30a0-\u30ff\u30fb]")
+
+
+def _is_katakana_roman_pair(entry_variants: set[str], tmdb_names: list[str]) -> bool:
+    """判断条目名与 TMDB 人物名是否为「片假名音译 ↔ 英文原名」对照（同人）。
+
+    例: キャシー・ヘブン (日文音译) 与 Cathy Heaven (英文原名)。
+    """
+    for v in entry_variants:
+        chars = v.replace("・", "").replace(" ", "")
+        if not chars:
+            continue
+        kat_count = sum(1 for c in chars if "\u30a0" <= c <= "\u30ff")
+        if kat_count / len(chars) < 0.5:
+            continue
+        for n in tmdb_names:
+            n2 = n.replace(" ", "")
+            if n2 and all(("a" <= c.lower() <= "z") or c in ".-'" for c in n2):
+                return True
+    return False
+
+
+def _tmdb_id_matches_entry(entry_variants: set[str], identity: dict | None) -> bool:
+    """校验 AVdb 提供的 tmdbid 是否与条目名是同一人。
+
+    - identity 为 None（请求失败/404）：保守放行（无法判断时不拦，避免网络问题误伤）
+    - 归一化名字（含 こ/子 变体）有交集：放行
+    - 片假名音译 ↔ 英文原名对照：放行（同人）
+    - 其余：不匹配，丢弃该 tmdbid（宁缺毋滥）
+    """
+    if identity is None:
+        return True
+    tmdb_names: list[str] = []
+    for n in (identity.get("name"), identity.get("original_name")):
+        if n:
+            tmdb_names.append(str(n).strip())
+    for a in identity.get("also_known_as") or []:
+        if a:
+            tmdb_names.append(str(a).strip())
+    if not entry_variants or not tmdb_names:
+        return True
+    tmdb_set = _norm_name_set([n for n in tmdb_names if n])
+    if entry_variants & tmdb_set:
+        return True
+    return _is_katakana_roman_pair(entry_variants, tmdb_names)
+
+
+def _entry_variants(jp: str, zh_cn: str, kw_list: list[str]) -> set[str]:
+    """构建条目名的归一化变体集合（含 こ/子 变体）。"""
+    variants: set[str] = set()
+    for name in [jp, zh_cn, *kw_list]:
+        if name:
+            variants |= _expand_name_variants(name)
+    return variants
+
+
+async def sync_from_avdb(
+    source: str, value: str = "", *, filter_male: bool = True, verify_tmdbid: bool = True
+) -> ActorDbSyncResult:
     """从 AVdb (li-peifeng/Jav-Actors-Mapping) 同步演员映射到本地数据库。
 
     source:
@@ -533,13 +596,16 @@ async def sync_from_avdb(source: str, value: str = "", *, filter_male: bool = Tr
     result.parsed = len(actors)
     _log_line(f" 🎬 [AVdb同步] 解析 {len(actors)} 条 AVdb 映射, 开始合并")
 
-    # ---- 男优过滤配置（filter_male）----
-    # 内置名单过滤不依赖 TMDB，始终可用；TMDB gender 校验仅在配置了 API Key 时启用。
+    # ---- 男优过滤 / tmdbid 身份校验配置 ----
+    # 内置名单过滤不依赖 TMDB，始终可用；TMDB gender 校验与 tmdbid 身份校验仅在配置了 API Key 时启用。
     tmdb_base_url = tmdb_api_key = ""
-    if filter_male:
+    if filter_male or verify_tmdbid:
         tmdb_base_url, tmdb_api_key = _resolve_tmdb_config()
         if not tmdb_api_key:
-            _log_line(" ⚠️ [AVdb同步] 未配置 TMDB API Key，仅使用内置名单过滤男优")
+            if filter_male:
+                _log_line(" ⚠️ [AVdb同步] 未配置 TMDB API Key，仅使用内置名单过滤男优")
+            if verify_tmdbid:
+                _log_line(" ⚠️ [AVdb同步] 未配置 TMDB API Key，跳过 tmdbid 身份校验")
     tmdb_session: aiohttp.ClientSession | None = None
 
     async def _tmdb_client() -> aiohttp.ClientSession:
@@ -623,6 +689,25 @@ async def sync_from_avdb(source: str, value: str = "", *, filter_male: bool = Tr
                         return raw if raw.isdigit() else ""
 
                     tmdb_key = _norm_tmdb(tmdb_id)
+
+                    # 4) tmdbid 身份校验：AVdb 提供的 id 若与条目名不是同一人则丢弃该 id
+                    #    （宁缺毋滥——错误 id 比无 id 更糟，刮削遇同名演员会按名字重新搜索）
+                    #    仅当该 id 本地尚不存在时校验（已存在的映射为历史数据，不重复反查）
+                    if (
+                        verify_tmdbid
+                        and tmdb_key
+                        and tmdb_api_key
+                        and tmdb_key not in tmdb_index
+                        and not _tmdb_id_matches_entry(
+                            _entry_variants(jp, zh_cn, kw_list),
+                            await fetch_person_identity(
+                                int(tmdb_key), tmdb_base_url, tmdb_api_key, await _tmdb_client()
+                            ),
+                        )
+                    ):
+                        result.skipped_tmdbid += 1
+                        _log_line(f"  ⚠️ [AVdb同步] tmdbid={tmdb_key} 与名字 {entry_name} 不匹配，丢弃该 id")
+                        tmdb_key = ""
 
                     # 1) tmdbid 冲突优先并入
                     target_row = None
@@ -744,7 +829,8 @@ async def sync_from_avdb(source: str, value: str = "", *, filter_male: bool = Tr
 
     _log_line(
         f" 🎬 [AVdb同步] 完成: 解析 {result.parsed}, 新建 {result.created}, 补齐 {result.filled}, "
-        f"冲突合并 {result.merged}, 跳过男优 {result.skipped_male}, 失败 {len(result.failed)}"
+        f"冲突合并 {result.merged}, 跳过男优 {result.skipped_male}, "
+        f"丢弃错误id {result.skipped_tmdbid}, 失败 {len(result.failed)}"
     )
     return result
 

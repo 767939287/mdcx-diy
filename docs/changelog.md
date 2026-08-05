@@ -70,6 +70,7 @@
 - **adult=False 的 220 个**：TMDB 标 non-adult 的匹配人物，抽查发现混杂两类——未标 adult 的 AV 女优（`愛田るか`/`浅倉麗`）与真非 AV 人物（`本田仁美`=IZ*ONE 偶像/`内田彩`=声优）。因 adult 标记与作品关键词判断均不可靠，**保留不处理**——它们保持无 id 状态，刮削按名字搜索自然容错，符合宁缺毋滥原则
 - **有 id 演员 id 反查（tmdbid 校验）**：AVdb 同步的数据准确性存疑，对全部 5950 个有 id 演员用 id 反查 TMDB `person/{id}`（`name`+`also_known_as` 归一化比对，复用软件 `_expand_name_variants`/`_norm_name_set` 匹配逻辑）——5642 个（94.8%）库名与 id 人物直接匹配确认正确；16 个片假名↔英文对照的西方女优（`キャシー・ヘブン`→`Cathy Heaven` 等）实为同人；258 个存疑（库名与 id 人物无法证实同一人），二次判定用软件 `query_single_actor_cached` 正向搜索复核，25 个被软件认可、233 个未证实
 - **清除 272 个存疑 id**：确认 AVdb 源存在真实错误映射（如 `平山加奈`→美国演员 Christa Allen、`森千里`→歌手森高千里、`恵美`→声优绪方惠美、`白井ほの`→大沢美加、`未来`→女演员志田未来），库名与 id 人物无任何关联。清除 272 个无法证实同一人的 tmdbid 与 tmdb url（含 14 个软件搜索结果与库内 id 不一致的），宁缺毋滥——回到无 id 状态，刮削按名字重新搜索自然容错。有 tid 5950 → 5678
+- **`sync_from_avdb` 写入防线**：新增 `mdcx/core/tmdb_actor.fetch_person_identity`（带 `_PERSON_IDENTITY_CACHE`）返回 `{gender, name, original_name, also_known_as}`；`actor_db_tool` 新增 `_tmdb_id_matches_entry`/`_entry_variants`/`_is_katakana_roman_pair` 归一化比对（复用软件既有 `_expand_name_variants`/`_norm_name_set` 匹配逻辑，片假名↔英文音译对照视为同人放行，请求失败保守放行）。`sync_from_avdb(verify_tmdbid=True)` 默认开启：待写入的新 tmdbid 先用 `person/{id}` 反查身份，与条目名不匹配则丢弃该 id 保留其他字段（`skipped_tmdbid` 计数，完成日志含「丢弃错误id」统计）；已存在于库中的 id 属历史数据不重复反查。GUI 新增「校验 tmdbid 与名字匹配」复选框（默认勾选）控制开关，见 `mdcx/views/MDCx.ui`。配套测试 6 个（匹配保留/错配丢弃/关闭校验/片假名放行/已存在不反查），`tests/test_actor_db_filter_male.py`
 
 ## v2.0.3 (2026-08-03)
 

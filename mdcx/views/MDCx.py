@@ -947,6 +947,10 @@ class Ui_MDCx(object):
         self.pushButton_actor_db_clean_male = QtWidgets.QPushButton(parent=self.groupBox_actor_db_maintenance)
         self.pushButton_actor_db_clean_male.setGeometry(QtCore.QRect(40, 336, 200, 30))
         self.pushButton_actor_db_clean_male.setObjectName("pushButton_actor_db_clean_male")
+        self.checkBox_actor_db_verify_tmdbid = QtWidgets.QCheckBox(parent=self.groupBox_actor_db_maintenance)
+        self.checkBox_actor_db_verify_tmdbid.setGeometry(QtCore.QRect(260, 340, 381, 22))
+        self.checkBox_actor_db_verify_tmdbid.setChecked(True)
+        self.checkBox_actor_db_verify_tmdbid.setObjectName("checkBox_actor_db_verify_tmdbid")
         self.groupBox_cover_backfill = QtWidgets.QGroupBox(parent=self.scrollAreaWidgetContents_gongju)
         self.groupBox_cover_backfill.setGeometry(QtCore.QRect(30, 972, 701, 200))
         self.groupBox_cover_backfill.setObjectName("groupBox_cover_backfill")
@@ -12068,6 +12072,13 @@ class Ui_MDCx(object):
             _translate("MDCx", "本地优先，只补空缺字段，不覆盖已有数据；tmdbid 冲突视为同一人并入别名。")
         )
         self.pushButton_actor_db_clean_male.setText(_translate("MDCx", "剔除男演员"))
+        self.checkBox_actor_db_verify_tmdbid.setToolTip(
+            _translate(
+                "MDCx",
+                "同步时用 TMDB person/{id} 反查该 id 对应的名字，与 AVdb 条目名比对；不匹配则丢弃该 id（宁缺毋滥）。需配置 TMDB API Key。",
+            )
+        )
+        self.checkBox_actor_db_verify_tmdbid.setText(_translate("MDCx", "校验 tmdbid 与名字匹配（丢弃错误 id）"))
         self.groupBox_cover_backfill.setTitle(
             _translate("MDCx", "封面补图（按番号补齐缺失的封面、缩略图，复用当前配置的各项规则）")
         )
