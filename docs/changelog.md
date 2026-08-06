@@ -26,6 +26,7 @@
 ### 修复
 
 - **TMDB 演员匹配优化**（`tmdb_actor`）：`_expand_name_variants` 加入繁→简转换（zhconv zh-cn），覆盖 variant map 未收录的大量繁简字（`三佳詩`/`三佳诗`、`涼子`/`凉子`）——TMDB name/aka 常为简体、库名常为繁体，此前匹配失败导致漏配；`_query_single_actor` 候选排序 `adult=True` 权重提升至 `place_has_japan` 之前——AV 女优的 adult 标记是最强信号，优先于"日本出生地"（日本普通演员也出生日本），减少同名普通演员冒充 AV 女优的误选
+- **TMDB 演员匹配稳健性优化**（`tmdb_actor`）：候选从 `results[:5]` 放宽到 `results[:10]`（通用名时正确结果可能不在前 5）；新增 `hit_count` 命中变体数作为排序维度（置于 adult/place_has_japan 之后、popularity 之前），同名演员只命中 1 个通用变体的弱匹配不再与多变体命中的强匹配同等对待；`known_for_count` 改为从 search 接口的 `known_for` 字段取值——person detail 接口不含 `known_for`，此前恒为 0 是无效排序维度
 
 - **工具页布局重叠**：增高「演员库维护」组后曾与下方 `groupBox_7` 重叠 110px，连锁下移下方 6 个分组并同步滚动容器高度
 - **漏加 UI 控件**：生成文件 `MDCx.py` 曾漏加「从 AVdb 同步」的提示 label，导致运行时不显示，已补齐

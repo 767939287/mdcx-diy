@@ -1211,7 +1211,7 @@ async def _query_single_actor(actor_name: str, base_url: str, api_key: str, clie
 
     candidates: list[dict] = []
 
-    for item in results[:5]:
+    for item in results[:10]:
         pid = item.get("id")
         if not pid:
             continue
@@ -1242,17 +1242,22 @@ async def _query_single_actor(actor_name: str, base_url: str, api_key: str, clie
                 all_names.add(str(a).strip())
 
         all_norm = _norm_name_set(list(all_names))
-        is_match = bool(target_variants & all_norm)
+        hit_variants = target_variants & all_norm
+        is_match = bool(hit_variants)
+        hit_count = len(hit_variants)
 
         _pop = item.get("popularity", 0) or 0
         popularity = float(_pop) if isinstance(_pop, (int, float, str)) else 0.0
-        known_for_count = len(detail.get("known_for", [])) if "known_for" in detail else 0
+        # known_for 在 search 接口返回，person detail 无此字段
+        known_for = item.get("known_for", []) or []
+        known_for_count = len(known_for)
         place_has_japan = is_japan_place(place)
 
         candidates.append(
             {
                 "pid": pid,
                 "is_match": is_match,
+                "hit_count": hit_count,
                 "adult": bool(item.get("adult")),
                 "popularity": popularity,
                 "known_for_count": known_for_count,
@@ -1281,7 +1286,7 @@ async def _query_single_actor(actor_name: str, base_url: str, api_key: str, clie
         return None
 
     matched.sort(
-        key=lambda x: (x["adult"], x["place_has_japan"], x["popularity"], x["known_for_count"]),
+        key=lambda x: (x["adult"], x["place_has_japan"], x["hit_count"], x["popularity"], x["known_for_count"]),
         reverse=True,
     )
 
