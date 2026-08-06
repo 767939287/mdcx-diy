@@ -303,6 +303,7 @@ class Resources:
             copy_file_sync(asin_db_backup_path, asin_db_local_path)
 
         # 加载数据库 xlsx
+        merge_actor_db_from_backup(self.actor_db_backup_path, self.u("actor_database.xlsx"))
         self.reload_actor_db()
         self.reload_info_db()
 
@@ -387,6 +388,75 @@ class Resources:
             dst_path = getattr(self, attr_dst)
             if not os.path.isfile(dst_path):
                 copy_file_sync(getattr(self, attr_src), dst_path)
+
+
+def merge_actor_db_from_backup(backup_path: Path, local_path: Path) -> None:
+    """把出厂库的增量同步进已存在的用户库（只增不删、不覆盖用户已有值）。
+
+    出厂库随软件版本更新（清洗修正、新增演员），老用户的用户库不会自动获得这些
+    改进。此函数在启动时把出厂库中「用户库没有的新条目」完整追加，并给「用户库
+    已有但字段空缺」的条目补全（tmdbid/生日等），绝不覆盖用户已填的值、绝不删除
+    用户库任何行（用户可能有意保留）。
+
+    用出厂库文件 md5 作为合并标记写入 local_path 同目录的 .actor_db_merge_marker，
+    出厂库内容未变时跳过，避免每次启动重复扫描。
+    """
+    if openpyxl is None:
+        return
+    if not backup_path.exists() or not local_path.exists():
+        return
+
+    import hashlib
+
+    marker_path = local_path.parent / ".actor_db_merge_marker"
+    try:
+        backup_hash = hashlib.md5(backup_path.read_bytes()).hexdigest()
+        if marker_path.exists() and marker_path.read_text(encoding="utf-8").strip() == backup_hash:
+            return  # 出厂库未变化，无需合并
+
+        wb = openpyxl.load_workbook(local_path)
+        ws = get_actor_db_sheet(wb)
+        jp_row_map: dict[str, int] = {}
+        next_row = ws.max_row + 1
+        for row_no, row in enumerate(ws.iter_rows(min_row=2, max_col=len(DB_HEADERS), values_only=True), start=2):
+            if row and row[COL_JP]:
+                jp_val = str(row[COL_JP]).strip()
+                jp_row_map.setdefault(jp_val, row_no)
+
+        added = 0
+        filled = 0
+        backup_wb = openpyxl.load_workbook(backup_path, read_only=True, data_only=True)
+        backup_ws = get_actor_db_sheet(backup_wb)
+        for row in backup_ws.iter_rows(min_row=2, max_col=len(DB_HEADERS), values_only=True):
+            if not row or not row[COL_JP]:
+                continue
+            jp = str(row[COL_JP]).strip()
+            if jp in jp_row_map:
+                # 字段补全：仅填空缺，不覆盖已有值
+                existing_row = jp_row_map[jp]
+                for col_idx in range(len(DB_HEADERS)):
+                    if col_idx == COL_JP or col_idx == COL_TMDB_URL:
+                        continue
+                    cur = ws.cell(row=existing_row, column=col_idx + 1).value
+                    new = row[col_idx] if col_idx < len(row) else None
+                    if (cur is None or str(cur).strip() == "") and new not in (None, ""):
+                        ws.cell(row=existing_row, column=col_idx + 1, value=new)
+                        filled += 1
+                continue
+            ws.append(list(row[: len(DB_HEADERS)]))
+            jp_row_map[jp] = next_row
+            next_row += 1
+            added += 1
+        backup_wb.close()
+
+        if added or filled:
+            wb.save(local_path)
+        wb.close()
+        marker_path.write_text(backup_hash, encoding="utf-8")
+        if added or filled:
+            LogBuffer.log().write(f"  ℹ️ [演员数据库] 出厂库增量合并: 新增 {added} 条, 补全 {filled} 个字段")
+    except Exception as e:
+        LogBuffer.log().write(f"  ⚠️ [演员数据库] 出厂库合并失败: {e}")
 
 
 resources = Resources()
