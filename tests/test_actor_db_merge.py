@@ -12,11 +12,13 @@ def _load_merge_func():
     """从源码提取真实 merge_actor_db_from_backup 函数（绕过 conftest 模块替换与 Resources 初始化）。"""
     import ast
 
-    src = Path("/workspace/mdcx/config/resources.py").read_text(encoding="utf-8")
-    tree = ast.parse(src)
+    # tests/ 与 mdcx/ 同属项目根，用 __file__ 相对定位源码（CI 与本地一致）
+    src = Path(__file__).resolve().parent.parent / "mdcx" / "config" / "resources.py"
+    src_text = src.read_text(encoding="utf-8")
+    tree = ast.parse(src_text)
     for node in tree.body:
         if isinstance(node, ast.FunctionDef) and node.name == "merge_actor_db_from_backup":
-            func_src = ast.get_source_segment(src, node)
+            func_src = ast.get_source_segment(src_text, node)
             # globals 用 mock 模块已具备的符号，补 openpyxl
             g = dict(vars(res_module))
             g["openpyxl"] = __import__("openpyxl")
