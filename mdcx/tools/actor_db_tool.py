@@ -94,6 +94,17 @@ class VerifyTmdbIdResult:
     failed: list[tuple[str, str]] = field(default_factory=list)
 
 
+@dataclass
+class UpdateNfoTmdbIdResult:
+    """nfo tmdbid 更新结果。"""
+
+    checked: int = 0
+    updated_files: int = 0
+    updated_actors: int = 0
+    no_change: int = 0
+    failed: list[tuple[str, str]] = field(default_factory=list)
+
+
 def _log_line(message: str) -> None:
     LogBuffer.log().write(message)
     from mdcx.signals import signal_qt
@@ -1147,5 +1158,158 @@ async def verify_tmdb_ids(*, limit: int = 5000, concurrency: int = 5) -> VerifyT
     _log_line(
         f" ✅ [校验tmdbid] 完成: 校验 {result.checked}, 失效清除 {result.invalid}, "
         f"有效 {result.valid}, 失败 {len(result.failed)}"
+    )
+    return result
+
+
+def _update_nfo_tmdbids_text(text: str, id_map: dict[str, int]) -> tuple[str, int]:
+    """文本级替换 nfo 中 actor 的 tmdbid。
+
+    对每个 <actor> 块，按 <name> 匹配 id_map 中的新 id：
+    - 块内已有 <tmdbid> 且与新 id 不同 -> 替换为新 id
+    - 块内无 <tmdbid> 但库有 id -> 在 </type> 后插入 <tmdbid>（补上缺失的 id）
+    仅改动 tmdbid 值，保留 nfo 其他所有内容与格式。
+
+    返回 (更新后的文本, 更新的 actor 数)。
+    """
+    import re
+
+    def _norm(s: str) -> str:
+        return re.sub(r"\s+", "", s or "").strip()
+
+    updated = 0
+
+    def _replace_actor(match):
+        nonlocal updated
+        block = match.group(0)
+        name_m = re.search(r"<name>(.*?)</name>", block, re.S)
+        if not name_m:
+            return block
+        name = name_m.group(1).strip()
+        new_id = id_map.get(name) or id_map.get(_norm(name))
+        if new_id is None:
+            return block
+        tmdb_m = re.search(r"<tmdbid>\s*(\d+)\s*</tmdbid>", block)
+        if tmdb_m:
+            if int(tmdb_m.group(1)) == int(new_id):
+                return block
+            block = block[: tmdb_m.start(1)] + str(new_id) + block[tmdb_m.end(1) :]
+            updated += 1
+        else:
+            type_m = re.search(r"</type>", block)
+            if type_m:
+                insert_at = type_m.end()
+                block = block[:insert_at] + f"\n    <tmdbid>{new_id}</tmdbid>" + block[insert_at:]
+            else:
+                insert_at = name_m.end()
+                block = block[:insert_at] + f"\n    <tmdbid>{new_id}</tmdbid>" + block[insert_at:]
+            updated += 1
+        return block
+
+    new_text = re.sub(r"<actor>.*?</actor>", _replace_actor, text, flags=re.S)
+    return new_text, updated
+
+
+async def update_nfo_tmdb_ids(dir_path: Path, *, limit: int = 5000, concurrency: int = 5) -> "UpdateNfoTmdbIdResult":
+    """批量更新指定目录下所有 nfo 中 actor 的 tmdbid。
+
+    对每个 nfo：
+    1. 读取文本，解析所有 <actor> 的 name
+    2. 用本地演员库（search_actor_db_reverse）查每个 actor 的当前 tmdbid
+    3. 文本级替换/补入 <tmdbid>（仅改该值，保留 nfo 其他内容）
+    4. 有变更则写回
+
+    支持 limit 限量与手动停止（signal.stop / Flags.stop_requested）。
+    """
+    from ..core.tmdb_actor import search_actor_db_reverse
+    from ..models.flags import Flags
+    from ..signals import signal
+
+    def _is_stop_requested() -> bool:
+        return signal.stop or Flags.stop_requested
+
+    result = UpdateNfoTmdbIdResult()
+    if not await aiofiles.os.path.isdir(dir_path):
+        _log_line(f" ❌ [更新nfo] 目录不存在: {dir_path}")
+        return result
+
+    nfo_files: list[Path] = []
+
+    async def _walk(current: Path) -> None:
+        if _is_stop_requested():
+            return
+        try:
+            entries = await aiofiles.os.scandir(current)
+        except OSError:
+            return
+        for entry in entries:
+            if _is_stop_requested():
+                return
+            try:
+                if entry.is_dir(follow_symlinks=True):
+                    await _walk(Path(entry.path))
+                elif entry.name.lower().endswith(".nfo"):
+                    nfo_files.append(Path(entry.path))
+            except OSError:
+                continue
+
+    await _walk(dir_path)
+    if limit and len(nfo_files) > limit:
+        nfo_files = nfo_files[:limit]
+        _log_line(f" ℹ️ [更新nfo] 本次限量处理前 {limit} 个 nfo，可再次运行继续")
+    if not nfo_files:
+        _log_line(" ✅ [更新nfo] 目录下没有 nfo 文件")
+        return result
+
+    _log_line(f" 🎬 [更新nfo] 开始处理 {len(nfo_files)} 个 nfo (并发 {concurrency})")
+    result.checked = len(nfo_files)
+
+    sem = asyncio.Semaphore(concurrency)
+
+    async def _process_one(nfo_path: Path) -> None:
+        async with sem:
+            if _is_stop_requested():
+                return
+            try:
+                async with aiofiles.open(nfo_path, encoding="utf-8") as f:
+                    content = await f.read()
+            except (OSError, UnicodeDecodeError):
+                return
+            # 解析 actor names
+            import re as _re
+
+            names = _re.findall(r"<name>(.*?)</name>", content, _re.S)
+            names = [n.strip() for n in names if n and n.strip()]
+            if not names:
+                return
+            # 查库拿 id（并发/顺序均可，量小）
+            id_map: dict[str, int] = {}
+            for nm in names:
+                if _is_stop_requested():
+                    return
+                row = search_actor_db_reverse(nm)
+                if row and row.get("tmdbid"):
+                    id_map[nm] = int(row["tmdbid"])
+            if not id_map:
+                return
+            new_content, cnt = _update_nfo_tmdbids_text(content, id_map)
+            if cnt:
+                try:
+                    async with aiofiles.open(nfo_path, "w", encoding="utf-8") as f:
+                        await f.write(new_content)
+                    result.updated_files += 1
+                    result.updated_actors += cnt
+                    _log_line(f"  ✅ [更新nfo] {nfo_path.name}: 更新 {cnt} 个 actor tmdbid")
+                except OSError:
+                    result.failed.append((str(nfo_path), "写入失败"))
+            else:
+                result.no_change += 1
+
+    tasks = [asyncio.create_task(_process_one(p)) for p in nfo_files]
+    await asyncio.gather(*tasks)
+
+    _log_line(
+        f" ✅ [更新nfo] 完成: 检查 {result.checked}, 更新 {result.updated_files} 个文件/"
+        f"{result.updated_actors} 个 actor, 无变化 {result.no_change}, 失败 {len(result.failed)}"
     )
     return result

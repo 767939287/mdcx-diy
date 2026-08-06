@@ -412,6 +412,58 @@ def test_verify_tmdbid_recovers_new_id(_tmp_actor_db: Path, monkeypatch):
     assert rows[0][5] == 5882313  # 补回新 id
 
 
+def test_update_nfo_tmdbid_text_replaces_and_adds():
+    """文本级替换：nfo 旧 id 被新 id 覆盖，无 id 的补上。"""
+    nfo = (
+        "<movie><actor><name>桃園怜奈</name><type>Actor</type><tmdbid>12345</tmdbid></actor>"
+        "<actor><name>三佳詩</name><type>Actor</type></actor>"
+        "<actor><name>已同步</name><type>Actor</type><tmdbid>5882313</tmdbid></actor>"
+        "<actor><name>未收录</name><type>Actor</type><tmdbid>999</tmdbid></actor></movie>"
+    )
+    id_map = {"桃園怜奈": 5122968, "三佳詩": 5882313, "已同步": 5882313}
+    new, cnt = actor_db_tool._update_nfo_tmdbids_text(nfo, id_map)
+    assert cnt == 2  # 桃園怜奈替换 + 三佳詩补入；已同步跳过
+    assert "<tmdbid>5122968</tmdbid>" in new
+    assert "<tmdbid>5882313</tmdbid>" in new
+    assert "<tmdbid>999</tmdbid>" in new  # 未收录保留
+    # 补入的 tmdbid 在 type 之后（顺序正确）
+    assert new.index("<type>Actor</type>") < new.index("<tmdbid>5882313</tmdbid>")
+
+
+def test_update_nfo_tmdbid_updates_files(tmp_path, monkeypatch):
+    """端到端：遍历 nfo 目录，更新 actor tmdbid。"""
+    nfo_dir = tmp_path / "nfo"
+    nfo_dir.mkdir(parents=True)
+    (nfo_dir / "a.nfo").write_text(
+        "<movie><actor><name>桃園怜奈</name><type>Actor</type><tmdbid>123</tmdbid></actor></movie>",
+        encoding="utf-8",
+    )
+    (nfo_dir / "b.nfo").write_text(
+        "<movie><actor><name>三佳詩</name><type>Actor</type></actor></movie>", encoding="utf-8"
+    )
+
+    # mock 库反查
+    def fake_reverse(name):
+        if name == "桃園怜奈":
+            return {"jp": "桃園怜奈", "tmdbid": 5122968}
+        if name == "三佳詩":
+            return {"jp": "三佳詩", "tmdbid": 5882313}
+        return None
+
+    from mdcx.core import tmdb_actor
+
+    monkeypatch.setattr(tmdb_actor, "search_actor_db_reverse", fake_reverse)
+
+    result = asyncio.run(actor_db_tool.update_nfo_tmdb_ids(nfo_dir))
+    assert result.checked == 2
+    assert result.updated_files == 2
+    assert result.updated_actors == 2
+    content_a = (nfo_dir / "a.nfo").read_text(encoding="utf-8")
+    content_b = (nfo_dir / "b.nfo").read_text(encoding="utf-8")
+    assert "<tmdbid>5122968</tmdbid>" in content_a
+    assert "<tmdbid>5882313</tmdbid>" in content_b
+
+
 def test_sync_keeps_tmdbid_when_identity_matches(_tmp_actor_db: Path, _avdb_xml: Path, monkeypatch):
     calls = _mock_tmdb(
         monkeypatch,

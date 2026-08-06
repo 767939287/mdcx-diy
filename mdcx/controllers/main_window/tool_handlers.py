@@ -308,3 +308,22 @@ def pushButton_actor_db_verify_tmdbid_clicked(self):
     self.pushButton_show_log_clicked()
     signal_qt.show_log_text("🎬 开始校验 tmdbid 有效性（404 失效 id 清除回无 id 状态）...")
     self._run_actor_db_verify_tmdbid()
+
+
+def pushButton_actor_db_pick_nfo_dir_clicked(self):
+    from PyQt6.QtWidgets import QFileDialog
+
+    folder = QFileDialog.getExistingDirectory(
+        None,
+        "选择 nfo 目录",
+        "",
+        QFileDialog.Option.ShowDirsOnly,
+    )
+    if folder:
+        self.Ui.lineEdit_actor_db_nfo_dir.setText(folder)
+
+
+def pushButton_actor_db_update_nfo_tmdbid_clicked(self):
+    self.pushButton_show_log_clicked()
+    signal_qt.show_log_text("🎬 开始更新 nfo tmdbid（用本地库新 id 覆盖 nfo 旧 id）...")
+    self._run_actor_db_update_nfo()

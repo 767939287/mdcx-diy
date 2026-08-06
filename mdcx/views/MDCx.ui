@@ -1585,7 +1585,7 @@
                   <x>0</x>
                   <y>0</y>
                   <width>760</width>
-                  <height>1995</height>
+                  <height>2055</height>
                 </rect>
               </property>
               <property name="autoFillBackground">
@@ -1595,7 +1595,7 @@
                 <property name="geometry">
                   <rect>
                     <x>30</x>
-                    <y>520</y>
+                    <y>580</y>
                     <width>701</width>
                     <height>271</height>
                   </rect>
@@ -1728,7 +1728,7 @@
                 <property name="geometry">
                   <rect>
                     <x>30</x>
-                    <y>811</y>
+                    <y>871</y>
                     <width>701</width>
                     <height>141</height>
                   </rect>
@@ -1776,7 +1776,7 @@
                 <property name="geometry">
                   <rect>
                     <x>30</x>
-                    <y>1714</y>
+                    <y>1774</y>
                     <width>701</width>
                     <height>241</height>
                   </rect>
@@ -1949,7 +1949,7 @@
                 <property name="geometry">
                   <rect>
                     <x>30</x>
-                    <y>1523</y>
+                    <y>1583</y>
                     <width>701</width>
                     <height>171</height>
                   </rect>
@@ -2025,7 +2025,7 @@
                 <property name="geometry">
                   <rect>
                     <x>30</x>
-                    <y>1192</y>
+                    <y>1252</y>
                     <width>701</width>
                     <height>311</height>
                   </rect>
@@ -2303,7 +2303,7 @@
                     <x>30</x>
                     <y>130</y>
                     <width>701</width>
-                    <height>370</height>
+                    <height>430</height>
                   </rect>
                 </property>
                 <property name="title">
@@ -2658,12 +2658,73 @@
                     <bool>true</bool>
                   </property>
                 </widget>
+                <widget class="QLineEdit" name="lineEdit_actor_db_nfo_dir">
+                  <property name="geometry">
+                    <rect>
+                      <x>40</x>
+                      <y>410</y>
+                      <width>300</width>
+                      <height>30</height>
+                    </rect>
+                  </property>
+                  <property name="placeholderText">
+                    <string>选择 nfo 目录</string>
+                  </property>
+                </widget>
+                <widget class="QPushButton" name="pushButton_actor_db_pick_nfo_dir">
+                  <property name="geometry">
+                    <rect>
+                      <x>350</x>
+                      <y>410</y>
+                      <width>80</width>
+                      <height>30</height>
+                    </rect>
+                  </property>
+                  <property name="text">
+                    <string>选择目录</string>
+                  </property>
+                </widget>
+                <widget class="QPushButton" name="pushButton_actor_db_update_nfo_tmdbid">
+                  <property name="geometry">
+                    <rect>
+                      <x>440</x>
+                      <y>410</y>
+                      <width>140</width>
+                      <height>30</height>
+                    </rect>
+                  </property>
+                  <property name="toolTip">
+                    <string>批量更新指定目录下所有 nfo 中 actor 的 tmdbid：用本地演员库（已校验+补回）的新 id 覆盖 nfo 旧 id，nfo 原本没有 tmdbid 的也补上。仅改 tmdbid 值，保留 nfo 其他内容。</string>
+                  </property>
+                  <property name="text">
+                    <string>更新 nfo tmdbid</string>
+                  </property>
+                </widget>
+                <widget class="QLabel" name="label_actor_db_update_nfo_desc">
+                  <property name="geometry">
+                    <rect>
+                      <x>40</x>
+                      <y>446</y>
+                      <width>621</width>
+                      <height>20</height>
+                    </rect>
+                  </property>
+                  <property name="styleSheet">
+                    <string notr="true">color: rgb(160, 160, 160); font-size: 11px;</string>
+                  </property>
+                  <property name="text">
+                    <string>用本地库新 id 覆盖 nfo 旧 id；原本没有的补上（nfo 是持久源，改这里 Emby 重扫才一致）</string>
+                  </property>
+                  <property name="wordWrap">
+                    <bool>true</bool>
+                  </property>
+                </widget>
               </widget>
               <widget class="QGroupBox" name="groupBox_cover_backfill">
                 <property name="geometry">
                   <rect>
                     <x>30</x>
-                    <y>972</y>
+                    <y>1032</y>
                     <width>701</width>
                     <height>200</height>
                   </rect>

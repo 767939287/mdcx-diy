@@ -148,6 +148,7 @@ class MyMAinWindow(QMainWindow):
     pushButton_actor_db_sync_start = pyqtSignal(str)
     pushButton_actor_db_clean_male = pyqtSignal(str)
     pushButton_actor_db_verify_tmdbid = pyqtSignal(str)
+    pushButton_actor_db_update_nfo_tmdbid = pyqtSignal(str)
     actor_db_finished = pyqtSignal()
     label_show_version = pyqtSignal(str)
 
@@ -2605,6 +2606,16 @@ class MyMAinWindow(QMainWindow):
 
         pushButton_actor_db_verify_tmdbid_clicked(self)
 
+    def pushButton_actor_db_pick_nfo_dir_clicked(self):
+        from .tool_handlers import pushButton_actor_db_pick_nfo_dir_clicked
+
+        pushButton_actor_db_pick_nfo_dir_clicked(self)
+
+    def pushButton_actor_db_update_nfo_tmdbid_clicked(self):
+        from .tool_handlers import pushButton_actor_db_update_nfo_tmdbid_clicked
+
+        pushButton_actor_db_update_nfo_tmdbid_clicked(self)
+
     def pushButton_actor_db_pick_xml_clicked(self):
         from .tool_handlers import pushButton_actor_db_pick_xml_clicked
 
@@ -2734,6 +2745,41 @@ class MyMAinWindow(QMainWindow):
 
         executor.submit(run())
 
+    def _run_actor_db_update_nfo(self) -> None:
+        """运行「更新 nfo tmdbid」（用本地库新 id 覆盖 nfo 旧 id，无 id 的补上）。"""
+        from pathlib import Path
+
+        from mdcx.tools.actor_db_tool import update_nfo_tmdb_ids
+
+        btn = self.Ui.pushButton_actor_db_update_nfo_tmdbid
+        if not btn.isEnabled():
+            return
+
+        dir_text = self.Ui.lineEdit_actor_db_nfo_dir.text().strip()
+        if not dir_text:
+            signal_qt.show_log_text("🔴 请先选择 nfo 目录")
+            return
+        dir_path = Path(dir_text)
+        if not dir_path.is_dir():
+            signal_qt.show_log_text(f"🔴 nfo 目录不存在: {dir_text}")
+            return
+
+        btn.setEnabled(False)
+        self.pushButton_actor_db_update_nfo_tmdbid.emit("更新中...")
+
+        async def run():
+            try:
+                await update_nfo_tmdb_ids(dir_path)
+            except Exception as e:
+                signal_qt.show_log_text(f"🔴 更新 nfo 异常: {e}")
+                import traceback as tb
+
+                signal_qt.show_log_text(tb.format_exc())
+            finally:
+                self.actor_db_finished.emit()
+
+        executor.submit(run())
+
     def _on_actor_db_finished(self) -> None:
         """主线程恢复演员库维护按钮状态（由 actor_db_finished 信号触发）。"""
         self.Ui.pushButton_actor_db_translate.setEnabled(True)
@@ -2742,12 +2788,14 @@ class MyMAinWindow(QMainWindow):
         self.Ui.pushButton_actor_db_sync_start.setEnabled(True)
         self.Ui.pushButton_actor_db_clean_male.setEnabled(True)
         self.Ui.pushButton_actor_db_verify_tmdbid.setEnabled(True)
+        self.Ui.pushButton_actor_db_update_nfo_tmdbid.setEnabled(True)
         self.pushButton_actor_db_translate.emit("补全中文名")
         self.pushButton_actor_db_link.emit("补全 LibreDMM 链接")
         self.pushButton_actor_db_sync_aliases.emit("同步别名")
         self.pushButton_actor_db_sync_start.emit("从 AVdb 同步")
         self.pushButton_actor_db_clean_male.emit("剔除男演员")
         self.pushButton_actor_db_verify_tmdbid.emit("校验 tmdbid 有效性")
+        self.pushButton_actor_db_update_nfo_tmdbid.emit("更新 nfo tmdbid")
 
     # region 设置页
     # region 选择目录

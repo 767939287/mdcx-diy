@@ -25,6 +25,7 @@
 
 ### 修复
 
+- **新增「更新 nfo tmdbid」按钮**（演员库维护）：nfo 文件是刮削时静态写入的持久数据，库中 id 失效清除+补回后 nfo 里的旧 id 不会自动更新（Emby 服务器 Person id 只是 nfo 的派生，重扫会回退）。新增 `update_nfo_tmdb_ids`：批量扫描指定目录所有 nfo，用本地演员库（已校验+补回的新 id）**文本级替换** nfo 中 actor 的 `<tmdbid>`——旧 id 覆盖为新 id，原本没有 tmdbid 的补上；仅改 tmdbid 值，保留 nfo 其他内容与格式（不重建 nfo）。工具页新增「更新 nfo tmdbid」按钮 + 目录选择，带说明文字。配套测试 2 个（文本替换/端到端更新）
 - **新增「校验 tmdbid 有效性」按钮**（演员库维护）：TMDB 是公开平台，person id 可能被删除/重建/合并（如「三佳詩」旧 id 6231965 被 TMDB 删除后重建为 5882313），库中 id 静态存储不会自愈，失效 id 被刮削直接采用会导致拿错误资料或 404。新增 `verify_tmdb_ids`：扫描库中所有有 tmdbid 的行，并发调 TMDB `person/{id}` 校验，404（person 已删除）清除该行 tmdbid + tmdb url（回到无 id 状态，宁缺毋滥，刮削按名字重新搜索）；清除后**按名字重搜 TMDB 自动补回新 id**（复用 `query_single_actor_cached`，仅补 adult=True 且名字匹配的，如三佳詩 6231965→5882313）；网络错误/限流/5xx 保守保留不误清；支持 limit 限量与手动停止。工具页新增「校验 tmdbid 有效性」按钮（含说明文字）触发。配套测试 4 个（失效清除/全有效保留/网络错误保留/补回新 id）
 - **TMDB 演员匹配优化**（`tmdb_actor`）：`_expand_name_variants` 加入繁→简转换（zhconv zh-cn），覆盖 variant map 未收录的大量繁简字（`三佳詩`/`三佳诗`、`涼子`/`凉子`）——TMDB name/aka 常为简体、库名常为繁体，此前匹配失败导致漏配；`_query_single_actor` 候选排序 `adult=True` 权重提升至 `place_has_japan` 之前——AV 女优的 adult 标记是最强信号，优先于"日本出生地"（日本普通演员也出生日本），减少同名普通演员冒充 AV 女优的误选
 - **TMDB 演员匹配稳健性优化**（`tmdb_actor`）：候选从 `results[:5]` 放宽到 `results[:10]`（通用名时正确结果可能不在前 5）；新增 `hit_count` 命中变体数作为排序维度（置于 adult/place_has_japan 之后、popularity 之前），同名演员只命中 1 个通用变体的弱匹配不再与多变体命中的强匹配同等对待；`known_for_count` 改为从 search 接口的 `known_for` 字段取值——person detail 接口不含 `known_for`，此前恒为 0 是无效排序维度
