@@ -291,6 +291,12 @@ def flush_tmdb_query_cache() -> None:
 
 _tmdb_rate_limiter = _TmdbRateLimiter()
 
+# LibreDMM 独立限流：站点无官方 API，限速比 TMDB 保守，避免批量扫描被封
+_libredmm_rate_limiter = _TmdbRateLimiter(rate=1.5, burst=4, min_rate=0.3, max_rate=3.0)
+
+# LibreDMM 共享会话（懒加载复用连接，避免每条 actor 重建 session）
+_libredmm_session: Any = None
+
 
 def _tmdb_debug_enabled() -> bool:
     return bool(getattr(manager.config, "show_data_log", False))
@@ -1413,31 +1419,44 @@ async def fetch_person_identity(pid: int, base_url: str, api_key: str, client: A
 
 
 async def fetch_libredmm_link(actor_name: str) -> str:
-    """搜索 LibreDMM 获取演员页面链接，未找到返回空字符串。"""
+    """搜索 LibreDMM 获取演员页面链接，未找到返回空字符串。
+
+    使用模块级共享会话复用连接，并通过独立限流器控制速率（LibreDMM 无官方 API，
+    频率过高有被封风险，故限速比 TMDB 更保守）。
+    """
+    global _libredmm_session
     search_url = "https://www.libredmm.com/actresses"
     params = {"order": "New", "fuzzy": actor_name, "commit": "Filter by name"}
     headers = {
         "Accept-Language": "zh-CN,zh;q=0.9",
         "Referer": "https://www.libredmm.com/actresses",
     }
+    await _libredmm_rate_limiter.acquire()
+    status_code = 0
     try:
-        async with AsyncSession(impersonate="safari15_5") as s:
-            resp = await s.get(search_url, params=params, headers=headers, timeout=15)
-            if resp.status_code != 200:
-                return ""
+        if _libredmm_session is None:
+            _libredmm_session = AsyncSession(impersonate="safari15_5")
+        resp = await _libredmm_session.get(search_url, params=params, headers=headers, timeout=15)
+        status_code = int(resp.status_code)
+        if status_code != 200:
+            return ""
 
-            final_url = str(resp.url)
-            if "/actresses/" in final_url and final_url != search_url:
-                return final_url
+        final_url = str(resp.url)
+        if "/actresses/" in final_url and final_url != search_url:
+            return final_url
 
-            sel = Selector(resp.text)
-            href = sel.css('a[href^="/actresses/"]::attr(href)').get()
-            if href and href != "/actresses":
-                return f"https://www.libredmm.com{href}"
+        sel = Selector(resp.text)
+        href = sel.css('a[href^="/actresses/"]::attr(href)').get()
+        if href and href != "/actresses":
+            return f"https://www.libredmm.com{href}"
     except Exception:
         import traceback
 
         LogBuffer.log().write(f"[tmdb_actor] LibreDMM 查询失败: {traceback.format_exc()}")
+        return ""
+    finally:
+        await _libredmm_rate_limiter.finish(status_code)
+
     return ""
 
 

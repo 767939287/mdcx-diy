@@ -343,3 +343,46 @@ async def test_run_actor_db_xlsx_limit_slices_and_reruns_idempotently(
     rows = list(ws.iter_rows(min_row=2, values_only=True))
     wb.close()
     assert all(str(r[1] or "").startswith("中文") for r in rows)
+
+
+@pytest.mark.asyncio
+async def test_run_actor_db_xlsx_sync_aliases_only_handles_empty(
+    _tmp_actor_db: Path, monkeypatch: pytest.MonkeyPatch, _reset_stop_flags
+):
+    """sync_aliases 仅处理别名列为空的条目，已有别名的行不重复请求。"""
+    from openpyxl import Workbook
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "演员数据库"
+    ws.append(["日文原名", "中文名", "繁体名", "别名", "链接", "tmdbid", "tmdb url", "出生日期", "简介"])
+    ws.append(["已有别名演员", "", "", "别名甲", "", "11", "", "", ""])
+    ws.append(["空别名演员", "", "", "", "", "12", "", "", ""])
+    ws.append(["无别名但无id", "", "", "", "", "", "", "", ""])
+    wb.save(_tmp_actor_db)
+    wb.close()
+
+    monkeypatch.setattr(tmdb_actor.manager.config, "tmdb_api_key", "fake-key")
+    monkeypatch.setattr(tmdb_actor.manager.config, "tmdb_api_base", "api.tmdb.org")
+
+    queried: list[str] = []
+
+    async def fake_query_single_actor_cached(actor_name, base_url, api_key, client):
+        queried.append(actor_name)
+        return {"name": actor_name, "original_name": actor_name, "also_known_as": ["新别名"]}
+
+    monkeypatch.setattr(tmdb_actor, "query_single_actor_cached", fake_query_single_actor_cached)
+
+    await actor_db_tool.run_actor_db_xlsx("sync_aliases")
+
+    # 只查询了空别名的有 id 行，已有别名的行被跳过
+    assert queried == ["空别名演员"]
+
+    wb = load_workbook(_tmp_actor_db)
+    ws = wb.active
+    rows = list(ws.iter_rows(min_row=2, values_only=True))
+    wb.close()
+    empty_row = next(r for r in rows if r[0] == "空别名演员")
+    assert "新别名" in str(empty_row[3])
+    alias_row = next(r for r in rows if r[0] == "已有别名演员")
+    assert "新别名" not in str(alias_row[3])

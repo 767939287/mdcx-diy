@@ -341,7 +341,7 @@ async def run_actor_db_xlsx(mode: str, *, limit: int = 5000) -> None:
     mode:
       'translate'    — 补全缺中文名的条目
       'link'         — 补全缺 LibreDMM 链接的条目
-      'sync_aliases' — 同步 TMDB 最新别名到 keyword 列
+      'sync_aliases' — 同步 TMDB 最新别名到 keyword 列（仅处理别名列为空的条目）
     """
     db_path = _get_db_path()
     if not db_path.exists():
@@ -380,7 +380,8 @@ async def run_actor_db_xlsx(mode: str, *, limit: int = 5000) -> None:
             if not href:
                 rows_to_process.append((jp, tmdbid, row_idx))
         elif mode == "sync_aliases":
-            rows_to_process.append((jp, tmdbid, row_idx))
+            if not str(row[3] or "").strip():
+                rows_to_process.append((jp, tmdbid, row_idx))
 
     if limit and len(rows_to_process) > limit:
         rows_to_process = rows_to_process[:limit]
