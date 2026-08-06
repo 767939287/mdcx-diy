@@ -38,6 +38,7 @@ from ..core.tmdb_actor import (
     _norm_name_set,
     _normalize_translation,
     _resolve_tmdb_config,
+    _tmdb_person_url,
     fetch_libredmm_link,
     fetch_person_gender,
     fetch_person_identity,
@@ -87,6 +88,7 @@ class VerifyTmdbIdResult:
 
     checked: int = 0
     invalid: int = 0  # 404 失效被清除的 id 数
+    recovered: int = 0  # 清除后按名字重搜补回的新 id 数
     valid: int = 0
     kept: int = 0  # 请求失败/限流保守保留
     failed: list[tuple[str, str]] = field(default_factory=list)
@@ -1050,14 +1052,16 @@ async def verify_tmdb_ids(*, limit: int = 5000, concurrency: int = 5) -> VerifyT
             wb = _xl.load_workbook(db_path)
             ws = get_actor_db_sheet(wb)
 
-            candidate_rows: list[tuple[int, int]] = []
+            candidate_rows: list[tuple[int, int, str, str]] = []
             for row_idx, row in enumerate(ws.iter_rows(min_row=2, values_only=True), start=2):
                 if _is_stop_requested():
                     break
                 if len(row) > COL_TMDBID:
                     tmdb_val = str(row[COL_TMDBID] or "").strip()
                     if tmdb_val.isdigit():
-                        candidate_rows.append((row_idx, int(tmdb_val)))
+                        jp = str(row[COL_JP] or "").strip() if len(row) > COL_JP else ""
+                        zh = str(row[COL_ZH_CN] or "").strip() if len(row) > COL_ZH_CN else ""
+                        candidate_rows.append((row_idx, int(tmdb_val), jp, zh))
             if limit and len(candidate_rows) > limit:
                 candidate_rows = candidate_rows[:limit]
                 _log_line(f" ℹ️ [校验tmdbid] 本次限量处理前 {limit} 条，可再次运行继续")
@@ -1087,16 +1091,44 @@ async def verify_tmdb_ids(*, limit: int = 5000, concurrency: int = 5) -> VerifyT
                         return  # 网络失败，保守保留
 
             async with aiohttp.ClientSession() as client:
-                tasks = [asyncio.create_task(_check(row_idx, tmdbid)) for row_idx, tmdbid in candidate_rows]
+                tasks = [asyncio.create_task(_check(row_idx, tmdbid)) for row_idx, tmdbid, _, _ in candidate_rows]
                 await asyncio.gather(*tasks)
 
             if invalid_rows:
+                # 清除失效 id 前，记录待补回的行信息（jp/zh）
+                invalid_meta = {row_idx: (jp, zh) for row_idx, tid, jp, zh in candidate_rows if row_idx in invalid_rows}
                 for row_idx in sorted(invalid_rows):
                     ws.cell(row=row_idx, column=COL_TMDBID + 1).value = None
                     ws.cell(row=row_idx, column=COL_TMDB_URL + 1).value = None
                 _format_db_worksheet(ws)
                 wb.save(db_path)
                 _log_line(f" 🗑️ [校验tmdbid] 清除失效 id {len(invalid_rows)} 个")
+
+                # 按名字重搜补回新 id（TMDB 可能重建了档案）
+                from mdcx.core.tmdb_actor import query_single_actor_cached
+
+                recovered = 0
+                async with aiohttp.ClientSession() as client:
+                    for row_idx, (jp, zh) in invalid_meta.items():
+                        if _is_stop_requested():
+                            break
+                        if not jp and not zh:
+                            continue
+                        query_name = jp or zh
+                        try:
+                            qr = await query_single_actor_cached(query_name, base_url, tmdb_api_key, client)
+                            if qr and qr.get("adult") and qr.get("pid"):
+                                ws.cell(row=row_idx, column=COL_TMDBID + 1).value = int(qr["pid"])
+                                ws.cell(row=row_idx, column=COL_TMDB_URL + 1).value = _tmdb_person_url(int(qr["pid"]))
+                                recovered += 1
+                                _log_line(f"  🔁 [校验tmdbid] {jp or zh} 补回新 id {qr['pid']}")
+                        except Exception:
+                            continue
+                if recovered:
+                    _format_db_worksheet(ws)
+                    wb.save(db_path)
+                    _log_line(f" 🔁 [校验tmdbid] 按名重搜补回 {recovered} 个新 id")
+                result.recovered = recovered
             wb.close()
             result.invalid = len(invalid_rows)
             result.valid = len(candidate_rows) - len(invalid_rows)

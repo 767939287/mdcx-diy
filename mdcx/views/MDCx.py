@@ -954,6 +954,11 @@ class Ui_MDCx(object):
         self.pushButton_actor_db_verify_tmdbid = QtWidgets.QPushButton(parent=self.groupBox_actor_db_maintenance)
         self.pushButton_actor_db_verify_tmdbid.setGeometry(QtCore.QRect(40, 372, 200, 30))
         self.pushButton_actor_db_verify_tmdbid.setObjectName("pushButton_actor_db_verify_tmdbid")
+        self.label_actor_db_verify_tmdbid_desc = QtWidgets.QLabel(parent=self.groupBox_actor_db_maintenance)
+        self.label_actor_db_verify_tmdbid_desc.setGeometry(QtCore.QRect(260, 376, 381, 22))
+        self.label_actor_db_verify_tmdbid_desc.setStyleSheet("color: rgb(160, 160, 160); font-size: 11px;")
+        self.label_actor_db_verify_tmdbid_desc.setWordWrap(True)
+        self.label_actor_db_verify_tmdbid_desc.setObjectName("label_actor_db_verify_tmdbid_desc")
         self.groupBox_cover_backfill = QtWidgets.QGroupBox(parent=self.scrollAreaWidgetContents_gongju)
         self.groupBox_cover_backfill.setGeometry(QtCore.QRect(30, 972, 701, 200))
         self.groupBox_cover_backfill.setObjectName("groupBox_cover_backfill")
@@ -12089,6 +12094,9 @@ class Ui_MDCx(object):
             )
         )
         self.pushButton_actor_db_verify_tmdbid.setText(_translate("MDCx", "校验 tmdbid 有效性"))
+        self.label_actor_db_verify_tmdbid_desc.setText(
+            _translate("MDCx", "TMDB 公开平台，person id 可能被删除/重建，失效 id 清除回无 id 状态")
+        )
         self.groupBox_cover_backfill.setTitle(
             _translate("MDCx", "封面补图（按番号补齐缺失的封面、缩略图，复用当前配置的各项规则）")
         )

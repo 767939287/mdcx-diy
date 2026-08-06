@@ -2639,6 +2639,25 @@
                     <string>校验 tmdbid 有效性</string>
                   </property>
                 </widget>
+                <widget class="QLabel" name="label_actor_db_verify_tmdbid_desc">
+                  <property name="geometry">
+                    <rect>
+                      <x>260</x>
+                      <y>376</y>
+                      <width>381</width>
+                      <height>22</height>
+                    </rect>
+                  </property>
+                  <property name="styleSheet">
+                    <string notr="true">color: rgb(160, 160, 160); font-size: 11px;</string>
+                  </property>
+                  <property name="text">
+                    <string>TMDB 公开平台，person id 可能被删除/重建，失效 id 清除回无 id 状态</string>
+                  </property>
+                  <property name="wordWrap">
+                    <bool>true</bool>
+                  </property>
+                </widget>
               </widget>
               <widget class="QGroupBox" name="groupBox_cover_backfill">
                 <property name="geometry">
