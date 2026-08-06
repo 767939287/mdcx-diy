@@ -1,10 +1,22 @@
+import asyncio
 from pathlib import Path
 
 import pytest
 from openpyxl import load_workbook
 
 from mdcx.core import tmdb_actor
+from mdcx.models.flags import Flags
+from mdcx.signals import signal
 from mdcx.tools import actor_db_tool
+
+
+@pytest.fixture
+def _reset_stop_flags():
+    Flags.stop_requested = False
+    signal.stop = False
+    yield
+    Flags.stop_requested = False
+    signal.stop = False
 
 
 @pytest.fixture
@@ -227,3 +239,107 @@ async def test_update_actor_db_row_cleans_series_tag(_tmp_actor_db: Path):
     rows = list(ws.iter_rows(min_row=2, values_only=True))
     wb.close()
     assert rows and rows[0][0] == "本田仁美"
+
+
+@pytest.mark.asyncio
+async def test_run_actor_db_xlsx_stop_cancels_pending_and_saves(
+    _tmp_actor_db: Path, monkeypatch: pytest.MonkeyPatch, _reset_stop_flags
+):
+    """run_actor_db_xlsx 在手动停止后取消 pending 并保存已处理部分。"""
+    from openpyxl import Workbook
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "演员数据库"
+    ws.append(["日文原名", "中文名", "繁体名", "别名", "链接", "tmdbid", "tmdb url", "出生日期", "简介"])
+    for jp, pid in [("演员甲", 11), ("演员乙", 12), ("演员丙", 13), ("演员丁", 14), ("演员戊", 15)]:
+        ws.append([jp, "", "", "", "", str(pid), "", "", ""])
+    wb.save(_tmp_actor_db)
+    wb.close()
+
+    monkeypatch.setattr(tmdb_actor.manager.config, "tmdb_api_key", "fake-key")
+    monkeypatch.setattr(tmdb_actor.manager.config, "tmdb_api_base", "api.tmdb.org")
+
+    calls: list[str] = []
+    write_lock = asyncio.Lock()
+
+    async def fake_translations(pid, base_url, api_key, client):
+        async with write_lock:
+            calls.append(str(pid))
+            if len(calls) >= 3:
+                Flags.stop_requested = True
+        await asyncio.sleep(0.01)
+        return {"zh_cn": f"中文{pid}", "zh_tw": f"中文{pid}"}
+
+    async def fake_person_url(*args, **kwargs):
+        return "https://www.themoviedb.org/person/1"
+
+    monkeypatch.setattr(actor_db_tool, "_fetch_person_translations", fake_translations)
+    monkeypatch.setattr(actor_db_tool, "_tmdb_person_url", fake_person_url)
+
+    await actor_db_tool.run_actor_db_xlsx("translate")
+
+    assert Flags.stop_requested is True
+    assert len(calls) <= 5  # 停止后不再提交新的
+
+    wb = load_workbook(_tmp_actor_db)
+    ws = wb.active
+    rows = list(ws.iter_rows(min_row=2, values_only=True))
+    wb.close()
+    saved = [r for r in rows if str(r[1] or "").strip()]
+    assert len(saved) >= 2  # 已处理部分被保存
+    for r in saved:
+        assert str(r[1]).startswith("中文")
+
+
+@pytest.mark.asyncio
+async def test_run_actor_db_xlsx_limit_slices_and_reruns_idempotently(
+    _tmp_actor_db: Path, monkeypatch: pytest.MonkeyPatch, _reset_stop_flags
+):
+    """limit 限量分片：仅处理前 limit 条，重跑时不重复已处理条目。"""
+    from openpyxl import Workbook
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "演员数据库"
+    ws.append(["日文原名", "中文名", "繁体名", "别名", "链接", "tmdbid", "tmdb url", "出生日期", "简介"])
+    for jp, pid in [("演员甲", 11), ("演员乙", 12), ("演员丙", 13), ("演员丁", 14)]:
+        ws.append([jp, "", "", "", "", str(pid), "", "", ""])
+    wb.save(_tmp_actor_db)
+    wb.close()
+
+    monkeypatch.setattr(tmdb_actor.manager.config, "tmdb_api_key", "fake-key")
+    monkeypatch.setattr(tmdb_actor.manager.config, "tmdb_api_base", "api.tmdb.org")
+
+    processed: list[str] = []
+
+    async def fake_translations(pid, base_url, api_key, client):
+        processed.append(str(pid))
+        await asyncio.sleep(0)
+        return {"zh_cn": f"中文{pid}", "zh_tw": f"中文{pid}"}
+
+    async def fake_person_url(*args, **kwargs):
+        return "https://www.themoviedb.org/person/1"
+
+    monkeypatch.setattr(actor_db_tool, "_fetch_person_translations", fake_translations)
+    monkeypatch.setattr(actor_db_tool, "_tmdb_person_url", fake_person_url)
+
+    # 第一轮：限量 2 条
+    await actor_db_tool.run_actor_db_xlsx("translate", limit=2)
+    assert len(processed) == 2
+
+    # 第二轮：重跑，已处理的条目不再进入，仅处理剩余
+    processed.clear()
+    await actor_db_tool.run_actor_db_xlsx("translate", limit=2)
+    assert len(processed) == 2
+
+    # 第三轮：全部处理完，无剩余
+    processed.clear()
+    await actor_db_tool.run_actor_db_xlsx("translate", limit=2)
+    assert len(processed) == 0
+
+    wb = load_workbook(_tmp_actor_db)
+    ws = wb.active
+    rows = list(ws.iter_rows(min_row=2, values_only=True))
+    wb.close()
+    assert all(str(r[1] or "").startswith("中文") for r in rows)

@@ -234,6 +234,7 @@ def Init_Singal(self: "MyMAinWindow"):
     self.Ui.pushButton_actor_db_link.clicked.connect(self.pushButton_actor_db_link_clicked)
     self.Ui.pushButton_actor_db_sync_aliases.clicked.connect(self.pushButton_actor_db_sync_aliases_clicked)
     self.Ui.pushButton_actor_db_open.clicked.connect(self.pushButton_actor_db_open_clicked)
+    self.Ui.pushButton_actor_db_stop.clicked.connect(self.pushButton_actor_db_stop_clicked)
     self.Ui.pushButton_actor_db_clean_male.clicked.connect(self.pushButton_actor_db_clean_male_clicked)
     self.Ui.pushButton_actor_db_verify_tmdbid.clicked.connect(self.pushButton_actor_db_verify_tmdbid_clicked)
     self.Ui.pushButton_actor_db_pick_nfo_dir.clicked.connect(self.pushButton_actor_db_pick_nfo_dir_clicked)

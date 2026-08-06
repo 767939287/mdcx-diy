@@ -2730,6 +2730,16 @@ class MyMAinWindow(QMainWindow):
 
         executor.submit(run())
 
+    def pushButton_actor_db_stop_clicked(self) -> None:
+        """停止当前演员库维护任务（独立于主界面刮削停止）。
+
+        置位 signal_qt.stop 与 Flags.stop_requested，各维护工具的
+        _is_stop_requested() 会在滑动窗口每轮响应并保存已处理部分。
+        """
+        Flags.stop_requested = True
+        signal_qt.stop = True
+        signal_qt.show_log_text("⛔️ 已请求停止演员库维护任务，正在保存已处理部分...")
+
     def _on_actor_db_finished(self) -> None:
         """主线程恢复演员库维护按钮状态（由 actor_db_finished 信号触发）。"""
         self.Ui.pushButton_actor_db_translate.setEnabled(True)

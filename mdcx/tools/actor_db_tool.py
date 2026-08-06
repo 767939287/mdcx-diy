@@ -335,7 +335,7 @@ async def run(
     return result
 
 
-async def run_actor_db_xlsx(mode: str) -> None:
+async def run_actor_db_xlsx(mode: str, *, limit: int = 5000) -> None:
     """直接扫描 actor_database.xlsx 执行维护，无需演员名单。
 
     mode:
@@ -349,6 +349,12 @@ async def run_actor_db_xlsx(mode: str) -> None:
         return
 
     import openpyxl as _xl
+
+    from ..models.flags import Flags
+    from ..signals import signal
+
+    def _is_stop_requested() -> bool:
+        return signal.stop or Flags.stop_requested
 
     wb = _xl.load_workbook(db_path)
     ws = get_actor_db_sheet(wb)
@@ -375,6 +381,10 @@ async def run_actor_db_xlsx(mode: str) -> None:
                 rows_to_process.append((jp, tmdbid, row_idx))
         elif mode == "sync_aliases":
             rows_to_process.append((jp, tmdbid, row_idx))
+
+    if limit and len(rows_to_process) > limit:
+        rows_to_process = rows_to_process[:limit]
+        _log_line(f" ℹ️ 本次限量处理前 {limit} 条，可再次运行继续处理剩余")
 
     _log_line(f" 🎬 扫描完成：{len(rows_to_process)} 个演员需要处理 (模式: {mode})")
     if not rows_to_process:
@@ -463,14 +473,20 @@ async def run_actor_db_xlsx(mode: str) -> None:
         progress_interval = max(1, total // 10)  # 每 10% 输出一次进度
 
         while running_tasks:
+            if _is_stop_requested():
+                for t in running_tasks:
+                    t.cancel()
             done, pending = await asyncio.wait(running_tasks, return_when=asyncio.FIRST_COMPLETED)
             running_tasks = set(pending)
             for _ in range(len(done)):
-                _submit_next()
+                if not _is_stop_requested():
+                    _submit_next()
             for done_task in done:
                 completed += 1
                 try:
                     done_task.result()
+                except asyncio.CancelledError:
+                    pass
                 except Exception as e:
                     _log_line(f"  🔴 子任务异常: {e}")
             if completed % progress_interval == 0 or completed == total:
@@ -485,7 +501,10 @@ async def run_actor_db_xlsx(mode: str) -> None:
     with _ACTOR_DB_ROW_INDEX_LOCK:
         _ACTOR_DB_ROW_INDEX.clear()
 
-    _log_line(f" ✅ 完成: 翻译补全={translated_count}, 链接补全={linked_count} ({get_used_time(start_time)}s)")
+    if _is_stop_requested():
+        _log_line(f" ⛔️ 已手动停止：已保存已处理部分 ({completed}/{total})，可再次运行继续处理剩余")
+    else:
+        _log_line(f" ✅ 完成: 翻译补全={translated_count}, 链接补全={linked_count} ({get_used_time(start_time)}s)")
 
 
 def _entry_name_of_row(ws, row_idx: int) -> str:
@@ -1085,12 +1104,12 @@ async def verify_tmdb_ids(*, limit: int = 5000, concurrency: int = 5) -> VerifyT
 
             invalid_rows: dict[int, int] = {}
             result.checked = len(candidate_rows)
-            sem = asyncio.Semaphore(concurrency)
 
-            async def _check(row_idx: int, tmdbid: int) -> None:
-                async with sem:
-                    if _is_stop_requested():
-                        return
+            async with aiohttp.ClientSession() as client:
+                task_iter = iter(candidate_rows)
+                running_tasks: set[asyncio.Task[None]] = set()
+
+                async def _check(row_idx: int, tmdbid: int) -> None:
                     try:
                         url = f"{base_url}/3/person/{tmdbid}?api_key={tmdb_api_key}"
                         async with client.get(url, timeout=aiohttp.ClientTimeout(total=15)) as resp:
@@ -1101,9 +1120,40 @@ async def verify_tmdb_ids(*, limit: int = 5000, concurrency: int = 5) -> VerifyT
                     except Exception:
                         return  # 网络失败，保守保留
 
-            async with aiohttp.ClientSession() as client:
-                tasks = [asyncio.create_task(_check(row_idx, tmdbid)) for row_idx, tmdbid, _, _ in candidate_rows]
-                await asyncio.gather(*tasks)
+                def _submit_next() -> bool:
+                    try:
+                        row_idx, tmdbid, _, _ = next(task_iter)
+                    except StopIteration:
+                        return False
+                    task = asyncio.create_task(_check(row_idx, tmdbid))
+                    running_tasks.add(task)
+                    return True
+
+                for _ in range(min(concurrency, len(candidate_rows))):
+                    _submit_next()
+
+                total = len(candidate_rows)
+                completed = 0
+                progress_interval = max(1, total // 10)
+                while running_tasks:
+                    if _is_stop_requested():
+                        for t in running_tasks:
+                            t.cancel()
+                    done, pending = await asyncio.wait(running_tasks, return_when=asyncio.FIRST_COMPLETED)
+                    running_tasks = set(pending)
+                    for _ in range(len(done)):
+                        if not _is_stop_requested():
+                            _submit_next()
+                    for done_task in done:
+                        completed += 1
+                        try:
+                            done_task.result()
+                        except asyncio.CancelledError:
+                            pass
+                        except Exception as e:
+                            _log_line(f"  🔴 [校验tmdbid] 子任务异常: {e}")
+                    if completed % progress_interval == 0 or completed == total:
+                        _log_line(f"  📊 [校验tmdbid] 进度: {completed}/{total}")
 
             if invalid_rows:
                 # 清除失效 id 前，记录待补回的行信息（jp/zh）
@@ -1155,10 +1205,15 @@ async def verify_tmdb_ids(*, limit: int = 5000, concurrency: int = 5) -> VerifyT
     except Exception as e:
         _log_line(f" ⚠️ [校验tmdbid] 重载内存缓存失败: {e}")
 
-    _log_line(
-        f" ✅ [校验tmdbid] 完成: 校验 {result.checked}, 失效清除 {result.invalid}, "
-        f"有效 {result.valid}, 失败 {len(result.failed)}"
-    )
+    if _is_stop_requested():
+        _log_line(
+            f" ⛔️ [校验tmdbid] 已手动停止：校验 {completed}/{result.checked}，失效清除 {result.invalid}，可再次运行继续"
+        )
+    else:
+        _log_line(
+            f" ✅ [校验tmdbid] 完成: 校验 {result.checked}, 失效清除 {result.invalid}, "
+            f"有效 {result.valid}, 失败 {len(result.failed)}"
+        )
     return result
 
 

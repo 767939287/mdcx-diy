@@ -165,7 +165,7 @@ MDCx 支持的功能全景。只想快速上手的话，先看 [QUICKSTART.md](Q
 - **自动补全**：通过 TMDB API 查询演员 ID 和多语言名称
 - **数据来源**：TMDB、Wikidata、Gfriends、graphis.ne.jp
 - **反向查询**：已知中文名找日文名，或反过来
-- **演员库维护工具**（工具页）：直接操作 `actor_database.xlsx`，六个独立按钮——补全中文名（按已有 TMDB ID 补中英繁体翻译）、补全 LibreDMM 链接（补信息链接）、同步别名（用 TMDB 最新 also_known_as 刷新 keyword 列）、剔除男演员（按 tmdbid 校验 TMDB gender 删除男优，删前备份到「男优备份」sheet，支持限量/可中断，gender 0/1/未知一律保留）、校验 tmdbid 有效性（清除 TMDB 失效 id 并按名字重搜补回）、更新 nfo tmdbid（用本地库新 id 覆盖 nfo 旧 id，持久源同步）、打开演员数据库（用系统默认程序打开 xlsx 供查看与手工编辑）。网络请求采用滑动窗口并发（TMDB 并发 5 / LibreDMM 并发 2），日志实时显示在 GUI 日志页。无需输入演员名单或选择 nfo 目录
+- **演员库维护工具**（工具页）：直接操作 `actor_database.xlsx`，六个独立按钮——补全中文名（按已有 TMDB ID 补中英繁体翻译）、补全 LibreDMM 链接（补信息链接）、同步别名（用 TMDB 最新 also_known_as 刷新 keyword 列）、剔除男演员（按 tmdbid 校验 TMDB gender 删除男优，删前备份到「男优备份」sheet，支持限量/可中断，gender 0/1/未知一律保留）、校验 tmdbid 有效性（清除 TMDB 失效 id 并按名字重搜补回）、更新 nfo tmdbid（用本地库新 id 覆盖 nfo 旧 id，持久源同步）、打开演员数据库（用系统默认程序打开 xlsx 供查看与手工编辑）。另设「停止当前维护任务」按钮独立于主界面刮削停止，一键请求停止当前维护任务。网络请求采用滑动窗口并发（TMDB 并发 5 / LibreDMM 并发 2），每个联网维护工具支持限量参数（默认 5000，配合幂等可多次运行逐片处理 2 万+ 行，断点续传），停止时保存已处理部分，日志实时显示在 GUI 日志页。无需输入演员名单或选择 nfo 目录
 
 ## 七、文件命名系统
 

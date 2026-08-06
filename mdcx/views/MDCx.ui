@@ -2428,12 +2428,25 @@
                     <string>打开演员数据库</string>
                   </property>
                 </widget>
+                <widget class="QPushButton" name="pushButton_actor_db_stop">
+                  <property name="geometry">
+                    <rect>
+                      <x>480</x>
+                      <y>140</y>
+                      <width>200</width>
+                      <height>28</height>
+                    </rect>
+                  </property>
+                  <property name="text">
+                    <string>停止当前维护任务</string>
+                  </property>
+                </widget>
                 <widget class="QLabel" name="label_actor_db_open_desc">
                   <property name="geometry">
                     <rect>
                       <x>260</x>
                       <y>144</y>
-                      <width>410</width>
+                      <width>200</width>
                       <height>20</height>
                     </rect>
                   </property>
@@ -2441,7 +2454,7 @@
                     <string notr="true">color: rgb(160, 160, 160); font-size: 11px;</string>
                   </property>
                   <property name="text">
-                    <string>用默认程序打开 xlsx，供查看与手工编辑（未装 Excel/WPS 等办公软件需先安装）</string>
+                    <string>用默认程序打开 xlsx 供查看与手工编辑</string>
                   </property>
                 </widget>
                 <widget class="QLabel" name="label_actor_db_note">
