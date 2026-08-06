@@ -914,10 +914,6 @@ class Ui_MDCx(object):
         self.pushButton_actor_db_clean_male = QtWidgets.QPushButton(parent=self.groupBox_actor_db_maintenance)
         self.pushButton_actor_db_clean_male.setGeometry(QtCore.QRect(40, 206, 200, 30))
         self.pushButton_actor_db_clean_male.setObjectName("pushButton_actor_db_clean_male")
-        self.checkBox_actor_db_verify_tmdbid = QtWidgets.QCheckBox(parent=self.groupBox_actor_db_maintenance)
-        self.checkBox_actor_db_verify_tmdbid.setGeometry(QtCore.QRect(260, 210, 381, 22))
-        self.checkBox_actor_db_verify_tmdbid.setChecked(True)
-        self.checkBox_actor_db_verify_tmdbid.setObjectName("checkBox_actor_db_verify_tmdbid")
         self.pushButton_actor_db_verify_tmdbid = QtWidgets.QPushButton(parent=self.groupBox_actor_db_maintenance)
         self.pushButton_actor_db_verify_tmdbid.setGeometry(QtCore.QRect(40, 242, 200, 30))
         self.pushButton_actor_db_verify_tmdbid.setObjectName("pushButton_actor_db_verify_tmdbid")
@@ -12047,13 +12043,6 @@ class Ui_MDCx(object):
             _translate("MDCx", "提示：补全结果将输出到日志页。所有按钮均防重入，运行中按钮禁用。")
         )
         self.pushButton_actor_db_clean_male.setText(_translate("MDCx", "剔除男演员"))
-        self.checkBox_actor_db_verify_tmdbid.setToolTip(
-            _translate(
-                "MDCx",
-                "同步时用 TMDB person/{id} 反查该 id 对应的名字，与 AVdb 条目名比对；不匹配则丢弃该 id（宁缺毋滥）。需配置 TMDB API Key。",
-            )
-        )
-        self.checkBox_actor_db_verify_tmdbid.setText(_translate("MDCx", "校验 tmdbid 与名字匹配（丢弃错误 id）"))
         self.pushButton_actor_db_verify_tmdbid.setToolTip(
             _translate(
                 "MDCx",
