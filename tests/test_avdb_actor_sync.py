@@ -128,6 +128,16 @@ def test_extract_birth_date_partial_and_missing():
     assert extract_birth_date("") == ""
 
 
+def test_extract_birth_date_rejects_debut_or_work_dates():
+    """出道年份/作品发行日期不是出生日期，宁缺毋滥不提取。"""
+    assert extract_birth_date("愛内ハル，2011年出道，鞋码S") == ""
+    assert extract_birth_date("2013年11月30日出道作品：人妻の色香") == ""
+    assert extract_birth_date("出道作品：初撮りおばさん（2013年03月25日）") == ""
+    assert extract_birth_date("出身于三重县，身高160厘米，F罩杯，20") == ""
+    assert extract_birth_date("1997年12月03日出生，28岁，身高160cm") == "1997-12-03"
+    assert extract_birth_date("（1997-12-03）出道") == ""
+
+
 def test_strip_age_and_birth_removes_dynamic_parts():
     bio = "安部純子，1993年06月05日出生，33岁，身高158cm，三围B86/W78/H82，籍贯东京都。"
     cleaned = strip_age_and_birth(bio, "1993-06-05")

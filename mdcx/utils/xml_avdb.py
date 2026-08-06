@@ -22,6 +22,24 @@ _YEAR_MONTH_PATTERNS = (
 )
 _YEAR_PATTERNS = (re.compile(r"(?:出生于|出生于)?\s*(\d{4})\s*年"),)
 
+# 出生语义锚定：只在这些上下文里识别出生日期，避免把「XX年出道」「作品发行日」误当生日。
+_BIRTH_SEMANTIC_RE = re.compile(r"出生|誕生|誕生日|生年月日|生\s*日|birth|Birth", re.IGNORECASE)
+_BIRTH_FULL_DATE_PATTERNS = (
+    # 日期紧跟「出生/誕生」字样，或「出生」紧跟日期
+    re.compile(r"(\d{4})\s*年\s*(\d{1,2})\s*月\s*(\d{1,2})\s*日\s*(?:出生|誕生)"),
+    re.compile(r"(?:出生|誕生)[于於]?\s*(\d{4})\s*年\s*(\d{1,2})\s*月\s*(\d{1,2})\s*日"),
+    re.compile(r"生年月日[：:\s]*(\d{4})\s*[年./\-]\s*(\d{1,2})\s*[月./\-]\s*(\d{1,2})\s*日?"),
+    re.compile(r"(\d{4})[/.-](\d{1,2})[/.-](\d{1,2})\s*(?:出生|誕生)"),
+)
+_BIRTH_YEAR_MONTH_PATTERNS = (
+    re.compile(r"(\d{4})\s*年\s*(\d{1,2})\s*月\s*(?:出生|誕生)"),
+    re.compile(r"(?:出生|誕生)[于於]?\s*(\d{4})\s*年\s*(\d{1,2})\s*月"),
+)
+_BIRTH_YEAR_PATTERNS = (
+    re.compile(r"(\d{4})\s*年\s*(?:出生|誕生)"),
+    re.compile(r"(?:出生|誕生)[于於]?\s*(\d{4})\s*年"),
+)
+
 _BIRTH_SECTION_RE = re.compile(r"\d{4}\s*[年./\-]\s*\d{1,2}\s*[月./\-]?\s*\d{0,2}\s*日?\s*出生")
 _AGE_RE = re.compile(r"\d{1,3}\s*岁")
 _ESCAPED_STRING_RE = re.compile(r"\\(?:u[0-9a-fA-F]{4}|x[0-9a-fA-F]{2}|[nrtfv])")
@@ -54,23 +72,37 @@ def _get_actor_node(root: ET.Element) -> ET.Element:
 
 
 def extract_birth_date(bio_graphy: str) -> str:
-    """从 bio_graphy 提取出生日期, 归一化为 YYYY-MM-DD / YYYY-MM / YYYY, 无则返回空串。"""
+    """从 bio_graphy 提取出生日期, 归一化为 YYYY-MM-DD / YYYY-MM / YYYY, 无则返回空串。
+
+    宁缺毋滥：只在文本中出现出生语义（出生/誕生/生年月日/生日）时才提取，
+    避免把「XX年出道」「出道作品发行日」等非出生日期误填为生日。
+    """
     text = bio_graphy or ""
-    for pattern in _FULL_DATE_PATTERNS:
+    if not _BIRTH_SEMANTIC_RE.search(text):
+        return ""
+
+    # 1) 出生语义锚定的完整日期
+    for pattern in _BIRTH_FULL_DATE_PATTERNS:
         match = pattern.search(text)
         if match:
             year, month, day = match.group(1), int(match.group(2)), int(match.group(3))
-            return f"{year}-{month:02d}-{day:02d}"
-    for pattern in _YEAR_MONTH_PATTERNS:
+            if 1 <= month <= 12 and 1 <= day <= 31:
+                return f"{year}-{month:02d}-{day:02d}"
+
+    # 2) 出生语义锚定的年+月
+    for pattern in _BIRTH_YEAR_MONTH_PATTERNS:
         match = pattern.search(text)
         if match:
             year, month = match.group(1), int(match.group(2))
             if 1 <= month <= 12:
                 return f"{year}-{month:02d}"
-    for pattern in _YEAR_PATTERNS:
+
+    # 3) 出生语义锚定的年份
+    for pattern in _BIRTH_YEAR_PATTERNS:
         match = pattern.search(text)
         if match:
             return match.group(1)
+
     return ""
 
 
