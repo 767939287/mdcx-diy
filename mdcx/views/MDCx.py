@@ -13414,7 +13414,7 @@ class Ui_MDCx(object):
                 "<ul>\n"
                 "<li><b>标准有码</b>：JavDB / JavBus: SSNI-111；DMM: ssni00111</li>\n"
                 "<li><b>无码</b>：JavDB / JavBus / Avsox: 111111-1111、111111_111、HEYZO-1111、n1111</li>\n"
-                "<li><b>素人</b>：MGStage: 259LUXU-1111；JavDB: LUXU-1111；FC2: FC2-111111、FC2-PPV-111111</li>\n"
+                " <li><b>素人</b>：MGStage: 259LUXU-1111；JavDB: LUXU-1111；FC2: FC2-111111、FC2-PPV-111111</li>\n"
                 "<li><b>欧美</b>：JavDB / JavBus: sexart.11.11.11（系列.年.月.日）</li>\n"
                 "<li><b>字幕影片</b>：ssni-xxx-c.mp4 / -C.mp4（字幕标记靠近扩展名）</li>\n"
                 "<li><b>多集影片</b>：ssni-xxx-cd1.mp4、ssni-xxx-cd2.mp4（仅支持 -cdN 形式，不支持 -A / -B / -1 / -2，避免与字幕 -C 混淆）</li>\n"
