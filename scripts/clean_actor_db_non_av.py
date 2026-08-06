@@ -42,23 +42,94 @@ TMDB_HEADERS = {"Host": "api.themoviedb.org"}
 
 # 强成人特征词（作品标题含任一即强烈暗示成人向）
 STRONG_AV = [
-    "痴漢", "SM", "縄", "責め", "夜這い", "熟女", "不倫", "情事", "欲情",
-    "痴女", "愛人", "未亡人", "淫", "官能", "乱交", "セクハラ",
-    "バイブ", "オナニー", "アダルト", "無修正", "裏ビデオ", "ポルノ",
-    "生ハメ", "中出し", "顔射", "フェラ", "クンニ", "電マ", "手コキ",
-    "緊縛", "陵辱", "調教", "奴隷", "スカトロ", "秘蔵", "本番",
-    "porno", "hardcore", "gangbang", "milf", "パコ", "素人", "風俗",
+    "痴漢",
+    "SM",
+    "縄",
+    "責め",
+    "夜這い",
+    "熟女",
+    "不倫",
+    "情事",
+    "欲情",
+    "痴女",
+    "愛人",
+    "未亡人",
+    "淫",
+    "官能",
+    "乱交",
+    "セクハラ",
+    "バイブ",
+    "オナニー",
+    "アダルト",
+    "無修正",
+    "裏ビデオ",
+    "ポルノ",
+    "生ハメ",
+    "中出し",
+    "顔射",
+    "フェラ",
+    "クンニ",
+    "電マ",
+    "手コキ",
+    "緊縛",
+    "陵辱",
+    "調教",
+    "奴隷",
+    "スカトロ",
+    "秘蔵",
+    "本番",
+    "porno",
+    "hardcore",
+    "gangbang",
+    "milf",
+    "パコ",
+    "素人",
+    "風俗",
 ]
 # 明确主流作品标志（作品标题含任一即强烈暗示非AV）
 STRONG_MAINSTREAM = [
-    "アンパンマン", "ルパン三世", "名探偵コナン", "ワンピース", "ドラゴンボール",
-    "ポケモン", "ドラえもん", "千と千尋", "となりのトトロ", "魔女の宅急便",
-    "ハウルの動く城", "君の膵臓", "SPY×FAMILY", "リリカルなのは",
-    "ブラッククローバー", "かいけつゾロリ", "ハロー!モーニング", "ハロモ",
-    "Hello! Project", "AKB", "乃木坂", "IZ*ONE", "IVE", "K-POP",
-    "バービー", "Barbie", "ディズニー", "ピクサー", "マーベル", "MCU",
-    "劇場版", "ワルキューレ", "LIVE", "コンサート", "ツアー", "Dream Concert",
-    "アニメ", "OVA", "仮面ライダー", "プリキュア", "ドラマ", "大河",
+    "アンパンマン",
+    "ルパン三世",
+    "名探偵コナン",
+    "ワンピース",
+    "ドラゴンボール",
+    "ポケモン",
+    "ドラえもん",
+    "千と千尋",
+    "となりのトトロ",
+    "魔女の宅急便",
+    "ハウルの動く城",
+    "君の膵臓",
+    "SPY×FAMILY",
+    "リリカルなのは",
+    "ブラッククローバー",
+    "かいけつゾロリ",
+    "ハロー!モーニング",
+    "ハロモ",
+    "Hello! Project",
+    "AKB",
+    "乃木坂",
+    "IZ*ONE",
+    "IVE",
+    "K-POP",
+    "バービー",
+    "Barbie",
+    "ディズニー",
+    "ピクサー",
+    "マーベル",
+    "MCU",
+    "劇場版",
+    "ワルキューレ",
+    "LIVE",
+    "コンサート",
+    "ツアー",
+    "Dream Concert",
+    "アニメ",
+    "OVA",
+    "仮面ライダー",
+    "プリキュア",
+    "ドラマ",
+    "大河",
 ]
 
 
@@ -170,7 +241,7 @@ def main() -> int:
                 rate = len(done) / elapsed if elapsed > 0 else 0
                 remain = (len(actors) - i) / rate if rate > 0 else 0
                 print(
-                    f"  进度 {i}/{len(actors)} ({i*100//len(actors)}%) "
+                    f"  进度 {i}/{len(actors)} ({i * 100 // len(actors)}%) "
                     f"av={results['av']} non_av={results['non_av']} unknown={results['unknown']} "
                     f"err={results['error']} 耗时{int(elapsed)}s 剩余{int(remain)}s"
                 )
@@ -182,7 +253,8 @@ def main() -> int:
     # 删除确认 non_av 的行
     if "--apply" in sys.argv:
         non_av_rows = sorted(
-            int(json.loads(line)["row"]) for line in RESULT_PATH.read_text(encoding="utf-8").splitlines()
+            int(json.loads(line)["row"])
+            for line in RESULT_PATH.read_text(encoding="utf-8").splitlines()
             if json.loads(line).get("verdict") == "non_av"
         )
         if non_av_rows:
