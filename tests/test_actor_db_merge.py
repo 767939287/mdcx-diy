@@ -9,23 +9,25 @@ _HEADERS = list(res_module.DB_HEADERS)
 
 
 def _load_merge_func():
-    """从源码提取真实 merge_actor_db_from_backup 函数（绕过 conftest 模块替换与 Resources 初始化）。"""
+    """从源码提取真实 merge 相关函数（绕过 conftest 模块替换与 Resources 初始化）。"""
     import ast
 
     # tests/ 与 mdcx/ 同属项目根，用 __file__ 相对定位源码（CI 与本地一致）
     src = Path(__file__).resolve().parent.parent / "mdcx" / "config" / "resources.py"
     src_text = src.read_text(encoding="utf-8")
     tree = ast.parse(src_text)
+    g = dict(vars(res_module))
+    g["openpyxl"] = __import__("openpyxl")
+    g["LogBuffer"] = mock.MagicMock()
+    # 先执行依赖的辅助函数，再执行主函数
     for node in tree.body:
-        if isinstance(node, ast.FunctionDef) and node.name == "merge_actor_db_from_backup":
-            func_src = ast.get_source_segment(src_text, node)
-            # globals 用 mock 模块已具备的符号，补 openpyxl
-            g = dict(vars(res_module))
-            g["openpyxl"] = __import__("openpyxl")
-            g["LogBuffer"] = mock.MagicMock()
-            exec(func_src, g)
-            return g["merge_actor_db_from_backup"]
-    raise RuntimeError("merge_actor_db_from_backup not found in resources.py")
+        if isinstance(node, (ast.FunctionDef,)) and node.name in (
+            "_alias_sort_key",
+            "_merge_keyword_union",
+            "merge_actor_db_from_backup",
+        ):
+            exec(ast.get_source_segment(src_text, node), g)
+    return g["merge_actor_db_from_backup"]
 
 
 _MERGE_FUNC = None
@@ -158,3 +160,50 @@ def test_merge_marker_prevents_second_scan(tmp_path):
     mtime_before = os.path.getmtime(local_path)
     _merge(backup_path, local_path)
     assert os.path.getmtime(local_path) == mtime_before  # 文件未重写
+
+
+def test_merge_unions_aliases(tmp_path):
+    """别名列做并集合并：用户库已有别名 + 出厂库新增别名都保留。"""
+    backup_path, local_path = _mock_paths(
+        tmp_path,
+        local_rows=[["橋本ありな", "", "", "新有菜,橋本ありな", "", "1001", "", "", ""]],
+        backup_rows=[["橋本ありな", "", "", "Arata Arina,桥本有菜", "", "1001", "", "", ""]],
+    )
+    _merge(backup_path, local_path)
+    rows = _read_rows(local_path)
+    row = [r for r in rows if r[0] == "橋本ありな"][0]
+    kw = str(row[3] or "")
+    # 并集包含用户库与出厂库全部别名
+    for alias in ["新有菜", "橋本ありな", "Arata Arina", "桥本有菜"]:
+        assert alias in kw.split(","), f"别名 {alias} 应被合并"
+
+
+def test_merge_alias_sorted_chinese_first(tmp_path):
+    """别名并集后按中文(汉字)优先 -> 日文(假名) -> 罗马音排序。"""
+    backup_path, local_path = _mock_paths(
+        tmp_path,
+        local_rows=[["三上悠亜", "", "", "Mikami Yua", "", "1001", "", "", ""]],
+        backup_rows=[["三上悠亜", "", "", "三上悠亜,鬼頭桃菜", "", "1001", "", "", ""]],
+    )
+    _merge(backup_path, local_path)
+    rows = _read_rows(local_path)
+    row = [r for r in rows if r[0] == "三上悠亜"][0]
+    aliases = str(row[3] or "").split(",")
+    # 中文/汉字在前，罗马音在后
+    assert aliases[0] == "三上悠亜"  # 汉字优先
+    assert "Mikami Yua" in aliases
+    assert aliases.index("Mikami Yua") > aliases.index("三上悠亜")  # 罗马音最后
+
+
+def test_merge_alias_dedup(tmp_path):
+    """别名并集去重：重复别名只保留一份。"""
+    backup_path, local_path = _mock_paths(
+        tmp_path,
+        local_rows=[["橋本ありな", "", "", "橋本ありな,新有菜", "", "1001", "", "", ""]],
+        backup_rows=[["橋本ありな", "", "", "新有菜,橋本ありな", "", "1001", "", "", ""]],
+    )
+    _merge(backup_path, local_path)
+    rows = _read_rows(local_path)
+    row = [r for r in rows if r[0] == "橋本ありな"][0]
+    aliases = str(row[3] or "").split(",")
+    assert len(aliases) == len({a.casefold() for a in aliases})  # 无重复

@@ -390,13 +390,48 @@ class Resources:
                 copy_file_sync(getattr(self, attr_src), dst_path)
 
 
+def _alias_sort_key(alias: str) -> tuple[int, int, str]:
+    """别名排序键：纯中文(全汉字)优先 -> 中日混合 -> 日文(假名) -> 罗马音/英文。
+
+    按中国人习惯，中文译名最易读优先，日文原名次之，罗马音最后。
+    """
+    han_count = sum(1 for ch in alias if "\u4e00" <= ch <= "\u9fff")
+    kana_count = sum(1 for ch in alias if "\u3040" <= ch <= "\u30ff")
+    if han_count > 0 and kana_count == 0:
+        return (0, 0, alias)
+    if han_count > 0 and kana_count > 0:
+        return (1, 0, alias)
+    if kana_count > 0:
+        return (2, 0, alias)
+    return (3, 0, alias)
+
+
+def _merge_keyword_union(local_kw: str, backup_kw: str) -> str:
+    """别名并集合并（去重），按中文优先排序。
+
+    用户库别名与出厂库别名取并集，保留全部线索；按「中文→日文→罗马音」排序。
+    """
+    merged: list[str] = []
+    seen: set[str] = set()
+    for group in (local_kw, backup_kw):
+        if not group:
+            continue
+        for item in (k.strip() for k in str(group).split(",") if k.strip()):
+            key = item.casefold()
+            if key not in seen:
+                seen.add(key)
+                merged.append(item)
+    merged.sort(key=_alias_sort_key)
+    return ",".join(merged)
+
+
 def merge_actor_db_from_backup(backup_path: Path, local_path: Path) -> None:
     """把出厂库的增量同步进已存在的用户库（只增不删、不覆盖用户已有值）。
 
     出厂库随软件版本更新（清洗修正、新增演员），老用户的用户库不会自动获得这些
     改进。此函数在启动时把出厂库中「用户库没有的新条目」完整追加，并给「用户库
-    已有但字段空缺」的条目补全（tmdbid/生日等），绝不覆盖用户已填的值、绝不删除
-    用户库任何行（用户可能有意保留）。
+    已有但字段空缺」的条目补全（tmdbid/生日等），别名列做并集合并（中文优先），
+    绝不覆盖用户已填的值、绝不删除用户库任何行（用户可能有意保留）。
 
     用出厂库文件 md5 作为合并标记写入 local_path 同目录的 .actor_db_merge_marker，
     出厂库内容未变时跳过，避免每次启动重复扫描。
@@ -432,13 +467,22 @@ def merge_actor_db_from_backup(backup_path: Path, local_path: Path) -> None:
                 continue
             jp = str(row[COL_JP]).strip()
             if jp in jp_row_map:
-                # 字段补全：仅填空缺，不覆盖已有值
+                # 字段补全：仅填空缺，不覆盖已有值；别名列做并集合并（中文优先）
                 existing_row = jp_row_map[jp]
                 for col_idx in range(len(DB_HEADERS)):
                     if col_idx == COL_JP or col_idx == COL_TMDB_URL:
                         continue
                     cur = ws.cell(row=existing_row, column=col_idx + 1).value
                     new = row[col_idx] if col_idx < len(row) else None
+                    if col_idx == COL_KEYWORD:
+                        cur_str = str(cur or "").strip()
+                        new_str = str(new or "").strip()
+                        if cur_str or new_str:
+                            merged = _merge_keyword_union(cur_str, new_str)
+                            if merged != cur_str:
+                                ws.cell(row=existing_row, column=COL_KEYWORD + 1, value=merged)
+                                filled += 1
+                        continue
                     if (cur is None or str(cur).strip() == "") and new not in (None, ""):
                         ws.cell(row=existing_row, column=col_idx + 1, value=new)
                         filled += 1
