@@ -2623,6 +2623,22 @@
                     <bool>true</bool>
                   </property>
                 </widget>
+                <widget class="QPushButton" name="pushButton_actor_db_verify_tmdbid">
+                  <property name="geometry">
+                    <rect>
+                      <x>40</x>
+                      <y>372</y>
+                      <width>200</width>
+                      <height>30</height>
+                    </rect>
+                  </property>
+                  <property name="toolTip">
+                    <string>校验库中所有 tmdbid 是否仍有效。TMDB 是公开平台，person id 可能被删除/重建，失效 id 会被清除回到无 id 状态（刮削按名字重新搜索）。需配置 TMDB API Key。</string>
+                  </property>
+                  <property name="text">
+                    <string>校验 tmdbid 有效性</string>
+                  </property>
+                </widget>
               </widget>
               <widget class="QGroupBox" name="groupBox_cover_backfill">
                 <property name="geometry">

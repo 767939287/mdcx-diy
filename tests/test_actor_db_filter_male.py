@@ -263,6 +263,113 @@ def test_sync_male_list_avoids_tmdb_request(_tmp_actor_db: Path, _avdb_xml: Path
     assert 1417328 not in calls  # 名单命中，不应发起 TMDB gender 请求
 
 
+class _FakeResp:
+    def __init__(self, status: int):
+        self.status = status
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, *args):
+        return None
+
+    def release(self):
+        return None
+
+
+def _mock_verify_network(monkeypatch, status_map: dict[int, int]):
+    """mock verify_tmdb_ids 的 TMDB person/{id} 请求。status_map: tmdbid -> http status。"""
+    import aiohttp
+
+    monkeypatch.setattr(actor_db_tool, "_resolve_tmdb_config", lambda: ("https://api.tmdb.org", "test-key"))
+
+    class _FakeGet:
+        def __call__(self, url, timeout=None):
+            import re
+
+            m = re.search(r"/person/(\d+)", url)
+            pid = int(m.group(1)) if m else 0
+            return _FakeResp(status_map.get(pid, 200))
+
+    class _FakeClient:
+        def __init__(self):
+            self.get = _FakeGet()
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *args):
+            return None
+
+    monkeypatch.setattr(aiohttp, "ClientSession", _FakeClient)
+
+
+def test_verify_tmdbid_clears_invalid_ids(_tmp_actor_db: Path, monkeypatch):
+    _write_db(
+        _tmp_actor_db,
+        [
+            ["桃乃木香奈", "", "", "", "", 2616715, "https://www.themoviedb.org/person/2616715", "", ""],
+            ["三佳詩", "", "", "", "", 6231965, "https://www.themoviedb.org/person/6231965", "", ""],  # 404 失效
+            ["涼森れむ", "", "", "", "", 2640963, "https://www.themoviedb.org/person/2640963", "", ""],
+        ],
+    )
+    _mock_verify_network(monkeypatch, {2616715: 200, 6231965: 404, 2640963: 200})
+    result = asyncio.run(actor_db_tool.verify_tmdb_ids())
+    assert result.checked == 3
+    assert result.invalid == 1
+    rows = _read_rows(_tmp_actor_db)
+    by_jp = {r[0]: r[5] for r in rows}
+    assert by_jp["桃乃木香奈"] == 2616715  # 有效保留
+    assert by_jp["三佳詩"] is None  # 失效清除
+    assert by_jp["涼森れむ"] == 2640963  # 有效保留
+
+
+def test_verify_tmdbid_keeps_all_valid(_tmp_actor_db: Path, monkeypatch):
+    _write_db(
+        _tmp_actor_db,
+        [
+            ["桃乃木香奈", "", "", "", "", 2616715, "https://www.themoviedb.org/person/2616715", "", ""],
+            ["涼森れむ", "", "", "", "", 2640963, "https://www.themoviedb.org/person/2640963", "", ""],
+        ],
+    )
+    _mock_verify_network(monkeypatch, {2616715: 200, 2640963: 200})
+    result = asyncio.run(actor_db_tool.verify_tmdb_ids())
+    assert result.invalid == 0
+    rows = _read_rows(_tmp_actor_db)
+    assert {r[5] for r in rows} == {2616715, 2640963}
+
+
+def test_verify_tmdbid_network_error_keeps_id(_tmp_actor_db: Path, monkeypatch):
+    """网络失败(非404)保守保留 id，不误清。"""
+    import aiohttp
+
+    _write_db(
+        _tmp_actor_db,
+        [["某演员", "", "", "", "", 1001, "https://www.themoviedb.org/person/1001", "", ""]],
+    )
+    monkeypatch.setattr(actor_db_tool, "_resolve_tmdb_config", lambda: ("https://api.tmdb.org", "test-key"))
+
+    class _BoomGet:
+        def __call__(self, url, timeout=None):
+            raise aiohttp.ClientError("network down")
+
+    class _FakeClient:
+        def __init__(self):
+            self.get = _BoomGet()
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *args):
+            return None
+
+    monkeypatch.setattr(aiohttp, "ClientSession", _FakeClient)
+    result = asyncio.run(actor_db_tool.verify_tmdb_ids())
+    assert result.invalid == 0
+    rows = _read_rows(_tmp_actor_db)
+    assert rows[0][5] == 1001  # 保留
+
+
 def test_sync_keeps_tmdbid_when_identity_matches(_tmp_actor_db: Path, _avdb_xml: Path, monkeypatch):
     calls = _mock_tmdb(
         monkeypatch,

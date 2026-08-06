@@ -20,6 +20,7 @@ from ..config.resources import (
     COL_BIRTH_DATE,
     COL_JP,
     COL_KEYWORD,
+    COL_TMDB_URL,
     COL_TMDBID,
     COL_ZH_CN,
     COL_ZH_TW,
@@ -77,6 +78,17 @@ class CleanActorResult:
     checked: int = 0
     removed_male: int = 0
     kept: int = 0
+    failed: list[tuple[str, str]] = field(default_factory=list)
+
+
+@dataclass
+class VerifyTmdbIdResult:
+    """tmdbid 有效性校验结果。"""
+
+    checked: int = 0
+    invalid: int = 0  # 404 失效被清除的 id 数
+    valid: int = 0
+    kept: int = 0  # 请求失败/限流保守保留
     failed: list[tuple[str, str]] = field(default_factory=list)
 
 
@@ -996,5 +1008,112 @@ async def clean_male_actors(*, limit: int = 5000, concurrency: int = 5) -> Clean
     _log_line(
         f" ✅ [剔除男演员] 完成: 校验 {result.checked}, 删除男优 {result.removed_male}, "
         f"保留 {result.kept}, 失败 {len(result.failed)}"
+    )
+    return result
+
+
+async def verify_tmdb_ids(*, limit: int = 5000, concurrency: int = 5) -> VerifyTmdbIdResult:
+    """存量校验 actor_database.xlsx 中所有 tmdbid 的有效性。
+
+    TMDB 是公开平台，person id 可能被删除/重建/合并（如「三佳詩」旧 id 6231965 被
+    TMDB 删除后重建为 5882313）。库中 id 是静态的、不会自愈，失效 id 被刮削直接采用
+    会导致拿错误资料或 404。
+
+    逻辑：
+    - 扫描所有有 tmdbid 的行，并发调 TMDB person/{id} 校验
+    - 404（person 已删除）-> 清除该行 tmdbid + tmdb url（回到无 id 状态，宁缺毋滥，
+      刮削会按名字重新搜索）
+    - 网络错误/限流/5xx -> 保守保留（不误清）
+    - 支持 limit 限量与手动停止（signal.stop / Flags.stop_requested）
+    """
+    from ..core.tmdb_actor import _ACTOR_DB_ROW_INDEX, _ACTOR_DB_ROW_INDEX_LOCK, _format_db_worksheet
+    from ..models.flags import Flags
+    from ..signals import signal
+
+    def _is_stop_requested() -> bool:
+        return signal.stop or Flags.stop_requested
+
+    import openpyxl as _xl
+
+    result = VerifyTmdbIdResult()
+    db_path = _get_db_path()
+    base_url, tmdb_api_key = _resolve_tmdb_config()
+    if not tmdb_api_key:
+        _log_line(" ❌ [校验tmdbid] 未配置 TMDB API Key")
+        return result
+    if not db_path.exists():
+        _log_line(" ❌ [校验tmdbid] actor_database.xlsx 不存在")
+        return result
+
+    try:
+        async with _actor_db_write_lock:
+            wb = _xl.load_workbook(db_path)
+            ws = get_actor_db_sheet(wb)
+
+            candidate_rows: list[tuple[int, int]] = []
+            for row_idx, row in enumerate(ws.iter_rows(min_row=2, values_only=True), start=2):
+                if _is_stop_requested():
+                    break
+                if len(row) > COL_TMDBID:
+                    tmdb_val = str(row[COL_TMDBID] or "").strip()
+                    if tmdb_val.isdigit():
+                        candidate_rows.append((row_idx, int(tmdb_val)))
+            if limit and len(candidate_rows) > limit:
+                candidate_rows = candidate_rows[:limit]
+                _log_line(f" ℹ️ [校验tmdbid] 本次限量处理前 {limit} 条，可再次运行继续")
+            if not candidate_rows:
+                _log_line(" ✅ [校验tmdbid] 没有需要校验的 tmdbid")
+                wb.close()
+                return result
+
+            _log_line(f" 🎬 [校验tmdbid] 开始校验 {len(candidate_rows)} 个 tmdbid (并发 {concurrency})")
+
+            invalid_rows: dict[int, int] = {}
+            result.checked = len(candidate_rows)
+            sem = asyncio.Semaphore(concurrency)
+
+            async def _check(row_idx: int, tmdbid: int) -> None:
+                async with sem:
+                    if _is_stop_requested():
+                        return
+                    try:
+                        url = f"{base_url}/3/person/{tmdbid}?api_key={tmdb_api_key}"
+                        async with client.get(url, timeout=aiohttp.ClientTimeout(total=15)) as resp:
+                            if resp.status == 404:
+                                invalid_rows[row_idx] = tmdbid
+                                if len(invalid_rows) <= 5:
+                                    _log_line(f"  ⚠️ [校验tmdbid] 行{row_idx} tmdbid={tmdbid} 已失效(404)")
+                    except Exception:
+                        return  # 网络失败，保守保留
+
+            async with aiohttp.ClientSession() as client:
+                tasks = [asyncio.create_task(_check(row_idx, tmdbid)) for row_idx, tmdbid in candidate_rows]
+                await asyncio.gather(*tasks)
+
+            if invalid_rows:
+                for row_idx in sorted(invalid_rows):
+                    ws.cell(row=row_idx, column=COL_TMDBID + 1).value = None
+                    ws.cell(row=row_idx, column=COL_TMDB_URL + 1).value = None
+                _format_db_worksheet(ws)
+                wb.save(db_path)
+                _log_line(f" 🗑️ [校验tmdbid] 清除失效 id {len(invalid_rows)} 个")
+            wb.close()
+            result.invalid = len(invalid_rows)
+            result.valid = len(candidate_rows) - len(invalid_rows)
+    except Exception as e:
+        result.failed.append(("<落盘>", str(e)))
+        _log_line(f" ❌ [校验tmdbid] 失败: {e}")
+        return result
+
+    try:
+        resources.reload_actor_db()
+        with _ACTOR_DB_ROW_INDEX_LOCK:
+            _ACTOR_DB_ROW_INDEX.clear()
+    except Exception as e:
+        _log_line(f" ⚠️ [校验tmdbid] 重载内存缓存失败: {e}")
+
+    _log_line(
+        f" ✅ [校验tmdbid] 完成: 校验 {result.checked}, 失效清除 {result.invalid}, "
+        f"有效 {result.valid}, 失败 {len(result.failed)}"
     )
     return result

@@ -951,6 +951,9 @@ class Ui_MDCx(object):
         self.checkBox_actor_db_verify_tmdbid.setGeometry(QtCore.QRect(260, 340, 381, 22))
         self.checkBox_actor_db_verify_tmdbid.setChecked(True)
         self.checkBox_actor_db_verify_tmdbid.setObjectName("checkBox_actor_db_verify_tmdbid")
+        self.pushButton_actor_db_verify_tmdbid = QtWidgets.QPushButton(parent=self.groupBox_actor_db_maintenance)
+        self.pushButton_actor_db_verify_tmdbid.setGeometry(QtCore.QRect(40, 372, 200, 30))
+        self.pushButton_actor_db_verify_tmdbid.setObjectName("pushButton_actor_db_verify_tmdbid")
         self.groupBox_cover_backfill = QtWidgets.QGroupBox(parent=self.scrollAreaWidgetContents_gongju)
         self.groupBox_cover_backfill.setGeometry(QtCore.QRect(30, 972, 701, 200))
         self.groupBox_cover_backfill.setObjectName("groupBox_cover_backfill")
@@ -12079,6 +12082,13 @@ class Ui_MDCx(object):
             )
         )
         self.checkBox_actor_db_verify_tmdbid.setText(_translate("MDCx", "校验 tmdbid 与名字匹配（丢弃错误 id）"))
+        self.pushButton_actor_db_verify_tmdbid.setToolTip(
+            _translate(
+                "MDCx",
+                "校验库中所有 tmdbid 是否仍有效。TMDB 是公开平台，person id 可能被删除/重建，失效 id 会被清除回到无 id 状态（刮削按名字重新搜索）。需配置 TMDB API Key。",
+            )
+        )
+        self.pushButton_actor_db_verify_tmdbid.setText(_translate("MDCx", "校验 tmdbid 有效性"))
         self.groupBox_cover_backfill.setTitle(
             _translate("MDCx", "封面补图（按番号补齐缺失的封面、缩略图，复用当前配置的各项规则）")
         )

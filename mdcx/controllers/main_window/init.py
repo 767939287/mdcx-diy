@@ -236,6 +236,7 @@ def Init_Singal(self: "MyMAinWindow"):
     self.Ui.pushButton_actor_db_open.clicked.connect(self.pushButton_actor_db_open_clicked)
     self.Ui.pushButton_actor_db_sync_start.clicked.connect(self.pushButton_actor_db_sync_start_clicked)
     self.Ui.pushButton_actor_db_clean_male.clicked.connect(self.pushButton_actor_db_clean_male_clicked)
+    self.Ui.pushButton_actor_db_verify_tmdbid.clicked.connect(self.pushButton_actor_db_verify_tmdbid_clicked)
     self.Ui.pushButton_actor_db_pick_xml.clicked.connect(self.pushButton_actor_db_pick_xml_clicked)
     self.Ui.comboBox_actor_db_sync_source.currentIndexChanged.connect(self.comboBox_actor_db_sync_source_changed)
     self.comboBox_actor_db_sync_source_changed(0)
@@ -352,6 +353,7 @@ def Init_Singal(self: "MyMAinWindow"):
     self.pushButton_actor_db_sync_aliases.connect(self.Ui.pushButton_actor_db_sync_aliases.setText)
     self.pushButton_actor_db_sync_start.connect(self.Ui.pushButton_actor_db_sync_start.setText)
     self.pushButton_actor_db_clean_male.connect(self.Ui.pushButton_actor_db_clean_male.setText)
+    self.pushButton_actor_db_verify_tmdbid.connect(self.Ui.pushButton_actor_db_verify_tmdbid.setText)
     self.actor_db_finished.connect(self._on_actor_db_finished)
     self.label_result.connect(self.Ui.label_result.setText)
     self.label_show_version.connect(self.Ui.label_show_version.setText)  # endregion

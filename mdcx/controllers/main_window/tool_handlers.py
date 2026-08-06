@@ -302,3 +302,9 @@ def pushButton_actor_db_clean_male_clicked(self):
     self.pushButton_show_log_clicked()
     signal_qt.show_log_text("🎬 开始剔除男演员（按 tmdbid 校验 TMDB gender，删除男优）...")
     self._run_actor_db_clean_male()
+
+
+def pushButton_actor_db_verify_tmdbid_clicked(self):
+    self.pushButton_show_log_clicked()
+    signal_qt.show_log_text("🎬 开始校验 tmdbid 有效性（404 失效 id 清除回无 id 状态）...")
+    self._run_actor_db_verify_tmdbid()
