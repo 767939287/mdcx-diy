@@ -53,7 +53,7 @@ uv run python scripts/build_male_actor_list.py \
 ## 代码集成
 
 - `mdcx/tools/actor_db_tool.py` 中的 `is_male_actor(name)`：按名单判断演员是否为男优（casefold 精确匹配）
-- `sync_from_avdb(..., filter_male=True)`：同步时命中名单即跳过（不依赖 TMDB）
+- `sync_from_avdb(..., filter_male=True)`：同步时命中名单即跳过（不依赖 TMDB）。注：AVdb 数据质量差，「从 AVdb 同步」GUI 入口已在 v2.0.5 移除，该函数保留供脚本/测试调用
 - `clean_male_actors()`：存量清洗时名单命中即删除（含无 tmdbid / TMDB gender=0 的男优）
 
 ## 注意事项

@@ -163,9 +163,9 @@ MDCx 支持的功能全景。只想快速上手的话，先看 [QUICKSTART.md](Q
 
 - **字段**：ID、日文名、中文名、繁体名、别名、信息链接、TMDB ID、出生日期、简介
 - **自动补全**：通过 TMDB API 查询演员 ID 和多语言名称
-- **数据来源**：TMDB、Wikidata、Gfriends、graphis.ne.jp、AVdb（Jav-Actors-Mapping）
+- **数据来源**：TMDB、Wikidata、Gfriends、graphis.ne.jp
 - **反向查询**：已知中文名找日文名，或反过来
-- **演员库维护工具**（工具页）：直接操作 `actor_database.xlsx`，六个独立按钮——补全中文名（按已有 TMDB ID 补中英繁体翻译）、补全 LibreDMM 链接（补信息链接）、同步别名（用 TMDB 最新 also_known_as 刷新 keyword 列）、从 AVdb 同步（消费社区 `actor-mapping.xml` 补齐中文名/别名/出生日期/简介，数据源可选 jsDelivr 加速 / GitHub / 自定义地址 / 本地文件，匹配 jp→中文→keyword，本地优先只补空缺、tmdbid 冲突并入、写前转义清洗、filter_male 源头过滤男优）、剔除男演员（按 tmdbid 校验 TMDB gender 删除男优，删前备份到「男优备份」sheet，支持限量/可中断，gender 0/1/未知一律保留）、打开演员数据库（用系统默认程序打开 xlsx 供查看与手工编辑）。网络请求采用滑动窗口并发（TMDB 并发 5 / LibreDMM 并发 2），日志实时显示在 GUI 日志页。无需输入演员名单或选择 nfo 目录
+- **演员库维护工具**（工具页）：直接操作 `actor_database.xlsx`，六个独立按钮——补全中文名（按已有 TMDB ID 补中英繁体翻译）、补全 LibreDMM 链接（补信息链接）、同步别名（用 TMDB 最新 also_known_as 刷新 keyword 列）、剔除男演员（按 tmdbid 校验 TMDB gender 删除男优，删前备份到「男优备份」sheet，支持限量/可中断，gender 0/1/未知一律保留）、校验 tmdbid 有效性（清除 TMDB 失效 id 并按名字重搜补回）、更新 nfo tmdbid（用本地库新 id 覆盖 nfo 旧 id，持久源同步）、打开演员数据库（用系统默认程序打开 xlsx 供查看与手工编辑）。网络请求采用滑动窗口并发（TMDB 并发 5 / LibreDMM 并发 2），日志实时显示在 GUI 日志页。无需输入演员名单或选择 nfo 目录
 
 ## 七、文件命名系统
 
@@ -202,6 +202,6 @@ MDCx 支持的功能全景。只想快速上手的话，先看 [QUICKSTART.md](Q
 - **缺失文件检测**：检查媒体库中缺失的文件
 - **海报裁剪工具**：图形化裁剪海报，可拖拽选择区域
 - **封面补图工具**：按番号批量补齐缺失的封面和缩略图，复用当前配置的站点优先级、命名、裁切、水印规则
-- **演员库维护工具**：直接操作 `actor_database.xlsx`，一键补全中文名、LibreDMM 链接、同步别名、从 AVdb 同步、打开数据库查看编辑（分别针对缺翻译/缺链接/别名过期/缺中文名日期简介的演员，复用当前配置的 TMDB API；AVdb 同步支持 jsDelivr/GitHub/自定义地址/本地文件四数据源），并发请求日志实时显示
+- **演员库维护工具**：直接操作 `actor_database.xlsx`，一键补全中文名、LibreDMM 链接、同步别名、剔除男演员、校验 tmdbid 有效性、更新 nfo tmdbid、打开数据库查看编辑（复用当前配置的 TMDB API），并发请求日志实时显示
 - **网络连通性检查**：一键测试各网站可不可达
 - **命令行刮削**：`uv run crawl` 在终端中调试爬虫
