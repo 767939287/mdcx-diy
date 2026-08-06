@@ -486,6 +486,15 @@ def _expand_name_variants(name: str) -> set[str]:
         return set()
 
     variants = {normalized}
+    # 繁→简转换：TMDB name/aka 常为简体，库名常为繁体（及反之）。
+    # 仅做 zh-cn 方向，避免 zh-hant 产生异体字噪声（加瀬→加瀨 等）。
+    # 覆盖 variant map 未收录的大量繁简字（三佳詩/三佳诗、涼子/凉子 等）。
+    try:
+        simplified = zhconv.convert(normalized, "zh-cn")
+        if simplified != normalized:
+            variants.add(simplified)
+    except Exception:
+        pass
 
     if normalized.endswith("こ"):
         variants.add(normalized[:-1] + "子")
@@ -1272,7 +1281,7 @@ async def _query_single_actor(actor_name: str, base_url: str, api_key: str, clie
         return None
 
     matched.sort(
-        key=lambda x: (x["place_has_japan"], x["adult"], x["popularity"], x["known_for_count"]),
+        key=lambda x: (x["adult"], x["place_has_japan"], x["popularity"], x["known_for_count"]),
         reverse=True,
     )
 
