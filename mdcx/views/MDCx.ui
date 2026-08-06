@@ -23739,7 +23739,7 @@ p, li { white-space: pre-wrap; }
 
 &lt;h4&gt;九、工具页面&lt;/h4&gt;
  &lt;ul&gt;
- &lt;li&gt;&lt;b&gt;演员库维护&lt;/b&gt;：直接操作 actor_database.xlsx，四个按钮——补全中文名（按 TMDB ID 补翻译）、补全 LibreDMM 链接、同步别名（用 TMDB 最新别名刷新 keyword 列）、打开数据库（用默认程序打开 xlsx 供手工编辑）。网络请求自动并发，进度实时显示。&lt;/li&gt;
+ &lt;li&gt;&lt;b&gt;演员库维护&lt;/b&gt;：直接操作 actor_database.xlsx。补全中文名（按 TMDB ID 补翻译）、补全 LibreDMM 链接、同步别名（用 TMDB 最新别名刷新 keyword 列）、打开数据库（用默认程序打开 xlsx 供手工编辑）、剔除男演员（按 TMDB 性别删除男优）、校验 tmdbid 有效性（清除 TMDB 失效 id 并按名字重搜补回）、更新 nfo tmdbid（用本地库新 id 覆盖 nfo 旧 id）。网络请求自动并发，进度实时显示。&lt;/li&gt;
  &lt;li&gt;&lt;b&gt;Emby 演员管理器&lt;/b&gt;：填写 Emby 地址和 API 密钥后连接服务器，获取演员列表并按媒体库筛选；从 Gfriends / graphis.ne.jp / minnano-av / 本地文件夹匹配头像和背景图，从本地演员库 / 维基百科 / minnano-av / 数据库匹配简介和出生日期，预览后批量同步到 Emby。支持仅补缺失或强制重新获取。&lt;/li&gt;
  &lt;li&gt;&lt;b&gt;单文件刮削&lt;/b&gt;：指定某个文件的番号网址进行刮削，当存在相同番号时可手工指定。&lt;/li&gt;
  &lt;li&gt;&lt;b&gt;封面补图&lt;/b&gt;：输入番号（多个用空格分隔），自动刮削并补齐缺失的 poster.jpg 和 thumb.jpg，复用当前配置的站点优先级、命名、裁切、水印规则。&lt;/li&gt;
@@ -23754,8 +23754,7 @@ p, li { white-space: pre-wrap; }
 &lt;ul&gt;
 &lt;li&gt;&lt;b&gt;标准有码&lt;/b&gt;：JavDB / JavBus: SSNI-111；DMM: ssni00111&lt;/li&gt;
 &lt;li&gt;&lt;b&gt;无码&lt;/b&gt;：JavDB / JavBus / Avsox: 111111-1111、111111_111、HEYZO-1111、n1111&lt;/li&gt;
-&lt;li&gt;&lt;b&gt;素人&lt;/b&gt;：MGStage（259LUXU 等）、JavBus、Jav321、DMM、AVBase 等&lt;/li&gt;
-&lt;li&gt;&lt;b&gt;素人&lt;/b&gt;：MGStage: 259LUXU-1111；JavDB: LUXU-1111；FC2: FC2-111111、FC2-PPV-111111&lt;/li&gt;
+ &lt;li&gt;&lt;b&gt;素人&lt;/b&gt;：MGStage: 259LUXU-1111；JavDB: LUXU-1111；FC2: FC2-111111、FC2-PPV-111111&lt;/li&gt;
 &lt;li&gt;&lt;b&gt;欧美&lt;/b&gt;：JavDB / JavBus: sexart.11.11.11（系列.年.月.日）&lt;/li&gt;
 &lt;li&gt;&lt;b&gt;字幕影片&lt;/b&gt;：ssni-xxx-c.mp4 / -C.mp4（字幕标记靠近扩展名）&lt;/li&gt;
 &lt;li&gt;&lt;b&gt;多集影片&lt;/b&gt;：ssni-xxx-cd1.mp4、ssni-xxx-cd2.mp4（仅支持 -cdN 形式，不支持 -A / -B / -1 / -2，避免与字幕 -C 混淆）&lt;/li&gt;
