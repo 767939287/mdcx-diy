@@ -15,6 +15,7 @@
 - **剔除男演员（TMDB gender 校验）**：`actor_database.xlsx` 数据来自 AVdb 映射，包含男优（加藤鷹、しみけん 等）。新增「剔除男演员」按钮（演员库维护组）：按 tmdbid 调 TMDB `/person/{id}` 取 gender，gender=2（男）的行删除，删除前备份到独立「男优备份」sheet；gender 0/1、请求失败、无 tmdbid 一律保留不误删。支持限量与手动停止。同时 `sync_from_avdb` 新增 `filter_male=True` 源头过滤——待新建条目校验性别，男优直接跳过不写入，本地已有 tmdbid 不重复请求
 - **出厂库增量合并进用户库**：出厂库（`resources/userdata/actor_database.xlsx`）随软件版本更新（清洗修正、新增演员），但老用户已存在的用户库（`userdata/actor_database.xlsx`）此前只在首次创建时复制、之后不再同步，清洗成果无法到达老用户。新增 `resources.merge_actor_db_from_backup`：启动时把出厂库中「用户库没有的新条目」完整追加，并给「用户库已有但字段空缺」的条目补全（tmdbid/生日等）——只增不删、绝不覆盖用户已填的值、绝不删除用户库任何行；用出厂库 md5 写入 `userdata/.actor_db_merge_marker` 标记，出厂库未变化时跳过，避免每次启动重复扫描。配套测试 6 个 `tests/test_actor_db_merge.py`
 - **出厂库 tmdbid 全量验证补完**：确认出厂库 5657 个有 id 演员的验证状态——5511 个在身份排查 audit 中验证过，146 个补 id 时经软件正向搜索验证过，剩余 37 个未验证的逐一用 TMDB `person/{id}` 反查补齐：19 个 TMDB 已删除（404 失效 id，如 `桃乃木香奈`/`楓カレン`/`三佳詩`）、2 个错误映射（`星海レイカ`→Yuka Kojima、`ジゼル`→Tyra）→ 清除这 21 个 tmdbid；16 个确认片假名↔英文同人（`キャシー・ヘブン`→Cathy Heaven 等西方女优）→ 保留。有 tid 5678 → 5657，出厂库 id 全部验证通过（合并进用户库的 id 均为正确映射）
+- **清除出厂库中误收录的非 AV 人物 id**：用 TMDB `adult=False` 标记筛查出出厂库混入大量非 AV 人物——先清除 39 个确定项（好莱坞影星 `玛丽莲·梦露`/`汤唯`/`张雨绮`/`莎朗·斯通`、知名声优 `水樹奈々`/`林原めぐみ`/`竹内順子`、日本女演员 `橋本環奈`/`有村架純`/`長澤まさみ`），再对剩余 987 个 `adult=False` 用 `combined_credits` 作品名复核（强成人特征词 vs 主流作品占比，断点续传+进度展示）：366 个确认非 AV（声优/偶像/歌手/主流演员如 `坂本真綾`/`安室奈美恵`/`安宥真`/`白石麻衣`/`浜崎あゆみ`）清除 id，368 个有成人作品保留，245 个不确定保留（宁缺毋滥）。有 tid 5657 → 5252（其中 4485 个 adult=True 真 AV，767 个 adult=False 但复核 av/unknown 保留）
 
 ### 修复
 
