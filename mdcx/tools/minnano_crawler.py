@@ -2,7 +2,7 @@
 みんなのAV 演员信息爬虫 + 本地缓存模块。
 
 数据源: https://www.minnano-av.com/
-缓存文件: resources/userdata/minnano_cache.xlsx
+缓存文件: userdata/minnano_cache.xlsx（运行时用户数据目录）
 
 工作流程:
 1. 先用演员名搜索缓存（按日文名匹配）
@@ -33,12 +33,14 @@ from typing import Any
 from bs4 import BeautifulSoup
 
 from ..config.manager import manager
+from ..config.resources import resources
 from ..models.emby import EMbyActressInfo
 from ..models.log_buffer import LogBuffer
 
 # ============= 常量定义 =============
 
-CACHE_FILE = "resources/userdata/minnano_cache.xlsx"
+# 缓存文件（运行时用户数据目录，与 resources.u() 一致）
+CACHE_FILE = "userdata/minnano_cache.xlsx"
 
 # 表头
 CACHE_HEADERS = [
@@ -134,6 +136,7 @@ def save_cache_row(row: dict) -> bool:
     """追加一行到缓存 xlsx（带超链接和格式化）。"""
     cache_path = _get_cache_path()
     try:
+        cache_path.parent.mkdir(parents=True, exist_ok=True)
         import openpyxl
         from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 
@@ -692,49 +695,17 @@ def _name_matches(actor_name: str, minnano_name: str) -> bool:
 
 
 def _lookup_japanese_name(actor_name: str) -> str | None:
-    """在 actor_database.xlsx 中查找演员的日文名。
+    """在演员数据库中查找演员的日文名（Emby 中的可能是中文名/别名）。
 
-    查找顺序：
-    1. 中文名（第2列）匹配 → 返回日文名（第1列）
-    2. 日文名（第1列）精确匹配 → 返回日文名
-    3. 日文名包含中文名 → 返回日文名
-    4. 别名（第4列）匹配 → 返回日文名
-
-    未找到时返回 None（调用方会使用原名搜索）。
+    复用 resources.get_actor_data 的内存缓存与反向索引（读运行时用户库
+    actor_database.xlsx，支持中文/日文/别名/归一化变体匹配），比逐行扫描
+    resources 出厂库更准确且高效。未找到时返回 None（调用方会用原名搜索）。
     """
     try:
-        db_path = Path("resources/userdata/actor_database.xlsx")
-        if not db_path.exists():
-            return None
-        import openpyxl
-
-        wb = openpyxl.load_workbook(db_path, read_only=True)
-        ws = wb.active
-        for row in ws.iter_rows(min_row=2, max_row=ws.max_row, max_col=4):
-            jp = (row[0].value or "").strip()  # 第1列: 日文原名
-            zh = (row[1].value or "").strip()  # 第2列: 中文名
-            alias = (row[3].value or "").strip()  # 第4列: 别名
-            if not jp:
-                continue
-            # 1. 中文名精确匹配
-            if zh == actor_name:
-                wb.close()
-                return jp
-            # 2. 日文名精确匹配
-            if jp == actor_name:
-                wb.close()
-                return jp
-            # 3. 日文名包含中文名
-            if jp and actor_name and actor_name in jp:
-                wb.close()
-                return jp
-            # 4. 别名匹配（逗号分隔）
-            if alias:
-                aliases = [a.strip() for a in alias.split(",")]
-                if actor_name in aliases:
-                    wb.close()
-                    return jp
-        wb.close()
+        actor_data = resources.get_actor_data(actor_name)
+        jp = (actor_data.get("jp") or "").strip()
+        if actor_data.get("has_name") and jp:
+            return jp
     except Exception:
         from ..signals import signal
 

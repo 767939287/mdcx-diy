@@ -28,6 +28,8 @@
   - `shell=True` 命令注入风险（`utils/file.py` 用 `explorer /select` 打开路径）改为参数数组调用
   - 移除 11 处 `?api_key=` URL 查询参数暴露（已有 Authorization 头）
   - 修复 5 处无声 `except`（加 traceback/日志输出），`warm_cache.py` 新增下载 URL 白名单校验（防供应链投毒）
+- **minnano 演员日文名查找路径 bug**：`minnano_crawler._lookup_japanese_name` 硬编码相对路径 `resources/userdata/actor_database.xlsx` 逐行扫描——打包后 CWD 变化路径失效，且读的是出厂库而非运行时用户库（用户同步/刮削的新数据查不到）。重构为复用 `resources.get_actor_data`（内存缓存+反向索引，读运行时用户库），支持中文/日文/别名/归一化变体匹配，消除每次全表扫描。配套测试 5 个 `tests/test_minnano_lookup.py`
+- **minnano 缓存文件路径 bug**：`CACHE_FILE` 硬编码 `resources/userdata/minnano_cache.xlsx`，`_get_cache_path()` 解析为 `data_folder/resources/userdata/...`——打包后 `data_folder` 下无 `resources` 子目录，缓存读不到也写不进。改为标准用户数据目录 `userdata/minnano_cache.xlsx`（与 `resources.u()` 一致），`save_cache_row` 写入前自动创建父目录。配套测试 2 个（缓存路径、自动建目录+读写）
 
 ### 工程质量
 
