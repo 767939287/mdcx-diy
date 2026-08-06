@@ -370,6 +370,48 @@ def test_verify_tmdbid_network_error_keeps_id(_tmp_actor_db: Path, monkeypatch):
     assert rows[0][5] == 1001  # 保留
 
 
+def test_verify_tmdbid_recovers_new_id(_tmp_actor_db: Path, monkeypatch):
+    """失效 id 清除后按名重搜补回新 id（TMDB 重建档案场景）。"""
+    import aiohttp
+
+    _write_db(
+        _tmp_actor_db,
+        [["三佳詩", "", "", "", "", 6231965, "https://www.themoviedb.org/person/6231965", "", ""]],
+    )
+    monkeypatch.setattr(actor_db_tool, "_resolve_tmdb_config", lambda: ("https://api.tmdb.org", "test-key"))
+
+    # 请求 404（旧 id 已删）
+    class _FakeGet:
+        def __call__(self, url, timeout=None):
+            return _FakeResp(404)
+
+    class _FakeClient:
+        def __init__(self):
+            self.get = _FakeGet()
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *args):
+            return None
+
+    monkeypatch.setattr(aiohttp, "ClientSession", _FakeClient)
+
+    # mock 按名重搜返回新 id
+    from mdcx.core import tmdb_actor
+
+    async def fake_query(name, base_url, api_key, client):
+        return {"pid": 5882313, "name": "三佳诗", "adult": True}
+
+    monkeypatch.setattr(tmdb_actor, "query_single_actor_cached", fake_query)
+
+    result = asyncio.run(actor_db_tool.verify_tmdb_ids())
+    assert result.invalid == 1
+    assert result.recovered == 1
+    rows = _read_rows(_tmp_actor_db)
+    assert rows[0][5] == 5882313  # 补回新 id
+
+
 def test_sync_keeps_tmdbid_when_identity_matches(_tmp_actor_db: Path, _avdb_xml: Path, monkeypatch):
     calls = _mock_tmdb(
         monkeypatch,

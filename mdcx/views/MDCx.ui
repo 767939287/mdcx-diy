@@ -2633,7 +2633,7 @@
                     </rect>
                   </property>
                   <property name="toolTip">
-                    <string>校验库中所有 tmdbid 是否仍有效。TMDB 是公开平台，person id 可能被删除/重建，失效 id 会被清除回到无 id 状态（刮削按名字重新搜索）。需配置 TMDB API Key。</string>
+                    <string>校验库中所有 tmdbid 是否仍有效。TMDB 是公开平台，person id 可能被删除/重建，失效 id 会被清除，并自动按名字重新搜索补回新 id（搜不到则保持无 id，刮削按名字兜底搜索）。需配置 TMDB API Key。</string>
                   </property>
                   <property name="text">
                     <string>校验 tmdbid 有效性</string>
@@ -2652,7 +2652,7 @@
                     <string notr="true">color: rgb(160, 160, 160); font-size: 11px;</string>
                   </property>
                   <property name="text">
-                    <string>TMDB 公开平台，person id 可能被删除/重建，失效 id 清除回无 id 状态</string>
+                    <string>失效 id 清除后自动按名字重搜补回新 id（搜不到则保持无 id，刮削兜底）</string>
                   </property>
                   <property name="wordWrap">
                     <bool>true</bool>

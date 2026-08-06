@@ -12090,12 +12090,12 @@ class Ui_MDCx(object):
         self.pushButton_actor_db_verify_tmdbid.setToolTip(
             _translate(
                 "MDCx",
-                "校验库中所有 tmdbid 是否仍有效。TMDB 是公开平台，person id 可能被删除/重建，失效 id 会被清除回到无 id 状态（刮削按名字重新搜索）。需配置 TMDB API Key。",
+                "校验库中所有 tmdbid 是否仍有效。TMDB 是公开平台，person id 可能被删除/重建，失效 id 会被清除，并自动按名字重新搜索补回新 id（搜不到则保持无 id，刮削按名字兜底搜索）。需配置 TMDB API Key。",
             )
         )
         self.pushButton_actor_db_verify_tmdbid.setText(_translate("MDCx", "校验 tmdbid 有效性"))
         self.label_actor_db_verify_tmdbid_desc.setText(
-            _translate("MDCx", "TMDB 公开平台，person id 可能被删除/重建，失效 id 清除回无 id 状态")
+            _translate("MDCx", "失效 id 清除后自动按名字重搜补回新 id（搜不到则保持无 id，刮削兜底）")
         )
         self.groupBox_cover_backfill.setTitle(
             _translate("MDCx", "封面补图（按番号补齐缺失的封面、缩略图，复用当前配置的各项规则）")
