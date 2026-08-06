@@ -14,6 +14,7 @@
 - **Emby 演员管理器跳过逻辑精确化**：`_try_fetch_info` 不再仅靠 `has_overview` 布尔值跳过，改为重新拉取 Emby 当前 Overview 并检查是否为"无维基百科信息"占位符，占位符视为缺失重新获取
 - **剔除男演员（TMDB gender 校验）**：`actor_database.xlsx` 数据来自 AVdb 映射，包含男优（加藤鷹、しみけん 等）。新增「剔除男演员」按钮（演员库维护组）：按 tmdbid 调 TMDB `/person/{id}` 取 gender，gender=2（男）的行删除，删除前备份到独立「男优备份」sheet；gender 0/1、请求失败、无 tmdbid 一律保留不误删。支持限量与手动停止。同时 `sync_from_avdb` 新增 `filter_male=True` 源头过滤——待新建条目校验性别，男优直接跳过不写入，本地已有 tmdbid 不重复请求
 - **出厂库增量合并进用户库**：出厂库（`resources/userdata/actor_database.xlsx`）随软件版本更新（清洗修正、新增演员），但老用户已存在的用户库（`userdata/actor_database.xlsx`）此前只在首次创建时复制、之后不再同步，清洗成果无法到达老用户。新增 `resources.merge_actor_db_from_backup`：启动时把出厂库中「用户库没有的新条目」完整追加，并给「用户库已有但字段空缺」的条目补全（tmdbid/生日等）——只增不删、绝不覆盖用户已填的值、绝不删除用户库任何行；用出厂库 md5 写入 `userdata/.actor_db_merge_marker` 标记，出厂库未变化时跳过，避免每次启动重复扫描。配套测试 6 个 `tests/test_actor_db_merge.py`
+- **出厂库 tmdbid 全量验证补完**：确认出厂库 5657 个有 id 演员的验证状态——5511 个在身份排查 audit 中验证过，146 个补 id 时经软件正向搜索验证过，剩余 37 个未验证的逐一用 TMDB `person/{id}` 反查补齐：19 个 TMDB 已删除（404 失效 id，如 `桃乃木香奈`/`楓カレン`/`三佳詩`）、2 个错误映射（`星海レイカ`→Yuka Kojima、`ジゼル`→Tyra）→ 清除这 21 个 tmdbid；16 个确认片假名↔英文同人（`キャシー・ヘブン`→Cathy Heaven 等西方女优）→ 保留。有 tid 5678 → 5657，出厂库 id 全部验证通过（合并进用户库的 id 均为正确映射）
 
 ### 修复
 
