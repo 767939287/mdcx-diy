@@ -145,7 +145,6 @@ class MyMAinWindow(QMainWindow):
     pushButton_actor_db_translate = pyqtSignal(str)
     pushButton_actor_db_link = pyqtSignal(str)
     pushButton_actor_db_sync_aliases = pyqtSignal(str)
-    pushButton_actor_db_sync_start = pyqtSignal(str)
     pushButton_actor_db_clean_male = pyqtSignal(str)
     pushButton_actor_db_verify_tmdbid = pyqtSignal(str)
     pushButton_actor_db_update_nfo_tmdbid = pyqtSignal(str)
@@ -2591,11 +2590,6 @@ class MyMAinWindow(QMainWindow):
 
         pushButton_actor_db_open_clicked(self)
 
-    def pushButton_actor_db_sync_start_clicked(self):
-        from .tool_handlers import pushButton_actor_db_sync_start_clicked
-
-        pushButton_actor_db_sync_start_clicked(self)
-
     def pushButton_actor_db_clean_male_clicked(self):
         from .tool_handlers import pushButton_actor_db_clean_male_clicked
 
@@ -2615,50 +2609,6 @@ class MyMAinWindow(QMainWindow):
         from .tool_handlers import pushButton_actor_db_update_nfo_tmdbid_clicked
 
         pushButton_actor_db_update_nfo_tmdbid_clicked(self)
-
-    def pushButton_actor_db_pick_xml_clicked(self):
-        from .tool_handlers import pushButton_actor_db_pick_xml_clicked
-
-        pushButton_actor_db_pick_xml_clicked(self)
-
-    def comboBox_actor_db_sync_source_changed(self, index: int):
-        from .tool_handlers import comboBox_actor_db_sync_source_changed
-
-        comboBox_actor_db_sync_source_changed(self, index)
-
-    def _run_actor_db_sync(self) -> None:
-        """运行「从 AVdb 同步」演员映射（新模式：下载/载入 xml 与本地 xlsx 合并）。"""
-        from mdcx.tools.actor_db_tool import sync_from_avdb
-
-        btn = self.Ui.pushButton_actor_db_sync_start
-        if not btn.isEnabled():
-            return
-
-        source = self.Ui.comboBox_actor_db_sync_source.currentIndex()
-        source_map = {0: "jsdelivr", 1: "github", 2: "url", 3: "file"}
-        source_key = source_map.get(source, "jsdelivr")
-        value = self.Ui.lineEdit_actor_db_sync_value.text().strip()
-        verify_tmdbid = bool(
-            getattr(self.Ui, "checkBox_actor_db_verify_tmdbid", None)
-            and self.Ui.checkBox_actor_db_verify_tmdbid.isChecked()
-        )
-
-        btn.setEnabled(False)
-        self.pushButton_actor_db_sync_start.emit("同步中...")
-
-        async def run():
-            try:
-                await sync_from_avdb(source=source_key, value=value, verify_tmdbid=verify_tmdbid)
-            except Exception as e:
-                signal_qt.show_log_text(f"🔴 AVdb 同步异常: {e}")
-                import traceback as tb
-
-                signal_qt.show_log_text(tb.format_exc())
-            finally:
-                # 线程安全：仅发信号，由主线程槽恢复按钮状态
-                self.actor_db_finished.emit()
-
-        executor.submit(run())
 
     def _run_actor_db_tool(self, mode: str) -> None:
         """运行演员库维护工具（新模式：直接操作 xlsx，无需名单/NFO）。
@@ -2785,14 +2735,12 @@ class MyMAinWindow(QMainWindow):
         self.Ui.pushButton_actor_db_translate.setEnabled(True)
         self.Ui.pushButton_actor_db_link.setEnabled(True)
         self.Ui.pushButton_actor_db_sync_aliases.setEnabled(True)
-        self.Ui.pushButton_actor_db_sync_start.setEnabled(True)
         self.Ui.pushButton_actor_db_clean_male.setEnabled(True)
         self.Ui.pushButton_actor_db_verify_tmdbid.setEnabled(True)
         self.Ui.pushButton_actor_db_update_nfo_tmdbid.setEnabled(True)
         self.pushButton_actor_db_translate.emit("补全中文名")
         self.pushButton_actor_db_link.emit("补全 LibreDMM 链接")
         self.pushButton_actor_db_sync_aliases.emit("同步别名")
-        self.pushButton_actor_db_sync_start.emit("从 AVdb 同步")
         self.pushButton_actor_db_clean_male.emit("剔除男演员")
         self.pushButton_actor_db_verify_tmdbid.emit("校验 tmdbid 有效性")
         self.pushButton_actor_db_update_nfo_tmdbid.emit("更新 nfo tmdbid")
