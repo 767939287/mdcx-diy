@@ -72,3 +72,58 @@ def test_clean_rows_pass():
     assert no_id == []
     assert mismatch == []
     assert dup == []
+
+
+def _inject_orphan_hyperlink(path: Path):
+    """向 xlsx 的 sheet1.xml 注入一个引用不存在单元格的孤儿 hyperlink。"""
+    import shutil
+    import zipfile
+
+    tmp = path.with_suffix(".inject.xlsx")
+    shutil.copy(path, tmp)
+    with zipfile.ZipFile(tmp, "r") as zin:
+        names = zin.namelist()
+        data = {n: zin.read(n) for n in names}
+    sheet1 = data["xl/worksheets/sheet1.xml"].decode("utf-8")
+    # 在 </hyperlinks> 前注入一个孤儿 hyperlink（引用行 99999 的 G 列）
+    orphan = (
+        '<hyperlink xmlns:r="http://schemas.openxmlformats.org/'
+        'officeDocument/2006/relationships" ref="G99999" r:id="rIdX_ORPHAN"/>'
+    )
+    if "</hyperlinks>" in sheet1:
+        sheet1 = sheet1.replace("</hyperlinks>", orphan + "</hyperlinks>")
+    else:
+        sheet1 = sheet1.replace("</sheetData>", "<hyperlinks>" + orphan + "</hyperlinks></sheetData>")
+    data["xl/worksheets/sheet1.xml"] = sheet1.encode("utf-8")
+    # 同步补一条 rels 关系，避免 Excel 打开报缺引用（仅当 rels 存在时）
+    rels_name = "xl/worksheets/_rels/sheet1.xml.rels"
+    if rels_name in data:
+        rels = data[rels_name].decode("utf-8")
+        rels = rels.replace(
+            "</Relationships>",
+            '<Relationship Id="rIdX_ORPHAN" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/hyperlink" Target="https://www.themoviedb.org/person/99999" TargetMode="External"/></Relationships>',
+        )
+        data[rels_name] = rels.encode("utf-8")
+    with zipfile.ZipFile(tmp, "w", zipfile.ZIP_DEFLATED) as zout:
+        for n in names:
+            zout.writestr(n, data[n])
+    return tmp
+
+
+def test_orphan_hyperlink_detected(tmp_path):
+    """引用不存在单元格的孤儿 hyperlink 应报错。"""
+    p = tmp_path / "actor_database.xlsx"
+    _make_db(p, [["演员甲", "演员甲", "", "", "", "1001", "https://www.themoviedb.org/person/1001", "", ""]])
+    p = _inject_orphan_hyperlink(p)
+    errors = mod._check_orphan_hyperlinks(p)
+    assert len(errors) == 1
+    assert "G99999" in errors[0]
+    assert "孤儿 hyperlink" in errors[0]
+
+
+def test_no_orphan_hyperlink_passes(tmp_path):
+    """正常文件（无孤儿 hyperlink）不应报错。"""
+    p = tmp_path / "actor_database.xlsx"
+    _make_db(p, [["演员甲", "演员甲", "", "", "", "1001", "https://www.themoviedb.org/person/1001", "", ""]])
+    errors = mod._check_orphan_hyperlinks(p)
+    assert errors == []

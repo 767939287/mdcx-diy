@@ -14,13 +14,19 @@
   8. tmdbid 空但 tmdb url 有值（错配）   [error]
   9. tmdbid 与 tmdb url 不匹配（url 非标准格式） [error]
   10. tmdb url 重复（同一 url 多行）     [error]
+  11. 孤儿 hyperlink（引用不存在的单元格） [error]
 
 发现任一 error 返回码 1；仅 warning 返回码 0。老 7 列文件缺失新增列时跳过对应检查。
+
+注意：openpyxl 的 read_only 模式只按实际 XML 读取，孤儿 hyperlink（引用不存在单元格的
+超链接）会被物化成幽灵数据或撑大文件维度，read_only 校验恰好绕过。因此第 11 项直接
+解析 sheet XML 检测，确保普通/只读两种读取路径下数据一致。
 """
 
 import argparse
 import re
 import sys
+import zipfile
 from pathlib import Path
 
 try:
@@ -170,6 +176,66 @@ def _check_tmdb_url_duplicate(rows):
     return errors
 
 
+_HYPERLINK_PATTERN = re.compile(r'<hyperlink [^>]*ref="([A-Z]+\d+)"[^>]*>')
+_CELL_PATTERN = re.compile(r'<c r="([A-Z]+\d+)"')
+
+
+def _check_orphan_hyperlinks(xlsx: Path):
+    """孤儿 hyperlink：引用 XML 中不存在的单元格的超链接。
+
+    孤儿 hyperlink 在 openpyxl 普通模式下会被物化为幽灵值/幽灵行，而 read_only 模式
+    恰好绕过，导致写入路径（import/merge/db_guard）一保存就暴露污染。此检查直接
+    解析 sheet XML，把「hyperlink 引用集合」与「实际 cell 定义集合」做差集。
+    """
+    errors = []
+    try:
+        with zipfile.ZipFile(xlsx) as zf:
+            names = set(zf.namelist())
+            # 定位「演员数据库」sheet 对应的 sheetN.xml
+            sheet_xml = _locate_sheet_xml(zf, names)
+            if not sheet_xml:
+                return errors  # 结构异常由 read_only 阶段负责
+            xml_text = zf.read(sheet_xml).decode("utf-8")
+    except (zipfile.BadZipFile, OSError, KeyError):
+        return errors
+
+    defined = set(_CELL_PATTERN.findall(xml_text))
+    orphans = []
+    for ref in _HYPERLINK_PATTERN.findall(xml_text):
+        if ref not in defined:
+            orphans.append(ref)
+    for ref in sorted(orphans):
+        errors.append(f"  单元格 {ref}: 孤儿 hyperlink 引用了不存在的单元格（应清除）")
+    return errors
+
+
+def _locate_sheet_xml(zf: zipfile.ZipFile, names: set[str]) -> str | None:
+    """从 workbook.xml + rels 映射 sheet 名 -> sheetN.xml 路径。"""
+    try:
+        if "xl/workbook.xml" not in names:
+            return None
+        wb_xml = zf.read("xl/workbook.xml").decode("utf-8")
+        # 找 sheet 名与 rId
+        m = re.search(r'<sheet[^>]*name="演员数据库"[^>]*r:id="(rId\d+)"', wb_xml)
+        if not m:
+            return None
+        rid = m.group(1)
+        rels_xml = zf.read("xl/_rels/workbook.xml.rels").decode("utf-8")
+        m2 = re.search(rf'<Relationship [^>]*Id="{rid}"[^>]*>', rels_xml)
+        if not m2:
+            return None
+        # Target 属性可能在 Id 前或后，从匹配片段内提取
+        tm = re.search(r'Target="([^"]+)"', m2.group(0))
+        if not tm:
+            return None
+        target = tm.group(1)
+        if target.startswith("/"):
+            return target.lstrip("/")
+        return f"xl/{target}"
+    except (KeyError, OSError):
+        return None
+
+
 def check_xlsx(xlsx: Path) -> int:
     if not xlsx.exists():
         print(f"[check_actor_db] 出厂数据库不存在，跳过: {xlsx}")
@@ -210,6 +276,7 @@ def check_xlsx(xlsx: Path) -> int:
         _check_tmdb_url_duplicate,
     ):
         errors.extend(check(rows))
+    errors.extend(_check_orphan_hyperlinks(xlsx))
     for check in (_check_name_empty,):
         warnings.extend(check(rows))
 
