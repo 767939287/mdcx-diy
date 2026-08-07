@@ -2619,8 +2619,8 @@ class MyMAinWindow(QMainWindow):
 
         button_map = {
             "translate": ("pushButton_actor_db_translate", "补全中文名"),
-            "link": ("pushButton_actor_db_link", "补全链接"),
-            "sync_aliases": ("pushButton_actor_db_sync_aliases", "同步别名"),
+            "link": ("pushButton_actor_db_link", "补全 LibreDMM 链接"),
+            "sync_aliases": ("pushButton_actor_db_sync_aliases", "补全别名"),
         }
         btn_name, idle_text = button_map[mode]
         btn = getattr(self.Ui, btn_name)
@@ -2750,7 +2750,7 @@ class MyMAinWindow(QMainWindow):
         self.Ui.pushButton_actor_db_update_nfo_tmdbid.setEnabled(True)
         self.pushButton_actor_db_translate.emit("补全中文名")
         self.pushButton_actor_db_link.emit("补全 LibreDMM 链接")
-        self.pushButton_actor_db_sync_aliases.emit("同步别名")
+        self.pushButton_actor_db_sync_aliases.emit("补全别名")
         self.pushButton_actor_db_clean_male.emit("剔除男演员")
         self.pushButton_actor_db_verify_tmdbid.emit("校验 tmdbid 有效性")
         self.pushButton_actor_db_update_nfo_tmdbid.emit("更新 nfo tmdbid")
@@ -3566,7 +3566,7 @@ class MyMAinWindow(QMainWindow):
         self.Ui.pushButton_actor_db_sync_aliases.setEnabled(True)
         self.pushButton_actor_db_translate.emit("补全中文名")
         self.pushButton_actor_db_link.emit("补全 LibreDMM 链接")
-        self.pushButton_actor_db_sync_aliases.emit("同步别名")
+        self.pushButton_actor_db_sync_aliases.emit("补全别名")
 
         self.Ui.pushButton_start_cap.setStyleSheet(
             "QPushButton#pushButton_start_cap{color: white;background-color:#4C6EFF;}QPushButton:hover#pushButton_start_cap{color: white;background-color: rgba(76,110,255,240)}QPushButton:pressed#pushButton_start_cap{color: white;background-color:#4C6EE0}"
