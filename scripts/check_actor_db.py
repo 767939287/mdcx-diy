@@ -213,7 +213,7 @@ def check_xlsx(xlsx: Path) -> int:
     for check in (_check_name_empty,):
         warnings.extend(check(rows))
 
-    print(f"[check_actor_db] {xlsx.relative_to(MAIN_PATH)} 共 {len(rows)} 行数据")
+    print(f"[check_actor_db] {display_path} 共 {len(rows)} 行数据")
     if errors:
         print("[check_actor_db] 发现 error 级问题:")
         for item in errors:

@@ -19,6 +19,7 @@ from pathlib import Path
 import openpyxl
 
 from mdcx.config.resources import get_actor_db_sheet  # noqa: E402
+from scripts.db_guard import clear_tmdb, validate_after_save  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
 if str(ROOT) not in sys.path:
@@ -61,12 +62,16 @@ def main(argv: list[str] | None = None) -> int:
 
     shutil.copy(db_path, Path("/tmp/actor_db_before_url_fix.xlsx"))
     for row_idx, jp in fix_rows:
-        ws.cell(row=row_idx, column=7).value = None
+        clear_tmdb(ws, row_idx)  # 成对清空 id+url（防单独清 url 留 id 错配）
     for row_idx in sorted(del_rows, reverse=True):
         ws.delete_rows(row_idx, 1)
     wb.save(db_path)
     wb.close()
+    ok = validate_after_save(db_path)
     print(f"✅ 已清空 {len(fix_rows)} 行 url、删除 {len(del_rows)} 行无 jp 垃圾行")
+    if not ok:
+        print("⚠️ 保存后校验发现 error 级问题，请检查！")
+        return 1
     return 0
 
 

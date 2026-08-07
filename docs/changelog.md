@@ -31,6 +31,7 @@
 - **清理仅生日占位行 59 个**：扩展占位判定——「前 4 列同值 + 后 5 列仅生日有值（链接/tmdbid/url/简介全空）」同样无信息量（如阿香里えな），出厂库 19424 → 19365 行
 - **修复 tmdb url 错配（严重）**：发现 11757 行「无 tmdbid 但有 tmdb url」——url 指向的人物与行名不符（抽样全错），且大量行共享同一 url（复制污染，如阿部真琴/阿部珠緒 都指向阿部乃みく 的 url）。新增 `scripts/fix_actor_db_url_mismatch.py` 清空错配 url、删除 52 行无 jp 的垃圾行，出厂库保持 19365 行但 6/7 列恢复干净（有 id 5018、无 id 有 url 0、id-url 不匹配 0）
 - **check_actor_db 新增 url 错配检查**：补 3 个 error 级检查项——「tmdbid 空但 url 有值」「tmdbid 与 url 不匹配」「同一 url 多行重复」，这类复制污染问题以后能被自动发现。另核查确认其它列（1-4 名字/别名、7 生日、8 简介、链接列）无错位
+- **新增 db_guard 数据防线（源头防写 + 保存后验证）**：新建 `scripts/db_guard.py`——`safe_write_tmdb` 强制「写 tmdb url 必须成对写 id 且 url 与 id 匹配，否则拒绝」，`clear_tmdb` 成对清空，`validate_after_save` 在保存后自动跑 check_actor_db。已接入 fix/clean/merge 三个改库脚本，从源头拦截复制污染，保存后自动把关，避免脏数据进入出厂库
 
 ## v2.0.4 (2026-08-04)
 

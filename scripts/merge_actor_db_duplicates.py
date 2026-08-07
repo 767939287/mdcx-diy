@@ -205,6 +205,12 @@ def main(argv: list[str] | None = None) -> int:
     wb.save(DB_PATH)
     wb.close()
     print(f"合并 {merged} 个有 id 行，删除 {removed} 个无 id 行")
+    from scripts.db_guard import validate_after_save
+
+    ok = validate_after_save(DB_PATH)
+    if not ok:
+        print("⚠️ 保存后校验发现 error 级问题，请检查！")
+        return 1
     return 0
 
 

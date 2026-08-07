@@ -21,6 +21,7 @@ from pathlib import Path
 import openpyxl
 
 from mdcx.config.resources import get_actor_db_sheet  # noqa: E402
+from scripts.db_guard import validate_after_save  # noqa: E402
 
 ROOT = Path(__file__).resolve().parent.parent
 if str(ROOT) not in sys.path:
@@ -180,6 +181,10 @@ def main(argv: list[str] | None = None) -> int:
     wb.save(db_path)
     wb.close()
     print(f"✅ 已删除 {len(del_rows)} 行")
+    ok = validate_after_save(db_path)
+    if not ok:
+        print("⚠️ 保存后校验发现 error 级问题，请检查！")
+        return 1
     return 0
 
 
