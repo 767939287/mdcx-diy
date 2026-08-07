@@ -17,6 +17,7 @@
 - **出厂演员库链接补全**：通过隔离副本真实联网分片补全 LibreDMM 链接，120 → 2130 条（覆盖 39% 有 id 演员），无异常链接、无新重复；剩余 3354 条为 LibreDMM 站点未收录，保持缺省
 - **校验 tmdbid 走限流器 + 断点续传**：`verify_tmdb_ids` 原先用 `aiohttp` 裸请求 `person/{id}` 绕过 TMDB 限流器（5484 个 id 全量校验有 429 限流风险），现纳入 `_tmdb_rate_limiter`；并新增 `.tmdbid_verified.json` 断点文件——已校验 id 记录在案，重跑自动跳过，支持 limit 分片续跑全量而不重复请求
 - **出厂库真实联网全面校验**（经 `api.tmdb.org`）：verify_tmdb_ids 全量校验 5484 个 tmdbid 全部有效（0 失效，无需清除）；补中文名确认 2 条 TMDB 无有效中文名（久我山みなみ的 zh-CN 条目 data.name 为空）；sync_aliases 补全全部 24 条空别名（此前误判为"搜不到"，实为 `api.themoviedb.org` 域名不可达导致）。出厂库 5484 个有 id 演员现全部有别名
+- **内置男优名单扩充**：新增 `scripts/add_male_actors_from_wiki.py` 从 AVWikiDB「AV男優一覧」页提取男优名（清洗括号别名标注、过滤噪声标签/导航词），与现有名单求差集追加。本次从 4 页补充 74 个男优（625 → 699），提高「剔除男演员」工具的内置名单命中率
 
 ## v2.0.4 (2026-08-04)
 
