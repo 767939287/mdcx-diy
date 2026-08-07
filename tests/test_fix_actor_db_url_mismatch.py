@@ -9,7 +9,6 @@ sys.path.insert(0, str(ROOT))
 from openpyxl import Workbook, load_workbook  # noqa: E402
 
 from mdcx.config.resources import DB_HEADERS  # noqa: E402
-
 from scripts import fix_actor_db_url_mismatch as mod  # noqa: E402
 
 
@@ -39,7 +38,17 @@ def test_clears_url_for_noid_rows(tmp_path):
         db,
         [
             ["阿部真琴", "阿部真琴", "", "", "", "", "https://www.themoviedb.org/person/2132746", "", ""],  # 无id有url
-            ["阿部乃みく", "阿部乃みく", "", "", "", "2132746", "https://www.themoviedb.org/person/2132746", "", ""],  # 正常
+            [
+                "阿部乃みく",
+                "阿部乃みく",
+                "",
+                "",
+                "",
+                "2132746",
+                "https://www.themoviedb.org/person/2132746",
+                "",
+                "",
+            ],  # 正常
         ],
     )
     rc = mod.main(["--db", str(db), "--apply"])
