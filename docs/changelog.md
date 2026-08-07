@@ -33,6 +33,9 @@
 - **check_actor_db 新增 url 错配检查**：补 3 个 error 级检查项——「tmdbid 空但 url 有值」「tmdbid 与 url 不匹配」「同一 url 多行重复」，这类复制污染问题以后能被自动发现。另核查确认其它列（1-4 名字/别名、7 生日、8 简介、链接列）无错位
 - **新增 db_guard 数据防线（源头防写 + 保存后验证）**：新建 `scripts/db_guard.py`——`safe_write_tmdb` 强制「写 tmdb url 必须成对写 id 且 url 与 id 匹配，否则拒绝」，`clear_tmdb` 成对清空，`validate_after_save` 在保存后自动跑 check_actor_db。已接入 fix/clean/merge 三个改库脚本，从源头拦截复制污染，保存后自动把关，避免脏数据进入出厂库
 - **补删占位/仅生日行 404 个**：此前删占位行时（283+59）判定"后 5 列全空/仅生日"，但当时库中 11757 行带污染的 url，使这些行不满足"全空"被漏删；url 修复清空后露出真容。重跑占位行删除补删 404 个（302 全空 + 102 仅生日），出厂库 19365 → 18961 行，占位行为 0
+- **删除无意义占位行 355 个**：扩展占位判定——「前 4 列同值 + 第 5 列链接可有可无（有 libredmm 链接但无 tmdbid/url/简介）+ 生日可有可无」的无信息量行也删除（此前仅判"全空/仅生日"，有链接的行被误保留），出厂库 18961 → 18606 行
+- **修复删行产生的孤儿 hyperlink（严重）**：openpyxl `delete_rows` 移动单元格值时不同步 hyperlink 的 ref，导致下方行所有超链接 ref 错位、被删行超链接残留（孤儿 hyperlink）。`clean_actor_db_non_actors.py` 删行后按 cell 实际坐标重建全部超链接，孤儿 hyperlink 归零
+- **check_actor_db 新增孤儿 hyperlink 检查**：补 XML 层解析检查（zip 内 sheet XML 的 `<c>` 定义集合与 `<hyperlink>` ref 差集），删除脚本保存后自动把关，孤儿 hyperlink 以后能被自动发现
 
 ## v2.0.4 (2026-08-04)
 

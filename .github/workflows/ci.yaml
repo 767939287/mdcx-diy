@@ -45,3 +45,6 @@ jobs:
 
       - name: Run pytest
         run: uv run pytest tests/ --tb=short -m "not network"
+
+      - name: Run check_actor_db
+        run: uv run python -m scripts.check_actor_db
