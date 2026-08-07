@@ -114,6 +114,7 @@ def main(argv: list[str] | None = None) -> int:
     del_rows: set[int] = set()
     desc_found: list[tuple[int, str]] = []
     non_acting_found: list[tuple[int, str, int]] = []
+    placeholder_found: list[tuple[int, str]] = []
     for row_idx, row in enumerate(ws.iter_rows(min_row=2, values_only=True), start=2):
         jp = str(row[0] or "").strip()
         tid_val = str(row[5] or "").strip() if len(row) > 5 else ""
@@ -128,9 +129,20 @@ def main(argv: list[str] | None = None) -> int:
         elif not tid_val.isdigit() and jp in _DESC_ROWS:
             del_rows.add(row_idx)
             desc_found.append((row_idx, jp))
+        else:
+            # 第 4 类：占位/冗余行——前 4 列完全相同（日文/中文/繁体/别名同值）
+            # 且后 5 列（链接/tmdbid/url/生日/简介）全空，无任何信息量
+            zh = str(row[1] or "").strip() if len(row) > 1 else ""
+            zt = str(row[2] or "").strip() if len(row) > 2 else ""
+            kw = str(row[3] or "").strip() if len(row) > 3 else ""
+            has_data = any(str(row[c] or "").strip() for c in range(4, min(len(row), 9)) if c < len(row))
+            if jp == zh == zt == kw and not has_data:
+                del_rows.add(row_idx)
+                placeholder_found.append((row_idx, jp))
 
     print(f"第 1 类（导演/幕后）待删: {len(non_acting_found)}")
     print(f"第 2 类（描述词）待删: {len(desc_found)}")
+    print(f"第 4 类（占位/冗余）待删: {len(placeholder_found)}")
     print(f"合计: {len(del_rows)} 行")
 
     if not args.apply:

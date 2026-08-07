@@ -99,3 +99,22 @@ def test_apply_removes_trailing_empty_rows(tmp_path, monkeypatch):
     wb.close()
     assert len(data_rows) == 1
     assert data_rows[0][0] == "演员乙"
+
+
+def test_placeholder_rows_removed(tmp_path, monkeypatch):
+    """前 4 列同值 + 后 5 列全空的占位行被删除；有链接的行保留。"""
+    db = tmp_path / "actor_database.xlsx"
+    _make_db(
+        db,
+        [
+            ["安田みう", "安田みう", "安田みう", "安田みう", "", "", "", "", ""],  # 占位
+            ["奥村佳代子", "奥村佳代子", "奥村佳代子", "奥村佳代子", "https://www.libredmm.com/actresses/1", "", "", "", ""],  # 有链接保留
+        ],
+    )
+    monkeypatch.setattr(mod, "NON_ACTING_FILE", tmp_path / "empty.txt")
+
+    rc = mod.main(["--db", str(db), "--apply"])
+    assert rc == 0
+    jps = _read_jps(db)
+    assert "安田みう" not in jps
+    assert "奥村佳代子" in jps
