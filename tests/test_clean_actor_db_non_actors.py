@@ -102,12 +102,12 @@ def test_apply_removes_trailing_empty_rows(tmp_path, monkeypatch):
 
 
 def test_placeholder_rows_removed(tmp_path, monkeypatch):
-    """前 4 列同值 + 后 5 列全空的占位行被删除；有链接的行保留。"""
+    """前 4 列同值 + 仅链接有值（6/7/9 空）的行视为占位删除；有 id 的行保留。"""
     db = tmp_path / "actor_database.xlsx"
     _make_db(
         db,
         [
-            ["安田みう", "安田みう", "安田みう", "安田みう", "", "", "", "", ""],  # 占位
+            ["安田みう", "安田みう", "安田みう", "安田みう", "", "", "", "", ""],  # 全空占位
             [
                 "奥村佳代子",
                 "奥村佳代子",
@@ -118,7 +118,18 @@ def test_placeholder_rows_removed(tmp_path, monkeypatch):
                 "",
                 "",
                 "",
-            ],  # 有链接保留
+            ],  # 仅链接：视为占位删除
+            [
+                "真实女优",
+                "真实女优",
+                "真实女优",
+                "真实女优",
+                "",
+                "1001",
+                "",
+                "",
+                "",
+            ],  # 有 id 保留
         ],
     )
     monkeypatch.setattr(mod, "NON_ACTING_FILE", tmp_path / "empty.txt")
@@ -127,7 +138,8 @@ def test_placeholder_rows_removed(tmp_path, monkeypatch):
     assert rc == 0
     jps = _read_jps(db)
     assert "安田みう" not in jps
-    assert "奥村佳代子" in jps
+    assert "奥村佳代子" not in jps
+    assert "真实女优" in jps
 
 
 def test_birthdate_only_rows_removed(tmp_path, monkeypatch):
@@ -147,3 +159,58 @@ def test_birthdate_only_rows_removed(tmp_path, monkeypatch):
     jps = _read_jps(db)
     assert "阿香里えな" not in jps
     assert "真实女优" in jps
+
+
+def test_hyperlink_rebuilt_after_delete(tmp_path, monkeypatch):
+    """删除行后 hyperlink 按 cell 实际坐标重建，不产生孤儿 hyperlink。"""
+    import re
+    import zipfile
+
+    db = tmp_path / "actor_database.xlsx"
+    _make_db(
+        db,
+        [
+            ["演员一", "演员一", "演员一", "演员一", "", "", "", "", ""],  # 占位（行2）
+            [
+                "演员二",
+                "演员二",
+                "演员二",
+                "演员二",
+                "https://libredmm.com/x/1",
+                "1001",
+                "https://www.themoviedb.org/person/1001",
+                "",
+                "",
+            ],
+            [
+                "演员三",
+                "演员三",
+                "演员三",
+                "演员三",
+                "https://libredmm.com/x/2",
+                "1002",
+                "https://www.themoviedb.org/person/1002",
+                "",
+                "",
+            ],
+        ],
+    )
+    # 给演员二/三的链接列绑定超链接，模拟真实数据
+    wb = load_workbook(db)
+    ws = wb["演员数据库"]
+    for row in (3, 4):
+        ws.cell(row=row, column=5).hyperlink = f"https://libredmm.com/x/{row - 2}"
+    wb.save(db)
+    wb.close()
+    monkeypatch.setattr(mod, "NON_ACTING_FILE", tmp_path / "empty.txt")
+
+    rc = mod.main(["--db", str(db), "--apply"])
+    assert rc == 0
+    with zipfile.ZipFile(db) as zf:
+        sheet = "xl/worksheets/sheet1.xml"
+        s = zf.read(sheet).decode("utf-8")
+    defined = set(re.findall(r'<c r="([A-Z]+\d+)"', s))
+    refs = re.findall(r'<hyperlink [^>]*ref="([A-Z]+\d+)"', s)
+    orphans = [r for r in refs if r not in defined]
+    assert orphans == []
+    assert len(refs) == 2  # 两张有链接的演员超链接保留并重建

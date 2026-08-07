@@ -93,6 +93,24 @@ def collect_non_acting_ids() -> set[int]:
     return ids
 
 
+def _rebuild_hyperlinks(ws) -> None:
+    """按 cell 实际坐标重建全部超链接。
+
+    openpyxl 的 delete_rows 移动单元格值时不同步 hyperlink 的 ref：下方行超链接
+    ref 仍指向旧行号（错位），被删行的超链接对象残留（孤儿）。重建方式：遍历所有
+    绑定 hyperlink 的 cell，清空后按 cell 真实坐标重新绑定，使保存时 XML 中
+    hyperlink ref 与实际 cell 位置一致。
+    """
+    hlinks: list[tuple[str, str]] = []
+    for row in ws.iter_rows(min_row=2):
+        for cell in row:
+            if cell.hyperlink and cell.hyperlink.target:
+                hlinks.append((cell.coordinate, cell.hyperlink.target))
+    ws._hyperlinks = []
+    for coord, target in hlinks:
+        ws[coord].hyperlink = target
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="删除出厂库中的非演员混入行")
     parser.add_argument("--apply", action="store_true", help="执行删除")
@@ -132,15 +150,15 @@ def main(argv: list[str] | None = None) -> int:
             desc_found.append((row_idx, jp))
         else:
             # 第 4 类：占位/冗余行——前 4 列完全相同（日文/中文/繁体/别名同值），
-            # 且后 5 列无有效数据（允许仅生日有值，链接/tmdbid/url/简介必须全空）
+            # 且无有效信息（第 5 列链接可有值、第 8 列生日可有可无，第 6/7/9 列
+            # tmdbid/tmdb url/简介 必须全空）。仅名字+来源链接无任何数据的行无意义。
             zh = str(row[1] or "").strip() if len(row) > 1 else ""
             zt = str(row[2] or "").strip() if len(row) > 2 else ""
             kw = str(row[3] or "").strip() if len(row) > 3 else ""
-            href = str(row[4] or "").strip() if len(row) > 4 else ""
             tid = str(row[5] or "").strip() if len(row) > 5 else ""
             url = str(row[6] or "").strip() if len(row) > 6 else ""
             bio = str(row[8] or "").strip() if len(row) > 8 else ""
-            if jp == zh == zt == kw and not (href or tid or url or bio):
+            if jp == zh == zt == kw and not (tid or url or bio):
                 del_rows.add(row_idx)
                 placeholder_found.append((row_idx, jp))
 
@@ -177,6 +195,11 @@ def main(argv: list[str] | None = None) -> int:
             ws.delete_rows(ws.max_row, 1)
         else:
             break
+
+    # openpyxl delete_rows 移动单元格值时不会同步 hyperlink 的 ref，导致下方行所有
+    # 超链接 ref 错位、被删行超链接残留（孤儿 hyperlink）。这里按 cell 实际坐标
+    # 重建全部超链接：ref 跟随绑定 cell 的真实位置，孤儿归零。
+    _rebuild_hyperlinks(ws)
 
     wb.save(db_path)
     wb.close()
