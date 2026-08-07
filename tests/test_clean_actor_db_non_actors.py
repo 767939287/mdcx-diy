@@ -108,7 +108,17 @@ def test_placeholder_rows_removed(tmp_path, monkeypatch):
         db,
         [
             ["安田みう", "安田みう", "安田みう", "安田みう", "", "", "", "", ""],  # 占位
-            ["奥村佳代子", "奥村佳代子", "奥村佳代子", "奥村佳代子", "https://www.libredmm.com/actresses/1", "", "", "", ""],  # 有链接保留
+            [
+                "奥村佳代子",
+                "奥村佳代子",
+                "奥村佳代子",
+                "奥村佳代子",
+                "https://www.libredmm.com/actresses/1",
+                "",
+                "",
+                "",
+                "",
+            ],  # 有链接保留
         ],
     )
     monkeypatch.setattr(mod, "NON_ACTING_FILE", tmp_path / "empty.txt")
@@ -118,3 +128,22 @@ def test_placeholder_rows_removed(tmp_path, monkeypatch):
     jps = _read_jps(db)
     assert "安田みう" not in jps
     assert "奥村佳代子" in jps
+
+
+def test_birthdate_only_rows_removed(tmp_path, monkeypatch):
+    """前 4 列同值 + 仅生日有值的行被视为占位删除；有 id 的行保留。"""
+    db = tmp_path / "actor_database.xlsx"
+    _make_db(
+        db,
+        [
+            ["阿香里えな", "阿香里えな", "阿香里えな", "阿香里えな", "", "", "", "1994-02-25", ""],  # 仅生日
+            ["真实女优", "真实女优", "真实女优", "真实女优", "", "1001", "", "", ""],  # 有id保留
+        ],
+    )
+    monkeypatch.setattr(mod, "NON_ACTING_FILE", tmp_path / "empty.txt")
+
+    rc = mod.main(["--db", str(db), "--apply"])
+    assert rc == 0
+    jps = _read_jps(db)
+    assert "阿香里えな" not in jps
+    assert "真实女优" in jps

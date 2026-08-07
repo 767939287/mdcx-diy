@@ -130,13 +130,16 @@ def main(argv: list[str] | None = None) -> int:
             del_rows.add(row_idx)
             desc_found.append((row_idx, jp))
         else:
-            # 第 4 类：占位/冗余行——前 4 列完全相同（日文/中文/繁体/别名同值）
-            # 且后 5 列（链接/tmdbid/url/生日/简介）全空，无任何信息量
+            # 第 4 类：占位/冗余行——前 4 列完全相同（日文/中文/繁体/别名同值），
+            # 且后 5 列无有效数据（允许仅生日有值，链接/tmdbid/url/简介必须全空）
             zh = str(row[1] or "").strip() if len(row) > 1 else ""
             zt = str(row[2] or "").strip() if len(row) > 2 else ""
             kw = str(row[3] or "").strip() if len(row) > 3 else ""
-            has_data = any(str(row[c] or "").strip() for c in range(4, min(len(row), 9)) if c < len(row))
-            if jp == zh == zt == kw and not has_data:
+            href = str(row[4] or "").strip() if len(row) > 4 else ""
+            tid = str(row[5] or "").strip() if len(row) > 5 else ""
+            url = str(row[6] or "").strip() if len(row) > 6 else ""
+            bio = str(row[8] or "").strip() if len(row) > 8 else ""
+            if jp == zh == zt == kw and not (href or tid or url or bio):
                 del_rows.add(row_idx)
                 placeholder_found.append((row_idx, jp))
 
