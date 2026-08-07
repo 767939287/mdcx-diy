@@ -15,6 +15,7 @@
 - **LibreDMM 补链接加限流与共享会话**：`fetch_libredmm_link` 原先每条 actor 重建独立 `AsyncSession`、无任何速率限制。现改为模块级共享会话复用连接，并引入独立限流器（基础 1.5 req/s、突发 4、自适应降速/恢复，比 TMDB 更保守防 ban）。实测批量补链接吞吐 0.43s/条
 - **同步别名只处理空别名行**：`run_actor_db_xlsx('sync_aliases')` 原先全量扫描 5484 个有 id 行（约 50 分钟），现仅处理别名列为空的条目（24 条），效率大幅提升
 - **出厂演员库链接补全**：通过隔离副本真实联网分片补全 LibreDMM 链接，120 → 2130 条（覆盖 39% 有 id 演员），无异常链接、无新重复；剩余 3354 条为 LibreDMM 站点未收录，保持缺省
+- **校验 tmdbid 走限流器 + 断点续传**：`verify_tmdb_ids` 原先用 `aiohttp` 裸请求 `person/{id}` 绕过 TMDB 限流器（5484 个 id 全量校验有 429 限流风险），现纳入 `_tmdb_rate_limiter`；并新增 `.tmdbid_verified.json` 断点文件——已校验 id 记录在案，重跑自动跳过，支持 limit 分片续跑全量而不重复请求
 
 ## v2.0.4 (2026-08-04)
 

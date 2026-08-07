@@ -536,3 +536,55 @@ def test_sync_existing_tmdbid_not_requeried_for_identity(_tmp_actor_db: Path, _a
     assert result.skipped_tmdbid == 0
     assert 1417328 not in spy  # 已在库中的 id 不重复反查
     assert 1417329 in spy  # 新 id 需要校验
+
+
+def test_verify_tmdbid_checkpoint_skips_verified(_tmp_actor_db: Path, monkeypatch):
+    """断点续传：首次校验后写入 verified 文件，重跑跳过已校验 id。"""
+    import aiohttp
+
+    _write_db(
+        _tmp_actor_db,
+        [
+            ["演员甲", "", "", "", "", 1001, "https://www.themoviedb.org/person/1001", "", ""],
+            ["演员乙", "", "", "", "", 1002, "https://www.themoviedb.org/person/1002", "", ""],
+        ],
+    )
+    monkeypatch.setattr(actor_db_tool, "_resolve_tmdb_config", lambda: ("https://api.tmdb.org", "test-key"))
+
+    class _FakeGet:
+        def __call__(self, url, timeout=None):
+            import re
+
+            m = re.search(r"/person/(\d+)", url)
+            return _FakeResp(200 if m else 500)
+
+    class _FakeClient:
+        def __init__(self):
+            self.get = _FakeGet()
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *args):
+            return None
+
+    monkeypatch.setattr(aiohttp, "ClientSession", _FakeClient)
+
+    # 第一轮 limit=1：只校验前 1 个
+    result1 = asyncio.run(actor_db_tool.verify_tmdb_ids(limit=1))
+    assert result1.checked == 1
+
+    # verified 文件已生成，含 1 个 id
+    verified_file = _tmp_actor_db.parent / ".tmdbid_verified.json"
+    import json
+
+    assert verified_file.exists()
+    assert len(json.loads(verified_file.read_text(encoding="utf-8"))) == 1
+
+    # 第二轮 limit=1：跳过已校验的，只校验剩余 1 个
+    result2 = asyncio.run(actor_db_tool.verify_tmdb_ids(limit=1))
+    assert result2.checked == 1
+
+    # 第三轮：全部校验完，无待处理
+    result3 = asyncio.run(actor_db_tool.verify_tmdb_ids())
+    assert result3.checked == 0

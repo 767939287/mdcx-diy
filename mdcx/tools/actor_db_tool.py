@@ -5,6 +5,7 @@
 """
 
 import asyncio
+import json
 import re
 import time
 from dataclasses import dataclass, field
@@ -1059,7 +1060,12 @@ async def verify_tmdb_ids(*, limit: int = 5000, concurrency: int = 5) -> VerifyT
     - 网络错误/限流/5xx -> 保守保留（不误清）
     - 支持 limit 限量与手动停止（signal.stop / Flags.stop_requested）
     """
-    from ..core.tmdb_actor import _ACTOR_DB_ROW_INDEX, _ACTOR_DB_ROW_INDEX_LOCK, _format_db_worksheet
+    from ..core.tmdb_actor import (
+        _ACTOR_DB_ROW_INDEX,
+        _ACTOR_DB_ROW_INDEX_LOCK,
+        _format_db_worksheet,
+        _tmdb_rate_limiter,
+    )
     from ..models.flags import Flags
     from ..signals import signal
 
@@ -1083,6 +1089,15 @@ async def verify_tmdb_ids(*, limit: int = 5000, concurrency: int = 5) -> VerifyT
             wb = _xl.load_workbook(db_path)
             ws = get_actor_db_sheet(wb)
 
+            # 断点续传：已校验的 tmdbid 记录在 sidecar 文件中，重跑自动跳过
+            verified_set: set[int] = set()
+            verified_file = db_path.parent / ".tmdbid_verified.json"
+            if verified_file.exists():
+                try:
+                    verified_set = {int(x) for x in json.loads(verified_file.read_text(encoding="utf-8"))}
+                except (ValueError, json.JSONDecodeError, OSError):
+                    verified_set = set()
+
             candidate_rows: list[tuple[int, int, str, str]] = []
             for row_idx, row in enumerate(ws.iter_rows(min_row=2, values_only=True), start=2):
                 if _is_stop_requested():
@@ -1090,9 +1105,12 @@ async def verify_tmdb_ids(*, limit: int = 5000, concurrency: int = 5) -> VerifyT
                 if len(row) > COL_TMDBID:
                     tmdb_val = str(row[COL_TMDBID] or "").strip()
                     if tmdb_val.isdigit():
+                        tmdbid_int = int(tmdb_val)
+                        if tmdbid_int in verified_set:
+                            continue
                         jp = str(row[COL_JP] or "").strip() if len(row) > COL_JP else ""
                         zh = str(row[COL_ZH_CN] or "").strip() if len(row) > COL_ZH_CN else ""
-                        candidate_rows.append((row_idx, int(tmdb_val), jp, zh))
+                        candidate_rows.append((row_idx, tmdbid_int, jp, zh))
             if limit and len(candidate_rows) > limit:
                 candidate_rows = candidate_rows[:limit]
                 _log_line(f" ℹ️ [校验tmdbid] 本次限量处理前 {limit} 条，可再次运行继续")
@@ -1113,11 +1131,20 @@ async def verify_tmdb_ids(*, limit: int = 5000, concurrency: int = 5) -> VerifyT
                 async def _check(row_idx: int, tmdbid: int) -> None:
                     try:
                         url = f"{base_url}/3/person/{tmdbid}?api_key={tmdb_api_key}"
-                        async with client.get(url, timeout=aiohttp.ClientTimeout(total=15)) as resp:
-                            if resp.status == 404:
-                                invalid_rows[row_idx] = tmdbid
-                                if len(invalid_rows) <= 5:
-                                    _log_line(f"  ⚠️ [校验tmdbid] 行{row_idx} tmdbid={tmdbid} 已失效(404)")
+                        await _tmdb_rate_limiter.acquire()
+                        status_code = 0
+                        try:
+                            async with client.get(url, timeout=aiohttp.ClientTimeout(total=15)) as resp:
+                                status_code = resp.status
+                                if resp.status == 404:
+                                    invalid_rows[row_idx] = tmdbid
+                                    if len(invalid_rows) <= 5:
+                                        _log_line(f"  ⚠️ [校验tmdbid] 行{row_idx} tmdbid={tmdbid} 已失效(404)")
+                                # 200/404 均视为校验完成，记录断点；网络错误(异常)不记录以便重试
+                                if resp.status in (200, 404):
+                                    verified_set.add(tmdbid)
+                        finally:
+                            await _tmdb_rate_limiter.finish(status_code)
                     except Exception:
                         return  # 网络失败，保守保留
 
@@ -1155,6 +1182,13 @@ async def verify_tmdb_ids(*, limit: int = 5000, concurrency: int = 5) -> VerifyT
                             _log_line(f"  🔴 [校验tmdbid] 子任务异常: {e}")
                     if completed % progress_interval == 0 or completed == total:
                         _log_line(f"  📊 [校验tmdbid] 进度: {completed}/{total}")
+
+            # 持久化断点（校验完成的 id 集合），便于限量分片续跑
+            if verified_set:
+                try:
+                    verified_file.write_text(json.dumps(sorted(verified_set)), encoding="utf-8")
+                except OSError:
+                    pass
 
             if invalid_rows:
                 # 清除失效 id 前，记录待补回的行信息（jp/zh）
