@@ -11,6 +11,9 @@
   5. zh_cn / zh_tw 空字段              [warning]
   6. tmdbid 重复                       [error]
   7. 出生日期列格式（空或 YYYY[-MM[-DD]]） [error]
+  8. tmdbid 空但 tmdb url 有值（错配）   [error]
+  9. tmdbid 与 tmdb url 不匹配（url 非标准格式） [error]
+  10. tmdb url 重复（同一 url 多行）     [error]
 
 发现任一 error 返回码 1；仅 warning 返回码 0。老 7 列文件缺失新增列时跳过对应检查。
 """
@@ -120,6 +123,53 @@ def _check_birth_date(rows):
     return errors
 
 
+def _check_tmdb_url_no_id(rows):
+    """tmdbid 为空但 tmdb url 有值：url 错配（url 指向的人物与行无关）。"""
+    errors = []
+    for idx, row in enumerate(rows, 2):
+        if len(row) <= 6:
+            return []
+        jp = str(row[0] or "").strip()
+        tid = str(row[5] or "").strip()
+        url = str(row[6] or "").strip()
+        if jp and not tid and url:
+            errors.append(f"  行{idx}: tmdbid 为空但 tmdb url 有值（url 错配）: {url}")
+    return errors
+
+
+def _check_tmdb_url_mismatch(rows):
+    """tmdbid 与 tmdb url 不匹配（url 不是该 id 的标准 person url）。"""
+    errors = []
+    for idx, row in enumerate(rows, 2):
+        if len(row) <= 6:
+            return []
+        jp = str(row[0] or "").strip()
+        tid = str(row[5] or "").strip()
+        url = str(row[6] or "").strip()
+        if jp and tid.isdigit() and url:
+            expect = f"https://www.themoviedb.org/person/{int(tid)}"
+            if url.rstrip("/") != expect:
+                errors.append(f"  行{idx}: tmdbid={tid} 与 url 不匹配: {url} (期望 {expect})")
+    return errors
+
+
+def _check_tmdb_url_duplicate(rows):
+    """同一 tmdb url 被多行使用（复制污染）。"""
+    seen: dict[str, int] = {}
+    errors = []
+    for idx, row in enumerate(rows, 2):
+        if len(row) <= 6:
+            return []
+        jp = str(row[0] or "").strip()
+        url = str(row[6] or "").strip()
+        if jp and url:
+            if url in seen:
+                errors.append(f"  行{idx}: tmdb url 与行{seen[url]} 重复: {url}")
+            else:
+                seen[url] = idx
+    return errors
+
+
 def check_xlsx(xlsx: Path) -> int:
     if not xlsx.exists():
         print(f"[check_actor_db] 出厂数据库不存在，跳过: {xlsx}")
@@ -155,6 +205,9 @@ def check_xlsx(xlsx: Path) -> int:
         _check_keyword_duplicate,
         _check_tmdbid_duplicate,
         _check_birth_date,
+        _check_tmdb_url_no_id,
+        _check_tmdb_url_mismatch,
+        _check_tmdb_url_duplicate,
     ):
         errors.extend(check(rows))
     for check in (_check_name_empty,):
