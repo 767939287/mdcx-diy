@@ -40,9 +40,17 @@ from ..utils.actor_clean import clean_actor_keyword, clean_actor_name
 _actor_db_write_lock = asyncio.Lock()
 
 # TMDB 查询内存缓存与并发去重（避免同名演员重复请求）
-_TMDB_QUERY_CACHE_TTL_SECONDS = 24 * 60 * 60
+# TTL 分级：命中(hit)长缓存；明确未找到(miss)中等缓存；临时失败(error)短缓存——借鉴 jav-pack-api
+# 的 TTL_HIT/TTL_MISS 分层：失败/未命中的条目用更短 TTL，TMDB 故障或新增演员能较快反映。
+_TMDB_QUERY_CACHE_HIT_TTL = 24 * 60 * 60
+_TMDB_QUERY_CACHE_MISS_TTL = 6 * 60 * 60
+_TMDB_QUERY_CACHE_ERROR_TTL = 15 * 60
+_TMDB_QUERY_CACHE_TTL_SECONDS = _TMDB_QUERY_CACHE_HIT_TTL  # 向后兼容别名（历史 hit 语义）
 _TMDB_QUERY_CACHE_MAX_ENTRIES = 2000
-_TMDB_QUERY_CACHE: dict[str, tuple[float, dict | None]] = {}
+# 负缓存哨兵：value 为字符串哨兵时表示非命中状态，可 JSON 持久化（区别于真实 dict 数据）
+_TMDB_QUERY_CACHE_MISS = "__tmdb_query_cache_miss__"
+_TMDB_QUERY_CACHE_ERROR = "__tmdb_query_cache_error__"
+_TMDB_QUERY_CACHE: dict[str, tuple[float, dict | str]] = {}
 _TMDB_QUERY_INFLIGHT: dict[str, asyncio.Task[dict | None]] = {}
 _TMDB_QUERY_STATE_LOCK = asyncio.Lock()
 _TMDB_QUERY_CACHE_IO_LOCK = asyncio.Lock()
@@ -147,25 +155,43 @@ def _tmdb_query_cache_key(actor_name: str) -> str:
     return sorted(candidates, key=len)[0]
 
 
-def _tmdb_query_cache_get(name: str) -> dict | None:
+class _TmdbQueryError(Exception):
+    """TMDB 查询的临时性错误（网络失败 / HTTP 错误 / 响应解析失败），用于负缓存 error 分级。"""
+
+
+def _tmdb_query_cache_is_valid_value(value: object) -> bool:
+    """仅接受命中字典或负缓存哨兵字符串。"""
+    return isinstance(value, dict) or value in (_TMDB_QUERY_CACHE_MISS, _TMDB_QUERY_CACHE_ERROR)
+
+
+def _tmdb_query_cache_ttl_for(value: dict | str) -> float:
+    """按缓存值状态返回对应 TTL：命中长缓存，未命中/失败用更短 TTL。"""
+    if value == _TMDB_QUERY_CACHE_ERROR:
+        return _TMDB_QUERY_CACHE_ERROR_TTL
+    if value == _TMDB_QUERY_CACHE_MISS:
+        return _TMDB_QUERY_CACHE_MISS_TTL
+    return _TMDB_QUERY_CACHE_HIT_TTL
+
+
+def _tmdb_query_cache_get(name: str) -> dict | str | None:
     cached = _TMDB_QUERY_CACHE.get(name)
     if not cached:
         return None
     ts, value = cached
-    if time.time() - ts > _TMDB_QUERY_CACHE_TTL_SECONDS:
+    if time.time() - ts > _tmdb_query_cache_ttl_for(value):
         _TMDB_QUERY_CACHE.pop(name, None)
         return None
     return value
 
 
-def _tmdb_query_cache_set(name: str, value: dict | None) -> None:
+def _tmdb_query_cache_set(name: str, value: dict | str) -> None:
     _tmdb_query_cache_set_and_persist(name, value)
 
 
-def _tmdb_query_cache_set_and_persist(name: str, value: dict | None) -> None:
+def _tmdb_query_cache_set_and_persist(name: str, value: dict | str) -> None:
     if not isinstance(name, str):
         return
-    if not isinstance(value, (dict, type(None))):
+    if not _tmdb_query_cache_is_valid_value(value):
         return
     _TMDB_QUERY_CACHE[name] = (time.time(), value)
     _tmdb_query_cache_sanitize()
@@ -199,7 +225,7 @@ def _tmdb_query_cache_sanitize(now: float | None = None) -> None:
         now = time.time()
 
     entries = _TMDB_QUERY_CACHE.items()
-    valid: dict[str, tuple[float, dict | None]] = {}
+    valid: dict[str, tuple[float, dict | str]] = {}
     for name, cached in entries:
         if not isinstance(name, str):
             continue
@@ -208,9 +234,9 @@ def _tmdb_query_cache_sanitize(now: float | None = None) -> None:
         ts, value = cached
         if not isinstance(ts, (int, float)):
             continue
-        if not isinstance(value, (dict, type(None))):
+        if not _tmdb_query_cache_is_valid_value(value):
             continue
-        if now - float(ts) > _TMDB_QUERY_CACHE_TTL_SECONDS:
+        if now - float(ts) > _tmdb_query_cache_ttl_for(value):
             continue
         valid[name] = (float(ts), value)
 
@@ -249,11 +275,12 @@ def _tmdb_query_cache_load() -> None:
         value = payload.get("value")
         if not isinstance(ts, (int, float)):
             continue
-        if value is not None and not isinstance(value, dict):
+        if value is None:
+            value = _TMDB_QUERY_CACHE_MISS  # 兼容旧格式：value 为 null 表示未命中
+        if not _tmdb_query_cache_is_valid_value(value):
             continue
 
         _TMDB_QUERY_CACHE[name] = (float(ts), value)
-
     _tmdb_query_cache_sanitize(now=now)
 
 
@@ -271,7 +298,7 @@ def _tmdb_query_cache_persist_sync() -> None:
     payload = {}
     _tmdb_query_cache_sanitize()
     for name, (ts, value) in _TMDB_QUERY_CACHE.items():
-        if now - ts > _TMDB_QUERY_CACHE_TTL_SECONDS:
+        if now - ts > _tmdb_query_cache_ttl_for(value):
             continue
         payload[name] = {"ts": ts, "value": value}
 
@@ -1147,16 +1174,20 @@ async def fetch_actor_tmdb_ids(actors: list[str], client: Any) -> dict[str, int]
 
 
 async def query_single_actor_cached(actor_name: str, base_url: str, api_key: str, client: Any) -> dict | None:
-    """Query a single actor with in-memory dedupe + cache."""
+    """Query a single actor with in-memory dedupe + cache.
+
+    缓存分级：命中(hit)24h；明确未找到(miss)6h；临时失败(error)15min。
+    负缓存（miss/error 哨兵）命中时直接短路，不再发起请求。
+    """
     key = _tmdb_query_cache_key(actor_name)
     cached = _tmdb_query_cache_get(key)
     if cached is not None:
-        return cached
+        return cached if isinstance(cached, dict) else None
 
     async with _TMDB_QUERY_STATE_LOCK:
         cached = _tmdb_query_cache_get(key)
         if cached is not None:
-            return cached
+            return cached if isinstance(cached, dict) else None
 
         running = _TMDB_QUERY_INFLIGHT.get(key)
         if running is not None:
@@ -1167,10 +1198,17 @@ async def query_single_actor_cached(actor_name: str, base_url: str, api_key: str
 
     try:
         result_data = await task
-        _tmdb_query_cache_set(key, result_data)
+        if result_data is None:
+            _tmdb_query_cache_set(key, _TMDB_QUERY_CACHE_MISS)
+        else:
+            _tmdb_query_cache_set(key, result_data)
         return result_data
+    except _TmdbQueryError as exc:
+        _tmdb_query_cache_set(key, _TMDB_QUERY_CACHE_ERROR)
+        _tmdb_log_line(f"  ❌ [TMDB] 演员「{actor_name}」查询失败（临时性，已缓存为 error）：{exc}")
+        return None
     except Exception:
-        _tmdb_query_cache_set(key, None)
+        _tmdb_query_cache_set(key, _TMDB_QUERY_CACHE_ERROR)
         return None
     finally:
         _TMDB_QUERY_INFLIGHT.pop(key, None)
@@ -1197,12 +1235,12 @@ async def _query_single_actor(actor_name: str, base_url: str, api_key: str, clie
     )
 
     if resp is None or resp.status_code != 200:
-        return None
+        raise _TmdbQueryError(f"搜索接口 HTTP {resp.status_code if resp else '无响应'}")
 
     try:
         data = resp.json()
-    except (json.JSONDecodeError, ValueError):
-        return None
+    except (json.JSONDecodeError, ValueError) as exc:
+        raise _TmdbQueryError(f"搜索响应解析失败: {exc}") from exc
     results = data.get("results", [])
 
     if _tmdb_debug_enabled():

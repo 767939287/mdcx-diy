@@ -1,4 +1,5 @@
 import json
+import time
 from pathlib import Path
 
 import pytest
@@ -165,9 +166,55 @@ async def test_query_single_actor_tolerates_missing_http_response(monkeypatch: p
     monkeypatch.setattr(tmdb_actor, "_tmdb_request", _stub_tmdb_request)
     monkeypatch.setattr(tmdb_actor.manager.config, "show_data_log", False)
 
-    result = await tmdb_actor._query_single_actor("上原亜衣", "https://api.tmdb.org", "token", object())
+    with pytest.raises(tmdb_actor._TmdbQueryError):
+        await tmdb_actor._query_single_actor("上原亜衣", "https://api.tmdb.org", "token", object())
 
-    assert result is None
+
+def test_tmdb_query_cache_ttl_tiering(monkeypatch: pytest.MonkeyPatch):
+    now = time.time()
+    monkeypatch.setattr(tmdb_actor, "_TMDB_QUERY_CACHE_MAX_ENTRIES", 2000)
+
+    tmdb_actor._TMDB_QUERY_CACHE.update(
+        {
+            "hit": (now - tmdb_actor._TMDB_QUERY_CACHE_HIT_TTL + 1, {"ok": 1}),
+            "miss": (now - tmdb_actor._TMDB_QUERY_CACHE_MISS_TTL + 1, tmdb_actor._TMDB_QUERY_CACHE_MISS),
+            "error": (now - tmdb_actor._TMDB_QUERY_CACHE_ERROR_TTL + 1, tmdb_actor._TMDB_QUERY_CACHE_ERROR),
+            "stale-miss": (now - tmdb_actor._TMDB_QUERY_CACHE_MISS_TTL - 1, tmdb_actor._TMDB_QUERY_CACHE_MISS),
+            "stale-error": (now - tmdb_actor._TMDB_QUERY_CACHE_ERROR_TTL - 1, tmdb_actor._TMDB_QUERY_CACHE_ERROR),
+        }
+    )
+
+    assert tmdb_actor._tmdb_query_cache_get("hit") == {"ok": 1}
+    assert tmdb_actor._tmdb_query_cache_get("miss") == tmdb_actor._TMDB_QUERY_CACHE_MISS
+    assert tmdb_actor._tmdb_query_cache_get("error") == tmdb_actor._TMDB_QUERY_CACHE_ERROR
+    assert tmdb_actor._tmdb_query_cache_get("stale-miss") is None
+    assert tmdb_actor._tmdb_query_cache_get("stale-error") is None
+
+
+@pytest.mark.asyncio
+async def test_query_single_actor_cached_short_circuits_on_negative_cache(monkeypatch: pytest.MonkeyPatch):
+    calls = {"n": 0}
+
+    async def _stub_tmdb_request(*args, **kwargs):
+        calls["n"] += 1
+        return None
+
+    async def _stub_tmdb_query(*args, **kwargs):
+        raise tmdb_actor._TmdbQueryError("stub network failure")
+
+    monkeypatch.setattr(tmdb_actor, "_tmdb_request", _stub_tmdb_request)
+    monkeypatch.setattr(tmdb_actor, "_query_single_actor", _stub_tmdb_query)
+    monkeypatch.setattr(tmdb_actor.manager.config, "show_data_log", False)
+
+    first = await tmdb_actor.query_single_actor_cached("上原亜衣", "https://api.tmdb.org", "token", object())
+    second = await tmdb_actor.query_single_actor_cached("上原亜衣", "https://api.tmdb.org", "token", object())
+
+    assert first is None
+    assert second is None
+    assert calls["n"] == 0
+    assert tmdb_actor._TMDB_QUERY_CACHE[tmdb_actor._tmdb_query_cache_key("上原亜衣")][1] == (
+        tmdb_actor._TMDB_QUERY_CACHE_ERROR
+    )
 
 
 @pytest.mark.asyncio

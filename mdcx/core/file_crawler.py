@@ -1,5 +1,6 @@
 import asyncio
 import re
+from contextlib import suppress
 from dataclasses import dataclass
 from datetime import date
 from itertools import chain
@@ -28,6 +29,10 @@ MULTI_LANGUAGE_WEBSITES = [  # 支持多语言, language 参数有意义
     Website.IQQTV,
     Website.JAVLIBRARY,
 ]
+
+# 整批站点请求的总超时（秒）：防止单个慢站点拖垮整批抓取
+# 借鉴 jav-pack-api 的 AbortSignal.timeout——主流程等待以总超时为界，超时未返回的站点降级为失败
+_CRAWLER_BATCH_TIMEOUT = 60.0
 SPECIFIC_CRAWLER_TITLE_LANGUAGE_SITES = {
     Website.AIRAV_CC,
     Website.IQQTV,
@@ -331,7 +336,27 @@ class FileScraper:
 
         pending_keys = [k for k in all_needed_keys if k not in all_res and k not in failed]
         if pending_keys:
-            await asyncio.gather(*[_fetch_site(k) for k in pending_keys], return_exceptions=True)
+            # 带总超时的并发请求：避免单个慢站点拖垮整批抓取
+            tasks = {asyncio.ensure_future(_fetch_site(k)): k for k in pending_keys}
+            done, pending = await asyncio.wait(
+                tasks,
+                timeout=_CRAWLER_BATCH_TIMEOUT,
+                return_when=asyncio.ALL_COMPLETED,
+            )
+            # 超时未完成的站点取消并标记失败，后续字段合并按失败跳过（不再二次请求）
+            for task in pending:
+                key = tasks[task]
+                task.cancel()
+                site, _lang = key
+                failed.add(key)
+                failure_reasons.setdefault(site, "请求超时")
+            if pending:
+                await asyncio.gather(*pending, return_exceptions=True)
+            # 消费已完成任务的异常，避免 "Task exception was never retrieved" 告警
+            for task in done:
+                if not task.cancelled():
+                    with suppress(Exception):
+                        task.exception()
 
         # 按字段分别处理，每个字段按优先级尝试获取
         for field in ManualConfig.REDUCED_FIELDS:
