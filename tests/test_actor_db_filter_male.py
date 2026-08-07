@@ -588,3 +588,58 @@ def test_verify_tmdbid_checkpoint_skips_verified(_tmp_actor_db: Path, monkeypatc
     # 第三轮：全部校验完，无待处理
     result3 = asyncio.run(actor_db_tool.verify_tmdb_ids())
     assert result3.checked == 0
+
+
+def test_clean_male_checkpoint_skips_verified(_tmp_actor_db: Path, monkeypatch):
+    """剔除男演员断点续传：已校验 gender 的 id 重跑自动跳过。"""
+    import aiohttp
+
+    _write_db(
+        _tmp_actor_db,
+        [
+            ["演员甲", "", "", "", "", 1001, "", "", ""],
+            ["演员乙", "", "", "", "", 1002, "", "", ""],
+        ],
+    )
+    monkeypatch.setattr(actor_db_tool, "_resolve_tmdb_config", lambda: ("https://api.tmdb.org", "test-key"))
+
+    # 名单不命中这两个名字，走 gender 校验
+    monkeypatch.setattr(actor_db_tool, "is_male_actor", lambda n: False)
+
+    class _FakeGet:
+        def __call__(self, url, timeout=None):
+            import re
+
+            m = re.search(r"/person/(\d+)", url)
+            return _FakeResp(200 if m else 500)
+
+    class _FakeClient:
+        def __init__(self):
+            self.get = _FakeGet()
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *args):
+            return None
+
+    monkeypatch.setattr(aiohttp, "ClientSession", _FakeClient)
+    # gender=1（非男）需 mock fetch_person_gender，保证 add checked_ids
+    monkeypatch.setattr(tmdb_actor, "fetch_person_gender", lambda pid, b, k, c: 1)
+
+    import json
+
+    # 第一轮 limit=1：只校验前 1 个 id
+    result1 = asyncio.run(actor_db_tool.clean_male_actors(limit=1))
+    assert result1.checked == 1
+    checked_file = _tmp_actor_db.parent / ".gender_checked.json"
+    assert checked_file.exists()
+    assert len(json.loads(checked_file.read_text(encoding="utf-8"))) == 1
+
+    # 第二轮 limit=1：跳过已校验的，处理剩余 1 个
+    result2 = asyncio.run(actor_db_tool.clean_male_actors(limit=1))
+    assert result2.checked == 1
+
+    # 第三轮：全部校验完
+    result3 = asyncio.run(actor_db_tool.clean_male_actors())
+    assert result3.checked == 0

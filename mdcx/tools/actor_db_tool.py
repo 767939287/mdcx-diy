@@ -919,6 +919,15 @@ async def clean_male_actors(*, limit: int = 5000, concurrency: int = 5) -> Clean
 
             # 收集行（仅前置扫描，不修改）。含 tmdbid 的行进入 TMDB 校验；
             # 无 tmdbid 的行若命中内置男优名单同样标记为男优。
+            # 断点续传：已校验过 gender 的 tmdbid 记录在 sidecar 文件，重跑自动跳过
+            checked_ids: set[int] = set()
+            checked_file = db_path.parent / ".gender_checked.json"
+            if checked_file.exists():
+                try:
+                    checked_ids = {int(x) for x in json.loads(checked_file.read_text(encoding="utf-8"))}
+                except (ValueError, json.JSONDecodeError, OSError):
+                    checked_ids = set()
+
             candidate_rows: list[tuple[int, int]] = []
             name_male_rows: set[int] = set()
             for row_idx, row in enumerate(ws.iter_rows(min_row=2, values_only=True), start=2):
@@ -931,7 +940,10 @@ async def clean_male_actors(*, limit: int = 5000, concurrency: int = 5) -> Clean
                 if len(row) > COL_TMDBID:
                     tmdb_val = str(row[COL_TMDBID] or "").strip()
                     if tmdb_val.isdigit():
-                        candidate_rows.append((row_idx, int(tmdb_val)))
+                        tmdbid_int = int(tmdb_val)
+                        if tmdbid_int in checked_ids:
+                            continue
+                        candidate_rows.append((row_idx, tmdbid_int))
             if not tmdb_api_key:
                 # 未配置 TMDB key：不校验 gender，所有含 tmdbid 行保留
                 candidate_rows.clear()
@@ -966,6 +978,7 @@ async def clean_male_actors(*, limit: int = 5000, concurrency: int = 5) -> Clean
                 async def _check_one(seq, row_idx, tmdbid):
                     try:
                         gender = await fetch_person_gender(tmdbid, base_url, tmdb_api_key, client)
+                        checked_ids.add(tmdbid)
                         if gender == 2:
                             male_row_indexes.add(row_idx)
                         else:
@@ -1010,6 +1023,14 @@ async def clean_male_actors(*, limit: int = 5000, concurrency: int = 5) -> Clean
 
             # 阶段二：串行删除（降序删除避免行号漂移），删除前备份
             all_male_rows = male_row_indexes | name_male_rows
+
+            # 持久化断点（已校验 gender 的 id 集合），便于限量分片续跑
+            if checked_ids:
+                try:
+                    checked_file.write_text(json.dumps(sorted(checked_ids)), encoding="utf-8")
+                except OSError:
+                    pass
+
             if _is_stop_requested():
                 _log_line(" ⛔️ [剔除男演员] 已手动停止，未执行删除")
             else:
