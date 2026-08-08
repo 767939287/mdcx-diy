@@ -145,6 +145,35 @@ def test_build_bio_line_drops_clean_empty_segments():
     parsed2 = {"career": "KRONE(クローネ)", "bust": "", "waist": "", "hip": ""}
     assert _build_bio_line(parsed2) == ""
 
+    # 出道长标题（>=15字）→ 不产生出道段
+    parsed3 = {"debut": "新人 恥じらい笑顔のFカップ美くびれ AV DEBUT", "height": "160"}
+    bio3 = _build_bio_line(parsed3)
+    assert "出道" not in bio3
+    assert "身高: 160cm" in bio3
+
+
+def test_clean_struct_segments():
+    """_clean_struct_segments 规范化结构化字段段：出道长标题删、三围单值删、前缀剥离、连续标点合并。"""
+    from mdcx.tools.actor_db_tool import _clean_struct_segments
+
+    # 出道长标题整段删除
+    assert _clean_struct_segments("身高: 160cm | 出道: 新人 恥じらい笑顔のAV DEBUT 2024") == "身高: 160cm"
+    # 出道短值保留
+    assert _clean_struct_segments("出道: 新人18岁") == "出道: 新人18岁"
+    # 三围单值删除
+    assert _clean_struct_segments("罩杯: F | 三围: 100") == "罩杯: F"
+    # 三围配对保留
+    assert _clean_struct_segments("三围: 88/60/88") == "三围: 88/60/88"
+    # 事务所前缀剥离
+    assert _clean_struct_segments("事务所: 事务所KRONE") == "事务所: KRONE"
+    assert _clean_struct_segments("事务所: 为SELECTION") == "事务所: SELECTION"
+    assert _clean_struct_segments("事务所: 事务所为SELECTION") == "事务所: SELECTION"
+    # 爱好前缀剥离
+    assert _clean_struct_segments("爱好: 爱好是按摩") == "爱好: 按摩"
+    assert _clean_struct_segments("爱好: 爱好：卡拉OK") == "爱好: 卡拉OK"
+    # 连续标点合并
+    assert _clean_struct_segments("标签: 熟女。。。巨乳") == "标签: 熟女。巨乳"
+
 
 def test_parse_minnano_page_accepts_4row_profile_table(monkeypatch):
     """部分演员页个人信息表只有 4 行（无生日行），也应能被识别为 profile table。"""

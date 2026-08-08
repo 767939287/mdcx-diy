@@ -513,10 +513,50 @@ def _build_bio_line(parsed: dict) -> str:
     if parsed.get("hobby"):
         parts.append(f"爱好: {parsed['hobby']}")
     if parsed.get("debut"):
-        parts.append(f"出道: {parsed['debut']}")
+        debut = str(parsed["debut"]).strip()
+        if len(debut) < 15:
+            parts.append(f"出道: {debut}")
     if parsed.get("tags"):
         parts.append(f"标签: {','.join(parsed['tags'])}")
     return " | ".join(parts)
+
+
+def _clean_struct_segments(bio: str) -> str:
+    """规范化结构化简介的字段段（cleanup_bio 与 fill_minnano 兜底共用）。
+
+    规则（只作用于 `键: 值` 段，非结构化自由文本由 _cleanup_bio_residual 处理）：
+      1. 出道值 >= 15 字（作品标题）→ 整段删除
+      2. 三围单值（"三围: 100" 无 /）→ 整段删除
+      3. 事务所/爱好 值循环剥离前缀（"事务所: 事务所为SELECTION" -> "事务所: SELECTION"，
+         "爱好: 爱好是按摩" -> "爱好: 按摩"）
+      4. 连续标点（"。。。" "，，"）合并为单个
+    """
+    parts = [p.strip() for p in bio.split("|")] if "|" in bio else [bio.strip()]
+    out: list[str] = []
+    for p in parts:
+        if p.startswith("出道: "):
+            v = p[len("出道: ") :].strip()
+            if len(v) >= 15:
+                continue
+            out.append(p)
+        elif re.fullmatch(r"三围: \d{2,3}", p):
+            continue
+        elif p.startswith("事务所: ") or p.startswith("爱好: "):
+            prefix, v = p.split(": ", 1)
+            while True:
+                m = re.match(r"^(?:事务所|所属|爱好|为|是|包括|及)", v)
+                if not m:
+                    break
+                v = v[len(m.group(0)) :].strip()
+            v = re.sub(r"^[:：]\s*", "", v)
+            if v:
+                out.append(f"{prefix}: {v}")
+        else:
+            out.append(p)
+    cleaned = " | ".join(out)
+    cleaned = re.sub(r"[，,。;；]{2,}", lambda m: m.group(0)[0], cleaned)
+    cleaned = re.sub(r"。。。+", "。", cleaned)
+    return cleaned
 
 
 def _cleanup_bio_residual(bio: str, jp: str) -> str:
@@ -556,6 +596,8 @@ def _cleanup_bio_residual(bio: str, jp: str) -> str:
         new_bio = ""
 
     new_bio = re.sub(r"[，,。;；]?\s*(?:标签|出道|背景|备注)\s*[:：]?\s*(?=\||$)", "", new_bio)
+
+    new_bio = _clean_struct_segments(new_bio)
 
     cleaned = new_bio.strip(" |,").strip()
     if cleaned and not _is_structured_bio(cleaned):
