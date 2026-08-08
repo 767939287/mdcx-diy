@@ -138,8 +138,12 @@ def test_build_bio_line_drops_clean_empty_segments():
     parsed = {"bust": "88", "waist": "", "hip": "93", "career": "2015年01月 - 2023年", "place": ""}
     bio = _build_bio_line(parsed)
     assert "三围: 88/93" in bio
-    assert "生涯: 201501月~2023" in bio
+    assert "生涯: 2015~2023" in bio
     assert "出身" not in bio
+
+    # career 非年份（事务所误归 career）→ 丢弃该段
+    parsed2 = {"career": "KRONE(クローネ)", "bust": "", "waist": "", "hip": ""}
+    assert _build_bio_line(parsed2) == ""
 
 
 def test_parse_minnano_page_accepts_4row_profile_table(monkeypatch):

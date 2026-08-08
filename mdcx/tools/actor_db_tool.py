@@ -495,9 +495,15 @@ def _build_bio_line(parsed: dict) -> str:
         parts.append(f"罩杯: {parsed['cup']}")
     if parsed.get("bust") or parsed.get("waist") or parsed.get("hip"):
         segs = [s for s in (parsed.get("bust"), parsed.get("waist"), parsed.get("hip")) if s]
-        parts.append(f"三围: {'/'.join(segs)}")
+        if len(segs) >= 2:
+            parts.append(f"三围: {'/'.join(segs)}")
     if parsed.get("career"):
-        parts.append(f"生涯: {parsed['career'].replace('年', '').replace(' ', '').replace('-', '~')}")
+        m = re.search(r"(20\d{2}|19\d{2})", str(parsed["career"]))
+        if m:
+            start = m.group(1)
+            m2 = re.search(r"(?:~|～|至|[-—])\s*(20\d{2}|19\d{2})", str(parsed["career"]))
+            career = f"{start}~{m2.group(1)}" if m2 else f"{start}~"
+            parts.append(f"生涯: {career}")
     if parsed.get("place"):
         parts.append(f"出身: {parsed['place']}")
     if parsed.get("blood"):
@@ -511,6 +517,74 @@ def _build_bio_line(parsed: dict) -> str:
     if parsed.get("tags"):
         parts.append(f"标签: {','.join(parsed['tags'])}")
     return " | ".join(parts)
+
+
+def _cleanup_bio_residual(bio: str, jp: str) -> str:
+    """清理简介中无用残留（cleanup_bio 模式与 fill_minnano 兜底共用）。
+
+    规则：
+      1. 抽"xxx年出道" → 生涯字段，删原句；剩余仍是大段自由文本则只留生涯
+      2. 删"出道作品/作品/参演作品/出道作为/作品仅出演过/作品为"长标题噪音
+      3. 清"サイズ：S"日文尺寸残段
+      4. 三围孤值（"三围: 90" 单数字无 /）→ 清空
+      5. 空字段残留（"标签:" "出道:" "背景:" 等）
+      6. 只剩纯名字（"高宮慶子" / "姓名：宮本冷子"）→ 清空
+    返回清理后的简介（可能为空串）。
+    """
+    new_bio = bio
+
+    m = re.search(r"(\d{4})年(?:\d{1,2}月)?\s*出道", new_bio)
+    if m:
+        career = f"{m.group(1)}~"
+        if career not in new_bio:
+            new_bio = f"生涯: {career} | {new_bio}" if new_bio else f"生涯: {career}"
+        new_bio = re.sub(r"[，,。;；]?\s*\d{4}年(?:\d{1,2}月)?\s*出道[，,。;；]?", "", new_bio)
+        rest = new_bio.replace(f"生涯: {career} |", "", 1).strip()
+        if rest and re.search(r"[（()）]|别名|出道作", rest):
+            new_bio = f"生涯: {career}"
+
+    new_bio = re.sub(
+        r"[，,。;；]?\s*(?:出道作品|参演作品|出道作为|作品仅出演过|作品为|作品)\s*[:：]?[^|]*", "", new_bio
+    )
+    new_bio = re.sub(r"[，,。;；\s]*サイズ\s*[:：]?\s*[A-Za-z0-9.]*[，,。;；,]?", "", new_bio)
+    # 清"鞋码/鞋碼"残留段（历史数据清理项，已从项目移除）
+    new_bio = re.sub(
+        r"[，,。;；\s]*(?:鞋码|鞋碼|鞋子尺寸|靴サイズ)\s*[:：]?\s*[A-Za-z0-9.]*\s*[，,。;；]?", "", new_bio
+    )
+
+    if re.fullmatch(r"(?:三围|三圍|バスト)\s*[:：]?\s*\d{2,3}\s*", new_bio.strip()):
+        new_bio = ""
+
+    new_bio = re.sub(r"[，,。;；]?\s*(?:标签|出道|背景|备注)\s*[:：]?\s*(?=\||$)", "", new_bio)
+
+    cleaned = new_bio.strip(" |,").strip()
+    if cleaned and not _is_structured_bio(cleaned):
+        m = re.fullmatch(r"(?:姓名|氏名|名字)\s*[:：]?\s*([\u4e00-\u9fffA-Za-z0-9]+)", cleaned)
+        if m and m.group(1) == jp:
+            return ""
+        if re.fullmatch(r"[\u4e00-\u9fffA-Za-z0-9]+", cleaned) and cleaned == jp:
+            return ""
+    return cleaned
+
+
+def _resolve_bio_from_parsed(parsed: dict | None, orig_bio: str, jp: str) -> tuple[str, str]:
+    """确定简介内容与来源（fill_minnano 用）。
+
+    优先 minnano 结构化数据；minnano 无 bio 字段（或未查到）→ 本地 reformat 原简介；
+    仍提不出字段 → 清洗原简介残留。返回 (new_bio, source)，source ∈ minnano/local/clean。
+    """
+    if parsed:
+        bio = _build_bio_line(parsed)
+        if bio:
+            return bio, "minnano"
+    if orig_bio:
+        local = _build_bio_line(_extract_bio_fields(orig_bio))
+        if local:
+            return local, "local"
+        cleaned = _cleanup_bio_residual(orig_bio, jp)
+        if cleaned != orig_bio:
+            return cleaned, "clean"
+    return "", ""
 
 
 async def run_actor_db_xlsx(mode: str, *, limit: int = 5000, overwrite: bool = False, offset: int = 0) -> None:
@@ -669,44 +743,7 @@ async def run_actor_db_xlsx(mode: str, *, limit: int = 5000, overwrite: bool = F
             if _is_stop_requested():
                 break
             bio = str(ws.cell(row=row_idx, column=COL_BIO + 1).value or "").strip()
-            new_bio = bio
-
-            # 规则 1: 抽出"xxx年出道" → 生涯字段，并删掉原句；若剩余仍是大段自由文本则只留生涯
-            m = re.search(r"(\d{4})年(?:\d{1,2}月)?\s*出道", new_bio)
-            if m:
-                career = f"{m.group(1)}~"
-                existing = str(ws.cell(row=row_idx, column=COL_BIO + 1).value or "").strip()
-                if career not in existing:
-                    new_bio = f"生涯: {career} | {new_bio}" if new_bio else f"生涯: {career}"
-                    _log_line(f"  {jp}: 抽出 生涯: {career}")
-                new_bio = re.sub(r"[，,。;；]?\s*\d{4}年(?:\d{1,2}月)?\s*出道[，,。;；]?", "", new_bio)
-                rest = new_bio.replace(f"生涯: {career} |", "", 1).strip()
-                if rest and re.search(r"[（()）]|别名|出道作", rest):
-                    new_bio = f"生涯: {career}"
-
-            # 规则 2: 删"出道作品:/作品:/参演作品:/出道作为:/作品仅出演过/作品为"等作品标题噪音
-            new_bio = re.sub(
-                r"[，,。;；]?\s*(?:出道作品|参演作品|出道作为|作品仅出演过|作品为|作品)\s*[:：]?[^|]*", "", new_bio
-            )
-
-            # 规则 3: 清"サイズ：S"等日文尺寸写法残段（含紧挨名字的如"高宮慶子サイズ：S"）
-            new_bio = re.sub(r"[，,。;；\s]*サイズ\s*[:：]?\s*[A-Za-z0-9.]*[，,。;；,]?", "", new_bio)
-
-            # 规则 4: 三围孤值（"三围: 90" 只有单数字无 /）→ 清空
-            if re.fullmatch(r"(?:三围|三圍|バスト)\s*[:：]?\s*\d{2,3}\s*", new_bio.strip()):
-                new_bio = ""
-
-            # 规则 5: 空字段残留（"标签:" "出道:" "背景:" 等无值字段）
-            new_bio = re.sub(r"[，,。;；]?\s*(?:标签|出道|背景|备注)\s*[:：]?\s*(?=\||$)", "", new_bio)
-
-            # 规则 6: 清理后只剩纯名字（"高宮慶子" / "姓名：宮本冷子"）→ 清空（名字在日文名/别名列已冗余）
-            _cleaned = new_bio.strip(" |,").strip()
-            if _cleaned and not _is_structured_bio(_cleaned):
-                m = re.fullmatch(r"(?:姓名|氏名|名字)\s*[:：]?\s*([\u4e00-\u9fffA-Za-z0-9]+)", _cleaned)
-                if m and m.group(1) == jp:
-                    new_bio = ""
-                elif re.fullmatch(r"[\u4e00-\u9fffA-Za-z0-9]+", _cleaned) and _cleaned == jp:
-                    new_bio = ""
+            new_bio = _cleanup_bio_residual(bio, jp)
 
             # 规则 7: 仍非结构化 → 尝试提取结构化字段；有则重建，无则清空并并入别名到 keyword
             _cleaned = new_bio.strip(" |,").strip()
@@ -810,42 +847,50 @@ async def run_actor_db_xlsx(mode: str, *, limit: int = 5000, overwrite: bool = F
                 elif mode == "fill_minnano":
                     from mdcx.tools.minnano_crawler import _clean_alias, _search_minnano_by_name, parse_minnano_page
 
+                    orig_bio = str(ws.cell(row=row_idx, column=COL_BIO + 1).value or "").strip()
                     minnano_id, html = await _search_minnano_by_name(jp)
-                    if not html:
-                        _log_line(f"  ⚠️ {jp} minnano 未找到")
-                        return
-                    parsed = parse_minnano_page(html, minnano_id)
-                    if not parsed or not parsed.get("name"):
-                        _log_line(f"  ⚠️ {jp} minnano 解析失败")
-                        return
+                    parsed = None
+                    if html:
+                        parsed = parse_minnano_page(html, minnano_id)
+                        if not parsed or not parsed.get("name"):
+                            parsed = None
 
-                    # 1) 别名并入 keyword（只并入不覆盖，大小写不敏感去重）
-                    aliases = [a for a in parsed.get("aliases", []) if _clean_alias(a)]
-                    if aliases:
-                        existing = str(ws.cell(row=row_idx, column=COL_KEYWORD + 1).value or "").strip()
-                        merged_list: list[str] = []
-                        seen_lower: set[str] = set()
-                        for kw in [x.strip() for x in existing.split(",") if x.strip()] + aliases:
-                            key = kw.lower()
-                            if key not in seen_lower:
-                                seen_lower.add(key)
-                                merged_list.append(kw)
-                        ws.cell(row=row_idx, column=COL_KEYWORD + 1, value=",".join(merged_list))
+                    # 1) 简介：minnano 查到且有 bio 字段 → 覆盖；无 bio 字段（或未查到）→
+                    #    fallback 本地 reformat 原简介；再提不出 → 清洗原简介残留
+                    new_bio, source = _resolve_bio_from_parsed(parsed, orig_bio, jp)
+                    if source:
+                        ws.cell(row=row_idx, column=COL_BIO + 1, value=new_bio)
 
-                    # 2) 生日：覆盖或填空
-                    if parsed.get("birthday") and (
-                        overwrite or not str(ws.cell(row=row_idx, column=COL_BIRTH_DATE + 1).value or "").strip()
+                    # 2) 别名并入 keyword（minnano 查到才并入，只并入不覆盖，大小写不敏感去重）
+                    if parsed:
+                        aliases = [a for a in parsed.get("aliases", []) if _clean_alias(a)]
+                        if aliases:
+                            existing = str(ws.cell(row=row_idx, column=COL_KEYWORD + 1).value or "").strip()
+                            merged_list: list[str] = []
+                            seen_lower: set[str] = set()
+                            for kw in [x.strip() for x in existing.split(",") if x.strip()] + aliases:
+                                key = kw.lower()
+                                if key not in seen_lower:
+                                    seen_lower.add(key)
+                                    merged_list.append(kw)
+                            ws.cell(row=row_idx, column=COL_KEYWORD + 1, value=",".join(merged_list))
+
+                    # 3) 生日：覆盖或填空
+                    if (
+                        parsed
+                        and parsed.get("birthday")
+                        and (overwrite or not str(ws.cell(row=row_idx, column=COL_BIRTH_DATE + 1).value or "").strip())
                     ):
                         ws.cell(row=row_idx, column=COL_BIRTH_DATE + 1, value=parsed["birthday"])
 
-                    # 3) 简介（身高三围等一行）：覆盖或填空
-                    if overwrite or not str(ws.cell(row=row_idx, column=COL_BIO + 1).value or "").strip():
-                        bio = _build_bio_line(parsed)
-                        if bio:
-                            ws.cell(row=row_idx, column=COL_BIO + 1, value=bio)
-                            _log_line(f"  ✅ {jp}: 别名+生日+简介{'已更新' if overwrite else '已补全'}")
-                        else:
-                            _log_line(f"  ⚠️ {jp}: minnano 无身体数据，跳过简介")
+                    if source == "minnano":
+                        _log_line(f"  ✅ {jp}: minnano 数据已补全")
+                    elif source == "local":
+                        _log_line(f"  🔄 {jp}: minnano 无数据，本地重排原简介")
+                    elif source == "clean":
+                        _log_line(f"  🧹 {jp}: minnano 无数据且原简介无字段，清理残留")
+                    else:
+                        _log_line(f"  ⚠️ {jp}: minnano 未找到且原简介为空")
 
             except Exception as e:
                 _log_line(f"  ❌ {jp} 处理失败: {e}")

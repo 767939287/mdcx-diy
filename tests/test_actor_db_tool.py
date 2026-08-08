@@ -476,3 +476,34 @@ def test_fill_minnano_overwrite_semantics(_tmp_actor_db: Path, monkeypatch: pyte
     monkeypatch.setattr(minnano_crawler, "_search_minnano_by_name", counting_search)
     asyncio.run(actor_db_tool.run_actor_db_xlsx("fill_minnano", overwrite=True))
     assert searched == []  # 两行均已结构化，重跑不再请求
+
+
+def test_resolve_bio_from_parsed_priority():
+    """_resolve_bio_from_parsed：minnano 优先；无 bio 字段 fallback 本地 reformat；再退清洗。"""
+    from mdcx.tools.actor_db_tool import _resolve_bio_from_parsed
+
+    # minnano 有 bio 字段 → 用 minnano
+    parsed = {"height": "160", "bust": "83", "waist": "58", "hip": "84", "cup": "F"}
+    bio, source = _resolve_bio_from_parsed(parsed, "旧简介自由文本，身高160cm三围B83/W58/H84", "测试")
+    assert source == "minnano"
+    assert "身高: 160cm" in bio
+
+    # minnano 查到但 bio 字段全空 → fallback 本地 reformat 原简介
+    empty_parsed = {"height": "", "bust": "", "waist": "", "hip": "", "cup": "", "tags": []}
+    bio, source = _resolve_bio_from_parsed(empty_parsed, "身高161cm，三围B85/W60/H88", "测试")
+    assert source == "local"
+    assert "身高: 161cm" in bio
+
+    # minnano 完全没查到（None）→ 本地 reformat
+    bio, source = _resolve_bio_from_parsed(None, "身高162cm", "测试")
+    assert source == "local"
+    assert "身高: 162cm" in bio
+
+    # 本地也提不出字段 → 清洗原简介残留
+    bio, source = _resolve_bio_from_parsed(None, "テスト（てすと / Tesuto），鞋码：S", "テスト")
+    assert source == "clean"
+    assert "鞋码" not in bio
+
+    # 全空 → 空
+    bio, source = _resolve_bio_from_parsed(None, "", "测试")
+    assert source == "" and bio == ""

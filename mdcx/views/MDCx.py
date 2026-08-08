@@ -917,6 +917,14 @@ class Ui_MDCx(object):
         self.pushButton_actor_db_clean_male = QtWidgets.QPushButton(parent=self.groupBox_actor_db_maintenance)
         self.pushButton_actor_db_clean_male.setGeometry(QtCore.QRect(40, 206, 200, 30))
         self.pushButton_actor_db_clean_male.setObjectName("pushButton_actor_db_clean_male")
+        self.pushButton_actor_db_fill_minnano = QtWidgets.QPushButton(parent=self.groupBox_actor_db_maintenance)
+        self.pushButton_actor_db_fill_minnano.setGeometry(QtCore.QRect(260, 206, 200, 30))
+        self.pushButton_actor_db_fill_minnano.setObjectName("pushButton_actor_db_fill_minnano")
+        self.label_actor_db_fill_minnano_desc = QtWidgets.QLabel(parent=self.groupBox_actor_db_maintenance)
+        self.label_actor_db_fill_minnano_desc.setGeometry(QtCore.QRect(480, 206, 221, 30))
+        self.label_actor_db_fill_minnano_desc.setStyleSheet("color: rgb(160, 160, 160); font-size: 11px;")
+        self.label_actor_db_fill_minnano_desc.setWordWrap(True)
+        self.label_actor_db_fill_minnano_desc.setObjectName("label_actor_db_fill_minnano_desc")
         self.pushButton_actor_db_verify_tmdbid = QtWidgets.QPushButton(parent=self.groupBox_actor_db_maintenance)
         self.pushButton_actor_db_verify_tmdbid.setGeometry(QtCore.QRect(40, 242, 200, 30))
         self.pushButton_actor_db_verify_tmdbid.setObjectName("pushButton_actor_db_verify_tmdbid")
@@ -12045,6 +12053,16 @@ class Ui_MDCx(object):
             _translate("MDCx", "提示：补全结果将输出到日志页。所有按钮均防重入，运行中按钮禁用。")
         )
         self.pushButton_actor_db_clean_male.setText(_translate("MDCx", "剔除男演员"))
+        self.pushButton_actor_db_fill_minnano.setToolTip(
+            _translate(
+                "MDCx",
+                "从 minnano-av 补全缺生日/简介的条目（已有生日且简介非空的行跳过）。只补空缺，不覆盖已有值，作用于当前用户演员库。需联网。",
+            )
+        )
+        self.pushButton_actor_db_fill_minnano.setText(_translate("MDCx", "minnano 补全"))
+        self.label_actor_db_fill_minnano_desc.setText(
+            _translate("MDCx", "从 minnano-av 补全缺生日/简介的条目（只补空缺）")
+        )
         self.pushButton_actor_db_verify_tmdbid.setToolTip(
             _translate(
                 "MDCx",

@@ -2489,6 +2489,41 @@
                     <string>剔除男演员</string>
                   </property>
                 </widget>
+                <widget class="QPushButton" name="pushButton_actor_db_fill_minnano">
+                  <property name="geometry">
+                    <rect>
+                      <x>260</x>
+                      <y>206</y>
+                      <width>200</width>
+                      <height>30</height>
+                    </rect>
+                  </property>
+                  <property name="toolTip">
+                    <string>从 minnano-av 补全缺生日/简介的条目（已有生日且简介非空的行跳过）。只补空缺，不覆盖已有值，作用于当前用户演员库。需联网。</string>
+                  </property>
+                  <property name="text">
+                    <string>minnano 补全</string>
+                  </property>
+                </widget>
+                <widget class="QLabel" name="label_actor_db_fill_minnano_desc">
+                  <property name="geometry">
+                    <rect>
+                      <x>480</x>
+                      <y>206</y>
+                      <width>221</width>
+                      <height>30</height>
+                    </rect>
+                  </property>
+                  <property name="styleSheet">
+                    <string notr="true">color: rgb(160, 160, 160); font-size: 11px;</string>
+                  </property>
+                  <property name="text">
+                    <string>从 minnano-av 补全缺生日/简介的条目（只补空缺）</string>
+                  </property>
+                  <property name="wordWrap">
+                    <bool>true</bool>
+                  </property>
+                </widget>
                 <widget class="QPushButton" name="pushButton_actor_db_verify_tmdbid">
                   <property name="geometry">
                     <rect>
