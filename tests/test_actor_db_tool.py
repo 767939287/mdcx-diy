@@ -386,3 +386,93 @@ async def test_run_actor_db_xlsx_sync_aliases_only_handles_empty(
     assert "新别名" in str(empty_row[3])
     alias_row = next(r for r in rows if r[0] == "已有别名演员")
     assert "新别名" not in str(alias_row[3])
+
+
+def test_is_structured_bio_detects_formatted_and_free_text():
+    """_is_structured_bio 应识别统一格式简介，放行自由文本/空文本。"""
+    assert actor_db_tool._is_structured_bio("身高: 155cm | 罩杯: F | 三围: 83/58/84")
+    assert actor_db_tool._is_structured_bio("身高: 160cm")
+    assert not actor_db_tool._is_structured_bio("")
+    assert not actor_db_tool._is_structured_bio("身高155cm，三围：B83/W58/H84")
+    assert not actor_db_tool._is_structured_bio("浅野心爱（Asano Kokoa）")
+    assert not actor_db_tool._is_structured_bio(
+        "姓名: 前嶋美紀（まえじまみき），身高: 160cm，三围: B83/W59/H84（C罩杯）"
+    )
+
+
+def test_fill_minnano_overwrite_semantics(_tmp_actor_db: Path, monkeypatch: pytest.MonkeyPatch):
+    """fill_minnano 的 overwrite 语义：False 只补空，True 覆盖已有生日/简介。"""
+    from openpyxl import Workbook
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "演员数据库"
+    ws.append(["日文原名", "中文名", "繁体名", "别名", "链接", "tmdbid", "tmdb url", "出生日期", "简介"])
+    ws.append(["已有数据演员", "", "", "", "", "11", "", "1990-01-01", "旧简介"])
+    ws.append(["空数据演员", "", "", "", "", "12", "", "", ""])
+    wb.save(_tmp_actor_db)
+    wb.close()
+
+    monkeypatch.setattr(tmdb_actor.manager.config, "tmdb_api_key", "fake-key")
+    monkeypatch.setattr(tmdb_actor.manager.config, "tmdb_api_base", "api.tmdb.org")
+
+    parsed = {
+        "name": "已有数据演员",
+        "aliases": ["新别名"],
+        "birthday": "2000-02-02",
+        "height": "160",
+        "bust": "83",
+        "waist": "58",
+        "hip": "84",
+        "cup": "F",
+        "place": "東京",
+        "career": "",
+    }
+
+    from mdcx.tools import minnano_crawler
+
+    async def fake_search(name):
+        return ("123", "<html>mock</html>")
+
+    def fake_parse(html, mid):
+        return parsed
+
+    monkeypatch.setattr(minnano_crawler, "_search_minnano_by_name", fake_search)
+    monkeypatch.setattr(minnano_crawler, "parse_minnano_page", fake_parse)
+
+    # overwrite=False（默认）：只补空数据演员，已有数据的不动
+    import asyncio
+
+    asyncio.run(actor_db_tool.run_actor_db_xlsx("fill_minnano"))
+
+    wb = load_workbook(_tmp_actor_db)
+    ws = wb.active
+    rows = list(ws.iter_rows(min_row=2, values_only=True))
+    wb.close()
+    existing = next(r for r in rows if r[0] == "已有数据演员")
+    assert existing[7] == "1990-01-01" and existing[8] == "旧简介"  # 未被覆盖
+    empty = next(r for r in rows if r[0] == "空数据演员")
+    assert empty[7] == "2000-02-02"
+    assert "身高: 160cm" in str(empty[8])
+
+    # overwrite=True：覆盖已有生日/简介
+    asyncio.run(actor_db_tool.run_actor_db_xlsx("fill_minnano", overwrite=True))
+
+    wb = load_workbook(_tmp_actor_db)
+    ws = wb.active
+    rows = list(ws.iter_rows(min_row=2, values_only=True))
+    wb.close()
+    existing = next(r for r in rows if r[0] == "已有数据演员")
+    assert existing[7] == "2000-02-02"  # 生日被覆盖
+    assert "身高: 160cm" in str(existing[8])  # 简介被覆盖为结构化
+
+    # overwrite=True 断点续传：再次运行，已结构化的行不再选中（不会再触发搜索）
+    searched: list[str] = []
+
+    async def counting_search(name):
+        searched.append(name)
+        return ("123", "<html>mock</html>")
+
+    monkeypatch.setattr(minnano_crawler, "_search_minnano_by_name", counting_search)
+    asyncio.run(actor_db_tool.run_actor_db_xlsx("fill_minnano", overwrite=True))
+    assert searched == []  # 两行均已结构化，重跑不再请求

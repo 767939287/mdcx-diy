@@ -336,13 +336,205 @@ async def run(
     return result
 
 
-async def run_actor_db_xlsx(mode: str, *, limit: int = 5000) -> None:
+_STRUCTURED_BIO_RE = re.compile(
+    r"^(?:身高: [0-9.]+cm|罩杯: [^\s|]+|三围: [0-9]+/[0-9]+(?:/[0-9]+)?|生涯: [\d~\-]+|"
+    r"出身: [^\s|]+|血型: [A-O]+型|事务所: [^|]+|爱好: [^|]+|出道: [^|]+|标签: [^|]+)(?: \| |$)"
+)
+
+
+def _is_structured_bio(bio: str) -> bool:
+    """判断简介是否已是 minnano 结构化一行格式（用于 overwrite 断点续传）。
+
+    要求以 `身高: 155cm` 等 key 开头并带 ` | ` 分隔；旧自由文本（如
+    `身高155cm，三围B83/...`）不会被误判。
+    """
+    return bool(bio and _STRUCTURED_BIO_RE.search(bio))
+
+
+def _extract_bio_fields(text: str) -> dict:
+    """从出厂库自由中文简介中抽取结构化字段（reformat_minnano 用，纯本地不发请求）。
+
+    返回 dict 与 minnano 解析结果同构（height/cup/bust/waist/hip/career/place/blood/
+    agency/hobby/debut/tags），供 _build_bio_line 复用。
+    """
+    out: dict = {
+        "height": "",
+        "cup": "",
+        "bust": "",
+        "waist": "",
+        "hip": "",
+        "career": "",
+        "place": "",
+        "blood": "",
+        "agency": "",
+        "hobby": "",
+        "debut": "",
+        "tags": [],
+    }
+    if not text:
+        return out
+
+    # 身高：身高172cm / 身高: 165 / 148cm（无前缀）
+    m = re.search(r"(?:身高|身長)\s*[:：]?\s*(\d{2,3})\s*(?:cm|CM)?", text)
+    if m:
+        out["height"] = m.group(1)
+
+    # 罩杯：罩杯I / 罩杯：E / (F罩杯)
+    m = re.search(r"罩杯\s*[:：]?\s*([A-Za-z])\s*(?:罩杯)?", text)
+    if m:
+        out["cup"] = m.group(1).upper()
+    m = re.search(r"\(([A-Za-z])\s*罩杯\)", text)
+    if m and not out["cup"]:
+        out["cup"] = m.group(1).upper()
+
+    # 三围：三围B111/W66/H92 / 三围：B79/W57/H77 / 三围: 65/93 / 三圍 B87/W56/H86（B/W/H 前缀或纯数字段）
+    m = re.search(r"三[围圍]\s*[:：]?\s*((?:[BWHSbwhs]\d{2,3}[/／]?)+)", text)
+    if m:
+        segs = re.findall(r"[BWHSbwhs](\d{2,3})", m.group(1))
+        if len(segs) >= 2:
+            out["bust"], out["waist"], out["hip"] = segs[0], segs[1], (segs[2] if len(segs) > 2 else "")
+    else:
+        m = re.search(r"三[围圍]\s*[:：]?\s*(\d{2,3})\s*[/／]\s*(\d{2,3})(?:\s*[/／]\s*(\d{2,3}))?", text)
+        if m:
+            out["bust"], out["waist"] = m.group(1), m.group(2)
+            out["hip"] = m.group(3) or ""
+
+    # 生涯：出演期间2010~2011 / 活动期间 2010-2015 / 生涯: 2013~
+    m = re.search(
+        r"(?:出演期间|AV出演期間|活动期间|活動期間|生涯|出演期間)\s*[:：]?\s*(\d{4})年?\s*[-~～至]\s*(\d{4})年?", text
+    )
+    if m:
+        out["career"] = f"{m.group(1)}~{m.group(2)}"
+    else:
+        m = re.search(r"(?:出演期间|活动期间|生涯|出演期間)\s*[:：]?\s*(\d{4})年?\s*[-~～]?", text)
+        if m:
+            out["career"] = f"{m.group(1)}~"
+
+    # 出身：先匹配"出身于/出生于"，避免出身正则吞掉"于"字
+    m = re.search(r"出身于\s*([\u4e00-\u9fff]{2,5})", text)
+    if m:
+        out["place"] = m.group(1)
+    m = re.search(r"出生于\s*([\u4e00-\u9fff]{2,5})", text)
+    if m and not out["place"]:
+        out["place"] = m.group(1)
+    m = re.search(r"(?:出身地|出身|籍贯|籍貫)\s*[:：]?\s*([\u4e00-\u9fff]{2,5})", text)
+    if m and not out["place"]:
+        out["place"] = m.group(1)
+
+    # 血型：血型B型 / A型血 / 血型：O
+    m = re.search(r"血型\s*[:：]?\s*([A-O])\s*型?", text)
+    if m:
+        out["blood"] = m.group(1).upper() + "型"
+    m = re.search(r"([A-O])\s*型\s*血", text)
+    if m and not out["blood"]:
+        out["blood"] = m.group(1).upper() + "型"
+
+    # 事务所：事务所名東
+    m = re.search(r"(?:事务所|所属)\s*[:：]?\s*([\u4e00-\u9fffA-Za-z0-9&()（）\s]{2,20}?)(?:[，,。;；|]|$)", text)
+    if m:
+        out["agency"] = m.group(1).strip()
+
+    # 爱好：爱好：滑雪 / 兴趣：料理
+    m = re.search(r"(?:爱好|興趣|兴趣|趣味)\s*[:：]?\s*([^\s,，。;；|]{2,25})", text)
+    if m:
+        out["hobby"] = m.group(1).strip()
+
+    # 出道：xxx（仅收短值；"出道作品：长标题" 视为噪音丢弃）
+    m = re.search(r"出道\s*[:：]\s*([^\s,，。;；|]{2,15})", text)
+    if m and "作品" not in m.group(1):
+        out["debut"] = m.group(1).strip()
+
+    # 标签：标签巨乳,美少女
+    m = re.search(r"标签\s*[:：]?\s*([^\s|]+)", text)
+    if m:
+        out["tags"] = [t for t in m.group(1).split(",") if t.strip()]
+
+    return out
+
+
+def _extract_name_alias(text: str) -> list[str]:
+    """从简介提取假名/罗马音/别名。
+
+    兼容形态：
+      - `日文名（假名 / 罗马音）`（逗号/未闭合括号变体）
+      - `别名：xxx` / `姓名：xxx，别名：yyy`（别名字段）
+    返回可并入 keyword 的别名列表，日文名主体不返回。
+    """
+    aliases: list[str] = []
+    if not text:
+        return aliases
+
+    def _add(seg: str) -> None:
+        seg = seg.strip()
+        if len(seg) >= 2 and not seg.isdigit() and "・" not in seg and not re.fullmatch(r"[A-Z]{2,}", seg):
+            aliases.append(seg)
+
+    # 提取"别名："后的整段（可含多个，用逗号/顿号/空格分隔）
+    for m in re.finditer(r"别名\s*[:：]\s*([^。；;|]+)", text):
+        for seg in re.split(r"[，,、\s]+", m.group(1)):
+            _add(seg)
+    # 去掉"姓名："前缀后的括号段（假名/罗马音）
+    name_part = re.sub(r"姓名\s*[:：]\s*", "", text)
+    for m in re.finditer(r"[（(]([^（）()]*)[)）]?", name_part):
+        inner = m.group(1).strip()
+        for seg in re.split(r"[/／，,]", inner):
+            seg = seg.strip()
+            _add(seg)
+    return aliases
+
+
+def _build_bio_line(parsed: dict) -> str:
+    """按 emby 补全风格拼一行简介（身高/罩杯/三围/生涯/出身/血型/事务所/爱好/出道/标签）。
+
+    缺字段则跳过该段；全空时返回空串（调用方不写）。
+    """
+    parts = []
+    if parsed.get("height"):
+        parts.append(f"身高: {parsed['height']}cm")
+    if parsed.get("cup"):
+        parts.append(f"罩杯: {parsed['cup']}")
+    if parsed.get("bust") or parsed.get("waist") or parsed.get("hip"):
+        segs = [s for s in (parsed.get("bust"), parsed.get("waist"), parsed.get("hip")) if s]
+        parts.append(f"三围: {'/'.join(segs)}")
+    if parsed.get("career"):
+        parts.append(f"生涯: {parsed['career'].replace('年', '').replace(' ', '').replace('-', '~')}")
+    if parsed.get("place"):
+        parts.append(f"出身: {parsed['place']}")
+    if parsed.get("blood"):
+        parts.append(f"血型: {parsed['blood']}")
+    if parsed.get("agency"):
+        parts.append(f"事务所: {parsed['agency']}")
+    if parsed.get("hobby"):
+        parts.append(f"爱好: {parsed['hobby']}")
+    if parsed.get("debut"):
+        parts.append(f"出道: {parsed['debut']}")
+    if parsed.get("tags"):
+        parts.append(f"标签: {','.join(parsed['tags'])}")
+    return " | ".join(parts)
+
+
+async def run_actor_db_xlsx(mode: str, *, limit: int = 5000, overwrite: bool = False, offset: int = 0) -> None:
     """直接扫描 actor_database.xlsx 执行维护，无需演员名单。
 
     mode:
       'translate'    — 补全缺中文名的条目
       'link'         — 补全缺 LibreDMM 链接的条目
       'sync_aliases' — 同步 TMDB 最新别名到 keyword 列（仅处理别名列为空的条目）
+      'fill_minnano' — 从 minnano-av 补全生日/简介的条目（别名并入 keyword、生日、简介）
+      'reformat_minnano' — 从出厂库原有自由中文简介中抽字段，本地重排成统一结构化格式
+                          （不发请求，覆盖 fill_minnano 搜不到的行的历史简介）
+      'merge_name_alias' — 把纯名字简介（日文名（假名 / 罗马音））的假名/罗马音并入 keyword
+                          别名列，然后清空简介（出厂库清理用，不发请求）
+      'cleanup_bio'  — 清理简介中无用残留：单字段残值（三围: 90）、日文尺寸写法（サイズ：S）、
+                      空标签段（标签:）等，能抽出生涯/maggie 的先抽出再清
+
+    overwrite:
+      仅 fill_minnano 生效。False=只补空缺（运行时维护）；True=用 minnano 数据覆盖
+      已有生日/简介（出厂库重建用）。
+
+    offset:
+      跳过数据文件前 offset 行（不含表头）再扫描，配合 limit 实现分片推进，
+      避免大批量时反复停留在文件头部无法处理的行上。
     """
     db_path = _get_db_path()
     if not db_path.exists():
@@ -364,12 +556,20 @@ async def run_actor_db_xlsx(mode: str, *, limit: int = 5000) -> None:
         _log_line(" ⚠️ 未配置 TMDB API Key，部分功能不可用")
 
     rows_to_process = []
-    for row_idx, row in enumerate(ws.iter_rows(min_row=2, max_col=7, values_only=True), start=2):
+    for row_idx, row in enumerate(ws.iter_rows(min_row=2, max_col=9, values_only=True), start=2):
+        if offset and row_idx - 2 < offset:
+            continue
         jp = str(row[0] or "").strip()
         tmdbid_val = str(row[5] or "").strip()
-        if not jp or not tmdbid_val.isdigit():
+        if not jp:
             continue
-        tmdbid = int(tmdbid_val)
+        # fill_minnano/reformat_minnano/merge_name_alias/cleanup_bio 只依赖日文名，不要求 tmdbid（老演员常缺 tmdbid）
+        if (
+            mode not in ("fill_minnano", "reformat_minnano", "merge_name_alias", "cleanup_bio")
+            and not tmdbid_val.isdigit()
+        ):
+            continue
+        tmdbid = int(tmdbid_val) if tmdbid_val.isdigit() else 0
         zh_cn = str(row[1] or "").strip()
         zh_tw = str(row[2] or "").strip()
         href = str(row[4] or "").strip()
@@ -383,6 +583,31 @@ async def run_actor_db_xlsx(mode: str, *, limit: int = 5000) -> None:
         elif mode == "sync_aliases":
             if not str(row[3] or "").strip():
                 rows_to_process.append((jp, tmdbid, row_idx))
+        elif mode == "fill_minnano":
+            birth = str(row[7] or "").strip() if len(row) > 7 else ""
+            bio = str(row[8] or "").strip() if len(row) > 8 else ""
+            if overwrite:
+                if not _is_structured_bio(bio):
+                    rows_to_process.append((jp, tmdbid, row_idx))
+            elif not birth or not bio:
+                rows_to_process.append((jp, tmdbid, row_idx))
+        elif mode == "reformat_minnano":
+            bio = str(row[8] or "").strip() if len(row) > 8 else ""
+            # 仅重排有文本且未结构化的行；空简介行无源数据可整理
+            if bio and not _is_structured_bio(bio):
+                rows_to_process.append((jp, tmdbid, row_idx))
+        elif mode == "merge_name_alias":
+            bio = str(row[8] or "").strip() if len(row) > 8 else ""
+            # 处理无身体数据字段的简介（纯名字/别名），有身体数据的行保留不动
+            if bio and not re.search(
+                r"身高|三围|罩杯|出身|血型|生涯|出道|标签|事务所|爱好|籍贯|作品|サイズ|バスト|鞋|靴", bio
+            ):
+                rows_to_process.append((jp, tmdbid, row_idx))
+        elif mode == "cleanup_bio":
+            # 仅处理非结构化且有文本的行（已结构化的行已经过 minnano 校验，不动）
+            bio = str(row[8] or "").strip() if len(row) > 8 else ""
+            if bio and not _is_structured_bio(bio):
+                rows_to_process.append((jp, tmdbid, row_idx))
 
     if limit and len(rows_to_process) > limit:
         rows_to_process = rows_to_process[:limit]
@@ -394,17 +619,144 @@ async def run_actor_db_xlsx(mode: str, *, limit: int = 5000) -> None:
         wb.close()
         return
 
+    # reformat_minnano 纯本地同步处理，不走网络/并发通道
+    if mode == "reformat_minnano":
+        reformatted = 0
+        for jp, _tmdbid, row_idx in rows_to_process:
+            if _is_stop_requested():
+                break
+            raw = str(ws.cell(row=row_idx, column=COL_BIO + 1).value or "").strip()
+            parsed = _extract_bio_fields(raw)
+            bio = _build_bio_line(parsed)
+            if bio and bio != raw:
+                ws.cell(row=row_idx, column=COL_BIO + 1, value=bio)
+                reformatted += 1
+        wb.save(db_path)
+        _log_line(f" ✅ 重排完成：{reformatted} 行简介已重排为结构化格式")
+        wb.close()
+        return
+
+    # merge_name_alias 纯本地同步处理，不走网络/并发通道
+    if mode == "merge_name_alias":
+        merged = 0
+        for jp, _tmdbid, row_idx in rows_to_process:
+            if _is_stop_requested():
+                break
+            raw = str(ws.cell(row=row_idx, column=COL_BIO + 1).value or "").strip()
+            aliases = _extract_name_alias(raw)
+            aliases = [a for a in aliases if a != jp]
+            if aliases:
+                existing = str(ws.cell(row=row_idx, column=COL_KEYWORD + 1).value or "").strip()
+                merged_list: list[str] = []
+                seen_lower: set[str] = set()
+                for kw in [x.strip() for x in existing.split(",") if x.strip()] + aliases:
+                    key = kw.lower()
+                    if key not in seen_lower:
+                        seen_lower.add(key)
+                        merged_list.append(kw)
+                ws.cell(row=row_idx, column=COL_KEYWORD + 1, value=",".join(merged_list))
+            ws.cell(row=row_idx, column=COL_BIO + 1, value="")
+            merged += 1
+        wb.save(db_path)
+        _log_line(f" ✅ 名字合入别名完成：{merged} 行已处理，简介已清空")
+        wb.close()
+        return
+
+    # cleanup_bio 纯本地同步处理
+    if mode == "cleanup_bio":
+        cleaned = 0
+        for jp, _tmdbid, row_idx in rows_to_process:
+            if _is_stop_requested():
+                break
+            bio = str(ws.cell(row=row_idx, column=COL_BIO + 1).value or "").strip()
+            new_bio = bio
+
+            # 规则 1: 抽出"xxx年出道" → 生涯字段，并删掉原句；若剩余仍是大段自由文本则只留生涯
+            m = re.search(r"(\d{4})年(?:\d{1,2}月)?\s*出道", new_bio)
+            if m:
+                career = f"{m.group(1)}~"
+                existing = str(ws.cell(row=row_idx, column=COL_BIO + 1).value or "").strip()
+                if career not in existing:
+                    new_bio = f"生涯: {career} | {new_bio}" if new_bio else f"生涯: {career}"
+                    _log_line(f"  {jp}: 抽出 生涯: {career}")
+                new_bio = re.sub(r"[，,。;；]?\s*\d{4}年(?:\d{1,2}月)?\s*出道[，,。;；]?", "", new_bio)
+                rest = new_bio.replace(f"生涯: {career} |", "", 1).strip()
+                if rest and re.search(r"[（()）]|别名|出道作", rest):
+                    new_bio = f"生涯: {career}"
+
+            # 规则 2: 删"出道作品:/作品:/参演作品:/出道作为:/作品仅出演过/作品为"等作品标题噪音
+            new_bio = re.sub(
+                r"[，,。;；]?\s*(?:出道作品|参演作品|出道作为|作品仅出演过|作品为|作品)\s*[:：]?[^|]*", "", new_bio
+            )
+
+            # 规则 3: 清"サイズ：S"等日文尺寸写法残段（含紧挨名字的如"高宮慶子サイズ：S"）
+            new_bio = re.sub(r"[，,。;；\s]*サイズ\s*[:：]?\s*[A-Za-z0-9.]*[，,。;；,]?", "", new_bio)
+
+            # 规则 4: 三围孤值（"三围: 90" 只有单数字无 /）→ 清空
+            if re.fullmatch(r"(?:三围|三圍|バスト)\s*[:：]?\s*\d{2,3}\s*", new_bio.strip()):
+                new_bio = ""
+
+            # 规则 5: 空字段残留（"标签:" "出道:" "背景:" 等无值字段）
+            new_bio = re.sub(r"[，,。;；]?\s*(?:标签|出道|背景|备注)\s*[:：]?\s*(?=\||$)", "", new_bio)
+
+            # 规则 6: 清理后只剩纯名字（"高宮慶子" / "姓名：宮本冷子"）→ 清空（名字在日文名/别名列已冗余）
+            _cleaned = new_bio.strip(" |,").strip()
+            if _cleaned and not _is_structured_bio(_cleaned):
+                m = re.fullmatch(r"(?:姓名|氏名|名字)\s*[:：]?\s*([\u4e00-\u9fffA-Za-z0-9]+)", _cleaned)
+                if m and m.group(1) == jp:
+                    new_bio = ""
+                elif re.fullmatch(r"[\u4e00-\u9fffA-Za-z0-9]+", _cleaned) and _cleaned == jp:
+                    new_bio = ""
+
+            # 规则 7: 仍非结构化 → 尝试提取结构化字段；有则重建，无则清空并并入别名到 keyword
+            _cleaned = new_bio.strip(" |,").strip()
+            if _cleaned and not _is_structured_bio(_cleaned):
+                fields = _extract_bio_fields(_cleaned)
+                rebuilt = _build_bio_line(fields)
+                if rebuilt:
+                    new_bio = rebuilt
+                    _log_line(f"  {jp}: 提取字段重建 -> {new_bio}")
+                else:
+                    aliases = [
+                        a
+                        for a in _extract_name_alias(_cleaned)
+                        if a != jp and re.search(r"[ぁ-んァ-ヶ]|[A-Za-z]", a) and "・" not in a
+                    ]
+                    if aliases:
+                        existing = str(ws.cell(row=row_idx, column=COL_KEYWORD + 1).value or "").strip()
+                        _merged: list[str] = []
+                        _seen_lower: set[str] = set()
+                        for kw in [x.strip() for x in existing.split(",") if x.strip()] + aliases:
+                            key = kw.lower()
+                            if key not in _seen_lower:
+                                _seen_lower.add(key)
+                                _merged.append(kw)
+                        ws.cell(row=row_idx, column=COL_KEYWORD + 1, value=",".join(_merged))
+                    new_bio = ""
+                    _log_line(f"  {jp}: 无法提取字段，清空简介（别名已并入）")
+
+            if new_bio != bio:
+                ws.cell(row=row_idx, column=COL_BIO + 1, value=new_bio.strip(" |,"))
+                cleaned += 1
+        wb.save(db_path)
+        _log_line(f" ✅ 清理完成：{cleaned} 行简介已清理")
+        wb.close()
+        return
+
     start_time = time.time()
     translated_count = 0
     linked_count = 0
 
     async with aiohttp.ClientSession() as client:
-        concurrency = 2 if mode == "link" else 5
+        base_concurrency = 2 if mode == "link" else 5
+        current_concurrency = base_concurrency
+        consecutive_failures = 0
+        consecutive_successes = 0
         task_iter = iter(enumerate(rows_to_process, 1))
         running_tasks: set[asyncio.Task[None]] = set()
 
         async def _process_one(jp, tmdbid, row_idx):
-            nonlocal translated_count, linked_count
+            nonlocal translated_count, linked_count, current_concurrency, consecutive_failures, consecutive_successes
             try:
                 if mode == "translate" and base_url and tmdb_api_key:
                     translations = await _fetch_person_translations(tmdbid, base_url, tmdb_api_key, client)
@@ -455,8 +807,55 @@ async def run_actor_db_xlsx(mode: str, *, limit: int = 5000) -> None:
                     else:
                         _log_line(f"  ⚠️ {jp} TMDB 未查询到数据")
 
+                elif mode == "fill_minnano":
+                    from mdcx.tools.minnano_crawler import _clean_alias, _search_minnano_by_name, parse_minnano_page
+
+                    minnano_id, html = await _search_minnano_by_name(jp)
+                    if not html:
+                        _log_line(f"  ⚠️ {jp} minnano 未找到")
+                        return
+                    parsed = parse_minnano_page(html, minnano_id)
+                    if not parsed or not parsed.get("name"):
+                        _log_line(f"  ⚠️ {jp} minnano 解析失败")
+                        return
+
+                    # 1) 别名并入 keyword（只并入不覆盖，大小写不敏感去重）
+                    aliases = [a for a in parsed.get("aliases", []) if _clean_alias(a)]
+                    if aliases:
+                        existing = str(ws.cell(row=row_idx, column=COL_KEYWORD + 1).value or "").strip()
+                        merged_list: list[str] = []
+                        seen_lower: set[str] = set()
+                        for kw in [x.strip() for x in existing.split(",") if x.strip()] + aliases:
+                            key = kw.lower()
+                            if key not in seen_lower:
+                                seen_lower.add(key)
+                                merged_list.append(kw)
+                        ws.cell(row=row_idx, column=COL_KEYWORD + 1, value=",".join(merged_list))
+
+                    # 2) 生日：覆盖或填空
+                    if parsed.get("birthday") and (
+                        overwrite or not str(ws.cell(row=row_idx, column=COL_BIRTH_DATE + 1).value or "").strip()
+                    ):
+                        ws.cell(row=row_idx, column=COL_BIRTH_DATE + 1, value=parsed["birthday"])
+
+                    # 3) 简介（身高三围等一行）：覆盖或填空
+                    if overwrite or not str(ws.cell(row=row_idx, column=COL_BIO + 1).value or "").strip():
+                        bio = _build_bio_line(parsed)
+                        if bio:
+                            ws.cell(row=row_idx, column=COL_BIO + 1, value=bio)
+                            _log_line(f"  ✅ {jp}: 别名+生日+简介{'已更新' if overwrite else '已补全'}")
+                        else:
+                            _log_line(f"  ⚠️ {jp}: minnano 无身体数据，跳过简介")
+
             except Exception as e:
                 _log_line(f"  ❌ {jp} 处理失败: {e}")
+                if mode == "fill_minnano":
+                    consecutive_failures += 1
+                    consecutive_successes = 0
+            else:
+                if mode == "fill_minnano":
+                    consecutive_successes += 1
+                    consecutive_failures = 0
 
         def _submit_next() -> bool:
             try:
@@ -467,7 +866,7 @@ async def run_actor_db_xlsx(mode: str, *, limit: int = 5000) -> None:
             running_tasks.add(task)
             return True
 
-        for _ in range(min(concurrency, len(rows_to_process))):
+        for _ in range(min(base_concurrency, len(rows_to_process))):
             _submit_next()
 
         total = len(rows_to_process)
@@ -480,9 +879,19 @@ async def run_actor_db_xlsx(mode: str, *, limit: int = 5000) -> None:
                     t.cancel()
             done, pending = await asyncio.wait(running_tasks, return_when=asyncio.FIRST_COMPLETED)
             running_tasks = set(pending)
-            for _ in range(len(done)):
-                if not _is_stop_requested():
-                    _submit_next()
+            # 自适应限流：连续失败降并发，连续成功恢复
+            if mode == "fill_minnano":
+                if consecutive_failures >= 3 and current_concurrency > 1:
+                    current_concurrency = max(1, current_concurrency // 2)
+                    consecutive_failures = 0
+                    _log_line(f"  ⚠️ 连续失败较多，并发降为 {current_concurrency}")
+                elif consecutive_successes >= 20 and current_concurrency < base_concurrency:
+                    current_concurrency = min(base_concurrency, current_concurrency + 1)
+                    consecutive_successes = 0
+                    _log_line(f"  ℹ️ 并发恢复为 {current_concurrency}")
+            while len(running_tasks) < current_concurrency and not _is_stop_requested():
+                if not _submit_next():
+                    break
             for done_task in done:
                 completed += 1
                 try:

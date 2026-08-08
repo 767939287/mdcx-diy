@@ -151,3 +151,44 @@ async def test_local_post_failure_returns_zero(monkeypatch):
     flag, msg = await emby_actor_info._process_actor_async(_actor(), [])
     assert flag == 0
     assert "更新失败" in msg
+
+
+def test_extract_bio_tags_structured_fields():
+    """简介含结构化字段时应抽剥为对应 Emby 标签。"""
+    bio = "身高: 164cm | 罩杯: F | 三围: 88/60/93 | 生涯: 2020~ | 出身: 宮城県 | 血型: A型 | 事务所: JETSTREAM(元・VERGER)"
+    tags = emby_actor_info._extract_bio_tags(bio)
+    assert "身高: 164cm" in tags
+    assert "罩杯: F" in tags
+    assert "三围: 88/60/93" in tags
+    assert "生涯: 2020~" in tags
+    assert "出身: 宮城県" in tags
+    assert "血型: A型" in tags
+    assert not any(t.startswith("事务所") for t in tags)
+
+
+def test_extract_bio_tags_empty_and_plain_bio():
+    """无结构化字段或空文本不应抽出任何标签。"""
+    assert emby_actor_info._extract_bio_tags("") == []
+    assert emby_actor_info._extract_bio_tags("身高158cm\n三围B86") == []
+
+
+@pytest.mark.asyncio
+async def test_local_hit_extracts_tags_from_structured_bio(monkeypatch):
+    """本地命中且简介为 minnano 风格一行时，生日/简介回填的同时应抽剥出标签。"""
+    state = _mock_env(
+        monkeypatch,
+        {
+            "has_name": True,
+            "birth_date": "1993-11-23",
+            "bio": "身高: 164cm | 罩杯: F | 三围: 88/60/93 | 生涯: 2020~ | 出身: 宮城県",
+            "zh_cn": "七瀬いおり",
+        },
+    )
+    flag, _ = await emby_actor_info._process_actor_async(_actor("七瀬いおり"), [])
+    assert flag & 8
+    payload = state["post"][0]
+    tags = payload.get("Tags", [])
+    assert "身高: 164cm" in tags
+    assert "三围: 88/60/93" in tags
+    assert "生涯: 2020~" in tags
+    assert state["wiki"] == 0 and state["minnano"] == 0 and state["db"] == 0

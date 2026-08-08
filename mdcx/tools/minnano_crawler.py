@@ -267,13 +267,12 @@ def get_cached_actor(name: str) -> dict | None:
 
 
 def _parse_size(size_str: str) -> dict[str, str]:
-    """解析尺寸字符串: T166 / B108(Lカップ) / W60 / H90 / S"""
+    """解析尺寸字符串: T166 / B108(Lカップ) / W60 / H90"""
     result = {
         "height": "",
         "bust": "",
         "waist": "",
         "hip": "",
-        "shoe": "",
         "cup": "",
     }
     if not size_str:
@@ -304,11 +303,6 @@ def _parse_size(size_str: str) -> dict[str, str]:
         m = re.match(r"H(\d+)", part)
         if m:
             result["hip"] = m.group(1)
-            continue
-        # 鞋码 S24.5
-        m = re.match(r"S(.+)", part)
-        if m:
-            result["shoe"] = m.group(1)
             continue
 
     return result
@@ -462,7 +456,6 @@ def parse_minnano_page(html: str, minnano_id: str) -> dict[str, Any] | None:
         "bust": "",
         "waist": "",
         "hip": "",
-        "shoe": "",
         "cup": "",
         "blood": "",
         "place": "",
@@ -480,11 +473,13 @@ def parse_minnano_page(html: str, minnano_id: str) -> dict[str, Any] | None:
     profile_table = None
     for table in tables:
         rows = table.find_all("tr")
-        if len(rows) >= 5:
-            first_cell = rows[0].find_all(["td", "th"])
-            if first_cell and "（" in first_cell[0].get_text():
-                profile_table = table
-                break
+        if len(rows) < 2:
+            continue
+        first_cell = rows[0].find_all(["td", "th"])
+        # 部分演员页个人信息表只有 4 行（无生日行），不再强制 rows >= 5
+        if first_cell and "（" in first_cell[0].get_text():
+            profile_table = table
+            break
 
     if profile_table:
         profile = _parse_profile_table(profile_table)
@@ -517,13 +512,12 @@ def parse_minnano_page(html: str, minnano_id: str) -> dict[str, Any] | None:
             result["bust"] = size["bust"]
             result["waist"] = size["waist"]
             result["hip"] = size["hip"]
-            result["shoe"] = size["shoe"]
             result["cup"] = size["cup"]
 
     # 解析标签（直接查找 tagarea）
     tagarea = soup.find("div", class_="tagarea")
     if tagarea:
-        result["tags"] = _parse_tags_from_table(tagarea.find_parent("table"))
+        result["tags"] = _parse_tags_from_table(tagarea)
 
     # 如果名字还没解析出来，从页面标题或 h2 中找
     if not result["name"]:

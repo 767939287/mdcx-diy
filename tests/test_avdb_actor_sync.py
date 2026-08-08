@@ -130,7 +130,7 @@ def test_extract_birth_date_partial_and_missing():
 
 def test_extract_birth_date_rejects_debut_or_work_dates():
     """出道年份/作品发行日期不是出生日期，宁缺毋滥不提取。"""
-    assert extract_birth_date("愛内ハル，2011年出道，鞋码S") == ""
+    assert extract_birth_date("愛内ハル，2011年出道") == ""
     assert extract_birth_date("2013年11月30日出道作品：人妻の色香") == ""
     assert extract_birth_date("出道作品：初撮りおばさん（2013年03月25日）") == ""
     assert extract_birth_date("出身于三重县，身高160厘米，F罩杯，20") == ""

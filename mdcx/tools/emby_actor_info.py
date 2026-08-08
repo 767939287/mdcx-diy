@@ -41,6 +41,24 @@ from .wiki import get_detail, search_wiki
 class ActorTaskStopped(Exception): ...
 
 
+_BIO_TAG_PATTERNS = (
+    (r"身高:\s*([0-9.]+)\s*cm", "身高: {0}cm"),
+    (r"罩杯:\s*([^\s/|]+)", "罩杯: {0}"),
+    (r"三围:\s*([0-9]+/[0-9]+/[0-9]+)", "三围: {0}"),
+    (r"生涯:\s*([0-9~\-]+)", "生涯: {0}"),
+    (r"出身:\s*([^\s|]+)", "出身: {0}"),
+    (r"血型:\s*([A-O]+型)", "血型: {0}"),
+)
+
+
+def _extract_bio_tags(bio: str) -> list[str]:
+    """从 actor_db 简介文本中抽剥结构化字段为 Emby 标签。
+
+    格式与 actor_db_tool._build_bio_line 保持一致（`键: 值 | ...`）。
+    """
+    return [fmt.format(m.group(1)) for pat, fmt in _BIO_TAG_PATTERNS if (m := re.search(pat, bio))]
+
+
 def _is_stop_requested() -> bool:
     return signal.stop or Flags.stop_requested
 
@@ -185,6 +203,9 @@ async def _process_actor_async(actor: dict, emby_on: list[EmbyAction]) -> tuple[
                 if bio:
                     local_overview = bio.replace("\n", "<br/>")
                     actor_info.overview = local_overview
+                    for tag in _extract_bio_tags(bio):
+                        if tag not in actor_info.tags:
+                            actor_info.tags.append(tag)
                 if not actor_info.locations:
                     actor_info.locations = ["日本"]
                 local_found = 1
