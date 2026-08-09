@@ -304,6 +304,7 @@ class Resources:
 
         # 加载数据库 xlsx
         merge_actor_db_from_backup(self.actor_db_backup_path, self.u("actor_database.xlsx"))
+        merge_info_db_from_backup(self.info_db_backup_path, self.u("info_database.xlsx"))
         self.reload_actor_db()
         self.reload_info_db()
 
@@ -501,6 +502,110 @@ def merge_actor_db_from_backup(backup_path: Path, local_path: Path) -> None:
             LogBuffer.log().write(f"  ℹ️ [演员数据库] 出厂库增量合并: 新增 {added} 条, 补全 {filled} 个字段")
     except Exception as e:
         LogBuffer.log().write(f"  ⚠️ [演员数据库] 出厂库合并失败: {e}")
+
+
+def merge_info_db_from_backup(backup_path: Path, local_path: Path) -> None:
+    """把出厂库的 info_database 同步进已存在的用户库（出厂库权威 + 保留用户新增行）。
+
+    info_database 是「标签/关键词 → 日/中/繁」的映射字典，出厂库是唯一权威：
+    - 内容行（cn ≠ "删除"）以 cn 为合并键：
+      * 用户库无此 cn → 追加新行
+      * 用户库已有此 cn → 覆盖 jp/zh_cn/zh_tw/keyword（出厂库权威，避免 jp 变更导致重复）
+    - 删除行（jp=删除，cn 恒为"删除"）无语义主键，整体以出厂库为准覆盖用户库删除行
+    - 用户库独有的 cn（出厂库没有）→ 保留（用户自定义标签）
+    - 用出厂库 md5 作合并标记写入 .info_db_merge_marker，出厂库未变时跳过。
+
+    出厂库权威而非仿 actor 库「不覆盖」，是因为 info_database 是给刮削翻译用的映射字典，
+    正确性完全取决于出厂库维护，用户不应手动改（改了也会被下次合并覆盖）。
+    """
+    if openpyxl is None:
+        return
+    if not backup_path.exists() or not local_path.exists():
+        return
+
+    import hashlib
+
+    marker_path = local_path.parent / ".info_db_merge_marker"
+    try:
+        backup_hash = hashlib.md5(backup_path.read_bytes()).hexdigest()
+        if marker_path.exists() and marker_path.read_text(encoding="utf-8").strip() == backup_hash:
+            return  # 出厂库未变化，无需合并
+
+        wb = openpyxl.load_workbook(local_path)
+        ws = wb.active
+        # 收集用户库现有 cn -> 行号（内容行）
+        cn_row_map: dict[str, int] = {}
+        del_rows: list[int] = []  # 用户库删除行行号
+        for row_no, row in enumerate(ws.iter_rows(min_row=2, values_only=True), start=2):
+            if not row or not row[0]:
+                continue
+            jp_val = str(row[0]).strip()
+            if jp_val == "删除":
+                del_rows.append(row_no)
+                continue
+            cn_val = str(row[1] or "").strip() if len(row) > 1 else ""
+            if cn_val:
+                cn_row_map.setdefault(cn_val, row_no)
+
+        added = 0
+        updated = 0
+        backup_wb = openpyxl.load_workbook(backup_path, read_only=True, data_only=True)
+        backup_ws = backup_wb.active
+        next_row = ws.max_row + 1
+        backup_del_used = 0
+        for row in backup_ws.iter_rows(min_row=2, values_only=True):
+            if not row or not row[0]:
+                continue
+            jp = str(row[0]).strip()
+            zh_cn = str(row[1] or "").strip() if len(row) > 1 else ""
+            zh_tw = str(row[2] or "").strip() if len(row) > 2 else ""
+            keyword = str(row[3] or "").strip() if len(row) > 3 else ""
+            if jp == "删除":
+                # 删除行：覆盖用户库第一个删除行，多余追加；出厂库权威
+                if backup_del_used < len(del_rows):
+                    row_no = del_rows[backup_del_used]
+                    ws.cell(row=row_no, column=1, value=jp)
+                    ws.cell(row=row_no, column=2, value=zh_cn)
+                    ws.cell(row=row_no, column=3, value=zh_tw)
+                    ws.cell(row=row_no, column=4, value=keyword)
+                    backup_del_used += 1
+                    updated += 1
+                else:
+                    ws.cell(row=next_row, column=1, value=jp)
+                    ws.cell(row=next_row, column=2, value=zh_cn)
+                    ws.cell(row=next_row, column=3, value=zh_tw)
+                    ws.cell(row=next_row, column=4, value=keyword)
+                    next_row += 1
+                    added += 1
+                continue
+            # 内容行：以 cn 为键
+            if zh_cn in cn_row_map:
+                row_no = cn_row_map[zh_cn]
+                ws.cell(row=row_no, column=1, value=jp)
+                ws.cell(row=row_no, column=2, value=zh_cn)
+                ws.cell(row=row_no, column=3, value=zh_tw)
+                ws.cell(row=row_no, column=4, value=keyword)
+                updated += 1
+            else:
+                ws.cell(row=next_row, column=1, value=jp)
+                ws.cell(row=next_row, column=2, value=zh_cn)
+                ws.cell(row=next_row, column=3, value=zh_tw)
+                ws.cell(row=next_row, column=4, value=keyword)
+                cn_row_map[zh_cn] = next_row
+                next_row += 1
+                added += 1
+        backup_wb.close()
+
+        # 用户库多余的删除行（出厂库删除行更少时）保留：删除行无语义键，多余的不删以免误删用户新增黑名单词
+
+        if added or updated:
+            wb.save(local_path)
+        wb.close()
+        marker_path.write_text(backup_hash, encoding="utf-8")
+        if added or updated:
+            LogBuffer.log().write(f"  ℹ️ [信息映射库] 出厂库权威合并: 新增 {added} 条, 覆盖 {updated} 条")
+    except Exception as e:
+        LogBuffer.log().write(f"  ⚠️ [信息映射库] 出厂库合并失败: {e}")
 
 
 resources = Resources()
