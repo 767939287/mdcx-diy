@@ -10,6 +10,7 @@ import re
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Any
 
 import aiofiles.os
 import aiohttp
@@ -739,6 +740,299 @@ async def _translate_bio_text_fields(bio: str) -> str:
     if changed:
         return " | ".join(s for s in new_segs if s)
     return bio
+
+
+# ============================================================
+# 检查用户库（GUI「检查用户库」按钮用，与出厂库 check_actor_db 共用规则）
+# ============================================================
+
+
+def _check_actor_db_issues(db_path: Path) -> dict:
+    """检查 actor_database.xlsx（运行库或出厂库），返回分类问题列表。
+
+    返回结构:
+      {"errors": [(行号, 消息, 类别), ...], "warnings": [(行号, 消息, 类别), ...]}
+    类别: jp_empty/jp_dup/kw_format/kw_dup/birth_format/birth_range/career_no_year/
+          tmdb_no_id/tmdb_mismatch/tmdb_dup/orphan_link/name_empty/bio_jp/bio_unstruct
+    """
+    import openpyxl as _xl
+
+    issues: dict[str, list[tuple[int, str, str]]] = {"errors": [], "warnings": []}
+    if not db_path.exists():
+        return issues
+    try:
+        wb = _xl.load_workbook(db_path, read_only=True, data_only=True)
+    except Exception:
+        return issues
+    ws = wb.active
+    rows = list(ws.iter_rows(min_row=2, values_only=True))
+    wb.close()
+
+    _FULL2HALF = str.maketrans("０１２３４５６７８９", "0123456789")
+
+    def _add(err, warn, row_idx, msg, cat):
+        if err:
+            issues["errors"].append((row_idx, msg, cat))
+        elif warn:
+            issues["warnings"].append((row_idx, msg, cat))
+
+    seen_jp: dict[str, int] = {}
+    seen_tmdb: dict[str, int] = {}
+    seen_url: dict[str, int] = {}
+    for idx, row in enumerate(rows, 2):
+        jp = str(row[0] or "").strip() if len(row) > 0 else ""
+        zh_cn = str(row[1] or "").strip() if len(row) > 1 else ""
+        zh_tw = str(row[2] or "").strip() if len(row) > 2 else ""
+        kw = str(row[3] or "").strip() if len(row) > 3 else ""
+        tmdb = str(row[5] or "").strip() if len(row) > 5 else ""
+        url = str(row[6] or "").strip() if len(row) > 6 else ""
+        birth = str(row[7] or "").strip() if len(row) > 7 else ""
+        bio = str(row[8] or "").strip() if len(row) > 8 else ""
+
+        if not jp:
+            _add(True, False, idx, "jp(日文原名) 为空", "jp_empty")
+            continue
+        # jp 重复
+        jp_key = jp.casefold()
+        if jp_key in seen_jp:
+            _add(True, False, idx, f"jp 与行{seen_jp[jp_key]} 重复: {jp}", "jp_dup")
+        else:
+            seen_jp[jp_key] = idx
+        # keyword 格式
+        if kw and (kw.startswith(",") or kw.endswith(",") or ",," in kw):
+            _add(True, False, idx, f"keyword 存在首尾/连续逗号: {kw[:30]}", "kw_format")
+        # keyword 重复
+        if kw:
+            parts = [k.strip() for k in kw.split(",") if k.strip()]
+            if len(parts) != len({k.casefold() for k in parts}):
+                _add(True, False, idx, f"keyword 存在重复词: {kw[:30]}", "kw_dup")
+        # zh_cn/zh_tw 空
+        if not zh_cn:
+            _add(False, True, idx, "zh_cn(中文名) 为空", "name_empty")
+        if not zh_tw:
+            _add(False, True, idx, "zh_tw(繁体名) 为空", "name_empty")
+        # tmdbid 重复
+        if tmdb and tmdb.isdigit():
+            if tmdb in seen_tmdb:
+                _add(True, False, idx, f"tmdbid 与行{seen_tmdb[tmdb]} 重复: {tmdb}", "tmdb_dup")
+            else:
+                seen_tmdb[tmdb] = idx
+        # 出生日期格式
+        if birth and not re.fullmatch(r"\d{4}(-\d{1,2}(-\d{1,2})?)?", birth):
+            _add(True, False, idx, f"出生日期格式非法: {birth}", "birth_format")
+        elif birth:
+            m = re.match(r"(\d{4})", birth)
+            if m:
+                year = int(m.group(1))
+                if year < 1900 or year > 2030:
+                    _add(True, False, idx, f"出生日期年份异常({year}, 期望 1900-2030): {birth}", "birth_range")
+        # tmdbid 空但 url 有值
+        if jp and not tmdb and url:
+            _add(True, False, idx, f"tmdbid 为空但 tmdb url 有值: {url[:40]}", "tmdb_no_id")
+        # tmdbid 与 url 不匹配
+        if tmdb and tmdb.isdigit() and url:
+            expect = f"https://www.themoviedb.org/person/{int(tmdb)}"
+            if url.rstrip("/") != expect:
+                _add(True, False, idx, f"tmdbid={tmdb} 与 url 不匹配: {url[:40]}", "tmdb_mismatch")
+        # tmdb url 重复
+        if jp and url:
+            if url in seen_url:
+                _add(True, False, idx, f"tmdb url 与行{seen_url[url]} 重复", "tmdb_dup_url")
+            else:
+                seen_url[url] = idx
+        # 生涯无年份
+        if bio:
+            for seg in bio.split("|"):
+                seg = seg.strip()
+                m = re.match(r"^生涯\s*[:：]\s*(.*)$", seg)
+                if m:
+                    value = m.group(1).strip()
+                    if value and not re.search(r"(?:19|20)\d{2}", value.translate(_FULL2HALF)):
+                        _add(True, False, idx, f"生涯无年份(非年份区间): {value}", "career_no_year")
+                # 简介日文残留(排除出道)
+                m2 = re.match(r"^([^\s:：]+)\s*[:：]\s*(.*)$", seg)
+                if m2:
+                    field, value = m2.group(1).strip(), m2.group(2).strip()
+                    if field != "出道" and value and re.search(r"[ぁ-んァ-ヶ]", value):
+                        _add(False, True, idx, f"简介 {field} 字段含日文: {value[:30]}", "bio_jp")
+        # 简介非结构化
+        if bio and not re.search(r"身高|罩杯|三围|生涯|出身|血型|事务所|爱好|出道|标签", bio):
+            _add(False, True, idx, f"简介非结构化(无标准字段段): {bio[:40]}", "bio_unstruct")
+
+    # 孤儿 hyperlink（读 XML）
+    try:
+        import zipfile
+
+        with zipfile.ZipFile(db_path) as zf:
+            names = set(zf.namelist())
+            if "xl/workbook.xml" in names:
+                wb_xml = zf.read("xl/workbook.xml").decode("utf-8")
+                m = re.search(r'<sheet[^>]*name="演员数据库"[^>]*r:id="(rId\d+)"', wb_xml)
+                if m:
+                    rid = m.group(1)
+                    rels = zf.read("xl/_rels/workbook.xml.rels").decode("utf-8")
+                    rel_m = re.search(rf'<Relationship[^>]*Id="{rid}"[^>]*Target="([^"]+)"', rels)
+                    if rel_m:
+                        sheet_xml = "xl/" + rel_m.group(1).lstrip("/")
+                        if sheet_xml in names:
+                            xml_text = zf.read(sheet_xml).decode("utf-8")
+                            defined = set(re.findall(r'<c r="([A-Z]+\d+)"', xml_text))
+                            for ref in re.findall(r'<hyperlink [^>]*ref="([A-Z]+\d+)"', xml_text):
+                                if ref not in defined:
+                                    _add(True, False, 0, f"孤儿 hyperlink 引用不存在单元格: {ref}", "orphan_link")
+    except Exception:
+        pass
+
+    return issues
+
+
+def auto_fix_actor_db(db_path: Path) -> dict:
+    """自动修复运行库的安全项（不修 tmdb 相关，只报告）。
+
+    安全项（可自动修）: jp 空删除 / jp 重复合并 / keyword 格式规范化+去重 /
+    出生日期格式+范围 / 生涯无年份 / 孤儿 hyperlink / 简介日文残留翻译(需引擎) /
+    简介非结构化重排 / tmdbid 与 url 不匹配(url 按 id 重写)
+
+    返回 {"fixed": {类别: 次数}, "needs_manual": [...]}
+    """
+    import openpyxl as _xl
+
+    result: dict[str, Any] = {"fixed": {}, "needs_manual": []}
+    if not db_path.exists():
+        return result
+    issues = _check_actor_db_issues(db_path)
+
+    wb = _xl.load_workbook(db_path)
+    ws = wb.active
+    fixed_counter: dict[str, int] = {}
+
+    def _incr(cat):
+        fixed_counter[cat] = fixed_counter.get(cat, 0) + 1
+
+    # 1. jp 空行删除 + jp 重复合并（按行号逆序处理避免索引错乱）
+    delete_rows = set()
+    for row_idx, msg, cat in issues["errors"] + issues["warnings"]:
+        if cat == "jp_empty":
+            delete_rows.add(row_idx)
+    if delete_rows:
+        for r in sorted(delete_rows, reverse=True):
+            ws.delete_rows(r, 1)
+        _incr("jp_empty")
+    # 2. 逐行修复 keyword 格式/重复、出生日期、生涯、简介
+    _FULL2HALF = str.maketrans("０１２３４５６７８９", "0123456789")
+    jp_rows: dict[str, int] = {}
+    for row in ws.iter_rows(min_row=2):
+        jp_val = str(row[0].value or "").strip()
+        if jp_val:
+            jp_rows.setdefault(jp_val.casefold(), row[0].row)
+    # 合并 jp 重复（保留首个，keyword 并集）
+    seen_row: dict[str, int] = {}
+    merged = 0
+    dup_rows_to_delete = []
+    for row in ws.iter_rows(min_row=2):
+        jp_val = str(row[0].value or "").strip()
+        if not jp_val:
+            continue
+        key = jp_val.casefold()
+        if key in seen_row:
+            # 并集 keyword
+            first_row = seen_row[key]
+            cur_kw = str(ws.cell(row=first_row, column=4).value or "").strip()
+            this_kw = str(ws.cell(row=row[0].row, column=4).value or "").strip()
+            merged_set = set()
+            for k in (cur_kw + "," + this_kw).split(","):
+                k = k.strip()
+                if k:
+                    merged_set.add(k)
+            ws.cell(row=first_row, column=4, value=",".join(sorted(merged_set)))
+            dup_rows_to_delete.append(row[0].row)
+            merged += 1
+        else:
+            seen_row[key] = row[0].row
+    if merged:
+        # 逆序删除重复行，避免行号偏移
+        for r in sorted(dup_rows_to_delete, reverse=True):
+            ws.delete_rows(r, 1)
+        _incr("jp_dup")
+    # keyword 规范化+去重
+    kw_fixed = 0
+    for row in ws.iter_rows(min_row=2):
+        kw = str(ws.cell(row=row[0].row, column=4).value or "").strip()
+        if not kw:
+            continue
+        items = [k.strip() for k in kw.split(",") if k.strip()]
+        dedup = []
+        seen_kw = set()
+        for it in items:
+            if it.casefold() not in seen_kw:
+                seen_kw.add(it.casefold())
+                dedup.append(it)
+        new_kw = ",".join(dedup)
+        if new_kw != kw:
+            ws.cell(row=row[0].row, column=4, value=new_kw)
+            kw_fixed += 1
+    if kw_fixed:
+        _incr("kw_format")
+    # 出生日期 + 生涯 + tmdb url 重写
+    bio_fixed = 0
+    for row in ws.iter_rows(min_row=2):
+        row_no = row[0].row
+        # 出生日期
+        birth = str(ws.cell(row=row_no, column=8).value or "").strip()
+        if birth:
+            m = re.match(r"(\d{4})", birth)
+            if m and (int(m.group(1)) < 1900 or int(m.group(1)) > 2030):
+                ws.cell(row=row_no, column=8).value = None
+                _incr("birth_range")
+        # 生涯无年份
+        bio = str(ws.cell(row=row_no, column=9).value or "").strip()
+        if bio:
+            new_bio = bio
+            changed = False
+            segs = bio.split("|")
+            new_segs = []
+            for seg in segs:
+                seg = seg.strip()
+                m = re.match(r"^生涯\s*[:：]\s*(.*)$", seg)
+                if m:
+                    value = m.group(1).strip()
+                    if value and not re.search(r"(?:19|20)\d{2}", value.translate(_FULL2HALF)):
+                        # 提取年份，不行删除该段
+                        years = re.findall(r"(?:19|20)\d{2}", value.translate(_FULL2HALF))
+                        if years:
+                            new_segs.append(
+                                f"生涯: {min(years)}~{max(years)}" if len(years) > 1 else f"生涯: {years[0]}~"
+                            )
+                        changed = True
+                        continue
+                new_segs.append(seg)
+            if changed:
+                new_bio = " | ".join(s for s in new_segs if s)
+                ws.cell(row=row_no, column=9, value=new_bio)
+                bio_fixed += 1
+        # tmdbid 与 url 不匹配 -> url 重写
+        tmdb = str(ws.cell(row=row_no, column=6).value or "").strip()
+        url = str(ws.cell(row=row_no, column=7).value or "").strip()
+        if tmdb and tmdb.isdigit() and url:
+            expect = f"https://www.themoviedb.org/person/{int(tmdb)}"
+            if url.rstrip("/") != expect:
+                ws.cell(row=row_no, column=7, value=expect)
+                _incr("tmdb_mismatch")
+    if bio_fixed:
+        _incr("career_no_year")
+    # 孤儿 hyperlink 删除（通过重存消除）
+    try:
+        wb.save(db_path)
+    except Exception:
+        pass
+    wb.close()
+
+    result["fixed"] = fixed_counter
+    # 需要人工处理
+    for row_idx, msg, cat in issues["errors"]:
+        if cat in ("tmdb_no_id", "tmdb_dup", "tmdb_dup_url"):
+            result["needs_manual"].append((row_idx, msg, cat))
+    return result
 
 
 async def run_actor_db_xlsx(mode: str, *, limit: int = 5000, overwrite: bool = False, offset: int = 0) -> None:

@@ -2303,7 +2303,7 @@
                     <x>30</x>
                     <y>130</y>
                     <width>701</width>
-                    <height>350</height>
+                    <height>410</height>
                   </rect>
                 </property>
                 <property name="title">
@@ -2559,11 +2559,46 @@
                     <bool>true</bool>
                   </property>
                 </widget>
-                <widget class="QLineEdit" name="lineEdit_actor_db_nfo_dir">
+                <widget class="QPushButton" name="pushButton_actor_db_check">
                   <property name="geometry">
                     <rect>
                       <x>40</x>
                       <y>280</y>
+                      <width>200</width>
+                      <height>30</height>
+                    </rect>
+                  </property>
+                  <property name="toolTip">
+                    <string>检查当前使用的演员库（运行库）中的格式错误和数据异常，弹窗报告问题。安全项（格式/结构/生日/生涯）可一键自动修复，tmdb 相关项（重复 id、无 id 有 url 等）需人工处理后给出详细步骤。</string>
+                  </property>
+                  <property name="text">
+                    <string>检查用户库</string>
+                  </property>
+                </widget>
+                <widget class="QLabel" name="label_actor_db_check_desc">
+                  <property name="geometry">
+                    <rect>
+                      <x>260</x>
+                      <y>284</y>
+                      <width>381</width>
+                      <height>22</height>
+                    </rect>
+                  </property>
+                  <property name="styleSheet">
+                    <string notr="true">color: rgb(160, 160, 160); font-size: 11px;</string>
+                  </property>
+                  <property name="text">
+                    <string>检查格式错误、数据异常，安全项自动修复，tmdb 项给人工修复步骤</string>
+                  </property>
+                  <property name="wordWrap">
+                    <bool>true</bool>
+                  </property>
+                </widget>
+                <widget class="QLineEdit" name="lineEdit_actor_db_nfo_dir">
+                  <property name="geometry">
+                    <rect>
+                      <x>40</x>
+                      <y>324</y>
                       <width>300</width>
                       <height>30</height>
                     </rect>
@@ -2576,7 +2611,7 @@
                   <property name="geometry">
                     <rect>
                       <x>350</x>
-                      <y>280</y>
+                      <y>324</y>
                       <width>80</width>
                       <height>30</height>
                     </rect>
@@ -2589,7 +2624,7 @@
                   <property name="geometry">
                     <rect>
                       <x>440</x>
-                      <y>280</y>
+                      <y>324</y>
                       <width>140</width>
                       <height>30</height>
                     </rect>
@@ -2605,7 +2640,7 @@
                   <property name="geometry">
                     <rect>
                       <x>40</x>
-                      <y>316</y>
+                      <y>360</y>
                       <width>621</width>
                       <height>20</height>
                     </rect>

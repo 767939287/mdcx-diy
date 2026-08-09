@@ -245,6 +245,12 @@ def pushButton_actor_db_verify_tmdbid_clicked(self):
     self._run_actor_db_verify_tmdbid()
 
 
+def pushButton_actor_db_check_clicked(self):
+    self.pushButton_show_log_clicked()
+    signal_qt.show_log_text("🔍 开始检查用户库（格式/结构/数据异常）...")
+    self._run_actor_db_check()
+
+
 def pushButton_actor_db_pick_nfo_dir_clicked(self):
     from PyQt6.QtWidgets import QFileDialog
 

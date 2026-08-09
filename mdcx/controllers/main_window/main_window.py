@@ -148,6 +148,7 @@ class MyMAinWindow(QMainWindow):
     pushButton_actor_db_fill_minnano = pyqtSignal(str)
     pushButton_actor_db_clean_male = pyqtSignal(str)
     pushButton_actor_db_verify_tmdbid = pyqtSignal(str)
+    pushButton_actor_db_check = pyqtSignal(str)
     pushButton_actor_db_update_nfo_tmdbid = pyqtSignal(str)
     actor_db_finished = pyqtSignal()
     label_show_version = pyqtSignal(str)
@@ -2604,6 +2605,11 @@ class MyMAinWindow(QMainWindow):
 
         pushButton_actor_db_verify_tmdbid_clicked(self)
 
+    def pushButton_actor_db_check_clicked(self):
+        from .tool_handlers import pushButton_actor_db_check_clicked
+
+        pushButton_actor_db_check_clicked(self)
+
     def pushButton_actor_db_pick_nfo_dir_clicked(self):
         from .tool_handlers import pushButton_actor_db_pick_nfo_dir_clicked
 
@@ -2700,6 +2706,205 @@ class MyMAinWindow(QMainWindow):
 
         executor.submit(run())
 
+    def _run_actor_db_check(self) -> None:
+        """运行「检查用户库」：对运行库执行格式/结构/数据异常检查，弹窗报告+自动修复安全项。"""
+        from mdcx.tools.actor_db_tool import _check_actor_db_issues
+
+        db_path = Path(resources.u("actor_database.xlsx"))
+        if not db_path.exists():
+            signal_qt.show_log_text("🔴 actor_database.xlsx 不存在，请先刮削或执行一次演员库维护生成数据库")
+            return
+
+        btn = self.Ui.pushButton_actor_db_check
+        if not btn.isEnabled():
+            return
+
+        btn.setEnabled(False)
+        self.pushButton_actor_db_check.emit("检查中...")
+
+        try:
+            issues = _check_actor_db_issues(db_path)
+        except Exception as e:
+            signal_qt.show_log_text(f"🔴 检查用户库异常: {e}")
+            import traceback as tb
+
+            signal_qt.show_log_text(tb.format_exc())
+            self._on_actor_db_finished()
+            return
+
+        try:
+            self._show_actor_db_check_dialog(issues, db_path)
+        finally:
+            # 弹窗关闭后恢复按钮
+            self._on_actor_db_finished()
+
+    def _show_actor_db_check_dialog(self, issues: dict, db_path: Path) -> None:
+        """弹窗展示检查结果：无问题→绿色提示；有问题→红色列表+「自动修复」按钮。"""
+        from PyQt6.QtWidgets import QMessageBox
+
+        errors = issues["errors"]
+        warnings = issues["warnings"]
+        total = len(errors) + len(warnings)
+
+        if total == 0:
+            QMessageBox.information(self, "检查用户库", "✅ 未发现任何问题。\n\n库结构、格式、数据完整性均正常。")
+            signal_qt.show_log_text("✅ 检查用户库完成：未发现问题")
+            return
+
+        # 分类统计
+        from collections import Counter
+
+        cat_names = {
+            "jp_empty": "jp 为空",
+            "jp_dup": "jp 重复",
+            "kw_format": "keyword 格式",
+            "kw_dup": "keyword 重复",
+            "birth_format": "出生日期格式",
+            "birth_range": "出生日期年份异常",
+            "career_no_year": "生涯无年份",
+            "tmdb_no_id": "tmdbid 空缺",
+            "tmdb_mismatch": "tmdb id 与 url 不匹配",
+            "tmdb_dup": "tmdbid 重复",
+            "orphan_link": "孤儿链接",
+            "name_empty": "中/文名空缺",
+            "bio_jp": "简介日文残留",
+            "bio_unstruct": "简介非结构化",
+        }
+        error_cats = Counter(cat for _, _, cat in errors)
+        warning_cats = Counter(cat for _, _, cat in warnings)
+
+        lines = [f"检查发现 {len(errors)} 个错误 + {len(warnings)} 个警告：\n"]
+        lines.append("<b style='color: #c62828;'>错误（需立即处理）：</b>")
+        for cat, count in sorted(error_cats.items(), key=lambda x: -x[1]):
+            lines.append(f"  • {cat_names.get(cat, cat)}: {count} 项")
+        for row, msg, cat in errors[:20]:
+            lines.append(f"&nbsp;&nbsp;- 行{row}: {msg}")
+        if len(errors) > 20:
+            lines.append(f"&nbsp;&nbsp;... 还有 {len(errors) - 20} 条未显示")
+        lines.append("")
+        if warnings:
+            lines.append("<b style='color: #ef6c00;'>警告（建议处理）：</b>")
+            for cat, count in sorted(warning_cats.items(), key=lambda x: -x[1]):
+                lines.append(f"  • {cat_names.get(cat, cat)}: {count} 项")
+            for row, msg, cat in warnings[:10]:
+                lines.append(f"&nbsp;&nbsp;- 行{row}: {msg}")
+            if len(warnings) > 10:
+                lines.append(f"&nbsp;&nbsp;... 还有 {len(warnings) - 10} 条未显示")
+
+        msg_html = "<br>".join(lines)
+
+        # 区分可自动修/需人工
+        auto_fixable = {"jp_empty", "jp_dup", "kw_format", "kw_dup", "birth_range", "career_no_year", "tmdb_mismatch"}
+        needs_manual = {"tmdb_no_id", "tmdb_dup", "tmdb_dup_url"}
+        auto_count = sum(c for cat, c in error_cats.items() if cat in auto_fixable)
+        manual_count = sum(c for cat, c in error_cats.items() if cat in needs_manual)
+
+        if manual_count > 0:
+            lines.append("")
+            lines.append(
+                f"<b style='color: #ef6c00;'>{manual_count} 项 tmdb 相关需人工处理</b>（打开数据库后手动修复）"
+            )
+            for row, msg, cat in errors:
+                if cat in needs_manual:
+                    lines.append(f"&nbsp;&nbsp;- 行{row}: {msg}")
+
+            lines.append("")
+            lines.append("<b>手动修复步骤：</b>")
+            lines.append("1. 点击「打开数据库」按钮，在 Excel/WPS/LibreOffice 中打开 actor_database.xlsx")
+            lines.append("2. 根据告警信息定位到错误行")
+            lines.append("3. 处理 tdb 相关错误：")
+            lines.append("   • tmdbid 空缺：删除该行的 tmdb url 链接")
+            lines.append("   • tmdbid 重复：核对 TMDB 网站后修正为正确的 id 或删除重复行")
+            lines.append("   • id 与 url 不匹配：以 tmdbid 为准，重新生成 url 或改 tmdbid")
+            lines.append("4. 保存并重新打开本工具检查")
+
+            msg_html = "<br>".join(lines)
+
+        if auto_count > 0:
+            box = QMessageBox(self)
+            box.setWindowTitle("检查用户库 — 发现问题")
+            box.setIcon(QMessageBox.Icon.Warning)
+            box.setTextFormat(Qt.TextFormat.RichText)
+            box.setText(msg_html)
+            fix_btn = box.addButton(f"自动修复 {auto_count} 项", QMessageBox.ButtonRole.AcceptRole)
+            open_btn = box.addButton("打开数据库查看", QMessageBox.ButtonRole.ActionRole)
+            box.addButton(QMessageBox.StandardButton.Cancel)
+            box.exec()
+            clicked = box.clickedButton()
+            if clicked is fix_btn:
+                self._do_actor_db_auto_fix(db_path)
+            elif clicked is open_btn:
+                from mdcx.utils.file import open_file_thread
+
+                try:
+                    open_file_thread(db_path, False)
+                except Exception as e:
+                    signal_qt.show_log_text(f"⚠️ 无法打开数据库: {e}")
+        else:
+            box = QMessageBox(self)
+            box.setWindowTitle("检查用户库 — 发现问题（无自动修复项）")
+            box.setIcon(QMessageBox.Icon.Warning)
+            box.setTextFormat(Qt.TextFormat.RichText)
+            box.setText(msg_html)
+            open_btn = box.addButton("打开数据库查看", QMessageBox.ButtonRole.ActionRole)
+            box.addButton(QMessageBox.StandardButton.Ok)
+            box.exec()
+            if box.clickedButton() is open_btn:
+                from mdcx.utils.file import open_file_thread
+
+                try:
+                    open_file_thread(db_path, False)
+                except Exception as e:
+                    signal_qt.show_log_text(f"⚠️ 无法打开数据库: {e}")
+
+    def _do_actor_db_auto_fix(self, db_path: Path) -> None:
+        """执行自动修复并反馈结果。"""
+        from PyQt6.QtWidgets import QMessageBox
+
+        from mdcx.tools.actor_db_tool import auto_fix_actor_db
+
+        try:
+            result = auto_fix_actor_db(db_path)
+            fixed = result["fixed"]
+            needs_manual = result["needs_manual"]
+
+            lines = [f"自动修复完成：{sum(fixed.values())} 项已修复"]
+            if fixed:
+                for cat, count in fixed.items():
+                    cat_names = {
+                        "jp_empty": "jp 空行删除",
+                        "jp_dup": "jp 重复合并",
+                        "kw_format": "keyword 格式规范化",
+                        "birth_range": "出生日期越界清空",
+                        "career_no_year": "生涯无年份删除",
+                        "tmdb_mismatch": "tmdb url 重置",
+                    }
+                    lines.append(f"  • {cat_names.get(cat, cat)}: {count}")
+            if needs_manual:
+                lines.append("")
+                lines.append(f"{len(needs_manual)} 项需人工处理：")
+                for row, msg, cat in needs_manual[:10]:
+                    lines.append(f"  - 行{row}: {msg}")
+                if len(needs_manual) > 10:
+                    lines.append(f"  ... 还有 {len(needs_manual) - 10} 项")
+        except Exception as e:
+            lines = [f"自动修复失败: {e}"]
+
+        box = QMessageBox(self)
+        box.setWindowTitle("自动修复完成")
+        box.setIcon(QMessageBox.Icon.Information)
+        box.setText("<br>".join(lines))
+        open_btn = box.addButton("打开数据库验证", QMessageBox.ButtonRole.ActionRole)
+        box.addButton(QMessageBox.StandardButton.Ok)
+        box.exec()
+        if box.clickedButton() is open_btn:
+            from mdcx.utils.file import open_file_thread
+
+            try:
+                open_file_thread(db_path, False)
+            except Exception as e:
+                signal_qt.show_log_text(f"⚠️ 无法打开数据库: {e}")
+
     def _run_actor_db_update_nfo(self) -> None:
         """运行「更新 nfo tmdbid」（用本地库新 id 覆盖 nfo 旧 id，无 id 的补上）。"""
         from pathlib import Path
@@ -2753,6 +2958,7 @@ class MyMAinWindow(QMainWindow):
         self.Ui.pushButton_actor_db_fill_minnano.setEnabled(True)
         self.Ui.pushButton_actor_db_clean_male.setEnabled(True)
         self.Ui.pushButton_actor_db_verify_tmdbid.setEnabled(True)
+        self.Ui.pushButton_actor_db_check.setEnabled(True)
         self.Ui.pushButton_actor_db_update_nfo_tmdbid.setEnabled(True)
         self.pushButton_actor_db_translate.emit("补全中文名")
         self.pushButton_actor_db_link.emit("补全 LibreDMM 链接")
@@ -2760,6 +2966,7 @@ class MyMAinWindow(QMainWindow):
         self.pushButton_actor_db_fill_minnano.emit("minnano 补全")
         self.pushButton_actor_db_clean_male.emit("剔除男演员")
         self.pushButton_actor_db_verify_tmdbid.emit("校验 tmdbid 有效性")
+        self.pushButton_actor_db_check.emit("检查用户库")
         self.pushButton_actor_db_update_nfo_tmdbid.emit("更新 nfo tmdbid")
 
     # region 设置页
