@@ -11,10 +11,14 @@
   5. zh_cn / zh_tw 空字段              [warning]
   6. tmdbid 重复                       [error]
   7. 出生日期列格式（空或 YYYY[-MM[-DD]]） [error]
-  8. tmdbid 空但 tmdb url 有值（错配）   [error]
-  9. tmdbid 与 tmdb url 不匹配（url 非标准格式） [error]
-  10. tmdb url 重复（同一 url 多行）     [error]
-  11. 孤儿 hyperlink（引用不存在的单元格） [error]
+  8. 出生日期年份超合理范围(<1900 或 >2030) [error]
+  9. 生涯字段无任何 4 位年份(含全角转半角)  [error]
+  10. 简介非出道字段含日文假名(出道作品标题保留) [warning]
+  11. 简介非结构化(有文本但无标准字段段)   [warning]
+  12. tmdbid 空但 tmdb url 有值（错配）   [error]
+  13. tmdbid 与 tmdb url 不匹配（url 非标准格式） [error]
+  14. tmdb url 重复（同一 url 多行）     [error]
+  15. 孤儿 hyperlink（引用不存在的单元格） [error]
 
 发现任一 error 返回码 1；仅 warning 返回码 0。老 7 列文件缺失新增列时跳过对应检查。
 
@@ -127,6 +131,80 @@ def _check_birth_date(rows):
         if birth and not BIRTH_DATE_PATTERN.match(birth):
             errors.append(f"  行{idx}: 出生日期格式非法(期望 YYYY[-MM[-DD]]): {birth}")
     return errors
+
+
+def _check_birth_date_range(rows):
+    """出生日期年份超出合理范围（<1900 或 >2030），疑似填写错误。"""
+    errors = []
+    for idx, row in enumerate(rows, 2):
+        if len(row) <= 7:
+            continue
+        birth = str(row[7] or "").strip()
+        m = re.match(r"(\d{4})", birth)
+        if m:
+            year = int(m.group(1))
+            if year < 1900 or year > 2030:
+                errors.append(f"  行{idx}: 出生日期年份异常({year}, 期望 1900-2030): {birth}")
+    return errors
+
+
+def _check_career_no_year(rows):
+    """生涯字段无任何 4 位年份（含全角数字转半角后判定），疑似非年份内容。"""
+    errors = []
+    _FULL2HALF = str.maketrans("０１２３４５６７８９", "0123456789")
+    for idx, row in enumerate(rows, 2):
+        if len(row) <= 8:
+            continue
+        bio = str(row[8] or "").strip()
+        if not bio:
+            continue
+        for seg in bio.split("|"):
+            seg = seg.strip()
+            m = re.match(r"^生涯\s*[:：]\s*(.*)$", seg)
+            if not m:
+                continue
+            value = m.group(1).strip()
+            if not value:
+                continue
+            half = value.translate(_FULL2HALF)
+            if not re.search(r"(?:19|20)\d{2}", half):
+                errors.append(f"  行{idx}: 生涯无年份(非年份区间): {value}")
+    return errors
+
+
+def _check_bio_jp_residual(rows):
+    """简介非出道字段含日文假名（出道作品标题保留日文，不检查）。"""
+    warnings = []
+    for idx, row in enumerate(rows, 2):
+        if len(row) <= 8:
+            continue
+        bio = str(row[8] or "").strip()
+        if not bio:
+            continue
+        for seg in bio.split("|"):
+            seg = seg.strip()
+            m = re.match(r"^([^\s:：]+)\s*[:：]\s*(.*)$", seg)
+            if not m:
+                continue
+            field, value = m.group(1).strip(), m.group(2).strip()
+            if field == "出道":
+                continue
+            if value and re.search(r"[ぁ-んァ-ヶ]", value):
+                warnings.append(f"  行{idx}: 简介 {field} 字段含日文: {value[:30]}")
+    return warnings
+
+
+def _check_bio_unstructured(rows):
+    """简介非结构化：有文本但无任何标准字段段（身高/罩杯/三围等）。"""
+    warnings = []
+    _FIELD_RE = re.compile(r"身高|罩杯|三围|生涯|出身|血型|事务所|爱好|出道|标签")
+    for idx, row in enumerate(rows, 2):
+        if len(row) <= 8:
+            continue
+        bio = str(row[8] or "").strip()
+        if bio and not _FIELD_RE.search(bio):
+            warnings.append(f"  行{idx}: 简介非结构化(无标准字段段): {bio[:40]}")
+    return warnings
 
 
 def _check_tmdb_url_no_id(rows):
@@ -271,13 +349,15 @@ def check_xlsx(xlsx: Path) -> int:
         _check_keyword_duplicate,
         _check_tmdbid_duplicate,
         _check_birth_date,
+        _check_birth_date_range,
+        _check_career_no_year,
         _check_tmdb_url_no_id,
         _check_tmdb_url_mismatch,
         _check_tmdb_url_duplicate,
     ):
         errors.extend(check(rows))
     errors.extend(_check_orphan_hyperlinks(xlsx))
-    for check in (_check_name_empty,):
+    for check in (_check_name_empty, _check_bio_jp_residual, _check_bio_unstructured):
         warnings.extend(check(rows))
 
     print(f"[check_actor_db] {display_path} 共 {len(rows)} 行数据")
