@@ -2620,7 +2620,7 @@ class MyMAinWindow(QMainWindow):
 
         pushButton_actor_db_update_nfo_tmdbid_clicked(self)
 
-    def _run_actor_db_tool(self, mode: str) -> None:
+    def _run_actor_db_tool(self, mode: str, **kwargs) -> None:
         """运行演员库维护工具（新模式：直接操作 xlsx，无需名单/NFO）。
 
         mode: 'translate' | 'link' | 'sync_aliases'
@@ -2644,7 +2644,7 @@ class MyMAinWindow(QMainWindow):
 
         async def run():
             try:
-                await run_actor_db_xlsx(mode=mode)
+                await run_actor_db_xlsx(mode=mode, **kwargs)
             except Exception as e:
                 signal_qt.show_log_text(f"🔴 演员库维护异常: {e}")
                 import traceback as tb

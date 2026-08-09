@@ -1035,13 +1035,20 @@ def auto_fix_actor_db(db_path: Path) -> dict:
     return result
 
 
-async def run_actor_db_xlsx(mode: str, *, limit: int = 5000, overwrite: bool = False, offset: int = 0) -> None:
+async def run_actor_db_xlsx(
+    mode: str,
+    *,
+    limit: int = 5000,
+    overwrite: bool = False,
+    offset: int = 0,
+    alias_source: str = "tmdb",
+) -> None:
     """直接扫描 actor_database.xlsx 执行维护，无需演员名单。
 
     mode:
       'translate'    — 补全缺中文名的条目
       'link'         — 补全缺 LibreDMM 链接的条目
-      'sync_aliases' — 同步 TMDB 最新别名到 keyword 列（仅处理别名列为空的条目）
+      'sync_aliases' — 从来源同步别名到 keyword 列
       'fill_minnano' — 从 minnano-av 补全生日/简介的条目（别名并入 keyword、生日、简介）
       'reformat_minnano' — 从出厂库原有自由中文简介中抽字段，本地重排成统一结构化格式
                           （不发请求，覆盖 fill_minnano 搜不到的行的历史简介）
@@ -1051,8 +1058,12 @@ async def run_actor_db_xlsx(mode: str, *, limit: int = 5000, overwrite: bool = F
                       空标签段（标签:）等，能抽出生涯/maggie 的先抽出再清
 
     overwrite:
-      仅 fill_minnano 生效。False=只补空缺（运行时维护）；True=用 minnano 数据覆盖
-      已有生日/简介（出厂库重建用）。
+      仅 fill_minnano 与 sync_aliases 生效。
+      fill_minnano: False=只补空缺（运行时维护）；True=用 minnano 数据覆盖已有生日/简介。
+      sync_aliases: False=只处理别名列为空的条目；True=所有条目都并入来源别名（不覆盖本地）。
+
+    alias_source:
+      仅 sync_aliases 生效。'tmdb'=从 TMDB 同步（需 API Key）；'avwiki'=从 AVWikiDB 同步。
 
     offset:
       跳过数据文件前 offset 行（不含表头）再扫描，配合 limit 实现分片推进，
@@ -1103,7 +1114,7 @@ async def run_actor_db_xlsx(mode: str, *, limit: int = 5000, overwrite: bool = F
             if not href:
                 rows_to_process.append((jp, tmdbid, row_idx))
         elif mode == "sync_aliases":
-            if not str(row[3] or "").strip():
+            if overwrite or not str(row[3] or "").strip():
                 rows_to_process.append((jp, tmdbid, row_idx))
         elif mode == "fill_minnano":
             birth = str(row[7] or "").strip() if len(row) > 7 else ""
@@ -1272,25 +1283,34 @@ async def run_actor_db_xlsx(mode: str, *, limit: int = 5000, overwrite: bool = F
                     else:
                         _log_line(f"  ⚠️ {jp} 未在 LibreDMM 找到链接")
 
-                elif mode == "sync_aliases" and base_url and tmdb_api_key:
-                    from mdcx.core.tmdb_actor import query_single_actor_cached
+                elif mode == "sync_aliases":
+                    if alias_source == "avwiki":
+                        from ..core.tmdb_actor import fetch_avwiki_aliases
 
-                    query_result = await query_single_actor_cached(jp, base_url, tmdb_api_key, client)
-                    if query_result:
-                        new_keywords = _merge_keyword_values(
-                            query_result.get("name", ""),
-                            query_result.get("original_name", ""),
-                            query_result.get("also_known_as", []),
-                        )
+                        new_keywords = ",".join(await fetch_avwiki_aliases(jp))
+                    elif base_url and tmdb_api_key:
+                        from mdcx.core.tmdb_actor import query_single_actor_cached
 
+                        query_result = await query_single_actor_cached(jp, base_url, tmdb_api_key, client)
+                        if query_result:
+                            new_keywords = _merge_keyword_values(
+                                query_result.get("name", ""),
+                                query_result.get("original_name", ""),
+                                query_result.get("also_known_as", []),
+                            )
+                        else:
+                            new_keywords = ""
+                            _log_line(f"  ⚠️ {jp} TMDB 未查询到数据")
+                    else:
+                        new_keywords = ""
+
+                    if new_keywords:
                         existing_kw = str(ws.cell(row=row_idx, column=4).value or "").strip()
                         existing_set = {k.strip() for k in existing_kw.split(",") if k.strip()}
                         merged_set = existing_set | {k for k in new_keywords.split(",") if k.strip()}
                         ws.cell(row=row_idx, column=4, value=",".join(sorted(merged_set)))
                         new_count = len([k for k in new_keywords.split(",") if k.strip()])
                         _log_line(f"  ✅ {jp}: 别名已同步 ({new_count} 个)")
-                    else:
-                        _log_line(f"  ⚠️ {jp} TMDB 未查询到数据")
 
                 elif mode == "fill_minnano":
                     from mdcx.tools.minnano_crawler import _clean_alias, _search_minnano_by_name, parse_minnano_page

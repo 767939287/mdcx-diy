@@ -871,7 +871,7 @@ class Ui_MDCx(object):
         self.checkBox_create_link.setMinimumSize(QtCore.QSize(0, 30))
         self.checkBox_create_link.setObjectName("checkBox_create_link")
         self.groupBox_actor_db_maintenance = QtWidgets.QGroupBox(parent=self.scrollAreaWidgetContents_gongju)
-        self.groupBox_actor_db_maintenance.setGeometry(QtCore.QRect(30, 130, 701, 410))
+        self.groupBox_actor_db_maintenance.setGeometry(QtCore.QRect(30, 130, 701, 445))
         self.groupBox_actor_db_maintenance.setObjectName("groupBox_actor_db_maintenance")
         self.label_actor_db_desc = QtWidgets.QLabel(parent=self.groupBox_actor_db_maintenance)
         self.label_actor_db_desc.setGeometry(QtCore.QRect(40, 30, 621, 40))
@@ -884,13 +884,6 @@ class Ui_MDCx(object):
         self.pushButton_actor_db_link = QtWidgets.QPushButton(parent=self.groupBox_actor_db_maintenance)
         self.pushButton_actor_db_link.setGeometry(QtCore.QRect(260, 80, 200, 32))
         self.pushButton_actor_db_link.setObjectName("pushButton_actor_db_link")
-        self.pushButton_actor_db_sync_aliases = QtWidgets.QPushButton(parent=self.groupBox_actor_db_maintenance)
-        self.pushButton_actor_db_sync_aliases.setGeometry(QtCore.QRect(480, 80, 200, 32))
-        self.pushButton_actor_db_sync_aliases.setObjectName("pushButton_actor_db_sync_aliases")
-        self.label_actor_db_sync_aliases_desc = QtWidgets.QLabel(parent=self.groupBox_actor_db_maintenance)
-        self.label_actor_db_sync_aliases_desc.setGeometry(QtCore.QRect(480, 120, 200, 20))
-        self.label_actor_db_sync_aliases_desc.setStyleSheet("color: rgb(160, 160, 160); font-size: 11px;")
-        self.label_actor_db_sync_aliases_desc.setObjectName("label_actor_db_sync_aliases_desc")
         self.label_actor_db_translate_desc = QtWidgets.QLabel(parent=self.groupBox_actor_db_maintenance)
         self.label_actor_db_translate_desc.setGeometry(QtCore.QRect(40, 120, 200, 20))
         self.label_actor_db_translate_desc.setStyleSheet("color: rgb(160, 160, 160); font-size: 11px;")
@@ -955,6 +948,22 @@ class Ui_MDCx(object):
         self.label_actor_db_update_nfo_desc.setStyleSheet("color: rgb(160, 160, 160); font-size: 11px;")
         self.label_actor_db_update_nfo_desc.setWordWrap(True)
         self.label_actor_db_update_nfo_desc.setObjectName("label_actor_db_update_nfo_desc")
+        self.pushButton_actor_db_sync_aliases = QtWidgets.QPushButton(parent=self.groupBox_actor_db_maintenance)
+        self.pushButton_actor_db_sync_aliases.setGeometry(QtCore.QRect(40, 380, 200, 32))
+        self.pushButton_actor_db_sync_aliases.setObjectName("pushButton_actor_db_sync_aliases")
+        self.comboBox_actor_db_alias_source = QtWidgets.QComboBox(parent=self.groupBox_actor_db_maintenance)
+        self.comboBox_actor_db_alias_source.setGeometry(QtCore.QRect(260, 380, 140, 32))
+        self.comboBox_actor_db_alias_source.setObjectName("comboBox_actor_db_alias_source")
+        self.comboBox_actor_db_alias_source.addItem("")
+        self.comboBox_actor_db_alias_source.addItem("")
+        self.checkBox_actor_db_alias_all = QtWidgets.QCheckBox(parent=self.groupBox_actor_db_maintenance)
+        self.checkBox_actor_db_alias_all.setGeometry(QtCore.QRect(420, 380, 180, 32))
+        self.checkBox_actor_db_alias_all.setObjectName("checkBox_actor_db_alias_all")
+        self.label_actor_db_sync_aliases_desc = QtWidgets.QLabel(parent=self.groupBox_actor_db_maintenance)
+        self.label_actor_db_sync_aliases_desc.setGeometry(QtCore.QRect(40, 420, 621, 20))
+        self.label_actor_db_sync_aliases_desc.setStyleSheet("color: rgb(160, 160, 160); font-size: 11px;")
+        self.label_actor_db_sync_aliases_desc.setWordWrap(True)
+        self.label_actor_db_sync_aliases_desc.setObjectName("label_actor_db_sync_aliases_desc")
         self.groupBox_cover_backfill = QtWidgets.QGroupBox(parent=self.scrollAreaWidgetContents_gongju)
         self.groupBox_cover_backfill.setGeometry(QtCore.QRect(30, 1032, 701, 200))
         self.groupBox_cover_backfill.setObjectName("groupBox_cover_backfill")
@@ -12050,8 +12059,6 @@ class Ui_MDCx(object):
         )
         self.pushButton_actor_db_translate.setText(_translate("MDCx", "补全中文名"))
         self.pushButton_actor_db_link.setText(_translate("MDCx", "补全 LibreDMM 链接"))
-        self.pushButton_actor_db_sync_aliases.setText(_translate("MDCx", "补全别名"))
-        self.label_actor_db_sync_aliases_desc.setText(_translate("MDCx", "仅补全缺别名的条目（已有别名的行跳过）"))
         self.label_actor_db_translate_desc.setText(_translate("MDCx", "扫描已有 TMDB ID 缺中文名的条目"))
         self.label_actor_db_link_desc.setText(_translate("MDCx", "扫描已有 TMDB ID 缺链接的条目"))
         self.pushButton_actor_db_open.setText(_translate("MDCx", "打开演员数据库"))
@@ -12102,6 +12109,25 @@ class Ui_MDCx(object):
         self.pushButton_actor_db_update_nfo_tmdbid.setText(_translate("MDCx", "更新 nfo tmdbid"))
         self.label_actor_db_update_nfo_desc.setText(
             _translate("MDCx", "用本地库新 id 覆盖 nfo 旧 id；原本没有的补上（nfo 是持久源，改这里 Emby 重扫才一致）")
+        )
+        self.pushButton_actor_db_sync_aliases.setToolTip(
+            _translate(
+                "MDCx",
+                "从所选来源（TMDB / AVWikiDB）同步别名到 keyword 列。默认仅处理别名列为空的条目；勾选「全量更新」后所有条目都并入来源别名（不覆盖本地已有别名）。",
+            )
+        )
+        self.pushButton_actor_db_sync_aliases.setText(_translate("MDCx", "补全别名"))
+        self.comboBox_actor_db_alias_source.setItemText(0, _translate("MDCx", "TMDB"))
+        self.comboBox_actor_db_alias_source.setItemText(1, _translate("MDCx", "AVWikiDB"))
+        self.checkBox_actor_db_alias_all.setToolTip(
+            _translate("MDCx", "勾选后对全部条目补别名（含已有别名的行），并入不覆盖本地已有别名。")
+        )
+        self.checkBox_actor_db_alias_all.setText(_translate("MDCx", "全量更新（并入）"))
+        self.label_actor_db_sync_aliases_desc.setText(
+            _translate(
+                "MDCx",
+                "来源 TMDB 需配置 API Key；AVWikiDB 需能访问该站点。默认仅补缺别名的行，勾选「全量更新」则并入全部行",
+            )
         )
         self.groupBox_cover_backfill.setTitle(
             _translate("MDCx", "封面补图（按番号补齐缺失的封面、缩略图，复用当前配置的各项规则）")
@@ -13437,7 +13463,7 @@ class Ui_MDCx(object):
                 "\n"
                 "<h4>九、工具页面</h4>\n"
                 " <ul>\n"
-                " <li><b>演员库维护</b>：直接操作 actor_database.xlsx。补全中文名（按 TMDB ID 补翻译）、补全 LibreDMM 链接、补全别名（仅补缺别名的条目，已有别名的行跳过）、打开数据库（用默认程序打开 xlsx 供手工编辑）、剔除男演员（按 TMDB 性别删除男优）、校验 tmdbid 有效性（清除 TMDB 失效 id 并按名字重搜补回）、更新 nfo tmdbid（用本地库新 id 覆盖 nfo 旧 id）。网络请求自动并发，进度实时显示。</li>\n"
+                " <li><b>演员库维护</b>：直接操作 actor_database.xlsx。补全中文名（按 TMDB ID 补翻译）、补全 LibreDMM 链接、补全别名（可选来源：TMDB 或 AVWikiDB；默认仅补缺别名的条目，勾选「全量更新」则并入全部行，不覆盖本地已有别名）、minnano 补全（从 minnano-av 补缺生日/简介，日文字段自动翻译）、检查用户库（扫描格式/结构/数据异常并弹窗报告，安全项可一键自动修复，tmdb 项给人工修复步骤）、打开数据库（用默认程序打开 xlsx 供手工编辑）、剔除男演员（按 TMDB 性别删除男优）、校验 tmdbid 有效性（清除 TMDB 失效 id 并按名字重搜补回）、更新 nfo tmdbid（用本地库新 id 覆盖 nfo 旧 id）。网络请求自动并发，进度实时显示。</li>\n"
                 " <li><b>Emby 演员管理器</b>：填写 Emby 地址和 API 密钥后连接服务器，获取演员列表并按媒体库筛选；从 Gfriends / graphis.ne.jp / minnano-av / 本地文件夹匹配头像和背景图，从本地演员库 / 维基百科 / minnano-av / 数据库匹配简介和出生日期，预览后批量同步到 Emby。支持仅补缺失或强制重新获取。</li>\n"
                 " <li><b>单文件刮削</b>：指定某个文件的番号网址进行刮削，当存在相同番号时可手工指定。</li>\n"
                 " <li><b>封面补图</b>：输入番号（多个用空格分隔），自动刮削并补齐缺失的 poster.jpg 和 thumb.jpg，复用当前配置的站点优先级、命名、裁切、水印规则。</li>\n"

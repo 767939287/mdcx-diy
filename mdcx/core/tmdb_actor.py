@@ -1498,6 +1498,76 @@ async def fetch_libredmm_link(actor_name: str) -> str:
     return ""
 
 
+# ============= AVWikiDB 别名查询 =============
+
+_avwiki_rate_limiter = _TmdbRateLimiter(rate=1.5, burst=3, min_rate=0.3, max_rate=3.0)
+_avwiki_session: Any = None
+
+
+async def fetch_avwiki_aliases(actor_name: str) -> list[str]:
+    """从 AVWikiDB 查询演员别名，未找到或匹配失败返回空列表。
+
+    流程：
+      1. 搜索页 https://avwikidb.com/actor/search/?q={name}，取首个 actor 详情链接
+      2. 抓详情页解析 h1 主名与「別名:」字段
+      3. 防错：详情页主名与查询名的规范化变体无交集时视为错配，返回空
+
+    使用模块级共享会话 + 独立限流器，与 LibreDMM 同等保守。
+    """
+    global _avwiki_session
+    if not actor_name or not actor_name.strip():
+        return []
+
+    search_url = "https://avwikidb.com/actor/search/"
+    params = {"q": actor_name.strip()}
+    headers = {"Accept-Language": "ja-JP,ja;q=0.9,en;q=0.8"}
+
+    await _avwiki_rate_limiter.acquire()
+    status_code = 0
+    try:
+        if _avwiki_session is None:
+            _avwiki_session = AsyncSession(impersonate="safari15_5", timeout=15)
+        resp = await _avwiki_session.get(search_url, params=params, headers=headers)
+        status_code = int(resp.status_code)
+        if status_code != 200:
+            return []
+
+        sel = Selector(resp.text)
+        actor_href = sel.css("main ul li:first-child a::attr(href)").get()
+        if not actor_href:
+            return []
+        detail_url = actor_href if actor_href.startswith("http") else f"https://avwikidb.com{actor_href}"
+
+        await _avwiki_rate_limiter.finish(status_code)
+        status_code = 0
+        resp2 = await _avwiki_session.get(detail_url, headers=headers)
+        status_code = int(resp2.status_code)
+        if status_code != 200:
+            return []
+
+        sel2 = Selector(resp2.text)
+        main_name = (sel2.css("h1.text-xl::text").get() or "").strip()
+        aliases = [a.strip() for a in sel2.css('p:contains("別名") a::text').getall() if a.strip()]
+        if not aliases:
+            return []
+
+        # 防错：主名与查询名规范化变体需有交集，否则视为搜索错配
+        query_variants = _norm_name_set([actor_name])
+        if main_name:
+            main_variants = _norm_name_set([main_name])
+            if not (query_variants & main_variants):
+                return []
+
+        return aliases
+    except Exception:
+        import traceback
+
+        LogBuffer.log().write(f"[tmdb_actor] AVWikiDB 查询失败: {traceback.format_exc()}")
+        return []
+    finally:
+        await _avwiki_rate_limiter.finish(status_code)
+
+
 # ============= TMDB 翻译过滤 =============
 
 _INVALID_TRANSLATIONS = frozenset(
