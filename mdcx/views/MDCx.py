@@ -12056,12 +12056,12 @@ class Ui_MDCx(object):
         self.pushButton_actor_db_fill_minnano.setToolTip(
             _translate(
                 "MDCx",
-                "从 minnano-av 补全缺生日/简介的条目（已有生日且简介非空的行跳过）。只补空缺，不覆盖已有值，作用于当前用户演员库。需联网。",
+                "从 minnano-av 补全缺生日/简介的条目（已有生日且简介非空的行跳过）。只补空缺，不覆盖已有值，作用于当前用户演员库。补全时会将出身/爱好/事务所/标签等日文字段翻译成中文（事务所/标签优先用内置信息库映射，其余用已配置的翻译引擎）。需联网。",
             )
         )
         self.pushButton_actor_db_fill_minnano.setText(_translate("MDCx", "minnano 补全"))
         self.label_actor_db_fill_minnano_desc.setText(
-            _translate("MDCx", "从 minnano-av 补全缺生日/简介的条目（只补空缺）")
+            _translate("MDCx", "从 minnano-av 补全缺生日/简介，日文字段自动翻译")
         )
         self.pushButton_actor_db_verify_tmdbid.setToolTip(
             _translate(

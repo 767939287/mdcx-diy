@@ -16,6 +16,7 @@ import aiohttp
 import zhconv
 from lxml import etree
 
+from ..config.manager import manager
 from ..config.resources import (
     COL_BIO,
     COL_BIRTH_DATE,
@@ -629,6 +630,117 @@ def _resolve_bio_from_parsed(parsed: dict | None, orig_bio: str, jp: str) -> tup
     return "", ""
 
 
+# 简介中可直接用 info 库映射翻译的字段（优先 info，未命中再调翻译引擎）
+_INFO_MAPPED_FIELDS = ("事务所", "标签")
+# 简介中直接调翻译引擎的字段
+_ENGINE_FIELDS = ("出身", "爱好")
+# 非文本字段（数值/字母，不翻译）
+_NON_TEXT_FIELDS = ("身高", "罩杯", "三围", "血型", "生涯", "出道")
+
+
+async def _translate_bio_text_fields(bio: str) -> str:
+    """翻译结构化简介的日文文本字段（出身/爱好/事务所/标签）。
+
+    - 出身/爱好：直接用运行时翻译引擎（info 库无映射）
+    - 事务所/标签：先用 info 库映射（get_info_data → zh_cn），未命中再调翻译引擎
+    - 单字段翻译失败保留原文；翻译引擎不可用则整体原样返回。
+    """
+    if not bio or not _is_structured_bio(bio):
+        return bio
+
+    from ..config.enums import Language
+
+    translate_by = manager.config.translate_config.translate_by
+    if not translate_by:
+        return bio
+
+    def _needs_translate(value: str) -> bool:
+        """判断字段值是否需要翻译：含假名，或非简体中文（繁体/日文汉字）。"""
+        if re.search(r"[ぁ-んァ-ヶ]", value):
+            return True
+        return zhconv.convert(value, "zh-hans") != value
+
+    async def _translate_via_engine(text: str) -> str | None:
+        """遍历用户配置的翻译引擎，第一个成功的生效（与刮削翻译一致）。"""
+        import random
+
+        from ..base.translate import get_translator_skip_reason, translate_with_engine
+
+        engines = list(translate_by)
+        random.shuffle(engines)
+        for each in engines:
+            if get_translator_skip_reason(each):
+                continue
+            try:
+                result = await translate_with_engine(
+                    each, text, "", title_language=Language.ZH_CN, outline_language=Language.ZH_CN
+                )
+                if result and not result.error and result.title and result.title.strip() != text:
+                    return result.title.strip()
+            except Exception:
+                continue
+        return None
+
+    segs = bio.split("|")
+    new_segs: list[str] = []
+    changed = False
+    for seg in segs:
+        seg = seg.strip()
+        m = re.match(r"^([^\s:：]+)[:：]\s*(.*)$", seg)
+        if not m:
+            new_segs.append(seg)
+            continue
+        field = m.group(1).strip()
+        value = m.group(2).strip()
+        if not value or field in _NON_TEXT_FIELDS:
+            new_segs.append(seg)
+            continue
+        if not _needs_translate(value):
+            new_segs.append(seg)
+            continue
+        translated = None
+        if field in _INFO_MAPPED_FIELDS:
+            # 标签字段：逐词用 info 库映射；事务所：整体映射
+            if field == "标签":
+                new_tags = []
+                tag_changed = False
+                for t in value.split(","):
+                    t = t.strip()
+                    if not t:
+                        continue
+                    info = resources.get_info_data(t)
+                    zh = info.get("zh_cn") if info.get("has_name") else None
+                    if zh and zh != t:
+                        new_tags.append(zh)
+                        tag_changed = True
+                    else:
+                        new_tags.append(t)
+                if tag_changed:
+                    new_segs.append(f"{field}: {','.join(new_tags)}")
+                    changed = True
+                    continue
+                else:
+                    new_segs.append(seg)
+                    continue
+            else:
+                info = resources.get_info_data(value)
+                zh = info.get("zh_cn") if info.get("has_name") else None
+                if zh and zh != value:
+                    new_segs.append(f"{field}: {zh}")
+                    changed = True
+                    continue
+        # 调翻译引擎（info 未命中或出身/爱好）
+        translated = await _translate_via_engine(value)
+        if translated:
+            new_segs.append(f"{field}: {translated}")
+            changed = True
+        else:
+            new_segs.append(seg)
+    if changed:
+        return " | ".join(s for s in new_segs if s)
+    return bio
+
+
 async def run_actor_db_xlsx(mode: str, *, limit: int = 5000, overwrite: bool = False, offset: int = 0) -> None:
     """直接扫描 actor_database.xlsx 执行维护，无需演员名单。
 
@@ -901,6 +1013,8 @@ async def run_actor_db_xlsx(mode: str, *, limit: int = 5000, overwrite: bool = F
                     #    fallback 本地 reformat 原简介；再提不出 → 清洗原简介残留
                     new_bio, source = _resolve_bio_from_parsed(parsed, orig_bio, jp)
                     if source:
+                        # 翻译日文文本字段（出身/爱好/事务所/标签）：info 库优先，引擎兜底
+                        new_bio = await _translate_bio_text_fields(new_bio)
                         ws.cell(row=row_idx, column=COL_BIO + 1, value=new_bio)
 
                     # 2) 别名并入 keyword（minnano 查到才并入，只并入不覆盖，大小写不敏感去重）
