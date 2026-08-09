@@ -22,7 +22,7 @@ from curl_cffi.requests.exceptions import ConnectionError, RequestException, Tim
 from curl_cffi.requests.session import HttpMethod
 
 try:
-    from curl_cffi.requests.utils import not_set
+    from curl_cffi.requests.utils import not_set  # type: ignore[attr-defined, no-redef]
 except ImportError:  # curl_cffi >= 0.12 renamed the sentinel to NOT_SET
     from curl_cffi.requests.utils import NOT_SET as not_set  # type: ignore[attr-defined, no-redef]
 from PIL import Image
