@@ -1146,6 +1146,10 @@ async def run_actor_db_xlsx(
         rows_to_process = rows_to_process[:limit]
         _log_line(f" ℹ️ 本次限量处理前 {limit} 条，可再次运行继续处理剩余")
 
+    # 显式打印分片参数，便于用户中断后记下行号续跑
+    if offset or (limit and limit < 5000):
+        _log_line(f" 📌 分片参数: offset={offset}, limit={limit if limit else '不限'}")
+
     _log_line(f" 🎬 扫描完成：{len(rows_to_process)} 个演员需要处理 (模式: {mode})")
     if not rows_to_process:
         _log_line(" ✅ 没有需要处理的数据")
@@ -1250,6 +1254,7 @@ async def run_actor_db_xlsx(
         consecutive_successes = 0
         task_iter = iter(enumerate(rows_to_process, 1))
         running_tasks: set[asyncio.Task[None]] = set()
+        task_row_map: dict[asyncio.Task[None], int] = {}  # task → xlsx 行号，用于跟踪续跑位置
 
         async def _process_one(jp, tmdbid, row_idx):
             nonlocal translated_count, linked_count, current_concurrency, consecutive_failures, consecutive_successes
@@ -1310,7 +1315,7 @@ async def run_actor_db_xlsx(
                         merged_set = existing_set | {k for k in new_keywords.split(",") if k.strip()}
                         ws.cell(row=row_idx, column=4, value=",".join(sorted(merged_set)))
                         new_count = len([k for k in new_keywords.split(",") if k.strip()])
-                        _log_line(f"  ✅ {jp}: 别名已同步 ({new_count} 个)")
+                        _log_line(f"  ✅ [行{row_idx}] {jp}: 别名已同步 ({new_count} 个)")
 
                 elif mode == "fill_minnano":
                     from mdcx.tools.minnano_crawler import _clean_alias, _search_minnano_by_name, parse_minnano_page
@@ -1378,6 +1383,7 @@ async def run_actor_db_xlsx(
             except StopIteration:
                 return False
             task = asyncio.create_task(_process_one(jp, tmdbid, row_idx))
+            task_row_map[task] = row_idx
             running_tasks.add(task)
             return True
 
@@ -1386,6 +1392,7 @@ async def run_actor_db_xlsx(
 
         total = len(rows_to_process)
         completed = 0
+        last_processed_row: int = 0  # 记录最后一个已完成任务的 xlsx 行号，用于续跑提示
         progress_interval = max(1, total // 10)  # 每 10% 输出一次进度
 
         while running_tasks:
@@ -1409,6 +1416,9 @@ async def run_actor_db_xlsx(
                     break
             for done_task in done:
                 completed += 1
+                row_idx = task_row_map.pop(done_task, 0)
+                if row_idx > last_processed_row:
+                    last_processed_row = row_idx
                 try:
                     done_task.result()
                 except asyncio.CancelledError:
@@ -1428,7 +1438,14 @@ async def run_actor_db_xlsx(
         _ACTOR_DB_ROW_INDEX.clear()
 
     if _is_stop_requested():
-        _log_line(f" ⛔️ 已手动停止：已保存已处理部分 ({completed}/{total})，可再次运行继续处理剩余")
+        # 续跑提示：推荐使用「起始行=已处理末行号-1」，从下一行继续；幂等重扫几行无副作用
+        if last_processed_row:
+            _log_line(
+                f" ⛔️ 已手动停止：已保存已处理部分 ({completed}/{total})，最后处理到 xlsx 第 {last_processed_row} 行。"
+                f"续跑提示：将「起始行」填入 {last_processed_row - 1} 即可从下一行继续（重复并入安全）"
+            )
+        else:
+            _log_line(f" ⛔️ 已手动停止：已保存已处理部分 ({completed}/{total})，可再次运行继续处理剩余")
     else:
         _log_line(f" ✅ 完成: 翻译补全={translated_count}, 链接补全={linked_count} ({get_used_time(start_time)}s)")
 

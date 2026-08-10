@@ -208,13 +208,23 @@ def pushButton_actor_db_sync_aliases_clicked(self):
     self.pushButton_show_log_clicked()
     source = self.Ui.comboBox_actor_db_alias_source.currentText()
     all_rows = self.Ui.checkBox_actor_db_alias_all.isChecked()
+    offset = self.Ui.spinBox_actor_db_sync_offset.value()
+    limit = self.Ui.spinBox_actor_db_sync_limit.value()
+    slice_hint = f"，起始行={offset}，限量={limit if limit > 0 else '不限'}"
     signal_qt.show_log_text(
         f"🔍 开始扫描 actor_database.xlsx：从 {source} 同步别名到 keyword 列"
-        + ("（全量并入）" if all_rows else "（仅补缺别名）")
-        + "..."
+        + ("（全量并入" if all_rows else "（仅补缺别名")
+        + slice_hint
+        + "）..."
     )
     alias_source = "avwiki" if source == "AVWikiDB" else "tmdb"
-    self._run_actor_db_tool("sync_aliases", alias_source=alias_source, overwrite=all_rows)
+    self._run_actor_db_tool(
+        "sync_aliases",
+        alias_source=alias_source,
+        overwrite=all_rows,
+        offset=offset,
+        limit=limit,
+    )
 
 
 def pushButton_actor_db_open_clicked(self):

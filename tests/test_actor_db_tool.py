@@ -388,6 +388,136 @@ async def test_run_actor_db_xlsx_sync_aliases_only_handles_empty(
     assert "新别名" not in str(alias_row[3])
 
 
+@pytest.mark.asyncio
+async def test_run_actor_db_xlsx_sync_aliases_offset_skips_processed_rows(
+    _tmp_actor_db: Path, monkeypatch: pytest.MonkeyPatch, _reset_stop_flags
+):
+    """sync_aliases 的 offset 参数：跳过前 N 个数据行，用于手动中断后的分片续跑。"""
+    from openpyxl import Workbook
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "演员数据库"
+    ws.append(["日文原名", "中文名", "繁体名", "别名", "链接", "tmdbid", "tmdb url", "出生日期", "简介"])
+    # 4 行数据，row_idx=2..5
+    for jp, pid in [("演员A", 21), ("演员B", 22), ("演员C", 23), ("演员D", 24)]:
+        ws.append([jp, "", "", "", "", str(pid), "", "", ""])
+    wb.save(_tmp_actor_db)
+    wb.close()
+
+    monkeypatch.setattr(tmdb_actor.manager.config, "tmdb_api_key", "fake-key")
+    monkeypatch.setattr(tmdb_actor.manager.config, "tmdb_api_base", "api.tmdb.org")
+
+    queried: list[str] = []
+
+    async def fake_query_single_actor_cached(actor_name, base_url, api_key, client):
+        queried.append(actor_name)
+        return {"name": actor_name, "original_name": actor_name, "also_known_as": [f"{actor_name}别名"]}
+
+    monkeypatch.setattr(tmdb_actor, "query_single_actor_cached", fake_query_single_actor_cached)
+
+    # overwrite=True 全量；offset=2 表示跳过前 2 个数据行（演员A/B），从演员C 开始处理
+    await actor_db_tool.run_actor_db_xlsx("sync_aliases", overwrite=True, offset=2)
+
+    # 只处理后两行（演员C/D），演员A/B 不应被请求
+    assert set(queried) == {"演员C", "演员D"}
+    assert len(queried) == 2
+
+    wb = load_workbook(_tmp_actor_db)
+    ws = wb.active
+    rows = list(ws.iter_rows(min_row=2, values_only=True))
+    wb.close()
+    assert str(rows[0][3] or "") == ""  # 演员A 未被处理
+    assert str(rows[1][3] or "") == ""  # 演员B 未被处理
+    assert "演员C别名" in str(rows[2][3])  # 演员C 已处理
+    assert "演员D别名" in str(rows[3][3])  # 演员D 已处理
+
+
+@pytest.mark.asyncio
+async def test_run_actor_db_xlsx_sync_aliases_offset_non_overwrite_double_skip(
+    _tmp_actor_db: Path, monkeypatch: pytest.MonkeyPatch, _reset_stop_flags
+):
+    """非 overwrite（补缺别名）+ offset：offset 跳过 + keyword 非空跳过，双重过滤。
+
+    场景：5 行中 row3 已有别名（自动跳过）、row4 空、row5 空；
+    offset=2 跳过前 2 个数据行（演员甲/已有别名行），
+    剩余 row4/row5 应被处理；offset 有效的作用与 overwrite 开关无关。
+    """
+    from openpyxl import Workbook
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "演员数据库"
+    ws.append(["日文原名", "中文名", "繁体名", "别名", "链接", "tmdbid", "tmdb url", "出生日期", "简介"])
+    ws.append(["演员甲", "", "", "", "", "41", "", "", ""])
+    ws.append(["演员乙", "", "", "已有别名X", "", "42", "", "", ""])
+    ws.append(["演员丙", "", "", "", "", "43", "", "", ""])
+    ws.append(["演员丁", "", "", "", "", "44", "", "", ""])
+    ws.append(["演员戊", "", "", "", "", "45", "", "", ""])
+    wb.save(_tmp_actor_db)
+    wb.close()
+
+    monkeypatch.setattr(tmdb_actor.manager.config, "tmdb_api_key", "fake-key")
+    monkeypatch.setattr(tmdb_actor.manager.config, "tmdb_api_base", "api.tmdb.org")
+
+    queried: list[str] = []
+
+    async def fake_query_single_actor_cached(actor_name, base_url, api_key, client):
+        queried.append(actor_name)
+        return {"name": actor_name, "original_name": actor_name, "also_known_as": [f"{actor_name}新别名"]}
+
+    monkeypatch.setattr(tmdb_actor, "query_single_actor_cached", fake_query_single_actor_cached)
+
+    # 非 overwrite 补缺 + offset=2：跳过演员甲、演员乙；演员丙/丁/戊空别名参与处理
+    await actor_db_tool.run_actor_db_xlsx("sync_aliases", overwrite=False, offset=2)
+
+    # 演员甲（虽空别名）被 offset 拦住；演员乙被"已有别名"拦住；丙丁戊被处理
+    assert set(queried) == {"演员丙", "演员丁", "演员戊"}
+    assert len(queried) == 3  # 无重复请求
+    wb = load_workbook(_tmp_actor_db)
+    ws = wb.active
+    rows = list(ws.iter_rows(min_row=2, values_only=True))
+    wb.close()
+    assert str(rows[0][3] or "") == ""  # 甲 未被处理（offset 跳过)
+    assert str(rows[1][3]) == "已有别名X"  # 乙 别名未被覆盖
+    for i in (2, 3, 4):  # 丙丁戊 已并入新别名
+        assert "新别名" in str(rows[i][3])
+
+
+@pytest.mark.asyncio
+async def test_run_actor_db_xlsx_sync_aliases_offset_limit_slice(
+    _tmp_actor_db: Path, monkeypatch: pytest.MonkeyPatch, _reset_stop_flags
+):
+    """sync_aliases 配合 offset+limit 分片：offset 跳前 N，limit 限本批 N 条。"""
+    from openpyxl import Workbook
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "演员数据库"
+    ws.append(["日文原名", "中文名", "繁体名", "别名", "链接", "tmdbid", "tmdb url", "出生日期", "简介"])
+    for jp, pid in [("演员1", 31), ("演员2", 32), ("演员3", 33), ("演员4", 34), ("演员5", 35)]:
+        ws.append([jp, "", "", "", "", str(pid), "", "", ""])
+    wb.save(_tmp_actor_db)
+    wb.close()
+
+    monkeypatch.setattr(tmdb_actor.manager.config, "tmdb_api_key", "fake-key")
+    monkeypatch.setattr(tmdb_actor.manager.config, "tmdb_api_base", "api.tmdb.org")
+
+    queried: list[str] = []
+
+    async def fake_query_single_actor_cached(actor_name, base_url, api_key, client):
+        queried.append(actor_name)
+        return {"name": actor_name, "original_name": actor_name, "also_known_as": [f"{actor_name}别名"]}
+
+    monkeypatch.setattr(tmdb_actor, "query_single_actor_cached", fake_query_single_actor_cached)
+
+    # 全量 + offset=1 + limit=2 → 跳过演员1，仅处理演员2、演员3；演员4/5 不被本批触及
+    await actor_db_tool.run_actor_db_xlsx("sync_aliases", overwrite=True, offset=1, limit=2)
+
+    assert set(queried) == {"演员2", "演员3"}
+    assert len(queried) == 2
+
+
 def test_is_structured_bio_detects_formatted_and_free_text():
     """_is_structured_bio 应识别统一格式简介，放行自由文本/空文本。"""
     assert actor_db_tool._is_structured_bio("身高: 155cm | 罩杯: F | 三围: 83/58/84")
