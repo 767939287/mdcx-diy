@@ -212,6 +212,27 @@ def _check_name_empty(rows):
     return warnings
 
 
+def _check_delete_rows_front(rows):
+    """删除行（jp=删除）必须全部排在最前面。
+
+    get_info_data 按行顺序匹配、返回第一个命中行：删除行（黑名单）在前才能保证
+    黑名单词优先命中并返回空翻译；若删除行散落在内容行之后，同词会被内容行抢先匹配，
+    导致黑名单失效。
+    """
+    errors = []
+    seen_content = False
+    for idx, row in enumerate(rows, 2):
+        jp = str(row[0] or "").strip()
+        if not jp:
+            continue
+        if jp == DELETE_JP:
+            if seen_content:
+                errors.append(f"  行{idx}: 删除行出现在内容行之后（应全部排在前面）")
+        else:
+            seen_content = True
+    return errors
+
+
 def check_xlsx(xlsx: Path) -> int:
     if not xlsx.exists():
         print(f"[check_info_db] 出厂数据库不存在，跳过: {xlsx}")
@@ -235,6 +256,7 @@ def check_xlsx(xlsx: Path) -> int:
         _check_keyword_format,
         _check_keyword_duplicate,
         _check_cn_duplicate,
+        _check_delete_rows_front,
     ):
         errors.extend(check(rows))
     warnings.extend(_check_name_empty(rows))

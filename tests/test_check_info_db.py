@@ -113,6 +113,39 @@ def test_cn_duplicate_detected():
     assert any("zh_cn 与行" in e and "重复" in e for e in errors)
 
 
+def test_delete_rows_front_pass():
+    """删除行全在前，正常通过。"""
+    rows = [
+        ["删除", "删除", "删除", ",词A,"],
+        ["删除", "删除", "删除", ",词B,"],
+        ["系列A", "系列A", "系列A", ",系列A,"],
+    ]
+    errors = mod._check_delete_rows_front(rows)
+    assert errors == []
+
+
+def test_delete_rows_after_content_detected():
+    """删除行出现在内容行之后应报错（黑名单会失效）。"""
+    rows = [
+        ["系列A", "系列A", "系列A", ",系列A,"],
+        ["删除", "删除", "删除", ",词A,"],
+    ]
+    errors = mod._check_delete_rows_front(rows)
+    assert len(errors) == 1
+    assert "删除行出现在内容行之后" in errors[0]
+
+
+def test_delete_rows_interleaved_detected():
+    """删除行与内容行交错也应报错。"""
+    rows = [
+        ["删除", "删除", "删除", ",词A,"],
+        ["系列A", "系列A", "系列A", ",系列A,"],
+        ["删除", "删除", "删除", ",词B,"],
+    ]
+    errors = mod._check_delete_rows_front(rows)
+    assert len(errors) == 1
+
+
 def test_check_xlsx_returns_zero(tmp_path):
     p = tmp_path / "info_database.xlsx"
     _make_db(p, [["マジックミラー号", "魔镜号", "魔鏡號", ",マジックミラー号,魔镜号,魔鏡號,"]])
