@@ -166,3 +166,12 @@
   - 用户已决定**不再从 AVdb（Jav-Actors-Mapping）同步演员数据**，工具页「从 AVdb 同步」GUI 入口已在 v2.0.5 移除（连带移除其附属的「校验 tmdbid 与名字匹配」复选框）。
   - `sync_from_avdb` 底层函数与 `tests/test_avdb_actor_sync.py`、`tests/test_actor_db_filter_male.py` 保留，供脚本/测试复用，但**不要主动建议用户重新启用 AVdb 同步**。
   - 「剔除男演员」按钮保留——它是运行时男优防线（刮削 `update_actor_db_row` 会把影片男优写入用户库），与 AVdb 无关。
+
+[ruff RUF100 误删 scripts/*.py 顶部防御性 noqa 的坑]
+- Date: 2026-08-10
+- Context: 启用 ruff 自动修复时，RUF100 把 scripts/*.py 顶部 `# ruff: noqa: E402` 判为 unused 删除，导致-imports 失败
+- Category: 工作流协作
+- Instructions:
+  - `scripts/*.py` 顶部的 `# ruff: noqa: E402` 多数是必要的——脚本里有 `sys.path.insert(0, '.')` 等 hack 才能让后续 import 工作。E402 在当前 ruff.toml 没启用，所以 RUF100 觉得 noqa 多余，但保留它们能在未来启用 E402 或修改 per-file-ignores 时不致出错。
+  - 若启用 RUF100 自动修复，**只应用到 `mdcx/` 与 `main.py`**，scripts/ 目录需手动 `git checkout` 回滚。
+  - 探测性 import（try/except ImportError 内 `import xxx` 然后未使用，用于检测包可用性）应显式标注 `# noqa: F401  # 探活`，避免被 F401 误报。已应用：`mdcx/cf_bypass/local_server.py`、`mdcx/config/resources.py`、`mdcx/core/amazon.py`。
