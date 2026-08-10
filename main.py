@@ -19,18 +19,25 @@ ImageFile.LOAD_TRUNCATED_IMAGES = True
 
 
 def _apply_ui_scale_factor():
-    mark_file = MAIN_PATH / "MDCx.config"
-    if not mark_file.is_file():
-        return
-    with open(mark_file, encoding="UTF-8") as f:
-        config_path = f.read().strip()
-    if not config_path or not os.path.isfile(config_path):
-        return
-    with open(config_path, encoding="UTF-8") as f:
-        config = json.load(f)
-    scale = config.get("ui_scale_factor", 0.0)
-    if scale > 0:
-        os.environ["QT_SCALE_FACTOR"] = str(scale)
+    """读取用户配置的 UI 缩放比例并应用到 QT_SCALE_FACTOR。
+
+    在 main() 早期执行，文件不可读/解析失败均不应阻断启动。
+    """
+    try:
+        mark_file = MAIN_PATH / "MDCx.config"
+        if not mark_file.is_file():
+            return
+        with open(mark_file, encoding="UTF-8") as f:
+            config_path = f.read().strip()
+        if not config_path or not os.path.isfile(config_path):
+            return
+        with open(config_path, encoding="UTF-8") as f:
+            config = json.load(f)
+        scale = config.get("ui_scale_factor", 0.0)
+        if scale > 0:
+            os.environ["QT_SCALE_FACTOR"] = str(scale)
+    except (OSError, json.JSONDecodeError, ValueError) as e:
+        print(f"[warn] _apply_ui_scale_factor skipped: {e}")
 
 
 def show_constants():
@@ -98,7 +105,7 @@ def _enable_crash_dump() -> None:
         try:
             crash_path.write_text("", encoding="utf-8")
         except Exception:
-            crash_path = None
+            crash_path = None  # type: ignore[assignment]
 
         def _hook(etype, evalue, etb):
             try:

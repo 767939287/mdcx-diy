@@ -141,7 +141,7 @@ async def _upload_actor_photo(url: str, pic_path: Path) -> tuple[bool, str]:
         return r is not None, err
     except Exception as e:
         signal.show_log_text(traceback.format_exc())
-        return False, f"上传头像失败: {url} {pic_path} {str(e)}"
+        return False, f"上传头像失败: {url} {pic_path} {e!s}"
 
 
 def _generate_server_url(actor_js: dict) -> tuple[str, str, str, str, str, str]:
@@ -549,20 +549,19 @@ def _get_local_actor_photo() -> dict[str, str] | Literal[False]:
         signal.show_log_text("🔴 本地头像库文件夹不存在！补全已停止！")
         signal.show_log_text("================================================================================")
         return False
-    else:
-        local_actor_photo_dic = {}
-        all_files = os.walk(actor_photo_folder)
-        for root, dirs, files in all_files:
-            for file in files:
-                if (file.endswith("jpg") or file.endswith("png")) and file not in local_actor_photo_dic:
-                    pic_path = os.path.join(root, file)
-                    local_actor_photo_dic[file] = pic_path
+    local_actor_photo_dic = {}
+    all_files = os.walk(actor_photo_folder)
+    for root, dirs, files in all_files:
+        for file in files:
+            if (file.endswith("jpg") or file.endswith("png")) and file not in local_actor_photo_dic:
+                pic_path = os.path.join(root, file)
+                local_actor_photo_dic[file] = pic_path
 
-        if not local_actor_photo_dic:
-            signal.show_log_text("🔴 本地头像库文件夹未发现头像图片！请把图片放到文件夹中！")
-            signal.show_log_text("================================================================================")
-            return False
-        return local_actor_photo_dic
+    if not local_actor_photo_dic:
+        signal.show_log_text("🔴 本地头像库文件夹未发现头像图片！请把图片放到文件夹中！")
+        signal.show_log_text("================================================================================")
+        return False
+    return local_actor_photo_dic
 
 
 if __name__ == "__main__":

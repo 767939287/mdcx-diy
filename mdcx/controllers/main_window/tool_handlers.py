@@ -244,9 +244,9 @@ def _open_file_thread(db_path):
     try:
         open_file_thread(Path(db_path), False)
         signal_qt.show_log_text(f"✅ 已打开 actor_database.xlsx: {db_path}")
-    except Exception as e:
+    except Exception:
         signal_qt.show_log_text(
-            f"🔴 无法打开 actor_database.xlsx（{e}）。请先安装 Excel/WPS 或 LibreOffice 等文字处理软件后重试"
+            f"🔴 无法打开 actor_database.xlsx。\n{traceback.format_exc()}\n请先安装 Excel/WPS 或 LibreOffice 等文字处理软件后重试"
         )
 
 

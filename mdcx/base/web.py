@@ -214,7 +214,7 @@ async def _validate_dmm_image_url(url: str, length: bool = False, real_url: bool
                         await asyncio.sleep(0.6 * (retry_attempt + 1))
                         continue
                     signal.add_log(f"🔴 检测链接失败: {error}")
-                    return
+                    return None
 
                 true_url = normalize_media_url(str(response.url), strip_dmm_probe_params=added_probe)
                 if real_url:
@@ -222,11 +222,11 @@ async def _validate_dmm_image_url(url: str, length: bool = False, real_url: bool
 
                 if "login" in true_url:
                     signal.add_log(f"🔴 检测链接失败: 需登录 {true_url}")
-                    return
+                    return None
 
                 if _is_invalid_image_redirect_url(true_url):
                     signal.add_log(f"🔴 检测链接失败: 图片已被网站删除 {true_url}")
-                    return
+                    return None
 
                 if content_length := _parse_content_length(response.headers.get("Content-Length")):
                     signal.add_log(f"✅ 检测链接通过: 返回大小({content_length}) {true_url}")
@@ -242,7 +242,7 @@ async def _validate_dmm_image_url(url: str, length: bool = False, real_url: bool
                     await asyncio.sleep(0.6 * (retry_attempt + 1))
                     continue
                 signal.add_log(f"🔴 检测链接失败: {last_error}")
-                return
+                return None
             except Exception as e:
                 last_error = str(e)
                 if retry_attempt < max_retries - 1:
@@ -250,11 +250,11 @@ async def _validate_dmm_image_url(url: str, length: bool = False, real_url: bool
                     await asyncio.sleep(0.6 * (retry_attempt + 1))
                     continue
                 signal.add_log(f"🔴 检测链接失败: 未知异常 {e} {normalized}")
-                return
+                return None
 
     if last_error:
         signal.add_log(f"🔴 检测链接失败: {last_error}")
-    return
+    return None
 
 
 async def get_url_content_length(url: str) -> int | None:
@@ -333,11 +333,11 @@ async def check_url(url: str, length: bool = False, real_url: bool = False):
         real_url (bool, optional): 直接返回真实 URL 不进行后续检查. Defaults to False.
     """
     if not url:
-        return
+        return None
 
     if "http" not in url:
         signal.add_log(f"🔴 检测链接失败: 格式错误 {url}")
-        return
+        return None
 
     normalized_url = normalize_media_url(url)
     if is_dmm_image_url(normalized_url):
@@ -359,11 +359,11 @@ async def check_url(url: str, length: bool = False, real_url: bool = False):
                         continue
                     else:
                         signal.add_log(f"🔴 检测链接失败: {error}")
-                        return
+                        return None
 
                 # 不输出获取 dmm预览视频(trailer) 最高分辨率的测试结果到日志中
                 if response.status_code == 404 and "_w.mp4" in url:
-                    return
+                    return None
 
                 # 返回重定向的url
                 true_url = normalize_media_url(str(response.url))
@@ -373,14 +373,14 @@ async def check_url(url: str, length: bool = False, real_url: bool = False):
                 # 检查是否需要登录
                 if "login" in true_url:
                     signal.add_log(f"🔴 检测链接失败: 需登录 {true_url}")
-                    return
+                    return None
 
                 # 检查是否带有图片不存在的关键词
                 bad_url_keys = ["now_printing", "nowprinting", "noimage", "nopic", "media_violation"]
                 for each_key in bad_url_keys:
                     if each_key in true_url:
                         signal.add_log(f"🔴 检测链接失败: 图片已被网站删除 {url}")
-                        return
+                        return None
 
                 # 获取文件大小
                 content_length = response.headers.get("Content-Length")
@@ -391,13 +391,12 @@ async def check_url(url: str, length: bool = False, real_url: bool = False):
                     if content is not None and len(content) > 0:
                         signal.add_log(f"✅ 检测链接通过: 预下载成功 {true_url}")
                         return 10240 if length else true_url
-                    else:
-                        signal.add_log(f"🔴 检测链接失败: 未返回大小且预下载失败 {true_url}")
-                        return
+                    signal.add_log(f"🔴 检测链接失败: 未返回大小且预下载失败 {true_url}")
+                    return None
                 # 如果返回内容的文件大小 < 8k，视为不可用
-                elif int(content_length) < 8192:
+                if int(content_length) < 8192:
                     signal.add_log(f"🔴 检测链接失败: 返回大小({content_length}) < 8k {true_url}")
-                    return
+                    return None
 
                 signal.add_log(f"✅ 检测链接通过: 返回大小({content_length}) {true_url}")
                 return int(content_length) if length else true_url
@@ -409,7 +408,7 @@ async def check_url(url: str, length: bool = False, real_url: bool = False):
                     continue
                 else:
                     signal.add_log(f"🔴 检测链接失败: 未知异常 {e} {url}")
-                    return
+                    return None
 
 
 async def get_avsox_domain() -> str:

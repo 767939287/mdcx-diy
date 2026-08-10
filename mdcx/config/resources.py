@@ -5,7 +5,7 @@ import traceback
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-import defusedxml  # noqa: F401 - ensure PyInstaller bundles defusedxml for openpyxl XML parsing
+import defusedxml  # noqa: F401  # 探活：ImportError 时给出友好错误（见 L340 提示）
 import zhconv
 from PyQt6.QtGui import QFontDatabase
 

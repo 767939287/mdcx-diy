@@ -110,7 +110,10 @@ def get_real_url(html, number_list):
     for each in item_list:
         detail_url = each.get("href")
         # lazyload属性容易改变，去掉也能拿到结果
-        title = each.xpath("img[@class]/@alt")[0]
+        titles = each.xpath("img[@class]/@alt")
+        if not titles:
+            continue
+        title = titles[0]
         cover_url = each.xpath(".//img/@data-src")
         if not cover_url:
             cover_url = each.xpath(".//img/@src")

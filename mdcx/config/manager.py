@@ -58,7 +58,7 @@ class ConfigManager:
                 self._replace_config(Config())
             else:
                 logger.error("配置文件 %s 验证失败, 继续使用旧配置: %s", self._path, e)
-            msg = f" 配置文件 {self._path} 验证失败. 错误信息: \n{str(e)}"
+            msg = f" 配置文件 {self._path} 验证失败. 错误信息: \n{e!s}"
             return msg.splitlines()
 
     def handle_v1(self):

@@ -274,7 +274,7 @@ async def translate_title_outline(json_data: CrawlersResult, cd_part: str, movie
     outline_language = manager.config.get_field_config(CrawlerResultFields.OUTLINE).language
     outline_translate = manager.config.get_field_config(CrawlerResultFields.OUTLINE).translate
     if title_language == Language.JP and outline_language == Language.JP:
-        return
+        return None
     trans_title = ""
     trans_outline = ""
     title_is_jp = is_japanese(json_data.title)

@@ -420,7 +420,7 @@ class FileScraper:
                         failed.add(key)
                         continue
                     except Exception as e:
-                        reduced.field_log += f"\n    🔴 {site:<15} (失败: {str(e)})"
+                        reduced.field_log += f"\n    🔴 {site:<15} (失败: {e!s})"
                         failure_reasons.setdefault(site, str(e).strip() or e.__class__.__name__)
                         failed.add(key)
                         continue

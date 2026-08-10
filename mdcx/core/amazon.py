@@ -567,7 +567,7 @@ def _try_extract_amazon_barcode_candidates_via_digit_ocr(image_array: object, de
 def _get_amazon_barcode_detector_skip_reason() -> str:
     try:
         import cv2
-        import numpy  # noqa: F401
+        import numpy  # noqa: F401  # 探活：cv2 调用 numpy 时若缺失则运行时才报错，这里提前探
     except Exception as exc:
         return f"当前环境缺少扫码依赖 opencv-contrib-python-headless ({exc.__class__.__name__}: {exc})"
 
@@ -800,8 +800,7 @@ async def get_big_pic_by_amazon(
                 url=f"https://www.amazon.co.jp/dp/{cache_hit['asin']}",
             )
             return _convert_to_target_size(poster_url)
-        else:
-            LogBuffer.log().write("  缓存无封面 URL，回退搜索获取")
+        LogBuffer.log().write("  缓存无封面 URL，回退搜索获取")
 
     if not originaltitle_amazon and not originaltitle_amazon_raw:
         return ""

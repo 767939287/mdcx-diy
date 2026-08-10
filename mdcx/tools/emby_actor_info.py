@@ -265,10 +265,8 @@ async def _process_actor_async(actor: dict, emby_on: list[EmbyAction]) -> tuple[
                     (8 if local_applied else 0) + wiki_found + (db_exist << 1) + (minnano_found << 2),
                     f"✅ {actor_name} 更新成功.{summary}\n主页: {actor_homepage}",
                 )
-            else:
-                return 0, f"🔴 {actor_name} 更新失败: {error}{summary}"
-        else:
-            return 0, f"🔴 {actor_name}: 未检索到演员信息！跳过！"
+            return 0, f"🔴 {actor_name} 更新失败: {error}{summary}"
+        return 0, f"🔴 {actor_name}: 未检索到演员信息！跳过！"
 
     except ActorTaskStopped:
         raise
@@ -442,84 +440,81 @@ async def _deal_kodi_actors(gfriends_actor_data, add):
     if vedio_path == "" or not await aiofiles.os.path.isdir(vedio_path):
         signal.show_log_text("🔴 待刮削目录不存在！任务已停止！")
         return False
-    else:
-        actor_folder = resources.u("actor")
-        emby_on = manager.config.emby_on
-        all_files = await asyncio.to_thread(os.walk, vedio_path)
-        all_actor = set()
-        success = set()
-        failed = set()
-        download_failed = set()
-        no_pic = set()
-        actor_clear = set()
-        for root, dirs, files in all_files:
-            _raise_if_stop_requested()
-            if not add:
-                for each_dir in dirs:
-                    _raise_if_stop_requested()
-                    if each_dir == ".actors":
-                        kodi_actor_folder = os.path.join(root, each_dir)
-                        await asyncio.to_thread(shutil.rmtree, kodi_actor_folder, ignore_errors=True)
-                        signal.show_log_text(f"✅ 头像文件夹已清理！{kodi_actor_folder}")
-                        actor_clear.add(kodi_actor_folder)
-                continue
-            for file in files:
+    actor_folder = resources.u("actor")
+    emby_on = manager.config.emby_on
+    all_files = await asyncio.to_thread(os.walk, vedio_path)
+    all_actor = set()
+    success = set()
+    failed = set()
+    download_failed = set()
+    no_pic = set()
+    actor_clear = set()
+    for root, dirs, files in all_files:
+        _raise_if_stop_requested()
+        if not add:
+            for each_dir in dirs:
                 _raise_if_stop_requested()
-                if file.lower().endswith(".nfo"):
-                    nfo_path = os.path.join(root, file)
-                    vedio_actor_folder = os.path.join(root, ".actors")
-                    try:
-                        async with aiofiles.open(nfo_path, encoding="utf-8") as f:
-                            content = await f.read()
-                        parser = etree.HTMLParser(encoding="utf-8")
-                        xml_nfo = etree.HTML(content.encode("utf-8"), parser)
-                        actor_list = xml_nfo.xpath("//actor/name/text()")
-                        for each in actor_list:
+                if each_dir == ".actors":
+                    kodi_actor_folder = os.path.join(root, each_dir)
+                    await asyncio.to_thread(shutil.rmtree, kodi_actor_folder, ignore_errors=True)
+                    signal.show_log_text(f"✅ 头像文件夹已清理！{kodi_actor_folder}")
+                    actor_clear.add(kodi_actor_folder)
+            continue
+        for file in files:
+            _raise_if_stop_requested()
+            if file.lower().endswith(".nfo"):
+                nfo_path = os.path.join(root, file)
+                vedio_actor_folder = os.path.join(root, ".actors")
+                try:
+                    async with aiofiles.open(nfo_path, encoding="utf-8") as f:
+                        content = await f.read()
+                    parser = etree.HTMLParser(encoding="utf-8")
+                    xml_nfo = etree.HTML(content.encode("utf-8"), parser)
+                    actor_list = xml_nfo.xpath("//actor/name/text()")
+                    for each in actor_list:
+                        _raise_if_stop_requested()
+                        all_actor.add(each)
+                        actor_name_list = resources.get_actor_data(each)["keyword"]
+                        for actor_name in actor_name_list:
                             _raise_if_stop_requested()
-                            all_actor.add(each)
-                            actor_name_list = resources.get_actor_data(each)["keyword"]
-                            for actor_name in actor_name_list:
-                                _raise_if_stop_requested()
-                                if actor_name:
-                                    net_pic_path = gfriends_actor_data.get(f"{actor_name}.jpg")
-                                    if net_pic_path:
-                                        vedio_actor_path = os.path.join(vedio_actor_folder, each + ".jpg")
-                                        if await aiofiles.os.path.isfile(vedio_actor_path):
-                                            if "actor_replace" not in emby_on:
-                                                success.add(each)
+                            if actor_name:
+                                net_pic_path = gfriends_actor_data.get(f"{actor_name}.jpg")
+                                if net_pic_path:
+                                    vedio_actor_path = os.path.join(vedio_actor_folder, each + ".jpg")
+                                    if await aiofiles.os.path.isfile(vedio_actor_path):
+                                        if "actor_replace" not in emby_on:
+                                            success.add(each)
+                                            continue
+                                    if "https://" in net_pic_path:
+                                        net_file_name = net_pic_path.split("/")[-1]
+                                        net_file_name = re.findall(r"^[^?]+", net_file_name)[0]
+                                        local_file_path = actor_folder / net_file_name
+                                        if not await aiofiles.os.path.isfile(local_file_path):
+                                            if not await download_file_with_filepath(
+                                                net_pic_path, local_file_path, actor_folder
+                                            ):
+                                                signal.show_log_text(f"🔴 {actor_name} 头像下载失败！{net_pic_path}")
+                                                failed.add(each)
+                                                download_failed.add(each)
                                                 continue
-                                        if "https://" in net_pic_path:
-                                            net_file_name = net_pic_path.split("/")[-1]
-                                            net_file_name = re.findall(r"^[^?]+", net_file_name)[0]
-                                            local_file_path = actor_folder / net_file_name
-                                            if not await aiofiles.os.path.isfile(local_file_path):
-                                                if not await download_file_with_filepath(
-                                                    net_pic_path, local_file_path, actor_folder
-                                                ):
-                                                    signal.show_log_text(
-                                                        f"🔴 {actor_name} 头像下载失败！{net_pic_path}"
-                                                    )
-                                                    failed.add(each)
-                                                    download_failed.add(each)
-                                                    continue
-                                        else:
-                                            local_file_path = net_pic_path
-                                        if not await aiofiles.os.path.isdir(vedio_actor_folder):
-                                            await aiofiles.os.mkdir(vedio_actor_folder)
-                                        await copy_file_async(local_file_path, vedio_actor_path)
-                                        signal.show_log_text(f"✅ {actor_name} 头像已创建！ {vedio_actor_path}")
-                                        success.add(each)
-                                        break
-                            else:
-                                signal.show_log_text(f"🔴 {each} 没有头像资源！")
-                                failed.add(each)
-                                no_pic.add(each)
-                    except Exception:
-                        signal.show_traceback_log(traceback.format_exc())
-        if add:
-            signal.show_log_text(
-                f"\n🎉 操作已完成! 共有演员: {len(all_actor)}, 已有头像: {len(success)}, 没有头像: {len(failed)}, 下载失败: {len(download_failed)}, 没有资源: {len(no_pic)}"
-            )
-        else:
-            signal.show_log_text(f"\n🎉 操作已完成! 共清理了 {len(actor_clear)} 个 .actors 文件夹!")
-        return
+                                    else:
+                                        local_file_path = net_pic_path
+                                    if not await aiofiles.os.path.isdir(vedio_actor_folder):
+                                        await aiofiles.os.mkdir(vedio_actor_folder)
+                                    await copy_file_async(local_file_path, vedio_actor_path)
+                                    signal.show_log_text(f"✅ {actor_name} 头像已创建！ {vedio_actor_path}")
+                                    success.add(each)
+                                    break
+                        else:
+                            signal.show_log_text(f"🔴 {each} 没有头像资源！")
+                            failed.add(each)
+                            no_pic.add(each)
+                except Exception:
+                    signal.show_traceback_log(traceback.format_exc())
+    if add:
+        signal.show_log_text(
+            f"\n🎉 操作已完成! 共有演员: {len(all_actor)}, 已有头像: {len(success)}, 没有头像: {len(failed)}, 下载失败: {len(download_failed)}, 没有资源: {len(no_pic)}"
+        )
+    else:
+        signal.show_log_text(f"\n🎉 操作已完成! 共清理了 {len(actor_clear)} 个 .actors 文件夹!")
+    return None

@@ -46,7 +46,7 @@ def load_v1(path: str | Path) -> tuple[dict[str, Any], list[str]]:
                 else:
                     errors.append(f"内部错误: {key} 具有未知类型 {expected_type} (位于 {section}), 请联系开发者")
             except Exception as e:
-                errors.append(f"读取配置错误: {key} (位于 {section}) {value=}  {str(e)}")
+                errors.append(f"读取配置错误: {key} (位于 {section}) {value=}  {e!s}")
     d["unknown_fields"] = unknown_fields
     return d, errors
 
@@ -55,10 +55,9 @@ def ini_value_to_bool(value: str) -> bool:
     """将 ini 配置文件中的字符串值转换为布尔值"""
     if value.lower() in ["true", "1", "yes", "on"]:
         return True
-    elif value.lower() in ["false", "0", "no", "off"]:
+    if value.lower() in ["false", "0", "no", "off"]:
         return False
-    else:
-        return bool(value)
+    return bool(value)
 
 
 @dataclass

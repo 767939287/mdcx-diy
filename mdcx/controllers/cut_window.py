@@ -275,7 +275,7 @@ class CutWindow(QDialog):
         self.cut_thumb_path = None  # 裁剪后的thumb路径
         self.cut_poster_path = None  # 裁剪后的poster路径
         self.cut_fanart_path = None  # 裁剪后的fanart路径
-        self.Ui.label_origin_size.setText(str(f"{str(self.pic_w)}, {str(self.pic_h)}"))  # 显示原图尺寸
+        self.Ui.label_origin_size.setText(str(f"{self.pic_w!s}, {self.pic_h!s}"))  # 显示原图尺寸
 
         # 获取水印设置
         poster_mark = manager.config.poster_mark
@@ -288,7 +288,7 @@ class CutWindow(QDialog):
             pic = QPixmap(img_path.as_posix())
             self.pic_w = pic.width()
             self.pic_h = pic.height()
-            self.Ui.label_origin_size.setText(str(f"{str(self.pic_w)}, {str(self.pic_h)}"))  # 显示原图尺寸
+            self.Ui.label_origin_size.setText(str(f"{self.pic_w!s}, {self.pic_h!s}"))  # 显示原图尺寸
             self.pic_h_w_ratio = self.pic_h / self.pic_w  # 原图高宽比
             # abc = int((self.rect_h_w_ratio - 1) * 10000)
             # self.Ui.horizontalSlider_left.setValue(abc)  # 裁剪框左侧调整条的值（最大10000）
@@ -415,10 +415,10 @@ class CutWindow(QDialog):
         c_h = self.c_y2 - self.c_y
 
         # 显示实际裁剪位置
-        self.Ui.label_cut_postion.setText(f"{str(self.c_x)}, {str(self.c_y)}, {str(self.c_x2)}, {str(self.c_y2)}")
+        self.Ui.label_cut_postion.setText(f"{self.c_x!s}, {self.c_y!s}, {self.c_x2!s}, {self.c_y2!s}")
 
         # 显示实际裁剪尺寸
-        self.Ui.label_cut_size.setText(f"{str(c_w)}, {str(c_h)}")
+        self.Ui.label_cut_size.setText(f"{c_w!s}, {c_h!s}")
 
         return self.c_x, self.c_y, self.c_x2, self.c_y2
 
@@ -441,7 +441,7 @@ class CutWindow(QDialog):
             or not self.cut_poster_path
             or not self.cut_fanart_path
         ):
-            return
+            return None
         self.main_window.img_path = img_path  # 裁剪后更新图片url，这样再次点击时才可以重新加载并裁剪
 
         # 读取配置信息

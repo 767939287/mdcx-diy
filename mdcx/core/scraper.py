@@ -507,7 +507,7 @@ class Scraper:
                 Flags.remain_list.remove(file_path)
                 Flags.can_save_remain = True
             except Exception as e1:
-                signal.show_log_text(f"remove:  {file_path}\n {str(e1)}\n {traceback.format_exc()}")
+                signal.show_log_text(f"remove:  {file_path}\n {e1!s}\n {traceback.format_exc()}")
         except Exception as exc:
             self._check_stop(show_name)
             signal.show_traceback_log(traceback.format_exc())
@@ -1026,9 +1026,8 @@ class Scraper:
                     )  # 清理旧的thumb、poster、fanart、nfo
                 await save_success_list(file_path, file_new_path)  # 保存成功列表
                 return res, other
-            else:
-                # 返回MDCx1_1main, 继续处理下一个文件
-                return None, None
+            # 返回MDCx1_1main, 继续处理下一个文件
+            return None, None
 
         # 清理旧的thumb、poster、fanart、extrafanart、nfo
         pic_final_catched = False

@@ -140,11 +140,10 @@ def getOutline(html):
     # 去掉无意义的简介(马赛克破坏版)，'克破'两字简繁同形
     if not result or "克破" in result:
         return ""
-    else:
-        # 去除简介中的无意义信息，中间和首尾的空白字符、简介两字、*根据分发等
-        result = re.sub(r"[\r\n\t]", "", result)
-        result = _OUTLINE_PREFIX_PATTERN.sub("", result)
-        result = result.split("*根据分发", 1)[0].strip()
+    # 去除简介中的无意义信息，中间和首尾的空白字符、简介两字、*根据分发等
+    result = re.sub(r"[\r\n\t]", "", result)
+    result = _OUTLINE_PREFIX_PATTERN.sub("", result)
+    result = result.split("*根据分发", 1)[0].strip()
     return result
 
 
@@ -208,8 +207,12 @@ def get_real_url(html, number):
     #     number1 = ' ' + number.replace('FC2', '').replace('-PPV', '')
     item_list = html.xpath('//span[@class="title"]')
     for each in item_list:
-        detail_url = each.xpath("./a/@href")[0]
-        title = each.xpath("./a/@title")[0]
+        hrefs = each.xpath("./a/@href")
+        titles = each.xpath("./a/@title")
+        if not hrefs or not titles:
+            continue
+        detail_url = hrefs[0]
+        title = titles[0]
         # 注意去除马赛克破坏版等几乎没有有效字段的条目
         if number.upper() in title and all(
             keyword not in title for keyword in ["克破", "无码破解", "無碼破解", "无码流出", "無碼流出"]

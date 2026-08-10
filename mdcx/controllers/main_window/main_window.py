@@ -150,7 +150,7 @@ class MyMAinWindow(QMainWindow):
     pushButton_actor_db_verify_tmdbid = pyqtSignal(str)
     pushButton_actor_db_check = pyqtSignal(str)
     pushButton_actor_db_update_nfo_tmdbid = pyqtSignal(str)
-    actor_db_finished = pyqtSignal()
+    actor_db_finished = pyqtSignal(str)  # task_id；空串表示恢复所有按钮
     label_show_version = pyqtSignal(str)
 
     # endregion
@@ -183,6 +183,7 @@ class MyMAinWindow(QMainWindow):
         self.window_border = 0  # 窗口描边，为0时表示显示窗口标题栏
         self.dark_mode = False  # 暗黑模式标识
         self.check_mac = True  # 检测配置目录
+        self._actor_db_running: set[str] = set()  # 正在运行的 actor_db 异步任务的 btn_attr 集合
         # self.window_marjin = 0 窗口外边距，为0时不往里缩
         self.show_flag = True  # 是否加载刷新样式
 
@@ -2620,91 +2621,94 @@ class MyMAinWindow(QMainWindow):
 
         pushButton_actor_db_update_nfo_tmdbid_clicked(self)
 
-    def _run_actor_db_tool(self, mode: str, **kwargs) -> None:
-        """运行演员库维护工具（新模式：直接操作 xlsx，无需名单/NFO）。
+    # btn_attr → 任务完成后按钮应恢复的 idle 文案
+    _ACTOR_DB_IDLE_TEXT_MAP: dict[str, str] = {
+        "actor_db_translate": "补全中文名",
+        "actor_db_link": "补全 LibreDMM 链接",
+        "actor_db_sync_aliases": "补全别名",
+        "actor_db_fill_minnano": "minnano 补全",
+        "actor_db_clean_male": "剔除男演员",
+        "actor_db_verify_tmdbid": "校验 tmdbid 有效性",
+        "actor_db_check": "检查用户库",
+        "actor_db_update_nfo_tmdbid": "更新 nfo tmdbid",
+    }
+    # 由 change_buttons_status/reset_buttons_status 管理的 actor_db 按钮子集；
+    # 这些按钮在主刮削时被禁用、刮削结束后若未在跑 actor_db 任务则被恢复。
+    _ACTOR_DB_SCRAPE_MANAGED: frozenset[str] = frozenset(
+        {"actor_db_translate", "actor_db_link", "actor_db_sync_aliases", "actor_db_fill_minnano"}
+    )
 
-        mode: 'translate' | 'link' | 'sync_aliases'
+    def _run_actor_db_async(
+        self,
+        btn_attr: str,
+        busy_text: str,
+        log_prefix: str,
+        coro_factory,
+    ) -> None:
+        """演员库工具入口的通用模板：按钮防重入 + executor.submit + 完成信号。
+
+        Args:
+            btn_attr: Ui.pushButton_xxx 与 self.pushButton_xxx 共用属性名（无 'pushButton_' 前缀）。
+            busy_text: 按钮按下时的临时文案。
+            log_prefix: 异常日志前缀（如 "演员库维护"、"剔除男演员"、"校验 tmdbid"）。
+            coro_factory: 无参 callable，返回协程。协程内异常会被捕获并 show_log。
         """
-        from mdcx.tools.actor_db_tool import run_actor_db_xlsx
-
-        button_map = {
-            "translate": ("pushButton_actor_db_translate", "补全中文名"),
-            "link": ("pushButton_actor_db_link", "补全 LibreDMM 链接"),
-            "sync_aliases": ("pushButton_actor_db_sync_aliases", "补全别名"),
-            "fill_minnano": ("pushButton_actor_db_fill_minnano", "minnano 补全"),
-        }
-        btn_name, idle_text = button_map[mode]
-        btn = getattr(self.Ui, btn_name)
-
+        btn = getattr(self.Ui, f"pushButton_{btn_attr}")
         if not btn.isEnabled():
             return
 
         btn.setEnabled(False)
-        getattr(self, btn_name).emit("运行中...")
+        getattr(self, f"pushButton_{btn_attr}").emit(busy_text)
+        self._actor_db_running.add(btn_attr)
 
         async def run():
             try:
-                await run_actor_db_xlsx(mode=mode, **kwargs)
+                await coro_factory()
             except Exception as e:
-                signal_qt.show_log_text(f"🔴 演员库维护异常: {e}")
+                signal_qt.show_log_text(f"🔴 {log_prefix}异常: {e}")
                 import traceback as tb
 
                 signal_qt.show_log_text(tb.format_exc())
             finally:
                 # 线程安全：仅发信号，由主线程槽恢复按钮状态
-                self.actor_db_finished.emit()
+                self.actor_db_finished.emit(btn_attr)
 
         executor.submit(run())
+
+    def _run_actor_db_tool(self, mode: str, **kwargs) -> None:
+        """运行演员库维护工具（翻译/链接/别名/minnano 补全），统一走通用模板。"""
+        from mdcx.tools.actor_db_tool import run_actor_db_xlsx
+
+        button_map = {
+            "translate": "actor_db_translate",
+            "link": "actor_db_link",
+            "sync_aliases": "actor_db_sync_aliases",
+            "fill_minnano": "actor_db_fill_minnano",
+        }
+        busy_text = {
+            "translate": "运行中...",
+            "link": "运行中...",
+            "sync_aliases": "运行中...",
+            "fill_minnano": "运行中...",
+        }[mode]
+        self._run_actor_db_async(
+            button_map[mode],
+            busy_text,
+            "演员库维护",
+            lambda: run_actor_db_xlsx(mode=mode, **kwargs),
+        )
 
     def _run_actor_db_clean_male(self) -> None:
         """运行「剔除男演员」存量清洗（按 tmdbid 校验 TMDB gender，删除男优）。"""
         from mdcx.tools.actor_db_tool import clean_male_actors
 
-        btn = self.Ui.pushButton_actor_db_clean_male
-        if not btn.isEnabled():
-            return
-
-        btn.setEnabled(False)
-        self.pushButton_actor_db_clean_male.emit("清洗中...")
-
-        async def run():
-            try:
-                await clean_male_actors()
-            except Exception as e:
-                signal_qt.show_log_text(f"🔴 剔除男演员异常: {e}")
-                import traceback as tb
-
-                signal_qt.show_log_text(tb.format_exc())
-            finally:
-                # 线程安全：仅发信号，由主线程槽恢复按钮状态
-                self.actor_db_finished.emit()
-
-        executor.submit(run())
+        self._run_actor_db_async("actor_db_clean_male", "清洗中...", "剔除男演员", clean_male_actors)
 
     def _run_actor_db_verify_tmdbid(self) -> None:
         """运行「校验 tmdbid 有效性」存量清洗（404 失效 id 清除回无 id 状态）。"""
         from mdcx.tools.actor_db_tool import verify_tmdb_ids
 
-        btn = self.Ui.pushButton_actor_db_verify_tmdbid
-        if not btn.isEnabled():
-            return
-
-        btn.setEnabled(False)
-        self.pushButton_actor_db_verify_tmdbid.emit("校验中...")
-
-        async def run():
-            try:
-                await verify_tmdb_ids()
-            except Exception as e:
-                signal_qt.show_log_text(f"🔴 校验 tmdbid 异常: {e}")
-                import traceback as tb
-
-                signal_qt.show_log_text(tb.format_exc())
-            finally:
-                # 线程安全：仅发信号，由主线程槽恢复按钮状态
-                self.actor_db_finished.emit()
-
-        executor.submit(run())
+        self._run_actor_db_async("actor_db_verify_tmdbid", "校验中...", "校验 tmdbid", verify_tmdb_ids)
 
     def _run_actor_db_check(self) -> None:
         """运行「检查用户库」：对运行库执行格式/结构/数据异常检查，弹窗报告+自动修复安全项。"""
@@ -2721,6 +2725,7 @@ class MyMAinWindow(QMainWindow):
 
         btn.setEnabled(False)
         self.pushButton_actor_db_check.emit("检查中...")
+        self._actor_db_running.add("actor_db_check")
 
         try:
             issues = _check_actor_db_issues(db_path)
@@ -2729,14 +2734,14 @@ class MyMAinWindow(QMainWindow):
             import traceback as tb
 
             signal_qt.show_log_text(tb.format_exc())
-            self._on_actor_db_finished()
+            self._on_actor_db_finished("actor_db_check")
             return
 
         try:
             self._show_actor_db_check_dialog(issues, db_path)
         finally:
             # 弹窗关闭后恢复按钮
-            self._on_actor_db_finished()
+            self._on_actor_db_finished("actor_db_check")
 
     def _show_actor_db_check_dialog(self, issues: dict, db_path: Path) -> None:
         """弹窗展示检查结果：无问题→绿色提示；有问题→红色列表+「自动修复」按钮。"""
@@ -2911,10 +2916,6 @@ class MyMAinWindow(QMainWindow):
 
         from mdcx.tools.actor_db_tool import update_nfo_tmdb_ids
 
-        btn = self.Ui.pushButton_actor_db_update_nfo_tmdbid
-        if not btn.isEnabled():
-            return
-
         dir_text = self.Ui.lineEdit_actor_db_nfo_dir.text().strip()
         if not dir_text:
             signal_qt.show_log_text("🔴 请先选择 nfo 目录")
@@ -2924,21 +2925,12 @@ class MyMAinWindow(QMainWindow):
             signal_qt.show_log_text(f"🔴 nfo 目录不存在: {dir_text}")
             return
 
-        btn.setEnabled(False)
-        self.pushButton_actor_db_update_nfo_tmdbid.emit("更新中...")
-
-        async def run():
-            try:
-                await update_nfo_tmdb_ids(dir_path)
-            except Exception as e:
-                signal_qt.show_log_text(f"🔴 更新 nfo 异常: {e}")
-                import traceback as tb
-
-                signal_qt.show_log_text(tb.format_exc())
-            finally:
-                self.actor_db_finished.emit()
-
-        executor.submit(run())
+        self._run_actor_db_async(
+            "actor_db_update_nfo_tmdbid",
+            "更新中...",
+            "更新 nfo",
+            lambda: update_nfo_tmdb_ids(dir_path),
+        )
 
     def pushButton_actor_db_stop_clicked(self) -> None:
         """停止当前演员库维护任务（独立于主界面刮削停止）。
@@ -2950,24 +2942,30 @@ class MyMAinWindow(QMainWindow):
         signal_qt.stop = True
         signal_qt.show_log_text("⛔️ 已请求停止演员库维护任务，正在保存已处理部分...")
 
-    def _on_actor_db_finished(self) -> None:
-        """主线程恢复演员库维护按钮状态（由 actor_db_finished 信号触发）。"""
-        self.Ui.pushButton_actor_db_translate.setEnabled(True)
-        self.Ui.pushButton_actor_db_link.setEnabled(True)
-        self.Ui.pushButton_actor_db_sync_aliases.setEnabled(True)
-        self.Ui.pushButton_actor_db_fill_minnano.setEnabled(True)
-        self.Ui.pushButton_actor_db_clean_male.setEnabled(True)
-        self.Ui.pushButton_actor_db_verify_tmdbid.setEnabled(True)
-        self.Ui.pushButton_actor_db_check.setEnabled(True)
-        self.Ui.pushButton_actor_db_update_nfo_tmdbid.setEnabled(True)
-        self.pushButton_actor_db_translate.emit("补全中文名")
-        self.pushButton_actor_db_link.emit("补全 LibreDMM 链接")
-        self.pushButton_actor_db_sync_aliases.emit("补全别名")
-        self.pushButton_actor_db_fill_minnano.emit("minnano 补全")
-        self.pushButton_actor_db_clean_male.emit("剔除男演员")
-        self.pushButton_actor_db_verify_tmdbid.emit("校验 tmdbid 有效性")
-        self.pushButton_actor_db_check.emit("检查用户库")
-        self.pushButton_actor_db_update_nfo_tmdbid.emit("更新 nfo tmdbid")
+    def _on_actor_db_finished(self, task_id: str = "") -> None:
+        """主线程恢复演员库维护按钮状态（由 actor_db_finished 信号触发）。
+
+        task_id: 完成的按钮 attr（如 "actor_db_clean_male"）。空串表示恢复全部按钮
+        （兼容旧调用，例如 _run_actor_db_check / _run_actor_db_update_nfo 的同步路径）。
+        """
+        self._actor_db_running.discard(task_id)
+
+        if task_id and task_id in self._ACTOR_DB_IDLE_TEXT_MAP:
+            btn_attr = task_id
+            btn = getattr(self.Ui, f"pushButton_{btn_attr}")
+            # 仍在跑的任务只重置文案，不重置 enabled（避免与其他 actor_db 任务交叉）
+            btn.setEnabled(btn_attr not in self._actor_db_running)
+            getattr(self, f"pushButton_{btn_attr}").emit(self._ACTOR_DB_IDLE_TEXT_MAP[btn_attr])
+            return
+
+        # 空 task_id 或未知 attr：仅恢复未在跑任务的按钮；在跑的保持 disabled
+        for btn_attr, idle_text in self._ACTOR_DB_IDLE_TEXT_MAP.items():
+            btn = getattr(self.Ui, f"pushButton_{btn_attr}", None)
+            sig = getattr(self, f"pushButton_{btn_attr}", None)
+            if btn is not None and btn_attr not in self._actor_db_running:
+                btn.setEnabled(True)
+            if sig is not None:
+                sig.emit(idle_text)
 
     # region 设置页
     # region 选择目录
@@ -3776,14 +3774,15 @@ class MyMAinWindow(QMainWindow):
         self.Ui.pushButton_find_missing_number.setEnabled(True)
         self.pushButton_find_missing_number.emit("检查缺失番号")
         self.Ui.pushButton_cover_backfill_start.setEnabled(True)
-        self.Ui.pushButton_actor_db_translate.setEnabled(True)
-        self.Ui.pushButton_actor_db_link.setEnabled(True)
-        self.Ui.pushButton_actor_db_sync_aliases.setEnabled(True)
-        self.Ui.pushButton_actor_db_fill_minnano.setEnabled(True)
-        self.pushButton_actor_db_translate.emit("补全中文名")
-        self.pushButton_actor_db_link.emit("补全 LibreDMM 链接")
-        self.pushButton_actor_db_sync_aliases.emit("补全别名")
-        self.pushButton_actor_db_fill_minnano.emit("minnano 补全")
+        # actor_db 由主刮削管理（change_buttons_status 禁用）的按钮子集：
+        # 仅当对应 btn_attr 不在 _actor_db_running 时才恢复 Enabled；在跑则保持 disabled。
+        for btn_attr in self._ACTOR_DB_SCRAPE_MANAGED:
+            btn = getattr(self.Ui, f"pushButton_{btn_attr}", None)
+            sig = getattr(self, f"pushButton_{btn_attr}", None)
+            if btn is not None and btn_attr not in self._actor_db_running:
+                btn.setEnabled(True)
+            if sig is not None:
+                sig.emit(self._ACTOR_DB_IDLE_TEXT_MAP[btn_attr])
 
         self.Ui.pushButton_start_cap.setStyleSheet(
             "QPushButton#pushButton_start_cap{color: white;background-color:#4C6EFF;}QPushButton:hover#pushButton_start_cap{color: white;background-color: rgba(76,110,255,240)}QPushButton:pressed#pushButton_start_cap{color: white;background-color:#4C6EE0}"

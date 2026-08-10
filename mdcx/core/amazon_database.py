@@ -307,7 +307,7 @@ async def query_asin_database(
         results = await query_asin_database(asin="B0000001")
     """
     try:
-        import openpyxl  # noqa: F401
+        import openpyxl
     except ImportError:
         raise ImportError("请安装 openpyxl 库：pip install openpyxl")
 

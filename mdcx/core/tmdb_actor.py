@@ -377,7 +377,7 @@ async def _tmdb_request(client: Any, method: str, url: str, **kwargs) -> _TmdbRe
             else:
                 text = ""
             return _TmdbResponse(status_code, text)
-        elif hasattr(client, method.lower()):
+        if hasattr(client, method.lower()):
             send = getattr(client, method.lower())
             resp = await send(url, params=params, allow_redirects=follow_redirects)
             status_code = int(resp.status)

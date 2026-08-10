@@ -63,8 +63,12 @@ def get_real_url(html, number, mdtv_url, file_path):
     result = html.xpath('//h4[@class="post-title"]')
     cd = re.findall(r"((AV|EP)\d{1})", file_path.upper())
     for each in result:
-        title = each.xpath("a/@title")[0].upper()
-        href = each.xpath("a/@href")[0]
+        titles = each.xpath("a/@title")
+        hrefs = each.xpath("a/@href")
+        if not titles or not hrefs:
+            continue
+        title = titles[0].upper()
+        href = hrefs[0]
         title_1 = title.replace(".", "").replace("-", "").replace(" ", "")
         number_1 = number.replace(".", "").replace("-", "").replace(" ", "")
         if number in title or real_number in title or number_1 in title_1:

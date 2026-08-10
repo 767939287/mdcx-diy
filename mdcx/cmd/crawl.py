@@ -323,7 +323,7 @@ async def _fetch_async(
         console.print(f"[dim]文件大小: {len(html)} 字符[/dim]")
 
     except Exception as e:
-        console.print(f"[red]错误: {str(e)}[/red]")
+        console.print(f"[red]错误: {e!s}[/red]")
         raise typer.Exit(1)
     finally:
         await browser_provider.close()

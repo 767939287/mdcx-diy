@@ -99,7 +99,7 @@ async def search_wiki(actor_info: EMbyActressInfo) -> tuple[str | None, str]:
             return url, msg
         return None, "未找到匹配的演员信息"
     except Exception as e:
-        return None, f"搜索过程发生异常: {str(e)}"
+        return None, f"搜索过程发生异常: {e!s}"
 
 
 async def get_detail(url: str, url_log: str, actor_info: EMbyActressInfo) -> tuple[bool, str]:
@@ -144,7 +144,7 @@ async def get_detail(url: str, url_log: str, actor_info: EMbyActressInfo) -> tup
         result, error = await parse_detail(res, url, url_log, actor_info, ja, emby_on)
         return result, error
     except Exception as e:
-        return False, f"获取维基百科详情时发生异常: {str(e)}"
+        return False, f"获取维基百科详情时发生异常: {e!s}"
 
 
 def handle_search_res(
@@ -285,8 +285,7 @@ def handle_search_res(
                 url_unquote = urllib.parse.unquote(url_final)
                 url_log += f"Wikipedia: {url_unquote}"
                 return url_final, url_log
-            else:
-                return None, "维基百科未获取到演员页 url"
+            return None, "维基百科未获取到演员页 url"
         return None, "维基百科处理失败"
     except Exception:
         return None, "维基百科数据处理异常"
@@ -347,7 +346,7 @@ async def parse_detail(
         try:
             overview = await _process_translation(actor_info, overview, ja, emby_on)
         except Exception as e:
-            return False, f"翻译处理过程中发生异常: {str(e)}"
+            return False, f"翻译处理过程中发生异常: {e!s}"
 
         # 外部链接和最终处理
         overview = _finalize_overview(overview, url_log, res, actor_info, emby_on)
@@ -356,7 +355,7 @@ async def parse_detail(
         return True, ""
 
     except Exception as e:
-        return False, f"处理维基百科页面内容时发生异常: {str(e)}"
+        return False, f"处理维基百科页面内容时发生异常: {e!s}"
 
 
 def _extract_introduction(actor_output: bs4.Tag) -> str:

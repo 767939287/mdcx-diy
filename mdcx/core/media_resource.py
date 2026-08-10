@@ -348,7 +348,7 @@ class MediaResourceContext:
                 await f.write(image.content)
             return True
         except Exception as e:
-            LogBuffer.log().write(f"\n 🔴 文件写入失败: {url} {file_path} {str(e)}")
+            LogBuffer.log().write(f"\n 🔴 文件写入失败: {url} {file_path} {e!s}")
             return False
 
     @staticmethod
@@ -398,7 +398,7 @@ class MediaResourceContext:
                         converted.close()
             return True
         except Exception as e:
-            LogBuffer.log().write(f"\n 🔴 WebP转换失败: {image.url} {file_path} {str(e)}")
+            LogBuffer.log().write(f"\n 🔴 WebP转换失败: {image.url} {file_path} {e!s}")
             return False
 
     @staticmethod

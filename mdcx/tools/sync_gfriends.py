@@ -35,12 +35,11 @@ def sync_gfriends(local_path: str) -> tuple[bool, str]:
             if "up to date" in output.lower() or "已经是最新" in output:
                 return True, "本地仓库已是最新"
             return True, f"更新成功: {output}"
-        else:
-            error = result.stderr.strip()
-            return False, f"更新失败: {error}"
+        error = result.stderr.strip()
+        return False, f"更新失败: {error}"
     except subprocess.TimeoutExpired:
         return False, "更新超时（5 分钟）"
     except FileNotFoundError:
         return False, "未找到 git 命令，请确保已安装 Git"
     except Exception as e:
-        return False, f"更新异常: {str(e)}"
+        return False, f"更新异常: {e!s}"

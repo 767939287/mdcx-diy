@@ -36,8 +36,12 @@ def get_real_url(html, number_list, hscangku_url):
     item_list = html.xpath('//a[@class="stui-vodlist__thumb lazyload"]')
     for each in item_list:
         # href="/vodplay/41998-1-1.html"
-        detail_url = hscangku_url + each.get("href")
-        title = each.xpath("@title")[0]
+        href = each.get("href")
+        titles = each.xpath("@title")
+        if not href or not titles:
+            continue
+        detail_url = hscangku_url + href
+        title = titles[0]
         if title and detail_url:
             for n in number_list:
                 temp_n = re.sub(r"[\W_]", "", n).upper()

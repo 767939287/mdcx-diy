@@ -69,11 +69,20 @@ def get_tag(html):
 
 
 def get_cover(html):
-    result = html.xpath('//script[@type="application/ld+json"]/text()')[0]
-    if result:
-        data_dict = json.loads(result)
-        result = data_dict.get("thumbnailUrl", "")[0]
-    return result if result else ""
+    scripts = html.xpath('//script[@type="application/ld+json"]/text()')
+    if not scripts:
+        return ""
+    try:
+        data_dict = json.loads(scripts[0])
+    except (json.JSONDecodeError, TypeError):
+        return ""
+    thumbs = data_dict.get("thumbnailUrl") or []
+    if isinstance(thumbs, str):
+        return thumbs.strip()
+    if isinstance(thumbs, list) and thumbs:
+        first = thumbs[0]
+        return str(first).strip() if first else ""
+    return ""
 
 
 def get_outline(html):
@@ -82,9 +91,8 @@ def get_outline(html):
     # 去掉无意义的简介(马赛克破坏版)，'克破'两字简繁同形
     if not result or "克破" in result:
         return ""
-    else:
-        # 去除简介中的无意义信息，中间和首尾的空白字符、*根据分发等
-        result = re.sub(r"[\n\t]", "", result).split("*根据分发", 1)[0].strip()
+    # 去除简介中的无意义信息，中间和首尾的空白字符、*根据分发等
+    result = re.sub(r"[\n\t]", "", result).split("*根据分发", 1)[0].strip()
     return result
 
 
@@ -118,8 +126,12 @@ def get_real_url(html, number):
     item_list = html.xpath('//div[@class="col oneVideo"]')
     for each in item_list:
         # href="/video?hid=99-21-39624"
-        detail_url = each.xpath(".//a/@href")[0]
-        title = each.xpath(".//h5/text()")[0]
+        hrefs = each.xpath(".//a/@href")
+        titles = each.xpath(".//h5/text()")
+        if not hrefs or not titles:
+            continue
+        detail_url = hrefs[0]
+        title = titles[0]
         # 注意去除马赛克破坏版这种几乎没有有效字段的条目
         if number.upper() in title and all(keyword not in title for keyword in ["克破", "无码破解", "無碼破解"]):
             return detail_url

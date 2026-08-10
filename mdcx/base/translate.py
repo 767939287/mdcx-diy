@@ -115,9 +115,8 @@ async def _deepl_translate(text: str, source_lang: Literal["JA", "EN"] = "JA") -
         return None
     if "translations" in res and len(res["translations"]) > 0:
         return res["translations"][0]["text"]
-    else:
-        signal.add_log(f"DeepL API 返回数据异常: {res}")
-        return None
+    signal.add_log(f"DeepL API 返回数据异常: {res}")
+    return None
 
 
 async def deepl_translate(title: str, outline: str, ls: Literal["JA", "EN"] = "JA"):
@@ -148,9 +147,8 @@ async def _deeplx_translate(text: str, source_lang: Literal["JA", "EN"] = "JA") 
         return None
     if "data" in res:
         return res["data"]  # 直接返回字符串
-    else:
-        signal.add_log(f"DeepLX API 返回数据异常: {res}")
-        return None
+    signal.add_log(f"DeepLX API 返回数据异常: {res}")
+    return None
 
 
 async def deeplx_translate(title: str, outline: str, ls: Literal["JA", "EN"] = "JA"):

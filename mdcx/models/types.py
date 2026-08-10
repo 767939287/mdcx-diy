@@ -43,8 +43,7 @@ class FileInfo:
     def optional_file_path(self) -> Path | None:
         if self.file_path == Path() or not self.file_path.is_file():
             return None
-        else:
-            return self.file_path
+        return self.file_path
 
     def crawler_input(self) -> "CrawlerInput":
         """

@@ -195,7 +195,7 @@ def cut_thumb_to_poster(
             return True
         log(f"\n 🥺 Poster cut failed! ({json_data.poster_from})({get_used_time(start_time)}s)")
     except Exception as e:
-        log(f"\n 🥺 Poster failed! ({json_data.poster_from})({get_used_time(start_time)}s)\n    {str(e)}")
+        log(f"\n 🥺 Poster failed! ({json_data.poster_from})({get_used_time(start_time)}s)\n    {e!s}")
         signal.show_traceback_log(traceback.format_exc())
         signal.show_log_text(f"{traceback.format_exc()}\n Pic: {thumb_path}")
         return False

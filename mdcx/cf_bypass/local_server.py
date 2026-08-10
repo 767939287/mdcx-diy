@@ -10,9 +10,13 @@ import sys
 import threading
 import time
 from collections.abc import Callable
+from typing import TYPE_CHECKING
 from urllib.parse import parse_qs, urlparse
 
 from mdcx.consts import IS_PYINSTALLER
+
+if TYPE_CHECKING:
+    import uvicorn
 
 try:
     import uvicorn  # type: ignore[import-untyped]
@@ -128,7 +132,7 @@ class LocalBypassServer:
     def __init__(self, log_fn: Callable[[str], None] | None = None):
         self._process: asyncio.subprocess.Process | None = None
         self._thread: threading.Thread | None = None
-        self._server: "uvicorn.Server | None" = None  # noqa: UP037  # uvicorn.Server, 仅冻结模式(in-process)使用
+        self._server: uvicorn.Server | None = None  # uvicorn.Server, 仅冻结模式(in-process)使用
         self._in_process: bool = False
         self._port: int = 0
         self._url: str = ""
@@ -163,22 +167,22 @@ class LocalBypassServer:
 
         missing = []
         try:
-            import cloakbrowser  # noqa: F401
+            import cloakbrowser  # noqa: F401  # 探活：仅检测可导入
         except ImportError:
             missing.append("cloakbrowser")
 
         try:
-            import cf_bypasser  # noqa: F401
+            import cf_bypasser  # noqa: F401  # 探活
         except ImportError:
             missing.append("cf_bypasser")
 
         try:
-            import uvicorn  # noqa: F401
+            import uvicorn  # noqa: F401  # 探活
         except ImportError:
             missing.append("uvicorn")
 
         try:
-            import fastapi  # noqa: F401
+            import fastapi  # noqa: F401  # 探活
         except ImportError:
             missing.append("fastapi")
 

@@ -52,7 +52,7 @@ class GenericBaseCrawler[T: Context = Context](ABC):
 
     async def close(self):
         """释放资源."""
-        return None
+        return
 
     @classmethod
     @abstractmethod

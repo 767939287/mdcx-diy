@@ -33,8 +33,8 @@ def get_cover(html):
 
 
 def get_poster(html, count):
-    poster_url = html.xpath("//div[@id='waterfall']/div[" + str(count) + "]/a/div[@class='photo-frame']/img/@src")[0]
-    return poster_url
+    results = html.xpath("//div[@id='waterfall']/div[" + str(count) + "]/a/div[@class='photo-frame']/img/@src")
+    return results[0] if results else ""
 
 
 def get_tag(html):

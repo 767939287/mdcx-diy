@@ -220,7 +220,7 @@ async def save_success_list(old_path: Path | None = None, new_path: Path | None 
                     await f.writelines(_path_lines_for_write(success_list_snapshot, "成功列表"))
                 await _replace_success_file_with_retry(success_tmp_path, success_path)
         except Exception as e:
-            signal.show_log_text(f"  Save success list Error {str(e)}\n {traceback.format_exc()}")
+            signal.show_log_text(f"  Save success list Error {e!s}\n {traceback.format_exc()}")
         finally:
             if success_tmp_path:
                 await _cleanup_success_tmp_file(success_tmp_path)
@@ -235,7 +235,7 @@ def save_remain_list() -> None:
                 f.writelines(_path_lines_for_write(Flags.remain_list, "剩余任务列表"))
                 Flags.can_save_remain = False
         except Exception as e:
-            signal.show_log_text(f"save remain list error: {str(e)}\n {traceback.format_exc()}")
+            signal.show_log_text(f"save remain list error: {e!s}\n {traceback.format_exc()}")
 
 
 async def _clean_empty_folders(path: Path, file_mode: FileMode) -> None:
@@ -280,7 +280,7 @@ async def _clean_empty_folders(path: Path, file_mode: FileMode) -> None:
                     signal.show_log_text(f" 🗑 Clean empty folder: {folder}")
             except Exception as e:
                 signal.show_traceback_log(traceback.format_exc())
-                signal.show_log_text(f" 🔴 Delete empty folder error: {str(e)}")
+                signal.show_log_text(f" 🔴 Delete empty folder error: {e!s}")
 
     await asyncio.to_thread(task)
     signal.show_log_text(f" 🍀 Clean done!({get_used_time(start_time)}s)")
@@ -314,7 +314,7 @@ async def check_and_clean_files() -> None:
                     result, error_info = delete_file_sync(path)
                     if result:
                         succ += 1
-                        signal.show_log_text(f" 🗑 Clean: {str(path)} ")
+                        signal.show_log_text(f" 🗑 Clean: {path!s} ")
                     else:
                         fail += 1
                         signal.show_log_text(f" 🗑 Clean error: {error_info} ")
@@ -642,7 +642,7 @@ async def move_file_to_failed_folder(failed_folder: Path, file_path: Path, folde
                     LogBuffer.log().write("\n 🔴 Move trailer to the failed folder!")
                     LogBuffer.log().write(f"\n 🔴 [Trailer] {trailer_new_path}")
             except Exception as e:
-                LogBuffer.log().write(f"\n 🔴 Failed to move trailer to the failed folder! \n    {str(e)}")
+                LogBuffer.log().write(f"\n 🔴 Failed to move trailer to the failed folder! \n    {e!s}")
 
         # 同步移动字幕
         sub_types = [".chs" + i for i in manager.config.sub_type if ".chs" not in i]
@@ -658,7 +658,7 @@ async def move_file_to_failed_folder(failed_folder: Path, file_path: Path, folde
                     LogBuffer.log().write(f"\n 💡 [Sub] {sub_new_path}")
         return file_new_path
     except Exception as e:
-        LogBuffer.log().write(f"\n 🔴 Failed to move the file to the failed folder! \n    {str(e)}")
+        LogBuffer.log().write(f"\n 🔴 Failed to move the file to the failed folder! \n    {e!s}")
         return file_path
 
 

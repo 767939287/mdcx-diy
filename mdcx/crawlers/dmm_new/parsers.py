@@ -33,22 +33,21 @@ def parse_category(url: str) -> Category:
     """
     if "tv.dmm.co.jp" in url:
         return Category.FANZA_TV
-    elif "tv.dmm.com" in url:
+    if "tv.dmm.com" in url:
         return Category.DMM_TV
-    elif "/digital/" in url or "video.dmm.co.jp" in url:  # 现在 digital 会重定向到 video.dmm.co.jp
+    if "/digital/" in url or "video.dmm.co.jp" in url:  # 现在 digital 会重定向到 video.dmm.co.jp
         # digital tag 可能有流媒体相关, 如 独占配信
         return Category.DIGITAL
-    elif "/prime/" in url:
+    if "/prime/" in url:
         return Category.PRIME
-    elif "/monthly/" in url:
+    if "/monthly/" in url:
         return Category.MONTHLY
-    elif "/mono/" in url:
+    if "/mono/" in url:
         return Category.MONO
-    elif "/rental/" in url:
+    if "/rental/" in url:
         return Category.RENTAL
-    else:
-        # todo 其他类别
-        return Category.OTHER
+    # todo 其他类别
+    return Category.OTHER
 
 
 def _parse_media_variant_text(text: str) -> MediaVariant:

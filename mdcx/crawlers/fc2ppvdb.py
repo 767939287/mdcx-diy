@@ -81,10 +81,9 @@ def get_video_type(data):  # 获取视频类型
     censored = data.get("article", {}).get("censored")
     if censored == "無":
         return "無碼"
-    elif censored == "有":
+    if censored == "有":
         return "有碼"
-    else:
-        return ""
+    return ""
 
 
 def get_video_url(data):  # 获取视频URL

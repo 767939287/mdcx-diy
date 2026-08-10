@@ -390,7 +390,7 @@ async def write_nfo(file_info: FileInfo, data: CrawlersResult, nfo_file: Path, o
             return True
 
     except Exception as e:
-        LogBuffer.log().write(f"\n 🔴 Nfo failed! \n     {str(e)}")
+        LogBuffer.log().write(f"\n 🔴 Nfo failed! \n     {e!s}")
         signal.show_traceback_log(traceback.format_exc())
         signal.show_log_text(traceback.format_exc())
         return False

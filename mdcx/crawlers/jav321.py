@@ -25,10 +25,9 @@ def getTitle(response):
 def getActor(response):
     if re.search(r'<a href="/star/\S+">(\S+)</a> &nbsp;', response):
         return str(re.findall(r'<a href="/star/\S+">(\S+)</a> &nbsp;', response)).strip(" [',']").replace("'", "")
-    elif re.search(r'<a href="/heyzo_star/\S+">(\S+)</a> &nbsp;', response):
+    if re.search(r'<a href="/heyzo_star/\S+">(\S+)</a> &nbsp;', response):
         return str(re.findall(r'<a href="/heyzo_star/\S+">(\S+)</a> &nbsp;', response)).strip(" [',']").replace("'", "")
-    else:
-        return str(re.findall(r"<b>出演者</b>: ([^<]+) &nbsp; <br>", response)).strip(" [',']").replace("'", "")
+    return str(re.findall(r"<b>出演者</b>: ([^<]+) &nbsp; <br>", response)).strip(" [',']").replace("'", "")
 
 
 def getStudio(html):
@@ -46,7 +45,8 @@ def getSeries(html):
 
 
 def getWebsite(detail_page):
-    return "https:" + detail_page.xpath('//a[contains(text(),"简体中文")]/@href')[0]
+    links = detail_page.xpath('//a[contains(text(),"简体中文")]/@href')
+    return "https:" + links[0] if links else ""
 
 
 def getNum(response, number):
@@ -58,8 +58,7 @@ def getScore(response):
     if re.search(r'<b>平均評価</b>: <img data-original="/img/(\d+).gif" />', response):
         score = re.findall(r'<b>平均評価</b>: <img data-original="/img/(\d+).gif" />', response)[0]
         return str(float(score) / 10.0)
-    else:
-        return str(re.findall(r"<b>平均評価</b>: ([^<]+)<br>", response)).strip(" [',']").replace("'", "")
+    return str(re.findall(r"<b>平均評価</b>: ([^<]+)<br>", response)).strip(" [',']").replace("'", "")
 
 
 def getYear(release):
@@ -93,7 +92,8 @@ def getExtraFanart(htmlcode):
 
 
 def getCoverSmall(detail_page):
-    return str(detail_page.xpath('//img[@class="img-responsive"]/@src')[0])
+    srcs = detail_page.xpath('//img[@class="img-responsive"]/@src')
+    return str(srcs[0]) if srcs else ""
 
 
 def _prefer_dmm_aws_url(url: str) -> str:

@@ -85,7 +85,7 @@ async def creat_folder(
             return True
         except Exception as e:
             if not await aiofiles.os.path.exists(folder_new_path):
-                LogBuffer.log().write(f"\n 🔴 创建目录失败! \n    {str(e)}")
+                LogBuffer.log().write(f"\n 🔴 创建目录失败! \n    {e!s}")
                 if len(str(folder_new_path)) > 250:
                     LogBuffer.log().write("可能是目录名过长！")
                     LogBuffer.error().write("创建文件夹失败！可能是目录名过长！")
@@ -109,10 +109,9 @@ async def creat_folder(
         if await aiofiles.os.path.exists(poster_new_path_with_filename):
             other.poster_path = poster_new_path_with_filename
         return True
-    else:
-        json_data.title = "成功文件夹已存在同名文件!"
-        LogBuffer.error().write(f"成功文件夹已存在同名文件! \n ❗️ 当前文件: {file_path} \n ❗️ 已存在: {file_new_path} ")
-        return False
+    json_data.title = "成功文件夹已存在同名文件!"
+    LogBuffer.error().write(f"成功文件夹已存在同名文件! \n ❗️ 当前文件: {file_path} \n ❗️ 已存在: {file_new_path} ")
+    return False
 
 
 async def move_movie(other: OtherInfo, file_info: FileInfo, file_path: Path, file_new_path: Path) -> bool:
@@ -143,10 +142,10 @@ async def move_movie(other: OtherInfo, file_info: FileInfo, file_path: Path, fil
         except Exception as e:
             if IS_WINDOWS:
                 LogBuffer.log().write(
-                    f"\n 🔴 创建软链接失败. 注意：Windows 平台输出目录必须是本地磁盘, 不支持挂载的 NAS 盘或网盘. 如果是本地磁盘, 请尝试以管理员身份运行！\n{str(e)}\n 🙉 [Movie] {raw}"
+                    f"\n 🔴 创建软链接失败. 注意：Windows 平台输出目录必须是本地磁盘, 不支持挂载的 NAS 盘或网盘. 如果是本地磁盘, 请尝试以管理员身份运行！\n{e!s}\n 🙉 [Movie] {raw}"
                 )
             else:
-                LogBuffer.log().write(f"\n 🔴 创建软链接失败\n{str(e)}\n 🙉 [Movie] {raw}")
+                LogBuffer.log().write(f"\n 🔴 创建软链接失败\n{e!s}\n 🙉 [Movie] {raw}")
             signal.show_traceback_log(traceback.format_exc())
             signal.show_log_text(traceback.format_exc())
             return False
@@ -165,13 +164,13 @@ async def move_movie(other: OtherInfo, file_info: FileInfo, file_path: Path, fil
                     "\n 🔴 创建硬链接失败. "
                     "注意：硬链接要求待刮削文件和输出目录必须是同盘, 不支持跨卷, 如要跨卷可以尝试软链接模式. "
                     "另外, Mac 平台非本地磁盘不支持创建硬链接, 请选择软链接模式. "
-                    f"\n{str(e)}"
+                    f"\n{e!s}"
                 )
             else:
                 LogBuffer.log().write(
                     f"\n 🔴 创建硬链接失败. "
                     f"硬链接要求待刮削文件和输出目录必须是同盘, 不支持跨卷. "
-                    f"如要跨卷可以尝试软链接模式.\n{str(e)} "
+                    f"如要跨卷可以尝试软链接模式.\n{e!s} "
                 )
             LogBuffer.error().write("创建硬链接失败")
             signal.show_traceback_log(traceback.format_exc())
@@ -186,20 +185,19 @@ async def move_movie(other: OtherInfo, file_info: FileInfo, file_path: Path, fil
             LogBuffer.log().write(f"\n    此文件是软链接. 源文件: {file_new_path.resolve()}")
         file_info.file_path = file_new_path
         return True
-    else:
-        if "are the same file" in error_info.lower():  # 大小写不同，win10 用raidrive 挂载 google drive 改名会出错
-            if file_info.cd_part:
-                temp_folder, temp_file = split_path(str(file_new_path))
-                if temp_file not in await aiofiles.os.listdir(temp_folder):
-                    tmp_path = str(file_new_path) + ".MDCx.tmp"
-                    await move_file_async(str(file_path), tmp_path)
-                    # 使用 aiofiles.os.rename 实现原子替换（同文件系统内）
-                    await asyncio.to_thread(os.rename, tmp_path, str(file_new_path))
-            LogBuffer.log().write(f"\n 🍀 Movie done! \n 🙉 [Movie] {file_new_path}")
-            file_info.file_path = file_new_path
-            return True
-        LogBuffer.log().write(f"\n 🔴 移动视频文件到成功文件夹失败!\n    {error_info}")
-        return False
+    if "are the same file" in error_info.lower():  # 大小写不同，win10 用raidrive 挂载 google drive 改名会出错
+        if file_info.cd_part:
+            temp_folder, temp_file = split_path(str(file_new_path))
+            if temp_file not in await aiofiles.os.listdir(temp_folder):
+                tmp_path = str(file_new_path) + ".MDCx.tmp"
+                await move_file_async(str(file_path), tmp_path)
+                # 使用 aiofiles.os.rename 实现原子替换（同文件系统内）
+                await asyncio.to_thread(os.rename, tmp_path, str(file_new_path))
+        LogBuffer.log().write(f"\n 🍀 Movie done! \n 🙉 [Movie] {file_new_path}")
+        file_info.file_path = file_new_path
+        return True
+    LogBuffer.log().write(f"\n 🔴 移动视频文件到成功文件夹失败!\n    {error_info}")
+    return False
 
 
 def _get_folder_path(success_folder: Path, file_info: FileInfo, res: CrawlersResult) -> tuple[Path, str]:
@@ -211,7 +209,7 @@ def _get_folder_path(success_folder: Path, file_info: FileInfo, res: CrawlersRes
         if manager.config.update_mode == "c":
             folder_name = folder_path.name
             return folder_path, folder_name
-        elif "bc" in manager.config.update_mode:
+        if "bc" in manager.config.update_mode:
             folder_name = manager.config.update_b_folder
             success_folder = folder_path.parent
             if "a" in manager.config.update_mode:

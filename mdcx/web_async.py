@@ -437,10 +437,9 @@ class AsyncWebClient:
                 self._cf_bypass_enabled = True
                 self._log(f"本地 Bypass 服务已集成: {result}")
                 return True
-            else:
-                self._log(f"本地 Bypass 启动失败: {result}")
-                self._local_bypass_enabled = False
-                return False
+            self._log(f"本地 Bypass 启动失败: {result}")
+            self._local_bypass_enabled = False
+            return False
 
     def _new_curl_session(self, fingerprint: BrowserFingerprint | None = None) -> AsyncSession:
         impersonate = (
@@ -835,7 +834,7 @@ class AsyncWebClient:
     def _build_cookie_header(self, cookies: dict[str, str] | None) -> str:
         if not cookies:
             return ""
-        pairs = [f"{str(k)}={str(v)}" for k, v in cookies.items() if k]
+        pairs = [f"{k!s}={v!s}" for k, v in cookies.items() if k]
         return "; ".join(pairs)
 
     def _parse_cookie_header(self, cookie_header: str) -> dict[str, str]:
@@ -950,12 +949,12 @@ class AsyncWebClient:
             return
         try:
             response.url = normalized
-        except Exception:
-            pass
+        except Exception as _e:
+            self._log(f"🟡 写入 response.url 失败（curl-cffi 可能改了 API）: {_e!s}")
         try:
             response.headers["x-mdcx-final-url"] = normalized
-        except Exception:
-            pass
+        except Exception as _e:
+            self._log(f"🟡 写入 response.headers 失败（curl-cffi 可能改了 API）: {_e!s}")
 
     def _resolve_cf_bypass_proxy(self, *, use_proxy: bool) -> str:
         if not use_proxy:
@@ -1557,11 +1556,11 @@ class AsyncWebClient:
                     retry = True  # 超时错误进行重试
                     await self._record_transport_failure(error_msg, pool_key=pool_key)
                 except ConnectionError as e:
-                    error_msg = f"连接错误: {str(e)}"
+                    error_msg = f"连接错误: {e!s}"
                     retry = True  # 连接错误进行重试
                     await self._record_transport_failure(error_msg, pool_key=pool_key)
                 except RequestException as e:
-                    error_msg = f"请求异常: {str(e)} {getattr(e, 'code', '')}".strip()
+                    error_msg = f"请求异常: {e!s} {getattr(e, 'code', '')}".strip()
                     retry = True  # 请求异常进行重试
                     await self._record_transport_failure(error_msg, pool_key=pool_key)
                 except TimeoutError:
@@ -1569,7 +1568,7 @@ class AsyncWebClient:
                     retry = True
                     await self._record_transport_failure(error_msg, pool_key=pool_key)
                 except Exception as e:
-                    error_msg = f"curl-cffi 异常: {str(e)}"
+                    error_msg = f"curl-cffi 异常: {e!s}"
                     retry = True
                     await self._record_transport_failure(error_msg, pool_key=pool_key)
                 if not retry:
@@ -1587,7 +1586,7 @@ class AsyncWebClient:
                     await asyncio.sleep(sleep_seconds)
             return None, f"{method} {url} 失败: {error_msg}"
         except Exception as e:
-            error_msg = f"{method} {url} 未知错误:  {str(e)}"
+            error_msg = f"{method} {url} 未知错误:  {e!s}"
             self._log(f"🔴 {error_msg}")
             return None, error_msg
 
@@ -1611,7 +1610,7 @@ class AsyncWebClient:
             resp.encoding = encoding
             return resp.text, error
         except Exception as e:
-            return None, f"文本解析失败: {str(e)}"
+            return None, f"文本解析失败: {e!s}"
 
     async def get_content(
         self,
@@ -1649,7 +1648,7 @@ class AsyncWebClient:
         try:
             return response.json(), ""
         except Exception as e:
-            return None, f"JSON解析失败: {str(e)}"
+            return None, f"JSON解析失败: {e!s}"
 
     async def post_text(
         self,
@@ -1680,7 +1679,7 @@ class AsyncWebClient:
             response.encoding = encoding
             return response.text, ""
         except Exception as e:
-            return None, f"文本解析失败: {str(e)}"
+            return None, f"文本解析失败: {e!s}"
 
     async def post_json(
         self,
@@ -1712,7 +1711,7 @@ class AsyncWebClient:
         try:
             return response.json(), ""
         except Exception as e:
-            return None, f"JSON解析失败: {str(e)}"
+            return None, f"JSON解析失败: {e!s}"
 
     async def post_content(
         self,
@@ -1802,7 +1801,7 @@ class AsyncWebClient:
             img.close()
             return True
         except Exception as e:
-            self._log(f"🔴 WebP转换失败: {url} {file_path} {str(e)}")
+            self._log(f"🔴 WebP转换失败: {url} {file_path} {e!s}")
             return False
 
     async def _write_file_content(self, url: str, file_path: Path, content: bytes) -> bool:
@@ -1811,7 +1810,7 @@ class AsyncWebClient:
                 await f.write(content)
             return True
         except Exception as e:
-            self._log(f"🔴 文件写入失败: {url} {file_path} {str(e)}")
+            self._log(f"🔴 文件写入失败: {url} {file_path} {e!s}")
             return False
 
     async def _download_whole_file(
@@ -1846,7 +1845,7 @@ class AsyncWebClient:
             async with aiofiles.open(part_file_path, "wb") as f:
                 await f.truncate(file_size)
         except Exception as e:
-            self._log(f"🔴 文件创建失败: {url} {str(e)}")
+            self._log(f"🔴 文件创建失败: {url} {e!s}")
             return False
 
         try:
@@ -1876,16 +1875,16 @@ class AsyncWebClient:
             # 检查所有任务是否成功
             for i, err in enumerate(errors, start=1):
                 if isinstance(err, Exception):
-                    self._log(f"🔴 分块 {i} 下载失败: {url} {str(err)}")
+                    self._log(f"🔴 分块 {i} 下载失败: {url} {err!s}")
                     return False
-                elif err:
+                if err:
                     self._log(f"🔴 分块 {i} 下载失败: {url} {err}")
                     return False
             await asyncio.to_thread(os.replace, part_file_path, file_path)
             self._log(f"✅ 多分块下载完成: {url} {file_path}")
             return True
         except Exception as e:
-            self._log(f"🔴 并发下载异常: {url} {str(e)}")
+            self._log(f"🔴 并发下载异常: {url} {e!s}")
             return False
         finally:
             if await aiofiles.os.path.exists(part_file_path):
@@ -1904,10 +1903,14 @@ class AsyncWebClient:
         end: int,
         chunk_id: int,
         use_proxy: bool = True,
-    ) -> str | None:
-        """下载单个分块"""
+    ) -> str:
+        """下载单个分块。
+
+        返回空串表示成功，非空字符串表示失败原因。外部以 truthy 判断。
+        保留原约定以避免破坏既有调用点；如需改造，需统一更新所有调用处与测试。
+        """
         retry_count = max(int(self.retry), 1)
-        last_error = ""
+        last_error: str = ""
         for attempt in range(retry_count):
             async with semaphore:
                 success, last_error = await self._download_chunk_once(url, file_path, start, end, use_proxy)
@@ -1917,7 +1920,7 @@ class AsyncWebClient:
             if attempt < retry_count - 1:
                 await asyncio.sleep(self._calc_retry_sleep_seconds(attempt))
 
-        return last_error
+        return last_error or "未知错误"
 
     async def _download_chunk_once(
         self,

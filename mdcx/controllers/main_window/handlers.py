@@ -21,12 +21,12 @@ def show_netstatus() -> None:
     if not use_proxy or not proxy:
         signal_qt.show_net_info(
             f" 当前网络状态：❌ 未启用代理\n"
-            f"   CF Bypass：{bypass_status}    Bypass代理：{bypass_proxy_status}    超时：{str(timeout)}    重试：{str(retry_count)}"
+            f"   CF Bypass：{bypass_status}    Bypass代理：{bypass_proxy_status}    超时：{timeout!s}    重试：{retry_count!s}"
         )
     else:
         signal_qt.show_net_info(
             f" 当前网络状态：✅ 已启用代理\n"
             f"   地址：{proxy}\n"
-            f"   CF Bypass：{bypass_status}    Bypass代理：{bypass_proxy_status}    超时：{str(timeout)}    重试：{str(retry_count)}"
+            f"   CF Bypass：{bypass_status}    Bypass代理：{bypass_proxy_status}    超时：{timeout!s}    重试：{retry_count!s}"
         )
     signal_qt.show_net_info("=" * 80)

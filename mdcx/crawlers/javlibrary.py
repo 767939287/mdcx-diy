@@ -20,13 +20,17 @@ def get_real_url(html, number, domain_2):
 
     for each in result:
         if new_number in each.replace("-", "").upper():
-            real_url = html.xpath('//div[@id="video_title"]/h3/a[contains(text(), $title)]/@href', title=each)[0]
-            return urllib.parse.urljoin(origin, real_url)
+            hrefs = html.xpath('//div[@id="video_title"]/h3/a[contains(text(), $title)]/@href', title=each)
+            if hrefs:
+                return urllib.parse.urljoin(origin, hrefs[0])
+            return ""
     result = html.xpath('//a[contains(@href, "/?v=jav")]/@title')
 
     for each in result:
         if new_number in each.replace("-", "").upper():
-            real_url = html.xpath("//a[@title=$title]/@href", title=each)[0]
+            hrefs = html.xpath("//a[@title=$title]/@href", title=each)
+            if hrefs:
+                real_url = hrefs[0]
             real_url = urllib.parse.urljoin(domain_2 + "/", real_url)
             if "ブルーレイディスク" not in each:
                 return real_url

@@ -32,7 +32,10 @@ def get_real_url(html, number_list):
     for each in item_list:
         # href="https://cableav.tv/Xq1Sg3SvZPk/"
         detail_url = each.get("href")
-        title = each.xpath("text()")[0]
+        titles = each.xpath("text()")
+        if not titles:
+            continue
+        title = titles[0]
         if title and detail_url:
             for n in number_list:
                 temp_n = re.sub(r"[\W_]", "", n).upper()

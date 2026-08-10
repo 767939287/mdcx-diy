@@ -100,7 +100,10 @@ def get_real_url(html, number):
     result = html.xpath('//a[@class="img hover"]')
     for each in result:
         href = each.get("href")
-        poster = each.xpath("img/@data-src")[0]
+        posters = each.xpath("img/@data-src")
+        if not href or not posters:
+            continue
+        poster = posters[0]
         if href.upper().endswith(number.upper().replace("-", "")):
             return href, poster
     return "", ""

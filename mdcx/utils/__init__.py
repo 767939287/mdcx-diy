@@ -106,10 +106,10 @@ class AsyncBackgroundExecutor:
         """
         with self._lock:
             if not self._running:
-                return
+                return None
             _pending_futures = list(self._pending_futures)
             if not _pending_futures:
-                return
+                return None
 
         # 创建一个异步任务来取消所有待处理任务
         async def _cancel_all():

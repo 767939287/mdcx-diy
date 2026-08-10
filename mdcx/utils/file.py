@@ -77,7 +77,7 @@ def copy_file_sync(old: Path | str, new: Path | str):
     try:
         if not old.exists():
             return False, f"不存在: {old}"
-        elif new.exists() and old.samefile(new):
+        if new.exists() and old.samefile(new):
             return True, ""
         delete_file_sync(new)
         shutil.copy(old, new)
@@ -247,7 +247,7 @@ async def copy_file_async(old: str | Path, new: str | Path):
     try:
         if not await aiofiles.os.path.exists(old):
             return False, f"不存在: {old}"
-        elif str(old).lower() != str(new).lower():
+        if str(old).lower() != str(new).lower():
             await delete_file_async(new)
         await asyncio.to_thread(shutil.copy, old, new)
         return True, ""

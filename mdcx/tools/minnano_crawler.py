@@ -191,61 +191,60 @@ def save_cache_row(row: dict) -> bool:
                 _cache_data[jp] = row
                 LogBuffer.log().write(f"  ✅ [演员缓存] 已追加: {jp}")
                 return True
-            else:
-                # 新建文件
-                wb = openpyxl.Workbook()
-                ws = wb.active
-                ws.title = "演员缓存"
+            # 新建文件
+            wb = openpyxl.Workbook()
+            ws = wb.active
+            ws.title = "演员缓存"
 
-                header_fill = PatternFill("solid", fgColor="D9D9D9")
-                header_font = Font(bold=True)
-                header_align = Alignment(horizontal="center", vertical="center")
+            header_fill = PatternFill("solid", fgColor="D9D9D9")
+            header_font = Font(bold=True)
+            header_align = Alignment(horizontal="center", vertical="center")
 
-                for col, header in enumerate(CACHE_HEADERS, 1):
-                    cell = ws.cell(row=1, column=col, value=header)
-                    cell.fill = header_fill
-                    cell.font = header_font
-                    cell.alignment = header_align
+            for col, header in enumerate(CACHE_HEADERS, 1):
+                cell = ws.cell(row=1, column=col, value=header)
+                cell.fill = header_fill
+                cell.font = header_font
+                cell.alignment = header_align
 
-                # 冻结首行
-                ws.freeze_panes = "A2"
+            # 冻结首行
+            ws.freeze_panes = "A2"
 
-                values = [
-                    row.get(COL_JP, ""),
-                    row.get(COL_ALIAS, ""),
-                    row.get(COL_BIRTHDAY, ""),
-                    row.get(COL_HEIGHT, ""),
-                    row.get(COL_BUST, ""),
-                    row.get(COL_WAIST, ""),
-                    row.get(COL_HIP, ""),
-                    row.get(COL_CUP, ""),
-                    row.get(COL_PLACE, ""),
-                    row.get(COL_AGENCY, ""),
-                    row.get(COL_TWITTER, ""),
-                    row.get(COL_CAREER, ""),
-                    row.get(COL_DEBUT, ""),
-                    row.get(COL_WIKI, ""),
-                    row.get(COL_MINNANO_URL, ""),
-                ]
-                for col_idx, val in enumerate(values, 1):
-                    cell = ws.cell(row=2, column=col_idx, value=val)
-                    cell.fill = data_fill
-                    cell.alignment = data_align
-                    cell.border = full_border
-                    if col_idx == 14 and str(val or "").startswith("http"):
-                        cell.hyperlink = val
-                        cell.font = link_font
+            values = [
+                row.get(COL_JP, ""),
+                row.get(COL_ALIAS, ""),
+                row.get(COL_BIRTHDAY, ""),
+                row.get(COL_HEIGHT, ""),
+                row.get(COL_BUST, ""),
+                row.get(COL_WAIST, ""),
+                row.get(COL_HIP, ""),
+                row.get(COL_CUP, ""),
+                row.get(COL_PLACE, ""),
+                row.get(COL_AGENCY, ""),
+                row.get(COL_TWITTER, ""),
+                row.get(COL_CAREER, ""),
+                row.get(COL_DEBUT, ""),
+                row.get(COL_WIKI, ""),
+                row.get(COL_MINNANO_URL, ""),
+            ]
+            for col_idx, val in enumerate(values, 1):
+                cell = ws.cell(row=2, column=col_idx, value=val)
+                cell.fill = data_fill
+                cell.alignment = data_align
+                cell.border = full_border
+                if col_idx == 14 and str(val or "").startswith("http"):
+                    cell.hyperlink = val
+                    cell.font = link_font
 
-                # 设置列宽
-                for col, width in col_widths.items():
-                    ws.column_dimensions[openpyxl.utils.get_column_letter(col)].width = width
+            # 设置列宽
+            for col, width in col_widths.items():
+                ws.column_dimensions[openpyxl.utils.get_column_letter(col)].width = width
 
-                wb.save(cache_path)
-                wb.close()
-                jp = row.get(COL_JP, "")
-                _cache_data[jp] = row
-                LogBuffer.log().write(f"  ✅ [演员缓存] 已创建并追加: {jp}")
-                return True
+            wb.save(cache_path)
+            wb.close()
+            jp = row.get(COL_JP, "")
+            _cache_data[jp] = row
+            LogBuffer.log().write(f"  ✅ [演员缓存] 已创建并追加: {jp}")
+            return True
     except Exception as e:
         LogBuffer.log().write(f"  ⚠️ [演员缓存] 写入失败: {e}")
         return False

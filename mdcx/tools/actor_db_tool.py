@@ -2340,8 +2340,13 @@ async def update_nfo_tmdb_ids(dir_path: Path, *, limit: int = 5000, concurrency:
                 if _is_stop_requested():
                     return
                 row = search_actor_db_reverse(nm)
-                if row and row.get("tmdbid"):
-                    id_map[nm] = int(row["tmdbid"])
+                raw_tmdbid = row.get("tmdbid") if row else None
+                if raw_tmdbid in (None, ""):
+                    continue
+                try:
+                    id_map[nm] = int(str(raw_tmdbid).strip())
+                except (TypeError, ValueError):
+                    continue
             if not id_map:
                 return
             new_content, cnt = _update_nfo_tmdbids_text(content, id_map)
