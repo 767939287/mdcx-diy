@@ -633,7 +633,7 @@ class Config(BaseModel):
     use_proxy: bool = Field(default=False, title="代理类型")
     proxy: str = Field(default="http://127.0.0.1:7890", title="代理地址")
     proxy_sites: str = Field(
-        default="amazon.co.jp,m.media-amazon.com,xcity.jp,dmm.co.jp,avwikidb.com,minnano-av.com",
+        default="amazon.co.jp,m.media-amazon.com,xcity.jp,dmm.co.jp,minnano-av.com",
         title="使用代理网站",
     )
     cf_bypass_url: str = Field(default="", title="Cloudflare Bypass地址")

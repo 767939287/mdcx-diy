@@ -190,7 +190,7 @@ MDCx 支持的功能全景。只想快速上手的话，先看 [QUICKSTART.md](Q
 ## 九、网络与反爬
 
 - **HTTP 客户端**：curl-cffi 模拟浏览器 TLS 指纹，6 种浏览器画像自动轮换
-- **代理**：支持 HTTP/HTTPS/SOCKS5 代理；仅对"走代理网站"域名列表中的站点走代理（默认含 amazon.co.jp, m.media-amazon.com, xcity.jp, dmm.co.jp, avwikidb.com, minnano-av.com），其他直连
+- **代理**：支持 HTTP/HTTPS/SOCKS5 代理；仅对"走代理网站"域名列表中的站点走代理（默认含 amazon.co.jp, m.media-amazon.com, xcity.jp, dmm.co.jp, minnano-av.com），其他直连
 - **Cloudflare 绕过**：内置隐身 Chromium（cloakbrowser）自动绕过 CF 防护页，无需 license key
 - **限流**：每个网站独立令牌桶限流，自适应退避重试
 - **指纹伪装**：完整 sec-ch-ua、Accept-Language 等请求头，按请求类型动态调整
