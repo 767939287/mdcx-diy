@@ -1,6 +1,20 @@
 # Changelog
 
-## v2.0.5 (2026-08-10) 当前版本
+## v2.0.6 (2026-08-11) 当前版本
+
+### 修复
+
+- **代理支持补全**：默认"走代理网站"列表加入 `avwikidb.com`、`minnano-av.com`（原 `amazon.co.jp, m.media-amazon.com, xcity.jp, dmm.co.jp`）；裸 `curl_cffi AsyncSession` 的 `fetch_avwiki_aliases`/`fetch_libredmm_link` 在配置开启代理且目标在代理清单时按配置走代理——此前绕过代理配置。`is_proxy_host` 从 `AsyncWebClient` 内部抽取为模块级公共函数供裸 session 使用
+- **Emby 演员管理器 3 个 bug**：「仅补缺失演员」开关此前在 Emby API 查询时不传 `personTypes=Actor`，实际拉全库；详情拉取从串行改 `asyncio.gather + Semaphore(8)`（原本逐个 await 的 N+1 模式）；删除头像/背景图此前不读响应状态码（永远报成功），现按 200/204/404 判定
+- **Emby 演员管理器移植修复**：11 处 `mdcx.models.computed.ComputedManager` import 失败（模块在移植版不存在），全部改为 `manager.acquire_computed()` lease；3 处 `post_content` 返回 `b""` 空字节串被误判失败（falsy-bytes），判定改为 `err == "" and body is not None`
+- **minnano 缓存导入修复**：`emby_actor_manager_ui` 此前 `from .emby_actor_manager import load_cache` 会 ImportError（模块无该函数），改为正确 `from .minnano_crawler import load_cache`；同步过滤掉纯符号名（` .·・-`）时的前 5 条跳过日志
+- **演员管理器数据准确**：update/upload 返回空响应时不再误报失败
+
+### 测试
+
+- 新增 `tests/test_emby_actor_manager_http.py` 共 9 个用例（HTTP 状态判定/并发聚合/falsy-bytes 边界）
+
+## v2.0.5 (2026-08-10) 上一个版本
 
 ### 功能
 

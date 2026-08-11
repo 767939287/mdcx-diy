@@ -136,7 +136,7 @@ export QT_QPA_PLATFORM=xcb
 3. 在设置里申请 API Key
 4. 填到 MDCx 设置里
 
-**配置代理**：设置 → 网络 → 代理，支持 HTTP/HTTPS/SOCKS5。可以指定特定网站走代理。
+**配置代理**：设置 → 网络 → 代理，支持 HTTP/HTTPS/SOCKS5。只对"走代理网站"域名列表中的站点走代理，其他默认直连；默认列表包含 `amazon.co.jp, m.media-amazon.com, xcity.jp, dmm.co.jp, avwikidb.com, minnano-av.com`，可按需追加。
 
 **NFO 在 Emby 里显示不出来**：
 - 确认刮削时勾了「下载 NFO」

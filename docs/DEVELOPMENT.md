@@ -154,7 +154,7 @@ ASIN 数据库（Excel），搜索到的 ASIN 与番号对应关系持久化，�
 - **浏览器指纹**：6 种 TLS 指纹（Chrome 124/131/136、Firefox 133/135），按请求类型动态调整，定期轮换
 - **限流**：每个域名独立令牌桶，默认 8 req/s，失败自动退避重试
 - **Cloudflare Bypass**：内置 cloakbrowser 隐身 Chromium，自动绕过 CF 防护页，无需 license key
-- **代理**：HTTP/HTTPS/SOCKS5，可按站点路由
+- **代理**：HTTP/HTTPS/SOCKS5，按"走代理网站"域名路由（默认含 amazon.co.jp, m.media-amazon.com, xcity.jp, dmm.co.jp, avwikidb.com, minnano-av.com）
 
 ## 配置系统
 

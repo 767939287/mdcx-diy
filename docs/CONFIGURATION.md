@@ -142,7 +142,7 @@
 |-------|------|
 | HTTP 代理 | 代理地址（http://127.0.0.1:10809 这种）|
 | SOCKS5 代理 | SOCKS5 代理地址 |
-| 走代理网站 | 只对这些网站用代理，其他直连 |
+| 走代理网站 | 只对这些网站用代理，其他直连（默认含 `amazon.co.jp, m.media-amazon.com, xcity.jp, dmm.co.jp, avwikidb.com, minnano-av.com`）|
 | 启用内置 Bypass | 开启后自动启动隐身 Chromium 绕过 CF |
 | 外部 Bypass URL | 自己搭的 bypass 服务地址 |
 | Bypass 独立代理 | bypass 服务专用的代理 |
