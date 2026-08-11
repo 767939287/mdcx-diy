@@ -127,24 +127,26 @@ def _generate_server_url(actor: dict) -> tuple[str, str, str, str, str, str]:
     return actor_homepage, actor_person, pic_url, backdrop_url, backdrop_url_0, update_url
 
 
-async def get_emby_actor_list() -> list[dict]:
+async def get_emby_actor_list(filter_actor_only: bool = True) -> list[dict]:
     _raise_if_stop_requested()
     base_url = str(manager.config.emby_url).rstrip("/")
     headers = _build_jellyfin_headers()
     if "emby" == manager.config.server_type:
         server_name = "Emby"
-        url = _append_query(base_url + "/emby/Persons", {"userId": manager.config.user_id})
+        params: dict[str, str | None] = {"userId": manager.config.user_id}
+        if filter_actor_only:
+            params["personTypes"] = "Actor"
+        url = _append_query(base_url + "/emby/Persons", params)
     else:
         server_name = "Jellyfin"
-        url = _append_query(
-            base_url + "/Persons",
-            {
-                "personTypes": "Actor",
-                "fields": "Overview,ProviderIds,ProductionLocations,Taglines,Genres,Tags",
-                "enableImages": "true",
-                "userId": manager.config.user_id,
-            },
-        )
+        params = {
+            "fields": "Overview,ProviderIds,ProductionLocations,Taglines,Genres,Tags",
+            "enableImages": "true",
+            "userId": manager.config.user_id,
+        }
+        if filter_actor_only:
+            params["personTypes"] = "Actor"
+        url = _append_query(base_url + "/Persons", params)
     signal.show_log_text(f"⏳ 连接 {server_name} 服务器...")
     if not manager.config.api_key:
         signal.show_log_text(f"🔴 {server_name} API 密钥未填写！")
@@ -200,6 +202,7 @@ async def fetch_actor_detail(actor_name: str) -> dict | None:
 
 async def fetch_person_item_stats(
     parent_ids: list[str] | None = None,
+    filter_actor_only: bool = True,
 ) -> tuple[dict[str, int], dict[str, list[str]], set]:
     counts: dict = {}
     titles: dict = {}
@@ -232,6 +235,9 @@ async def fetch_person_item_stats(
                 item_type = item.get("Type", "")
                 seen_in_item = set()
                 for person in people:
+                    # filter_actor_only: 只统计 Type=Actor 的角色（Emby 默认返回导演/编剧等）
+                    if filter_actor_only and person.get("Type") not in ("Actor", None):
+                        continue
                     name = person.get("Name", "")
                     if not name:
                         continue
@@ -250,14 +256,18 @@ async def fetch_all_actors(
     deduplicate: bool = True,
     parent_ids: list[str] | None = None,
     progress_callback: Callable | None = None,
+    concurrency: int = 8,
 ) -> list[ActorInfo]:
-    persons = await get_emby_actor_list()
+    persons = await get_emby_actor_list(filter_actor_only=filter_actor_only)
     if not persons:
         return []
-    result: list[ActorInfo] = []
     seen_names = set()
-    person_counts, person_titles, lib_person_names = await fetch_person_item_stats(parent_ids=parent_ids)
-    total = len(persons)
+    person_counts, person_titles, lib_person_names = await fetch_person_item_stats(
+        parent_ids=parent_ids, filter_actor_only=filter_actor_only
+    )
+
+    # 第一遍: 过滤+构建 stub (不发起网络请求)
+    stubs: list[tuple[int, ActorInfo]] = []  # (原索引, actor_stub)
     for i, p in enumerate(persons):
         _raise_if_stop_requested()
         name = p.get("Name", "")
@@ -282,7 +292,21 @@ async def fetch_all_actors(
             has_image="Primary" in image_tags,
             has_backdrop=len(backdrop_tags) > 0,
         )
-        detail = await fetch_actor_detail(name)
+        info.movie_count = person_counts.get(name, 0)
+        info.movie_titles = person_titles.get(name, [])
+        stubs.append((i, info))
+
+    # 第二遍: 并发抓详情 (注意限流——Emby/Jellyfin 一般无速率压力, 8 并发保守)
+    total = len(stubs)
+    semaphore = asyncio.Semaphore(max(1, concurrency))
+    done_count = 0
+    done_lock = asyncio.Lock()
+
+    async def _fill(info: ActorInfo) -> None:
+        nonlocal done_count
+        async with semaphore:
+            _raise_if_stop_requested()
+            detail = await fetch_actor_detail(info.name)
         if detail:
             overview = detail.get("Overview") or ""
             info.has_overview = bool(overview)
@@ -294,12 +318,15 @@ async def fetch_all_actors(
             info.existing_provider_ids = detail.get("ProviderIds") or {}
             info.existing_genres = detail.get("Genres") or []
             info.existing_tags = detail.get("Tags") or []
-        info.movie_count = person_counts.get(name, 0)
-        info.movie_titles = person_titles.get(name, [])
-        result.append(info)
-        if progress_callback:
-            progress_callback(i + 1, total, name)
-    return result
+        async with done_lock:
+            done_count += 1
+            if progress_callback:
+                progress_callback(done_count, total, info.name)
+
+    await asyncio.gather(*(_fill(info) for _, info in stubs))
+
+    # 按原顺序返回 (稳定性)
+    return [info for _, info in stubs]
 
 
 async def get_gfriends_index() -> dict[str, str] | None:
@@ -411,7 +438,6 @@ async def upload_actor_image(actor: ActorInfo, image_path: str | Path) -> tuple[
 
 
 async def delete_actor_image(actor: ActorInfo) -> tuple[bool, str]:
-    _, _, _, _, _, _ = _generate_server_url({"Name": actor.name, "Id": actor.actor_id, "ServerId": actor.server_id})
     base_url = str(manager.config.emby_url).rstrip("/")
     if "emby" == manager.config.server_type:
         url = f"{base_url}/emby/Items/{actor.actor_id}/Images/Primary"
@@ -421,8 +447,14 @@ async def delete_actor_image(actor: ActorInfo) -> tuple[bool, str]:
     from ..models.computed import ComputedManager
 
     async with ComputedManager() as computed:
-        await computed.async_client.request("DELETE", url, headers=headers, use_proxy=False)
-    return True, f"✅ {actor.name} 旧头像已删除"
+        resp, err = await computed.async_client.request("DELETE", url, headers=headers, use_proxy=False)
+    if resp is None:
+        return False, f"❌ {actor.name} 删除旧头像请求失败: {err}"
+    status = int(resp.status_code)
+    if status in (200, 204, 404):
+        # 200/204 删除成功; 404 表示本来就没有, 也视为"删干净了"以便后续上传
+        return True, f"✅ {actor.name} 旧头像已删除 (HTTP {status})"
+    return False, f"❌ {actor.name} 删除旧头像失败: HTTP {status}"
 
 
 async def delete_actor_backdrop(actor: ActorInfo) -> tuple[bool, str]:
@@ -435,8 +467,13 @@ async def delete_actor_backdrop(actor: ActorInfo) -> tuple[bool, str]:
     from ..models.computed import ComputedManager
 
     async with ComputedManager() as computed:
-        await computed.async_client.request("DELETE", url, headers=headers, use_proxy=False)
-    return True, f"✅ {actor.name} 旧背景已删除"
+        resp, err = await computed.async_client.request("DELETE", url, headers=headers, use_proxy=False)
+    if resp is None:
+        return False, f"❌ {actor.name} 删除旧背景请求失败: {err}"
+    status = int(resp.status_code)
+    if status in (200, 204, 404):
+        return True, f"✅ {actor.name} 旧背景已删除 (HTTP {status})"
+    return False, f"❌ {actor.name} 删除旧背景失败: HTTP {status}"
 
 
 async def upload_actor_backdrop(actor: ActorInfo, image_path: str | Path) -> tuple[bool, str]:
@@ -617,9 +654,13 @@ def sync_actor(actor: ActorInfo, sync_type: str = "both") -> tuple[bool, str]:
             if actor.new_image_path:
                 loop = asyncio.new_event_loop()
                 try:
-                    loop.run_until_complete(delete_actor_image(actor))
-                    ok, msg = loop.run_until_complete(upload_actor_image(actor, actor.new_image_path))
-                    logs.append(msg)
+                    delete_ok, delete_msg = loop.run_until_complete(delete_actor_image(actor))
+                    if not delete_ok:
+                        logs.append(delete_msg)
+                        logs.append(f"⏭️ {actor.name} 跳过上传 (因旧头像删除失败)")
+                    else:
+                        ok, msg = loop.run_until_complete(upload_actor_image(actor, actor.new_image_path))
+                        logs.append(msg)
                 finally:
                     loop.close()
             else:
@@ -632,12 +673,17 @@ def sync_actor(actor: ActorInfo, sync_type: str = "both") -> tuple[bool, str]:
         if actor.need_update_backdrop and actor.new_backdrop_path:
             loop = asyncio.new_event_loop()
             try:
-                loop.run_until_complete(delete_actor_backdrop(actor))
-                ok, msg = loop.run_until_complete(upload_actor_backdrop(actor, actor.new_backdrop_path))
-                logs.append(msg)
+                delete_ok, delete_msg = loop.run_until_complete(delete_actor_backdrop(actor))
+                if not delete_ok:
+                    logs.append(delete_msg)
+                    logs.append(f"⏭️ {actor.name} 跳过上传 (因旧背景删除失败)")
+                else:
+                    ok, msg = loop.run_until_complete(upload_actor_backdrop(actor, actor.new_backdrop_path))
+                    logs.append(msg)
             finally:
                 loop.close()
-    success = all("成功" in log for log in logs) if logs else True
+    # 把 delete 失败/skip 视为整体失败 (logs 含 ❌ 或 ⏭️) 以使 UI 标红
+    success = not any(("❌" in log or "⏭️" in log) for log in logs) if logs else True
     return success, "\n".join(logs)
 
 
