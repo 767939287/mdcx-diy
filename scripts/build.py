@@ -285,6 +285,9 @@ class BuildManager:
             # 演员库维护工具(延迟导入)
             "--hidden-import",
             "mdcx.tools.actor_db_tool",
+            # minnano 演员别名查询(fetch_minnano_aliases 被 actor_db_tool 延迟导入, 其所在模块需显式收录)
+            "--hidden-import",
+            "mdcx.tools.minnano_crawler",
             # AVdb 映射解析器(延迟导入)
             "--hidden-import",
             "mdcx.utils.xml_avdb",
