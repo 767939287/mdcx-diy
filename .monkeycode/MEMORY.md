@@ -175,3 +175,15 @@
   - `scripts/*.py` 顶部的 `# ruff: noqa: E402` 多数是必要的——脚本里有 `sys.path.insert(0, '.')` 等 hack 才能让后续 import 工作。E402 在当前 ruff.toml 没启用，所以 RUF100 觉得 noqa 多余，但保留它们能在未来启用 E402 或修改 per-file-ignores 时不致出错。
   - 若启用 RUF100 自动修复，**只应用到 `mdcx/` 与 `main.py`**，scripts/ 目录需手动 `git checkout` 回滚。
   - 探测性 import（try/except ImportError 内 `import xxx` 然后未使用，用于检测包可用性）应显式标注 `# noqa: F401  # 探活`，避免被 F401 误报。已应用：`mdcx/cf_bypass/local_server.py`、`mdcx/config/resources.py`、`mdcx/core/amazon.py`。
+
+[看到"死代码"先怀疑是功能从未运行，而非"清理即可"]
+- Date: 2026-08-11
+- Context: 审查 emby_actor_manager 工具时我把 PreparePreviewThread 里 `self.minnano_cache = None` 判为"死代码字段"删除——后来用户反问"minnano 缓存是不是可复用"，深查才发现 QThread.run 里 `from .emby_actor_manager import load_cache` 这个导入路径本身就错了（emby_actor_manager 无此函数），整个预览功能对启用 minnano 缓存的用户从来就 ImportError 崩掉，UI 字段从未被读写是因为代码根本跑不到。
+- Category: 排错调试
+- Instructions:
+  - 看到"未被引用的字段/函数/变量"（疑似死代码），先问三个问题再动刀：
+    1. 它的赋值点在哪里？赋值语句本身是不是会抛异常？（本次 ImportError）
+    2. 它的读取点在哪里？读取点所在函数有没有被调用？
+    3. 它的中间产物（如本例的模块级 `_cache_data`）是不是由别处写入？本例 `load_cache()` 写的是 `minnano_crawler._cache_data` 不是 UI 字段，所以 UI 字段确实是死的，但**功能是活的**。
+  - 死字段可以删，但字段对应的"功能有没有正常运行"必须先实测验证（最小复现 import / 跑一遍），不能因为字段没人用就直接判定整个功能在跑。
+  - 用户反问"是不是可以复用"是高价值信号——小白的常识直觉能刺穿专家的盲点。
