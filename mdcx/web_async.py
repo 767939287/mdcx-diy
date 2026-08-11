@@ -27,6 +27,8 @@ except ImportError:  # curl_cffi >= 0.12 renamed the sentinel to NOT_SET
     from curl_cffi.requests.utils import NOT_SET as not_set  # type: ignore[attr-defined, no-redef]
 from PIL import Image
 
+# manual.py 只依赖 config.enums / gen.field_enums（纯定义模块）, 无循环导入风险
+from .manual import ManualConfig
 from .network_fingerprint import (
     BrowserFingerprint,
     RequestPurpose,
@@ -42,6 +44,56 @@ try:
     from .cf_bypass import LocalBypassServer
 except ImportError:
     LocalBypassServer = None  # type: ignore[assignment, misc]
+
+
+def is_proxy_host(host: str, proxy_sites: list[str] | tuple[str, ...] | None) -> bool:
+    """判断目标 host 是否应使用代理, 基于用户配置的 proxy_sites 列表.
+
+    匹配规则（满足任一分支即视为应走代理）：
+      1. 直接域名匹配：``www.dmm.co.jp`` vs ``dmm.co.jp``
+      2. 站点值映射 WEB_DIC：``javdb`` → ``javdb.com``
+      3. 站点值加常见 TLD 兜底：``libredmm`` → ``libredmm.com/.net/...``
+      4. 子域后缀：``api.libredmm.com`` vs ``libredmm.com``
+
+    ManualConfig.WEB_DIC 只列了部分主流爬虫站点的域名映射, 分支 2 用它精确命中,
+    分支 3 是兜底, 兜底分支的存在让 libredmm / avwikidb / minnano 等未列入 WEB_DIC
+    的站点值也能开箱匹配。
+    """
+    if not host or not proxy_sites:
+        return False
+
+    host = host.strip().lower()
+    if not host:
+        return False
+
+    for raw in proxy_sites:
+        proxy_site = raw.strip().lower()
+        if not proxy_site:
+            continue
+
+        # 1. 直接匹配
+        if host == proxy_site:
+            return True
+
+        # 2. WEB_DIC 反查：站点值对应多个域名（如 "javdb" 对应 javdb.com / javdb.net）
+        for domain_key, website_enum in ManualConfig.WEB_DIC.items():
+            if website_enum.value == proxy_site:
+                if host == domain_key or host.endswith("." + domain_key):
+                    return True
+                for tld in (".com", ".net", ".org", ".co", ".jp", ".io"):
+                    if host == domain_key + tld or host.endswith("." + domain_key + tld):
+                        return True
+
+        # 3. 通用 TLD 兜底（libredmm / avwikidb / minnano 等未进 WEB_DIC 的站点）
+        for tld in (".com", ".net", ".org", ".co", ".jp", ".io"):
+            if host == proxy_site + tld or host.endswith("." + proxy_site + tld):
+                return True
+
+        # 4. 子域后缀
+        if host.endswith("." + proxy_site):
+            return True
+
+    return False
 
 
 def _safe_float(value: object, default: float) -> float:
@@ -456,48 +508,12 @@ class AsyncWebClient:
         )
 
     def _is_proxy_host(self, host: str) -> bool:
-        """Check if a host should use proxy based on proxy_sites configuration.
+        """检查目标 host 是否应使用代理, 基于当前 client 的 proxy_sites 配置.
 
-        Supports both site values (e.g., 'libredmm') and full domains (e.g., 'libredmm.com').
+        语义与模块级 is_proxy_host 一致; 此方法保留为客户端持有自身 proxy_sites
+        的便捷入口, 供类的内部调用。
         """
-        if not host or not self.proxy_sites:
-            return False
-
-        # Import here to avoid circular dependency
-        from .manual import ManualConfig
-
-        for proxy_site in self.proxy_sites:
-            proxy_site = proxy_site.strip().lower()
-            if not proxy_site:
-                continue
-
-            # Direct match: host equals the configured value
-            if host == proxy_site:
-                return True
-
-            # Match site value against domain mappings from WEB_DIC
-            # e.g., user inputs 'javdb', host is 'www.javdb.com'
-            for domain_key, website_enum in ManualConfig.WEB_DIC.items():
-                if website_enum.value == proxy_site:
-                    # Check if host matches this domain
-                    if host == domain_key or host.endswith("." + domain_key):
-                        return True
-                    # Also check common TLDs
-                    for tld in [".com", ".net", ".org", ".co", ".jp", ".io"]:
-                        if domain_key + tld == host or host.endswith("." + domain_key + tld):
-                            return True
-
-            # Generic matching: try common TLDs for any site value
-            # This handles sites like 'libredmm' that may not be in WEB_DIC
-            for tld in [".com", ".net", ".org", ".co", ".jp", ".io"]:
-                if host == proxy_site + tld or host.endswith("." + proxy_site + tld):
-                    return True
-
-            # Standard subdomain matching
-            if host.endswith("." + proxy_site):
-                return True
-
-        return False
+        return is_proxy_host(host, self.proxy_sites)
 
     def retain(self) -> None:
         """声明一个长生命周期使用方正在持有客户端，避免配置重载时提前关闭连接池。"""

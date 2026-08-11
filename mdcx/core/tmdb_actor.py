@@ -35,6 +35,7 @@ from ..config.resources import (
 from ..models.log_buffer import LogBuffer
 from ..utils import convert_half
 from ..utils.actor_clean import clean_actor_keyword, clean_actor_name
+from ..web_async import is_proxy_host
 
 # 演员数据库写锁：防止多个并发任务同时写 xlsx 导致文件损坏
 _actor_db_write_lock = asyncio.Lock()
@@ -1469,12 +1470,25 @@ async def fetch_libredmm_link(actor_name: str) -> str:
         "Accept-Language": "zh-CN,zh;q=0.9",
         "Referer": "https://www.libredmm.com/actresses",
     }
+    # 走用户配置的代理（裸 AsyncSession 不会自动走代理）
+    libredmm_proxy: str | None = None
+    cfg = manager.config
+    if cfg.use_proxy and cfg.proxy:
+        proxy_sites = [s.strip() for s in (cfg.proxy_sites or "").split(",") if s.strip()]
+        if is_proxy_host("www.libredmm.com", proxy_sites):
+            libredmm_proxy = cfg.proxy
+
     await _libredmm_rate_limiter.acquire()
     status_code = 0
     try:
         if _libredmm_session is None:
             _libredmm_session = AsyncSession(impersonate="safari15_5")
-        resp = await _libredmm_session.get(search_url, params=params, headers=headers, timeout=15)
+        if libredmm_proxy:
+            resp = await _libredmm_session.get(
+                search_url, params=params, headers=headers, timeout=15, proxy=libredmm_proxy
+            )
+        else:
+            resp = await _libredmm_session.get(search_url, params=params, headers=headers, timeout=15)
         status_code = int(resp.status_code)
         if status_code != 200:
             return ""
@@ -1522,12 +1536,24 @@ async def fetch_avwiki_aliases(actor_name: str) -> list[str]:
     params = {"q": actor_name.strip()}
     headers = {"Accept-Language": "ja-JP,ja;q=0.9,en;q=0.8"}
 
+    # 走用户配置的代理：仅在「开启代理」且目标站点在 proxy_sites 中时套用
+    # （裸 AsyncSession 不会自动走代理，需要显式传 proxies）
+    avwiki_proxy: str | None = None
+    cfg = manager.config
+    if cfg.use_proxy and cfg.proxy:
+        proxy_sites = [s.strip() for s in (cfg.proxy_sites or "").split(",") if s.strip()]
+        if is_proxy_host("avwikidb.com", proxy_sites):
+            avwiki_proxy = cfg.proxy
+
     await _avwiki_rate_limiter.acquire()
     status_code = 0
     try:
         if _avwiki_session is None:
             _avwiki_session = AsyncSession(impersonate="safari15_5", timeout=15)
-        resp = await _avwiki_session.get(search_url, params=params, headers=headers)
+        if avwiki_proxy:
+            resp = await _avwiki_session.get(search_url, params=params, headers=headers, proxy=avwiki_proxy)
+        else:
+            resp = await _avwiki_session.get(search_url, params=params, headers=headers)
         status_code = int(resp.status_code)
         if status_code != 200:
             return []
@@ -1540,7 +1566,10 @@ async def fetch_avwiki_aliases(actor_name: str) -> list[str]:
 
         await _avwiki_rate_limiter.finish(status_code)
         status_code = 0
-        resp2 = await _avwiki_session.get(detail_url, headers=headers)
+        if avwiki_proxy:
+            resp2 = await _avwiki_session.get(detail_url, headers=headers, proxy=avwiki_proxy)
+        else:
+            resp2 = await _avwiki_session.get(detail_url, headers=headers)
         status_code = int(resp2.status_code)
         if status_code != 200:
             return []
