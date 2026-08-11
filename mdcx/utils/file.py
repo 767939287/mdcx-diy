@@ -179,8 +179,9 @@ def check_pic_sync(p: str):
             try:
                 os.remove(p)
                 signal.add_log("删除成功！")
-            except Exception:
-                signal.add_log("删除失败！")
+            except Exception as remove_err:
+                # 常见原因：Windows 下文件被资源管理器/杀软占用（PermissionError/WinError 32），权限不足（WinError 5）
+                signal.add_log(f"删除失败: {remove_err}（若是 WinError 32 请关闭预览/播放器，或重启软件后重试）")
     return False
 
 
@@ -277,6 +278,7 @@ async def check_pic_async(p: str | Path):
             try:
                 await aiofiles.os.remove(p)
                 signal.add_log("删除成功！")
-            except Exception:
-                signal.add_log("删除失败！")
+            except Exception as remove_err:
+                # 同上同步版：常见 WinError 32（被占用）/ WinError 5（权限不足）
+                signal.add_log(f"删除失败: {remove_err}（若是 WinError 32 请关闭预览/播放器后重试）")
     return False

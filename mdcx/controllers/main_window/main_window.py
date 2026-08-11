@@ -1029,11 +1029,13 @@ class MyMAinWindow(QMainWindow):
     # region 主界面
     # 开始刮削按钮
     def pushButton_start_scrape_clicked(self):
-        if self.Ui.pushButton_start_cap.text() == "开始":
+        text = self.Ui.pushButton_start_cap.text()
+        if text == "开始":
             if not get_remain_list():
                 start_new_scrape(FileMode.Default)
-        elif self.Ui.pushButton_start_cap.text() == "■ 停止":
+        elif text == "■ 停止":
             self.pushButton_stop_scrape_clicked()
+        # text == "■ 停止中"：防抖——用户疯狂点击时静默忽略，避免重复触发 stop 流程
 
     # 停止确认弹窗
     def pushButton_stop_scrape_clicked(self):

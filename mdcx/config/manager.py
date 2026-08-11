@@ -50,8 +50,24 @@ class ConfigManager:
             config = Config.model_validate(d)
             self._replace_config(config)
             return errors
+        except json.JSONDecodeError as e:
+            # JSON 语法错误（用户手工编辑丢逗号/引号）单独提示：
+            # 给出错误位置行号列号 + 自动备份避免反复读坏文件 + 跳到干净默认配置
+            backup = self._path.with_suffix(self._path.suffix + ".corrupt.bak")
+            try:
+                backup.write_bytes(self._path.read_bytes())
+                backup_hint = f"已把坏配置备份为 {backup.name}，您可以打开对比修复；"
+            except OSError:
+                backup_hint = ""
+            self._replace_config(Config())
+            msg = (
+                f" 配置文件 {self._path} 不是合法 JSON（语法错误, 第 {e.lineno} 行第 {e.colno} 列: {e.msg}）。"
+                f"{backup_hint}已为您加载默认配置，您可以直接在设置页改回正确值后再保存。"
+            )
+            logger.error("配置文件 JSON 语法错误: %s", e)
+            return msg.splitlines()
         except Exception as e:
-            # 校验失败时不再静默回退到默认配置(会丢失用户配置),
+            # 其他校验失败时不再静默回退到默认配置(会丢失用户配置),
             # 而是保留内存中已加载的旧配置(若存在), 仅记录错误并返回报错信息。
             old_config = getattr(self, "config", None)
             if old_config is None:
