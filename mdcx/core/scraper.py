@@ -795,12 +795,16 @@ class Scraper:
             file_classification = classify_scrape_task(file_info.crawl_task(), manager.config)
         enable_shared_json = "." not in movie_number and file_classification.scraping_type != FixedScrapingType.GUOCHAN
         if enable_shared_json:
-            if movie_number not in Flags.json_get_status:
-                # 第一次遇到该番号，标记为“正在刮削”
-                Flags.json_get_set.add(movie_number)
-                Flags.json_get_status[movie_number] = None
-                LogBuffer.log().write(f"\n 🟡 [Same Number] 首次刮削，开始共享番号数据：{movie_number}")
-            else:
+            # 首次发现该番号时原子性标记为“正在刮削”，避免两个协程同时走“首次”分支导致重复刮削
+            async with Flags._json_get_lock:
+                if movie_number not in Flags.json_get_status:
+                    Flags.json_get_set.add(movie_number)
+                    Flags.json_get_status[movie_number] = None
+                    LogBuffer.log().write(f"\n 🟡 [Same Number] 首次刮削，开始共享番号数据：{movie_number}")
+                    is_first = True
+                else:
+                    is_first = False
+            if not is_first:
                 # 同番号任务等待首个任务完成；若首个任务失败，直接结束等待，避免线程卡死
                 wait_timeout = 300
                 waited = 0

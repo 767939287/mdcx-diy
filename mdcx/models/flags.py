@@ -37,6 +37,9 @@ class _Flags:
     appoint_url: str = ""
     website_name: str = ""
 
+    # 演员库 json_get_status / json_get_set 竞态防护
+    _json_get_lock: asyncio.Lock = field(default_factory=_new_lock, repr=False)
+
     # 刮削相关
     rest_time_convert: int = 0
     rest_time_convert_: int = 0

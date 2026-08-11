@@ -81,6 +81,7 @@ def _enable_crash_dump() -> None:
     日志写入 MAIN_PATH/crash/ 目录，正常运行时无任何文件生成。
     """
     try:
+        import atexit
         import faulthandler
         import traceback as _tb
         from datetime import datetime
@@ -89,14 +90,20 @@ def _enable_crash_dump() -> None:
         log_dir.mkdir(parents=True, exist_ok=True)
         ts = datetime.now().strftime("%Y%m%d_%H%M%S")
 
+        # 保存打开的文件句柄，程序正常退出时 flush+close，防 SIGKILL 时漏数据
+        _crash_files: list[object] = []
+
         # 1) 重定向 stdout/stderr 到文件（onefile 无控制台时 print/异常输出会丢失）
         try:
-            sys.stdout = (
-                sys.__stdout__
-                if sys.__stdout__ is not None
-                else open(log_dir / f"crash_{ts}.log", "w", encoding="utf-8")
-            )
-            sys.stderr = open(log_dir / f"crash_{ts}.log", "a", encoding="utf-8")
+            if sys.__stdout__ is not None:
+                sys.stdout = sys.__stdout__
+            else:
+                stdout_file = open(log_dir / f"crash_{ts}.log", "w", encoding="utf-8")
+                sys.stdout = stdout_file
+                _crash_files.append(stdout_file)
+            stderr_file = open(log_dir / f"crash_{ts}.log", "a", encoding="utf-8")
+            sys.stderr = stderr_file
+            _crash_files.append(stderr_file)
         except Exception:
             pass
 
@@ -122,9 +129,22 @@ def _enable_crash_dump() -> None:
 
         # 3) C 层崩溃 (segfault) 堆栈写文件
         try:
-            faulthandler.enable(file=open(log_dir / f"crash_{ts}_faulthandler.log", "w", encoding="utf-8"))
+            faulthandler_file = open(log_dir / f"crash_{ts}_faulthandler.log", "w", encoding="utf-8")
+            faulthandler.enable(file=faulthandler_file)
+            _crash_files.append(faulthandler_file)
         except Exception:
             pass
+
+        # 4) 进程退出时 flush/close，避免 SIGINT 等正常退出路径下缓冲日志丢失
+        def _flush_and_close():
+            for f in _crash_files:
+                try:
+                    f.flush()
+                    f.close()
+                except (AttributeError, OSError):
+                    pass
+
+        atexit.register(_flush_and_close)
     except Exception:
         pass
 
