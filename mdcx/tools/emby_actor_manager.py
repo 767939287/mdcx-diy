@@ -151,9 +151,7 @@ async def get_emby_actor_list(filter_actor_only: bool = True) -> list[dict]:
     if not manager.config.api_key:
         signal.show_log_text(f"🔴 {server_name} API 密钥未填写！")
         return []
-    from ..models.computed import ComputedManager
-
-    async with ComputedManager() as computed:
+    async with manager.acquire_computed() as computed:
         response, error = await computed.async_client.get_json(url, headers=headers, use_proxy=False)
     _raise_if_stop_requested()
     if response is None:
@@ -171,9 +169,7 @@ async def get_media_folders() -> list[dict]:
         url = f"{base_url}/emby/Library/MediaFolders"
     else:
         url = f"{base_url}/Library/MediaFolders"
-    from ..models.computed import ComputedManager
-
-    async with ComputedManager() as computed:
+    async with manager.acquire_computed() as computed:
         response, error = await computed.async_client.get_json(url, headers=headers, use_proxy=False)
     if response is None:
         return []
@@ -193,9 +189,7 @@ async def fetch_actor_detail(actor_name: str) -> dict | None:
             f"{base_url}/Persons/{name_encoded}",
             {"userId": manager.config.user_id},
         )
-    from ..models.computed import ComputedManager
-
-    async with ComputedManager() as computed:
+    async with manager.acquire_computed() as computed:
         response, error = await computed.async_client.get_json(url, headers=headers, use_proxy=False)
     return response
 
@@ -221,9 +215,7 @@ async def fetch_person_item_stats(
             urls.append(f"{base_url}/emby/Items?Recursive=true&Fields=People&Limit=100000")
         else:
             urls.append(f"{base_url}/Items?Recursive=true&Fields=People&Limit=100000")
-    from ..models.computed import ComputedManager
-
-    async with ComputedManager() as computed:
+    async with manager.acquire_computed() as computed:
         for url in urls:
             response, error = await computed.async_client.get_json(url, headers=headers, use_proxy=False)
             if response is None:
@@ -367,9 +359,7 @@ async def get_gfriends_index() -> dict[str, str] | None:
     if not await aiofiles.os.path.exists(gfriends_json_path):
         signal.show_log_text("⏳ 下载 Gfriends 数据表...")
         filetree_url = f"{raw_url}/master/Filetree.json"
-        from ..models.computed import ComputedManager
-
-        async with ComputedManager() as computed:
+        async with manager.acquire_computed() as computed:
             response, error = await computed.async_client.get_content(filetree_url)
         if response is None:
             signal.show_log_text("🔴 Gfriends 数据表下载失败")
@@ -413,15 +403,14 @@ async def update_person_info(actor: ActorInfo) -> tuple[bool, str]:
     if actor.new_premiere_date:
         payload["PremiereDate"] = actor.new_premiere_date
     headers = _build_jellyfin_headers()
-    from ..models.computed import ComputedManager
-
-    async with ComputedManager() as computed:
-        ok, err = await computed.async_client.post_content(
+    async with manager.acquire_computed() as computed:
+        body, err = await computed.async_client.post_content(
             url=update_url, data=json.dumps(payload), headers=headers, use_proxy=False
         )
-    if ok:
+    # Emby POST 成功常返回 200/204 + 空 body; 不能 iff "ok": 空 bytes 是 falsy
+    if err == "" and body is not None:
         return True, f"✅ {actor.name} 信息更新成功"
-    return False, f"❌ {actor.name} 信息更新失败: {err}"
+    return False, f"❌ {actor.name} 信息更新失败: {err or '服务器返回空响应'}"
 
 
 async def upload_actor_image(actor: ActorInfo, image_path: str | Path) -> tuple[bool, str]:
@@ -438,15 +427,13 @@ async def upload_actor_image(actor: ActorInfo, image_path: str | Path) -> tuple[
         content_type = "image/jpeg" if img_path.suffix.lower() in (".jpg", ".jpeg") else "image/png"
         header = {"Content-Type": content_type}
         header = _build_jellyfin_headers(header)
-        from ..models.computed import ComputedManager
-
-        async with ComputedManager() as computed:
-            ok, err = await computed.async_client.post_content(
+        async with manager.acquire_computed() as computed:
+            body, err = await computed.async_client.post_content(
                 url=pic_url, data=b64_data, headers=header, use_proxy=False
             )
-        if ok:
+        if err == "" and body is not None:
             return True, f"✅ {actor.name} 头像上传成功"
-        return False, f"❌ {actor.name} 头像上传失败: {err}"
+        return False, f"❌ {actor.name} 头像上传失败: {err or '服务器返回空响应'}"
     except Exception as e:
         return False, f"❌ {actor.name} 上传异常: {e}"
 
@@ -458,9 +445,7 @@ async def delete_actor_image(actor: ActorInfo) -> tuple[bool, str]:
     else:
         url = f"{base_url}/Items/{actor.actor_id}/Images/Primary"
     headers = _build_jellyfin_headers()
-    from ..models.computed import ComputedManager
-
-    async with ComputedManager() as computed:
+    async with manager.acquire_computed() as computed:
         resp, err = await computed.async_client.request("DELETE", url, headers=headers, use_proxy=False)
     if resp is None:
         return False, f"❌ {actor.name} 删除旧头像请求失败: {err}"
@@ -478,9 +463,7 @@ async def delete_actor_backdrop(actor: ActorInfo) -> tuple[bool, str]:
     else:
         url = f"{base_url}/Items/{actor.actor_id}/Images/Backdrop/0"
     headers = _build_jellyfin_headers()
-    from ..models.computed import ComputedManager
-
-    async with ComputedManager() as computed:
+    async with manager.acquire_computed() as computed:
         resp, err = await computed.async_client.request("DELETE", url, headers=headers, use_proxy=False)
     if resp is None:
         return False, f"❌ {actor.name} 删除旧背景请求失败: {err}"
@@ -504,15 +487,13 @@ async def upload_actor_backdrop(actor: ActorInfo, image_path: str | Path) -> tup
         content_type = "image/jpeg" if img_path.suffix.lower() in (".jpg", ".jpeg") else "image/png"
         header = {"Content-Type": content_type}
         header = _build_jellyfin_headers(header)
-        from ..models.computed import ComputedManager
-
-        async with ComputedManager() as computed:
-            ok, err = await computed.async_client.post_content(
+        async with manager.acquire_computed() as computed:
+            body, err = await computed.async_client.post_content(
                 url=backdrop_url, data=b64_data, headers=header, use_proxy=False
             )
-        if ok:
+        if err == "" and body is not None:
             return True, f"✅ {actor.name} 背景上传成功"
-        return False, f"❌ {actor.name} 背景上传失败: {err}"
+        return False, f"❌ {actor.name} 背景上传失败: {err or '服务器返回空响应'}"
     except Exception as e:
         return False, f"❌ {actor.name} 背景上传异常: {e}"
 
@@ -551,9 +532,7 @@ async def from_graphis(actor: ActorInfo, cache_dir: Path) -> tuple[str, str | No
         f"https://graphis.ne.jp/monthly/?S=1&K={quote(jp_name)}",
     ]
     for url in urls:
-        from ..models.computed import ComputedManager
-
-        async with ComputedManager() as computed:
+        async with manager.acquire_computed() as computed:
             res, _ = await computed.async_client.get_text(url)
         if res is None:
             continue
