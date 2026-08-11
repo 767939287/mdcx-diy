@@ -27,6 +27,21 @@
 - **actor 库标签/事务所/生涯同步**：标签日文残留 11817→0（剔除 7000+ 促销/经历/厂牌词，翻译 3869 次，Google+人工校正 531 词映射）；标签 cn 变化真同步 7 个/174 次；事务所日文→英文公开名同步 460 次；生涯字段日文清洗（提取年份区间）
 - **check_actor_db 检查项整合**：新增 url 错配 3 项（error）、出生日期年份范围（error，1900-2030）、生涯无年份（error，支持全角数字）、简介日文残留（warning，排除出道字段）、简介非结构化（warning）、孤儿 hyperlink（XML 层解析）。出厂库运行 0 error、9 warning
 
+### 修复
+
+- **actor_db 并发 UX bug**：`actor_db_finished` 信号带 task_id 精确定位完成按钮；新增 `_actor_db_running` 状态集合追踪在跑任务，主刮削结束的 `reset_buttons_status` 与 actor_db 完成回调均不再跨任务误启用按钮。抽取 `_run_actor_db_async` 通用模板消灭 6 处重复（isEnabled 检查 → setEnabled(False)+emit 文案 → executor.submit 协程 → finally 发完成信号）
+- **爬虫 xpath 防御下沉**：airav_cc / iqqtv / jav321 / javlibrary / cableav / madouqu / mdtv / avsox / hscangku / official 等 10 处裸 `xpath(...)[0]` 加空列表防御；修复 `airav_cc.get_cover` 中 JSON-LD `thumbnailUrl` 的二次索引（站点有时返回 str 而非 list，原代码 `data_dict.get("thumbnailUrl", "")[0]` 对空 str 会 IndexError）
+- **`update_nfo_tmdb_ids`**：`int(row["tmdbid"])` 加 `TypeError`/`ValueError` 防御（openpyxl 返回 float/str 混杂时不再炸）
+- **`main.py::_apply_ui_scale_factor`** 包 try/except，配置文件解析失败不阻断启动
+- **`tool_handlers._open_file_thread`** 异常路径改用 `traceback.format_exc()`，避免 PyQt 异常对象 str 化失败
+
+### 工程质量
+
+- **ruff 自动修复 138 处**：RET504/RET505（不必要赋值/冗余 else）、RET501/RET502（隐式 None 返回）、RUF010（f-string 显式类型转换）、RUF100（清理无用 noqa)。`mdcx/` 全库通过，保留主分支 0 ruff 告警
+- **探测性 import 显式标注**：`cf_bypass/local_server.py`、`config/resources.py`、`core/amazon.py` 中 try/except ImportError 探活块加 `# noqa: F401` 注释说明用途，避免误判为无用 import
+- **`cf_bypass/local_server.py::uvicorn.Server`**：类型注解改 TYPE_CHECKING import，mypy 真正可识别
+- **`web_async.py::_download_chunk`**：返回值类型由 `str | None` 修正为 `str`（空串成功/非空失败的现约定），补文档；curl-cffi response patch 失败的静默点加诊断日志
+- **新增 `tests/test_actor_db_button_consistency.py`**：纯静态（无需 Qt 运行时）校验 `_ACTOR_DB_IDLE_TEXT_MAP` ↔ `MDCx.ui` ↔ `MyMainWindow` 顶层 `pyqtSignal(str)` 声明 ↔ `actor_db_finished` 信号契约四层一致，按钮改名/漏声明/map 漏收时 CI 立即红
 
 ## v2.0.4 (2026-08-04)
 

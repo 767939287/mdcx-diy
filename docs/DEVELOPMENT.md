@@ -195,6 +195,8 @@ ASIN 数据库（Excel），搜索到的 ASIN 与番号对应关系持久化，�
   - **规则**：改动 UI 一律先改 `MDCx.ui`，再运行
     `/workspace/.venv/bin/python3 -m PyQt6.uic.pyuic mdcx/views/MDCx.ui -o mdcx/views/MDCx.py`
     及 `uv run ruff format mdcx/views/MDCx.py`，不要手工改 `MDCx.py`
+- **演员工具页按钮一致性测试**（`tests/test_actor_db_button_consistency.py`）：纯静态校验（无需 Qt 运行时），锁定 `_ACTOR_DB_IDLE_TEXT_MAP` ↔ `MDCx.ui` 中控件 ↔ `MyMainWindow` 顶层 `pyqtSignal(str)` 声明 ↔ `actor_db_finished` 信号契约四层一致。按钮改名、漏声明信号、map 漏收等漂移在 CI 即可捕获
+- **actor_db 并发信号契约**：`actor_db_finished = pyqtSignal(str)` 带 task_id；所有 `_run_actor_db_*` 走 `_run_actor_db_async(btn_attr, busy_text, log_prefix, coro_factory)` 通用模板，防重入依赖 `_actor_db_running` 集合，跨任务误恢复由 `reset_buttons_status` 与 `_on_actor_db_finished` 共同规避
 - **推送前自检**：`uv run check --skip-hook-install`（ruff format + ruff check + mypy mdcx/ + pytest + check_actor_db）
 
 ## 代码规范
