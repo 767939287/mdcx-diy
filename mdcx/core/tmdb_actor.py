@@ -1521,6 +1521,10 @@ _avwiki_session: Any = None
 async def fetch_avwiki_aliases(actor_name: str) -> list[str]:
     """从 AVWikiDB 查询演员别名，未找到或匹配失败返回空列表。
 
+    注意：avwikidb.com 当前全站被 Cloudflare 质询拦截（403 "Just a moment"），
+    本函数实为不可达路径；UI 补别名入口已改走 minnano（minnano_crawler.fetch_minnano_aliases）。
+    本函数保留供脚本/测试复用，待站点 CF 策略利好或 cf_bypass 接入后再议启用。
+
     流程：
       1. 搜索页 https://avwikidb.com/actor/search/?q={name}，取首个 actor 详情链接
       2. 抓详情页解析 h1 主名与「別名:」字段

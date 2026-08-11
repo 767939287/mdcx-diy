@@ -1063,7 +1063,8 @@ async def run_actor_db_xlsx(
       sync_aliases: False=只处理别名列为空的条目；True=所有条目都并入来源别名（不覆盖本地）。
 
     alias_source:
-      仅 sync_aliases 生效。'tmdb'=从 TMDB 同步（需 API Key）；'avwiki'=从 AVWikiDB 同步。
+      仅 sync_aliases 生效。'tmdb'=从 TMDB 同步（需 API Key）；
+      'avwiki'=从みんなのAV (minnano-av.com) 同步（原 AVWikiDB 改经 Cloudflare 拦截后下线）。
 
     offset:
       跳过数据文件前 offset 行（不含表头）再扫描，配合 limit 实现分片推进，
@@ -1290,9 +1291,9 @@ async def run_actor_db_xlsx(
 
                 elif mode == "sync_aliases":
                     if alias_source == "avwiki":
-                        from ..core.tmdb_actor import fetch_avwiki_aliases
+                        from ..tools.minnano_crawler import fetch_minnano_aliases
 
-                        new_keywords = ",".join(await fetch_avwiki_aliases(jp))
+                        new_keywords = ",".join(await fetch_minnano_aliases(jp))
                     elif base_url and tmdb_api_key:
                         from mdcx.core.tmdb_actor import query_single_actor_cached
 

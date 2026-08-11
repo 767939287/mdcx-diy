@@ -12137,12 +12137,12 @@ class Ui_MDCx(object):
         self.pushButton_actor_db_sync_aliases.setToolTip(
             _translate(
                 "MDCx",
-                "从所选来源（TMDB / AVWikiDB）同步别名到 keyword 列。默认仅处理别名列为空的条目；勾选「全量更新」后所有条目都并入来源别名（不覆盖本地已有别名）。",
+                "从所选来源（TMDB / minnano）同步别名到 keyword 列。默认仅处理别名列为空的条目；勾选「全量更新」后所有条目都并入来源别名（不覆盖本地已有别名）。",
             )
         )
         self.pushButton_actor_db_sync_aliases.setText(_translate("MDCx", "补全别名"))
         self.comboBox_actor_db_alias_source.setItemText(0, _translate("MDCx", "TMDB"))
-        self.comboBox_actor_db_alias_source.setItemText(1, _translate("MDCx", "AVWikiDB"))
+        self.comboBox_actor_db_alias_source.setItemText(1, _translate("MDCx", "minnano"))
         self.checkBox_actor_db_alias_all.setToolTip(
             _translate("MDCx", "勾选后对全部条目补别名（含已有别名的行），并入不覆盖本地已有别名。")
         )
@@ -12165,7 +12165,7 @@ class Ui_MDCx(object):
         self.label_actor_db_sync_aliases_desc.setText(
             _translate(
                 "MDCx",
-                "来源 TMDB 需配置 API Key；AVWikiDB 需能访问该站点。默认仅补缺别名的行，勾选「全量更新」则并入全部行；用「起始行/限量」可分片续跑",
+                "来源 TMDB 需配置 API Key；minnano 直接抓取みんなのAV。默认仅补缺别名的行，勾选「全量更新」则并入全部行；用「起始行/限量」可分片续跑",
             )
         )
         self.groupBox_cover_backfill.setTitle(
@@ -13502,7 +13502,7 @@ class Ui_MDCx(object):
                 "\n"
                 "<h4>九、工具页面</h4>\n"
                 " <ul>\n"
-                " <li><b>演员库维护</b>：直接操作 actor_database.xlsx。补全中文名（按 TMDB ID 补翻译）、补全 LibreDMM 链接、补全别名（可选来源：TMDB 或 AVWikiDB；默认仅补缺别名的条目，勾选「全量更新」则并入全部行，不覆盖本地已有别名）、minnano 补全（从 minnano-av 补缺生日/简介，日文字段自动翻译）、检查用户库（扫描格式/结构/数据异常并弹窗报告，安全项可一键自动修复，tmdb 项给人工修复步骤）、打开数据库（用默认程序打开 xlsx 供手工编辑）、剔除男演员（按 TMDB 性别删除男优）、校验 tmdbid 有效性（清除 TMDB 失效 id 并按名字重搜补回）、更新 nfo tmdbid（用本地库新 id 覆盖 nfo 旧 id）。网络请求自动并发，进度实时显示。</li>\n"
+                " <li><b>演员库维护</b>：直接操作 actor_database.xlsx。补全中文名（按 TMDB ID 补翻译）、补全 LibreDMM 链接、补全别名（可选来源：TMDB 或 minnano；默认仅补缺别名的条目，勾选「全量更新」则并入全部行，不覆盖本地已有别名）、minnano 补全（从 minnano-av 补缺生日/简介，日文字段自动翻译）、检查用户库（扫描格式/结构/数据异常并弹窗报告，安全项可一键自动修复，tmdb 项给人工修复步骤）、打开数据库（用默认程序打开 xlsx 供手工编辑）、剔除男演员（按 TMDB 性别删除男优）、校验 tmdbid 有效性（清除 TMDB 失效 id 并按名字重搜补回）、更新 nfo tmdbid（用本地库新 id 覆盖 nfo 旧 id）。网络请求自动并发，进度实时显示。</li>\n"
                 " <li><b>Emby 演员管理器</b>：填写 Emby 地址和 API 密钥后连接服务器，获取演员列表并按媒体库筛选；从 Gfriends / graphis.ne.jp / minnano-av / 本地文件夹匹配头像和背景图，从本地演员库 / 维基百科 / minnano-av / 数据库匹配简介和出生日期，预览后批量同步到 Emby。支持仅补缺失或强制重新获取。</li>\n"
                 " <li><b>单文件刮削</b>：指定某个文件的番号网址进行刮削，当存在相同番号时可手工指定。</li>\n"
                 " <li><b>封面补图</b>：输入番号（多个用空格分隔），自动刮削并补齐缺失的 poster.jpg 和 thumb.jpg，复用当前配置的站点优先级、命名、裁切、水印规则。</li>\n"

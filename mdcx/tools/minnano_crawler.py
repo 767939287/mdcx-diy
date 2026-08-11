@@ -545,6 +545,10 @@ def _clean_alias(alias: str) -> str | None:
     if len(alias) < 2:
         return None
 
+    # 超长项基本可判定为作品标题/绰号混入別名列（实测 38 字描述句），演员名业界常见上限远低于 20
+    if len(alias) > 20:
+        return None
+
     # 过滤：含情绪性/无意义内容
     noise_patterns = [r"※", r"！.*！.*！", r"ヤツ", r"戻しとけ", r"消した", r"誰だ"]
     for pat in noise_patterns:
@@ -777,6 +781,42 @@ async def _search_minnano_by_name(actor_name: str) -> tuple[str | None, str | No
                         return mid, detail_html
 
     return None, None
+
+
+async def fetch_minnano_aliases(actor_name: str) -> list[str]:
+    """从みんなのAV 查询演员别名，未找到或匹配失败返回空列表。
+
+    流程: _search_minnano_by_name 精确/模糊搜索 → parse_minnano_page 提取「別名」行
+    → _clean_alias 过滤噪声（※/情绪词/括号注释/长度<2），大小写不敏感去重。
+
+    搜不到、解析失败、无别名均静默返回 []，由调用方决定如何降级。
+    """
+    if not actor_name or not actor_name.strip():
+        return []
+
+    try:
+        minnano_id, html = await _search_minnano_by_name(actor_name.strip())
+        if not html:
+            return []
+        parsed = parse_minnano_page(html, minnano_id)
+        if not parsed:
+            return []
+
+        aliases: list[str] = []
+        seen_lower: set[str] = set()
+        for alias in parsed.get("aliases", []):
+            cleaned = _clean_alias(alias)
+            if not cleaned:
+                continue
+            key = cleaned.lower()
+            if key in seen_lower:
+                continue
+            seen_lower.add(key)
+            aliases.append(cleaned)
+        return aliases
+    except Exception:
+        LogBuffer.log().write(f"[minnano] 别名查询失败 {actor_name}: {traceback.format_exc()}")
+        return []
 
 
 # ============= 主入口 =============
