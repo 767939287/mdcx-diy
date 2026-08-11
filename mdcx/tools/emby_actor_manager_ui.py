@@ -141,7 +141,6 @@ class PreparePreviewThread(QThread):
         self.mode = "missing_all"
         self.gfriends_index = None
         self.cache_dir = Path(tempfile.gettempdir())
-        self.minnano_cache = None
         self.image_sources = ["gfriends", "graphis", "minnano", "local"]
         self.local_avatar_dir = ""
         self._cancel = False
@@ -150,7 +149,7 @@ class PreparePreviewThread(QThread):
         self._cancel = True
 
     def run(self):
-        from .emby_actor_manager import load_cache as minnano_load_cache
+        from .minnano_crawler import load_cache as minnano_load_cache
 
         minnano_load_cache()
         total = len(self.actors)
