@@ -13,7 +13,7 @@ from ..manual import ManualConfig
 from ..models.enums import FileMode
 from ..models.flags import Flags
 from ..models.log_buffer import LogBuffer
-from ..models.types import CrawlerInput, CrawlerResponse, CrawlerResult, CrawlersResult, CrawlTask
+from ..models.types import CrawlerInput, CrawlerResponse, CrawlerResult, CrawlersResult, CrawlTask, FailureReason
 from ..number import is_uncensored
 from ..utils.dataclass import update
 from ..utils.xml import XML_TEXT_FIELDS, normalize_xml_text
@@ -283,7 +283,7 @@ class FileScraper:
         type_site_set = set(type_sites)
         all_res: dict[tuple[Website, Language], CrawlerResult] = {}
         failed: set[tuple[Website, Language]] = set()  # 记录失败的网站
-        failure_reasons: dict[Website, str] = {}  # 记录各站点的失败原因
+        failure_reasons: dict[Website, tuple[FailureReason, str]] = {}  # 记录各站点的结构化失败原因
         reduced = CrawlersResult.empty()
         req_info: list[str] = []  # 请求信息列表
         try_all_images = bool(
@@ -329,10 +329,10 @@ class FileScraper:
                     all_res[(site, Language.UNDEFINED)] = web_data.data
             except TimeoutError:
                 failed.add(key)
-                failure_reasons.setdefault(site, "请求超时")
+                failure_reasons.setdefault(site, (FailureReason.TIMEOUT, "请求超时"))
             except Exception as e:
                 failed.add(key)
-                failure_reasons.setdefault(site, str(e).strip() or e.__class__.__name__)
+                failure_reasons.setdefault(site, (FailureReason.classify(e), str(e).strip() or e.__class__.__name__))
 
         pending_keys = [k for k in all_needed_keys if k not in all_res and k not in failed]
         if pending_keys:
@@ -349,7 +349,7 @@ class FileScraper:
                 task.cancel()
                 site, _lang = key
                 failed.add(key)
-                failure_reasons.setdefault(site, "请求超时")
+                failure_reasons.setdefault(site, (FailureReason.TIMEOUT, "请求超时"))
             if pending:
                 await asyncio.gather(*pending, return_exceptions=True)
             # 消费已完成任务的异常，避免 "Task exception was never retrieved" 告警
@@ -416,12 +416,14 @@ class FileScraper:
                             all_res[(site, Language.UNDEFINED)] = web_data.data
                     except TimeoutError:
                         reduced.field_log += f"\n    🔴 {site:<15} (请求超时)"
-                        failure_reasons.setdefault(site, "请求超时")
+                        failure_reasons.setdefault(site, (FailureReason.TIMEOUT, "请求超时"))
                         failed.add(key)
                         continue
                     except Exception as e:
                         reduced.field_log += f"\n    🔴 {site:<15} (失败: {e!s})"
-                        failure_reasons.setdefault(site, str(e).strip() or e.__class__.__name__)
+                        failure_reasons.setdefault(
+                            site, (FailureReason.classify(e), str(e).strip() or e.__class__.__name__)
+                        )
                         failed.add(key)
                         continue
 
@@ -474,7 +476,7 @@ class FileScraper:
 
         # 所有来源均失败
         if len(all_res) == 0:
-            reason_text = "；".join(f"{site.value}: {reason}" for site, reason in failure_reasons.items())
+            reason_text = "；".join(f"{site.value}: {detail}" for site, (_reason, detail) in failure_reasons.items())
             message = "所有刮削来源均未返回可用数据"
             if reason_text:
                 message += f"。{reason_text}"

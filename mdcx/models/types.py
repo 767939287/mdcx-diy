@@ -1,5 +1,7 @@
+import asyncio
 import re
 from dataclasses import dataclass, field
+from enum import StrEnum
 from pathlib import Path
 from typing import Literal
 
@@ -308,6 +310,45 @@ class CrawlerResult(BaseCrawlerResult):
             source="",
             external_id="",
         )
+
+
+class FailureReason(StrEnum):
+    """
+    单站刮削失败的结构化原因分类, 用于把异常归入可读的枚举类型.
+
+    取值与 javapi 的 ScrapeStatus 对齐(timeout/not_found/blocked),
+    便于在日志中统一展示失败原因.
+    """
+
+    NOT_FOUND = "not_found"  # 站点无此番号结果
+    BLOCKED = "blocked"  # 被站点/CDN 拦截(如 Cloudflare)
+    TIMEOUT = "timeout"  # 请求超时
+    PARSE_ERROR = "parse_error"  # 响应解析失败
+    UNKNOWN = "unknown"  # 其他未知错误
+
+    @classmethod
+    def classify(cls, error: Exception) -> "FailureReason":
+        """
+        根据异常特征将错误归类为 FailureReason.
+
+        Args:
+            error: 爬虫抛出的异常.
+
+        Returns:
+            归类的失败原因.
+        """
+        if isinstance(error, (TimeoutError, asyncio.TimeoutError)):
+            return cls.TIMEOUT
+        text = str(error).strip().lower()
+        if not text:
+            return cls.UNKNOWN
+        if any(keyword in text for keyword in ("cloudflare", "cf_chl", "__cf", "403", "forbidden", "blocked", "拦截")):
+            return cls.BLOCKED
+        if any(keyword in text for keyword in ("not found", "未找到", "没有找到", "无结果", "搜索失败", "空数据")):
+            return cls.NOT_FOUND
+        if any(keyword in text for keyword in ("parse", "解析", "html", "json")):
+            return cls.PARSE_ERROR
+        return cls.UNKNOWN
 
 
 @dataclass
