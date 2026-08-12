@@ -1,6 +1,22 @@
 # Changelog
 
-## v2.0.6 (2026-08-11) 当前版本
+## v2.0.7 (2026-08-12) 当前版本
+
+### 功能
+
+- **补别名来源从 AVWikiDB 切换到 minnano**：AVWikiDB 域名被 Cloudflare 拦截导致补别名功能不可用，切换到项目内置的 minnano 爬虫 `fetch_minnano_aliases`（复用 `_search_minnano_by_name`→`parse_minnano_page`→`_clean_alias` 链路）。minnano 天然带「别名」字段、无 CF 拦截，实测命中与质量合格（三上悠亜→鬼頭桃菜、河北彩花→河北彩伽、桃乃木かな→松嶋真麻）。`_clean_alias` 新增 >20 字长度闸拦截作品标题混入（真实别名如鬼頭桃菜/河北彩伽不受影响）；`sync_aliases` 的 avwiki 分支、UI 来源下拉项（AVWikiDB→minnano）、判定逻辑同步切换，pyuic6 重编译 `MDCx.py`（diff 仅 8 行）
+- **同番号刮削结果 TTL 缓存**：同批次中相同番号的文件（多 CD、重复文件）直接复用刮削结果，避免对同一番号重复请求所有站点。模块级缓存键含文件路径 + 番号（避免不同来源同番号互相污染），TTL 90 秒、容量上限 512 自动淘汰；命中与写入均深拷贝防外部修改污染。覆盖信息优先 `_call_crawlers` 与速度优先 `_call_speed_crawlers` 两条主路径，单站指定路径不缓存（用户显式重刮需实时）
+- **默认走代理列表移除 avwikidb.com**：代理清单调整为 `amazon.co.jp, m.media-amazon.com, xcity.jp, dmm.co.jp, minnano-av.com`（avwikidb 域名已被 CF 拦截，继续保留在清单无意义）；`is_proxy_host("avwikidb.com")` 判断保留，用户手动加回时仍生效
+
+### 修复
+
+- **PyInstaller 打包缺失 minnano 爬虫**：`scripts/build.py` 补充 `--hidden-import mdcx.tools.minnano_crawler`（延迟导入模块静态分析探测不到，modulegraph 验证 MISSING，打包后补别名功能会因模块缺失失效）
+
+### 工程质量
+
+- **单站失败原因结构化分类**：新增 `FailureReason` 枚举（not_found/blocked/timeout/parse_error/unknown，取值对齐 javapi 的 ScrapeStatus）；`FailureReason.classify()` 按异常特征归类（超时/CF 拦截/无结果/解析失败），`_call_crawlers` 的 `failure_reasons` 从 `dict[Website, str]` 升级为 `dict[Website, tuple[FailureReason, str]]`，日志仍透出原始错误文本
+
+## v2.0.6 (2026-08-11) 上一个版本
 
 ### 修复
 
