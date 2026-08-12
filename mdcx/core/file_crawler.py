@@ -1,6 +1,8 @@
 import asyncio
 import re
+import time
 from contextlib import suppress
+from copy import deepcopy
 from dataclasses import dataclass
 from datetime import date
 from itertools import chain
@@ -33,6 +35,13 @@ MULTI_LANGUAGE_WEBSITES = [  # 支持多语言, language 参数有意义
 # 整批站点请求的总超时（秒）：防止单个慢站点拖垮整批抓取
 # 借鉴 jav-pack-api 的 AbortSignal.timeout——主流程等待以总超时为界，超时未返回的站点降级为失败
 _CRAWLER_BATCH_TIMEOUT = 60.0
+
+# 同番号刮削结果的 TTL 缓存（秒）：同批次中相同番号的文件（如多 CD、重复文件）直接复用结果，
+# 避免对同一番号重复请求所有站点。缓存键包含文件路径，避免不同来源的同番号文件互相污染。
+# 借鉴 jav-pack-api aggregator 的按番号缓存设计。
+_CRAWL_CACHE_TTL = 90.0
+_CRAWL_CACHE_MAX_ENTRIES = 512
+_crawl_cache: dict[tuple[str, str], tuple[float, CrawlersResult]] = {}
 SPECIFIC_CRAWLER_TITLE_LANGUAGE_SITES = {
     Website.AIRAV_CC,
     Website.IQQTV,
@@ -69,6 +78,43 @@ def _normalize_release_value(value: object) -> str:
 
 def _is_suren_number(file_number: str, short_number: str) -> bool:
     return bool(short_number) or "SIRO" in file_number.upper()
+
+
+def _crawl_cache_key(task_input: CrawlerInput) -> tuple[str, str] | None:
+    """生成同番号刮削缓存键, 无文件路径或番号时返回 None（不缓存）."""
+    number = task_input.number or ""
+    file_path = task_input.file_path
+    if not number or not file_path:
+        return None
+    return str(file_path), number
+
+
+def _crawl_cache_get(key: tuple[str, str]) -> CrawlersResult | None:
+    """读取缓存, 命中且未过期时返回深拷贝, 否则返回 None."""
+    entry = _crawl_cache.get(key)
+    if not entry:
+        return None
+    cached_at, result = entry
+    if time.monotonic() - cached_at > _CRAWL_CACHE_TTL:
+        _crawl_cache.pop(key, None)
+        return None
+    return deepcopy(result)
+
+
+def _crawl_cache_put(key: tuple[str, str], result: CrawlersResult) -> None:
+    """写入缓存（深拷贝存储, 避免外部修改污染缓存）."""
+    _crawl_cache[key] = (time.monotonic(), deepcopy(result))
+    if len(_crawl_cache) > _CRAWL_CACHE_MAX_ENTRIES:
+        # 超过容量上限时淘汰已过期条目, 避免长时间运行后缓存无限增长
+        now = time.monotonic()
+        expired = [k for k, (cached_at, _) in _crawl_cache.items() if now - cached_at > _CRAWL_CACHE_TTL]
+        for k in expired:
+            _crawl_cache.pop(k, None)
+        # 仍超限时仅保留最近写入的条目
+        if len(_crawl_cache) > _CRAWL_CACHE_MAX_ENTRIES:
+            newest = sorted(_crawl_cache.items(), key=lambda item: item[1][0], reverse=True)[:_CRAWL_CACHE_MAX_ENTRIES]
+            _crawl_cache.clear()
+            _crawl_cache.update(newest)
 
 
 @dataclass(frozen=True)
@@ -279,6 +325,12 @@ class FileScraper:
         use_type_field_config = isinstance(classification, ScrapeClassification)
         if not isinstance(classification, ScrapeClassification):
             classification = ScrapeClassification(FixedScrapingType.AUTO, "compat", sites=classification)
+        # 同番号缓存命中：同批次相同番号文件直接复用结果，跳过整批站点请求
+        cache_key = _crawl_cache_key(task_input)
+        if cache_key:
+            cached = _crawl_cache_get(cache_key)
+            if cached is not None:
+                return cached
         type_sites = list(classification.sites or [])
         type_site_set = set(type_sites)
         all_res: dict[tuple[Website, Language], CrawlerResult] = {}
@@ -547,6 +599,10 @@ class FileScraper:
 
         reduced.site_log = f"\n 🌐 [website] {'-> '.join(req_info)}"
 
+        # 写入同番号缓存, 供同批次相同番号文件复用
+        if cache_key:
+            _crawl_cache_put(cache_key, reduced)
+
         return reduced
 
     def _get_specific_crawler_language(self, website: Website) -> tuple[Language, Language]:
@@ -615,6 +671,11 @@ class FileScraper:
         """
         速度优先：按影片类型的网站顺序逐站尝试，首个返回数据的网站直接作为最终结果。
         """
+        cache_key = _crawl_cache_key(task_input)
+        if cache_key:
+            cached = _crawl_cache_get(cache_key)
+            if cached is not None:
+                return cached
         failed_info: list[str] = []
         for website in list(classification.sites or []):
             title_language, org_language = self._get_specific_crawler_language(website)
@@ -641,6 +702,8 @@ class FileScraper:
             )
             if failed_info:
                 res.field_log = "\n    ⚡ 速度优先跳过: " + " -> ".join(failed_info)
+            if cache_key:
+                _crawl_cache_put(cache_key, res)
             return res
 
         if failed_info:
