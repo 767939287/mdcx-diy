@@ -226,7 +226,7 @@ class R18devCrawler(BaseCrawler):
                 number = f"{series.upper()}-{num_int:03d}"
 
         title_ja = data.get("title_ja") or ""
-        title_en = data.get("title_en") or ""
+        title_en = data.get("title_en_uncensored") or data.get("title_en") or ""
         title = title_ja or title_en
 
         actors = [a.get("name_kanji") or a.get("name_romaji", "") for a in data.get("actresses") or []]

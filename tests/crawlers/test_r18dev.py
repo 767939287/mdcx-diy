@@ -127,6 +127,56 @@ def test_parse_json_minimal_data():
     assert data.tags == []
 
 
+def test_parse_json_title_ja_missing_uses_uncensored_en():
+    crawler = R18devCrawler(client=None)
+    data = crawler._parse_json(
+        {
+            "dvd_id": "1hbad00051",
+            "content_id": "1hbad00051",
+            "title_ja": "",
+            "title_en": "Female Teacher Shame: Sex S***e Anna Oguri",
+            "title_en_uncensored": "Female Teacher Shame: Sex Slave Anna Oguri",
+        },
+        ctx=None,
+    )
+
+    assert data.title == "Female Teacher Shame: Sex Slave Anna Oguri"
+    assert data.originaltitle == "Female Teacher Shame: Sex Slave Anna Oguri"
+
+
+def test_parse_json_uncensored_en_missing_falls_back_to_en():
+    crawler = R18devCrawler(client=None)
+    data = crawler._parse_json(
+        {
+            "dvd_id": "1hbad00051",
+            "content_id": "1hbad00051",
+            "title_ja": "",
+            "title_en": "Female Teacher Shame: Sex Slave Anna Oguri",
+        },
+        ctx=None,
+    )
+
+    assert data.title == "Female Teacher Shame: Sex Slave Anna Oguri"
+    assert data.originaltitle == "Female Teacher Shame: Sex Slave Anna Oguri"
+
+
+def test_parse_json_title_ja_wins_over_en():
+    crawler = R18devCrawler(client=None)
+    data = crawler._parse_json(
+        {
+            "dvd_id": "1hbad00051",
+            "content_id": "1hbad00051",
+            "title_ja": "女教師羞恥肉奴● 小栗杏奈",
+            "title_en": "Female Teacher Shame: Sex S***e Anna Oguri",
+            "title_en_uncensored": "Female Teacher Shame: Sex Slave Anna Oguri",
+        },
+        ctx=None,
+    )
+
+    assert data.title == "女教師羞恥肉奴● 小栗杏奈"
+    assert data.originaltitle == "女教師羞恥肉奴● 小栗杏奈"
+
+
 def test_parse_json_uses_jacket_from_images():
     crawler = R18devCrawler(client=None)
     data = crawler._parse_json(
