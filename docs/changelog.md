@@ -14,7 +14,7 @@
 ### 修复
 
 - **PyInstaller 打包缺失 minnano 爬虫**：`scripts/build.py` 补充 `--hidden-import mdcx.tools.minnano_crawler`（延迟导入模块静态分析探测不到，modulegraph 验证 MISSING，打包后补别名功能会因模块缺失失效）
-- **JavDB 官方 API 图片域名映射更新**：JavDB API 现返回 `tp.spfcas.com/rhe951l4q/` 图源，`javdb_app.py` 旧前缀列表补充该域名（`covers/` 横版→thumb、`thumbs/` 竖版→poster 的归一化规则复用），与过时的 `tp.cmastd.com` 并行兼容
+- **JavDB 官方 API 图片域名映射更新**：JavDB API 现返回 `tp.spfcas.com/rhe951l4q/`（有水印），`javdb_app.py` 归一化覆盖该域名并转到无水印的 `c0.jdbstatic.com`，与老域名 `tp.cmastd.com`（亦无水印）并行兼容
 
 ### 工程质量
 
