@@ -185,6 +185,67 @@ def _website_value(site: Website | str) -> str:
     return site.value if isinstance(site, Website) else str(site)
 
 
+def _is_usable_dmm_portrait(size: tuple[int, int]) -> bool:
+    width, height = size
+    return width >= 500 and height > width
+
+
+async def _try_dmm_direct_backfill(number: str, output_dir: Path, *, overwrite: bool) -> BackfillResult | None:
+    from mdcx.crawlers.dmm_direct import generate_image_candidates
+
+    output_dir.mkdir(parents=True, exist_ok=True)
+    base = output_dir / _safe_basename(number)
+    poster_target = base.with_name(base.name + "-poster.jpg")
+    thumb_target = base.with_name(base.name + "-thumb.jpg")
+
+    if not overwrite and await aiofiles.os.path.exists(poster_target) and await aiofiles.os.path.exists(thumb_target):
+        safe_print("  dmm_direct: 封面已存在，跳过")
+        return BackfillResult(
+            number=number,
+            source="dmm_direct",
+            scraping_type=FixedScrapingType.AUTO,
+            mosaic="",
+            folder=output_dir,
+            thumb_path=thumb_target,
+            poster_path=poster_target,
+        )
+
+    candidates = list(generate_image_candidates(number))
+    if not candidates:
+        return None
+    safe_print(f"DMM 官方直链候选: {len(candidates)} 个 URL")
+
+    temp_path = poster_target.with_suffix(".[DMM].jpg")
+    for orient, url in candidates:
+        if orient != "portrait":
+            continue
+        if await aiofiles.os.path.exists(temp_path):
+            await delete_file_async(temp_path)
+        safe_print(f"  dmm_direct: 尝试 {url}")
+        if not await download_file_with_filepath(url, temp_path, output_dir):
+            continue
+        size = await check_pic_async(temp_path)
+        if not size or not _is_usable_dmm_portrait(size):
+            safe_print(f"  dmm_direct: 图无效或过小 {size}，跳过")
+            await delete_file_async(temp_path)
+            continue
+        await move_file_async(temp_path, poster_target)
+        await copy_file_async(poster_target, thumb_target)
+        safe_print(f"  dmm_direct: 下载成功 {size} -> {poster_target} (thumb 同图)")
+        return BackfillResult(
+            number=number,
+            source="dmm_direct",
+            scraping_type=FixedScrapingType.AUTO,
+            mosaic="",
+            folder=output_dir,
+            thumb_path=thumb_target,
+            poster_path=poster_target,
+        )
+
+    safe_print("  dmm_direct: 所有候选均失败")
+    return None
+
+
 def _cover_candidate_sites(file_info: FileInfo, forced_site: str | None) -> list[str]:
     if forced_site:
         return [forced_site]
@@ -333,6 +394,10 @@ async def backfill_cover(
             safe_print(f"  跳过 {candidate_site}: {exc}")
 
     if result is None:
+        safe_print("所有爬虫站点失败，尝试 DMM 官方高清直链兜底...")
+        direct_result = await _try_dmm_direct_backfill(number, output_dir, overwrite=overwrite)
+        if direct_result is not None:
+            return direct_result
         raise RuntimeError(f"{number}: no crawler result. last error: {last_error}")
     safe_print(f"搜索完成: {result.title or '(no title)'}")
 

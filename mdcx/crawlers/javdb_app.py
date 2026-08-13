@@ -26,7 +26,9 @@ _ENCRYPTED_PART2 = "WzE5OCwxNjksMTIzLDEwNiwxNzcsMTY2LDE0MCwxNjIsMTQ3LDE4OSwxNjIs
 _API_BASE = "https://apidd.czssdgz.com"
 _API_FALLBACKS = ["https://apidd.spthgb.com", "https://jdforrepam.com"]
 _IMAGE_PREFIX_OLD = "https://tp.cmastd.com/rhe951l4q/"
+_IMAGE_PREFIX_CURRENT = "https://tp.spfcas.com/rhe951l4q/"
 _IMAGE_PREFIX_NEW = "https://c0.jdbstatic.com/"
+_IMAGE_PREFIX_OLD_LIST = (_IMAGE_PREFIX_OLD, _IMAGE_PREFIX_CURRENT)
 _SMALL_COVERS_SEGMENT = "/small_covers/"
 _THUMBS_SEGMENT = "/thumbs/"
 
@@ -146,8 +148,9 @@ class JavdbAPICrawler(BaseCrawler):
         normalized = cls._ensure_https(url)
         if _SMALL_COVERS_SEGMENT in normalized:
             normalized = normalized.replace(_SMALL_COVERS_SEGMENT, _THUMBS_SEGMENT, 1)
-        if normalized.startswith(_IMAGE_PREFIX_OLD):
-            return normalized.replace(_IMAGE_PREFIX_OLD, _IMAGE_PREFIX_NEW, 1)
+        for old_prefix in _IMAGE_PREFIX_OLD_LIST:
+            if normalized.startswith(old_prefix):
+                return normalized.replace(old_prefix, _IMAGE_PREFIX_NEW, 1)
         return normalized
 
     @staticmethod

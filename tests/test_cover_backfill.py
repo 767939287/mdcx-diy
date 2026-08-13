@@ -97,3 +97,65 @@ def test_resolve_backfill_input_falls_back_to_file_info_number(monkeypatch: pyte
     result = asyncio.run(cb.resolve_backfill_input("some-random-string"))
 
     assert result.number == "XYZ-999"
+
+
+def test_dmm_direct_backfill_downloads_portrait_first(monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
+    async def _fake_download(url, temp_path, folder_path):
+        temp_path.write_bytes(b"fake-jpeg")
+        return True
+
+    async def _fake_check_pic(path):
+        return (1032, 1469)
+
+    async def _fake_move(src, dst):
+        dst.write_bytes(src.read_bytes())
+
+    async def _fake_copy(src, dst):
+        dst.write_bytes(src.read_bytes())
+
+    monkeypatch.setattr(cb, "download_file_with_filepath", _fake_download)
+    monkeypatch.setattr(cb, "check_pic_async", _fake_check_pic)
+    monkeypatch.setattr(cb, "move_file_async", _fake_move)
+    monkeypatch.setattr(cb, "copy_file_async", _fake_copy)
+
+    result = asyncio.run(cb._try_dmm_direct_backfill("IPX-535", tmp_path, overwrite=False))
+
+    assert result is not None
+    assert result.source == "dmm_direct"
+    assert result.thumb_path == tmp_path / "IPX-535-thumb.jpg"
+    assert result.poster_path == tmp_path / "IPX-535-poster.jpg"
+    assert result.poster_path.exists()
+    assert result.thumb_path.exists()
+
+
+def test_dmm_direct_backfill_rejects_small_or_invalid_images(monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
+    async def _fake_download(url, temp_path, folder_path):
+        temp_path.write_bytes(b"fake-jpeg")
+        return True
+
+    async def _fake_check_pic(path):
+        return (120, 160)
+
+    async def _fake_move(src, dst):
+        dst.write_bytes(src.read_bytes())
+
+    async def _fake_copy(src, dst):
+        dst.write_bytes(src.read_bytes())
+
+    async def _fake_delete(path):
+        path.unlink(missing_ok=True)
+
+    monkeypatch.setattr(cb, "download_file_with_filepath", _fake_download)
+    monkeypatch.setattr(cb, "check_pic_async", _fake_check_pic)
+    monkeypatch.setattr(cb, "move_file_async", _fake_move)
+    monkeypatch.setattr(cb, "copy_file_async", _fake_copy)
+    monkeypatch.setattr(cb, "delete_file_async", _fake_delete)
+
+    result = asyncio.run(cb._try_dmm_direct_backfill("IPX-535", tmp_path, overwrite=False))
+
+    assert result is None
+    assert not (tmp_path / "IPX-535-poster.jpg").exists()
+
+
+def test_dmm_direct_backfill_invalid_number_returns_none(tmp_path: Path):
+    assert asyncio.run(cb._try_dmm_direct_backfill("xyzzy", tmp_path, overwrite=False)) is None

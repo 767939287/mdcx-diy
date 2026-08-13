@@ -16,6 +16,14 @@ def test_normalize_image_url_rewrites_legacy_host():
         crawler._normalize_image_url("https://tp.cmastd.com/rhe951l4q/small_covers/demo.jpg")
         == "https://c0.jdbstatic.com/thumbs/demo.jpg"
     )
+    assert (
+        crawler._normalize_image_url("https://tp.spfcas.com/rhe951l4q/covers/demo.jpg")
+        == "https://c0.jdbstatic.com/covers/demo.jpg"
+    )
+    assert (
+        crawler._normalize_image_url("https://tp.spfcas.com/rhe951l4q/thumbs/xz/XzkY4.jpg")
+        == "https://c0.jdbstatic.com/thumbs/xz/XzkY4.jpg"
+    )
 
 
 @pytest.mark.asyncio

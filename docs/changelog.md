@@ -8,10 +8,12 @@
 - **同番号刮削结果 TTL 缓存**：同批次中相同番号的文件（多 CD、重复文件）直接复用刮削结果，避免对同一番号重复请求所有站点。模块级缓存键含文件路径 + 番号（避免不同来源同番号互相污染），TTL 90 秒、容量上限 512 自动淘汰；命中与写入均深拷贝防外部修改污染。覆盖信息优先 `_call_crawlers` 与速度优先 `_call_speed_crawlers` 两条主路径，单站指定路径不缓存（用户显式重刮需实时）
 - **默认走代理列表移除 avwikidb.com**：代理清单调整为 `amazon.co.jp, m.media-amazon.com, xcity.jp, dmm.co.jp, minnano-av.com`（avwikidb 域名已被 CF 拦截，继续保留在清单无意义）；`is_proxy_host("avwikidb.com")` 判断保留，用户手动加回时仍生效
 - **R18.dev 英文标题掩蔽还原**：日文标题缺失时，英文标题优先取服务端 `title_en_uncensored` 还原字段（如 `Sex S***e` → `Sex Slave`），该字段缺失时回退原始 `title_en`；日文标题存在时仍日文优先
+- **DMM 官方高清直链兜底**：新增番号→DMM cid 候选构造器 `mdcx/crawlers/dmm_direct.py`（13 组前缀映射、avop/gigl/ekdv 阈值系列、数字系列 T28 拆分），生成竖版 `ps`（awsimgsrc 高清 1032×1469）与横版 `pl`（2184×1469）直链；封面补全所有爬虫失败时走 DMM 官方直链兜底（`scripts/cover_backfill.py`），下载竖版高清图作 poster/thumb，含尺寸校验过滤占位图
 
 ### 修复
 
 - **PyInstaller 打包缺失 minnano 爬虫**：`scripts/build.py` 补充 `--hidden-import mdcx.tools.minnano_crawler`（延迟导入模块静态分析探测不到，modulegraph 验证 MISSING，打包后补别名功能会因模块缺失失效）
+- **JavDB 官方 API 图片域名映射更新**：JavDB API 现返回 `tp.spfcas.com/rhe951l4q/` 图源，`javdb_app.py` 旧前缀列表补充该域名（`covers/` 横版→thumb、`thumbs/` 竖版→poster 的归一化规则复用），与过时的 `tp.cmastd.com` 并行兼容
 
 ### 工程质量
 
