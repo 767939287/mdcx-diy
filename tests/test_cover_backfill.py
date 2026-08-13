@@ -159,3 +159,43 @@ def test_dmm_direct_backfill_rejects_small_or_invalid_images(monkeypatch: pytest
 
 def test_dmm_direct_backfill_invalid_number_returns_none(tmp_path: Path):
     assert asyncio.run(cb._try_dmm_direct_backfill("xyzzy", tmp_path, overwrite=False)) is None
+
+
+def test_dmm_direct_backfill_falls_back_to_landscape_crop(monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
+    async def _fake_download(url, temp_path, folder_path):
+        if "ps.jpg" in url:
+            return False
+        temp_path.write_bytes(b"fake-jpeg")
+        return True
+
+    async def _fake_check_pic(path):
+        return (2184, 1469)
+
+    async def _fake_move(src, dst):
+        dst.write_bytes(src.read_bytes())
+
+    async def _fake_copy(src, dst):
+        dst.write_bytes(src.read_bytes())
+
+    async def _fake_delete(path):
+        path.unlink(missing_ok=True)
+
+    def _fake_cut_thumb_to_poster(json_data, thumb_path, poster_path, scraping_type, log_fn=None):
+        poster_path.write_bytes(thumb_path.read_bytes())
+        json_data.poster_from = "cut"
+        return True
+
+    monkeypatch.setattr(cb, "download_file_with_filepath", _fake_download)
+    monkeypatch.setattr(cb, "check_pic_async", _fake_check_pic)
+    monkeypatch.setattr(cb, "move_file_async", _fake_move)
+    monkeypatch.setattr(cb, "copy_file_async", _fake_copy)
+    monkeypatch.setattr(cb, "delete_file_async", _fake_delete)
+    monkeypatch.setattr("mdcx.core.image.cut_thumb_to_poster", _fake_cut_thumb_to_poster)
+
+    result = asyncio.run(cb._try_dmm_direct_backfill("IPX-535", tmp_path, overwrite=False))
+
+    assert result is not None
+    assert result.thumb_path == tmp_path / "IPX-535-thumb.jpg"
+    assert result.poster_path == tmp_path / "IPX-535-poster.jpg"
+    assert result.thumb_path.exists()
+    assert result.poster_path.exists()

@@ -15,8 +15,8 @@ def test_abf_prefixed_candidate():
 
 def test_common_series_padded_five():
     candidates = generate_cid_candidates("SSIS-001")
-    assert "ssis00001" in candidates
-    assert "118ssis00001" in candidates
+    assert candidates == ["ssis00001"]
+    assert generate_cid_candidates("MIDV-100") == ["midv00100"]
 
 
 def test_special_threshold_small():
@@ -35,6 +35,18 @@ def test_prefix_group_members():
     assert candidates[0] == "1dism00123"
     candidates = generate_cid_candidates("HODV-001")
     assert "5642hodv00001" in candidates
+
+
+def test_real_verified_prefixes():
+    assert generate_cid_candidates("SW-123") == ["1sw00123", "sw00123", "h_113sw00123"]
+    assert generate_cid_candidates("WANZ-100")[0] == "3wanz00100"
+    assert generate_cid_candidates("NTRD-100")[0] == "18ntrd00100"
+    assert generate_cid_candidates("PPD-100")[0] == "24ppd00100"
+    assert generate_cid_candidates("UMD-100")[0] == "143umd00100"
+    assert generate_cid_candidates("MBD-100")[0] == "433mbd00100"
+    assert generate_cid_candidates("SIN-100")[0] == "118sin00100"
+    assert generate_cid_candidates("YMD-100")[0] == "h_189ymd00100"
+    assert generate_cid_candidates("MADM-100")[0] == "49madm00100"
 
 
 def test_digit_series():

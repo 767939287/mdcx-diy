@@ -15,19 +15,73 @@ import re
 _DMM_CDN_BASE = "https://awsimgsrc.dmm.co.jp/pics_dig/digital/video"
 
 _PREFIX_GROUPS: dict[str, list[str]] = {
-    "1": ["dism", "dvdes", "gs", "rct", "rctd", "vandr", "sdfk", "sdjs", "svdvd", "sw"],
+    "": [
+        "adn",
+        "cawd",
+        "gdhh",
+        "hibl",
+        "hmn",
+        "hnd",
+        "ipx",
+        "ipzz",
+        "juy",
+        "juq",
+        "meyd",
+        "miad",
+        "mibd",
+        "mide",
+        "midv",
+        "mifd",
+        "mtsp",
+        "mvsd",
+        "nima",
+        "pred",
+        "rki",
+        "sora",
+        "ssis",
+    ],
+    "1": [
+        "dandy",
+        "dism",
+        "dvdes",
+        "fcdss",
+        "gs",
+        "rct",
+        "rctd",
+        "sdab",
+        "sdde",
+        "sdjs",
+        "sdmu",
+        "sdfk",
+        "svdvd",
+        "star",
+        "sw",
+        "vandr",
+    ],
+    "3": ["wanz"],
     "13": ["ayb", "gg", "gvg", "ovg"],
-    "49": ["avop"],
+    "18": ["ntrd"],
+    "24": ["ppd"],
+    "49": ["avop", "madm"],
     "55": ["t28"],
     "57": ["bdsr"],
     "83": ["sma"],
+    "118": ["sin"],
+    "143": ["umd"],
+    "433": ["mbd"],
     "5642": ["hodv"],
     "h_1324": ["skmj"],
     "h_1371": ["zmen"],
     "h_1374": ["ksvr"],
+    "h_189": ["ymd"],
     "h_237": ["nact"],
     "h_910": ["vrtm"],
     "h_995": ["bokd"],
+}
+
+# 同名系列跨厂商前缀不同（如 sw: SWITCH=1、プラム=h_113），附加候选前缀兜底
+_EXTRA_PREFIXES: dict[str, list[str]] = {
+    "sw": ["h_113"],
 }
 
 _SPECIAL_THRESHOLDS: dict[str, tuple[int, str, str]] = {
@@ -61,14 +115,15 @@ def _parse_number(number: str) -> list[tuple[str, int, str]]:
 
 
 def _prefixes_for(series: str, num: int) -> list[str]:
+    extra = _EXTRA_PREFIXES.get(series, [])
     if series in _SPECIAL_THRESHOLDS:
         threshold, small_prefix, large_prefix = _SPECIAL_THRESHOLDS[series]
         prefix = small_prefix if num <= threshold else large_prefix
-        return [prefix]
+        return list(dict.fromkeys([prefix] + extra))
     for group_prefix, members in _PREFIX_GROUPS.items():
         if series in members:
-            return [group_prefix, ""]
-    return _COMMON_PREFIXES
+            return list(dict.fromkeys([group_prefix, ""] + extra))
+    return list(dict.fromkeys(_COMMON_PREFIXES + extra))
 
 
 def generate_cid_candidates(number: str) -> list[str]:

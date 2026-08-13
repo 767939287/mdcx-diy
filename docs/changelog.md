@@ -8,7 +8,8 @@
 - **同番号刮削结果 TTL 缓存**：同批次中相同番号的文件（多 CD、重复文件）直接复用刮削结果，避免对同一番号重复请求所有站点。模块级缓存键含文件路径 + 番号（避免不同来源同番号互相污染），TTL 90 秒、容量上限 512 自动淘汰；命中与写入均深拷贝防外部修改污染。覆盖信息优先 `_call_crawlers` 与速度优先 `_call_speed_crawlers` 两条主路径，单站指定路径不缓存（用户显式重刮需实时）
 - **默认走代理列表移除 avwikidb.com**：代理清单调整为 `amazon.co.jp, m.media-amazon.com, xcity.jp, dmm.co.jp, minnano-av.com`（avwikidb 域名已被 CF 拦截，继续保留在清单无意义）；`is_proxy_host("avwikidb.com")` 判断保留，用户手动加回时仍生效
 - **R18.dev 英文标题掩蔽还原**：日文标题缺失时，英文标题优先取服务端 `title_en_uncensored` 还原字段（如 `Sex S***e` → `Sex Slave`），该字段缺失时回退原始 `title_en`；日文标题存在时仍日文优先
-- **DMM 官方高清直链兜底**：新增番号→DMM cid 候选构造器 `mdcx/crawlers/dmm_direct.py`（13 组前缀映射、avop/gigl/ekdv 阈值系列、数字系列 T28 拆分），生成竖版 `ps`（awsimgsrc 高清 1032×1469）与横版 `pl`（2184×1469）直链；封面补全所有爬虫失败时走 DMM 官方直链兜底（`scripts/cover_backfill.py`），下载竖版高清图作 poster/thumb，含尺寸校验过滤占位图
+- **DMM 官方高清直链兜底**：新增番号→DMM cid 候选构造器 `mdcx/crawlers/dmm_direct.py`（13 组前缀映射、avop/gigl/ekdv 阈值系列、数字系列 T28 拆分），生成竖版 `ps`（awsimgsrc 高清 1032×1469）与横版 `pl`（2184×1469）直链；封面补全所有爬虫失败时走 DMM 官方直链兜底（`scripts/cover_backfill.py`）——**竖版优先**：先下载 `ps` 竖版高清图作 poster（thumb 优先横版 `pl`），竖版不存在或失败时下载横版 `pl` 作 thumb 并复用 mdcx 现有 `cut_thumb_to_poster` 裁剪逻辑（居中/有码右裁/人脸识别）生成竖版 poster，含尺寸校验过滤占位图
+- **DMM cid 前缀表实测校准**：用 dmmapi（thejavdb API）批量比对真实 cid 校准映射表——主流新系列（ssis/ipx/pred/mide/juq 等 23 个）实测为**无前缀**并固定；修正 `sw` 真实前缀为 `1`（SWITCH，原误配）且该系列跨厂商（プラム= `h_113`）改用附加前缀兜底；补入 wanz=`3`、ntrd=`18`、ppd=`24`、umd=`143`、mbd=`433`、sin=`118`、ymd=`h_189`、star/sdde/sdmu/sdab/dandy/fcdss=`1` 等实测前缀
 
 ### 修复
 

@@ -190,8 +190,15 @@ def _is_usable_dmm_portrait(size: tuple[int, int]) -> bool:
     return width >= 500 and height > width
 
 
+def _is_usable_dmm_landscape(size: tuple[int, int]) -> bool:
+    width, height = size
+    return width > height and width >= 1000
+
+
 async def _try_dmm_direct_backfill(number: str, output_dir: Path, *, overwrite: bool) -> BackfillResult | None:
+    from mdcx.core.image import cut_thumb_to_poster
     from mdcx.crawlers.dmm_direct import generate_image_candidates
+    from mdcx.models.types import CrawlersResult
 
     output_dir.mkdir(parents=True, exist_ok=True)
     base = output_dir / _safe_basename(number)
@@ -213,25 +220,77 @@ async def _try_dmm_direct_backfill(number: str, output_dir: Path, *, overwrite: 
     candidates = list(generate_image_candidates(number))
     if not candidates:
         return None
-    safe_print(f"DMM 官方直链候选: {len(candidates)} 个 URL")
+    portrait_urls = [url for orient, url in candidates if orient == "portrait"]
+    landscape_urls = [url for orient, url in candidates if orient == "landscape"]
+    safe_print(f"DMM 官方直链候选: {len(candidates)} 个 URL (竖版 {len(portrait_urls)} / 横版 {len(landscape_urls)})")
 
     temp_path = poster_target.with_suffix(".[DMM].jpg")
-    for orient, url in candidates:
-        if orient != "portrait":
-            continue
+
+    # 阶段一：优先竖版高清 ps（存在则直接作 poster，thumb 优先横版 pl）
+    for url in portrait_urls:
         if await aiofiles.os.path.exists(temp_path):
             await delete_file_async(temp_path)
-        safe_print(f"  dmm_direct: 尝试 {url}")
+        safe_print(f"  dmm_direct: 尝试竖版 {url}")
         if not await download_file_with_filepath(url, temp_path, output_dir):
             continue
         size = await check_pic_async(temp_path)
         if not size or not _is_usable_dmm_portrait(size):
-            safe_print(f"  dmm_direct: 图无效或过小 {size}，跳过")
+            safe_print(f"  dmm_direct: 竖版图无效或过小 {size}，跳过")
             await delete_file_async(temp_path)
             continue
         await move_file_async(temp_path, poster_target)
-        await copy_file_async(poster_target, thumb_target)
-        safe_print(f"  dmm_direct: 下载成功 {size} -> {poster_target} (thumb 同图)")
+        thumb_saved = False
+        for lurl in landscape_urls:
+            if await aiofiles.os.path.exists(temp_path):
+                await delete_file_async(temp_path)
+            if not await download_file_with_filepath(lurl, temp_path, output_dir):
+                continue
+            lsize = await check_pic_async(temp_path)
+            if not lsize or not _is_usable_dmm_landscape(lsize):
+                await delete_file_async(temp_path)
+                continue
+            await move_file_async(temp_path, thumb_target)
+            thumb_saved = True
+            break
+        if not thumb_saved:
+            await copy_file_async(poster_target, thumb_target)
+        safe_print(f"  dmm_direct: 竖版下载成功 {size} -> {poster_target}")
+        return BackfillResult(
+            number=number,
+            source="dmm_direct",
+            scraping_type=FixedScrapingType.AUTO,
+            mosaic="",
+            folder=output_dir,
+            thumb_path=thumb_target,
+            poster_path=poster_target,
+        )
+
+    # 阶段二：竖版全部失败，用横版 pl 作 thumb，poster 走 mdcx 裁剪逻辑
+    for url in landscape_urls:
+        if await aiofiles.os.path.exists(temp_path):
+            await delete_file_async(temp_path)
+        safe_print(f"  dmm_direct: 尝试横版 {url}")
+        if not await download_file_with_filepath(url, temp_path, output_dir):
+            continue
+        size = await check_pic_async(temp_path)
+        if not size or not _is_usable_dmm_landscape(size):
+            safe_print(f"  dmm_direct: 横版图无效或过小 {size}，跳过")
+            await delete_file_async(temp_path)
+            continue
+        await move_file_async(temp_path, thumb_target)
+        result = CrawlersResult.empty()
+        temp_cut = poster_target.with_suffix(".[CUT].jpg")
+        if await aiofiles.os.path.exists(temp_cut):
+            await delete_file_async(temp_cut)
+        cut_ok = await asyncio.to_thread(
+            cut_thumb_to_poster, result, thumb_target, temp_cut, result.scraping_type, safe_print
+        )
+        if cut_ok and await aiofiles.os.path.exists(temp_cut):
+            await move_file_async(temp_cut, poster_target)
+            safe_print(f"  dmm_direct: 横版 {size} 裁剪竖版成功 -> {poster_target}")
+        else:
+            safe_print("  dmm_direct: 横版裁剪失败，直接复制横版作 poster")
+            await copy_file_async(thumb_target, poster_target)
         return BackfillResult(
             number=number,
             source="dmm_direct",
