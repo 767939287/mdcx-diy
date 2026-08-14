@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-import re
+
 from dataclasses import dataclass
 from typing import override
 
@@ -9,7 +9,7 @@ from parsel import Selector
 from ..base.web import get_imgsize
 from ..config.models import Website
 from ..models.types import CrawlerInput
-from .base import Context, CrawlerData, CrawlerException, GenericBaseCrawler
+from .base import Context, CrawlerData, CrawlerException, GenericBaseCrawler, get_year
 
 
 def get_web_number(html, number):
@@ -40,12 +40,8 @@ def get_release(html):
     return result[0].replace("年", "-").replace("月", "-").replace("日", "").strip() if result else ""
 
 
-def get_year(release):
-    try:
-        result = str(re.search(r"\d{4}", release).group())
-        return result
-    except Exception:
-        return release
+
+
 
 
 def get_runtime(html):

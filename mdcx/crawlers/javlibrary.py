@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-import re
 import urllib.parse
 from typing import override
 
@@ -8,7 +7,7 @@ from lxml import etree
 from ..config.enums import Language, Website
 from ..config.manager import manager
 from ..gen.field_enums import CrawlerResultFields
-from .base import BaseCrawler, Context, CrawlerData, CrawlerException
+from .base import BaseCrawler, Context, CrawlerData, CrawlerException, get_year
 from .base.types import split_csv
 
 
@@ -69,12 +68,8 @@ def get_release(html):
     return str(result).strip(" []").replace("'", "").replace(", ", ",") if result else ""
 
 
-def get_year(release):
-    try:
-        result = str(re.search(r"\d{4}", release).group())
-        return result
-    except Exception:
-        return release[:4]
+
+
 
 
 def get_studio(html):

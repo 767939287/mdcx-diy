@@ -10,7 +10,7 @@ from lxml import etree
 
 from ..config.enums import Website
 from . import getchu_dl
-from .base import BaseCrawler, Context, CrawlerData, CrawlerException
+from .base import BaseCrawler, Context, CrawlerData, CrawlerException, get_year
 from .base.types import split_csv
 
 
@@ -64,12 +64,8 @@ def get_release(html):
     return result[0].replace("/", "-") if result and re.search(r"\d+", result[0]) else ""
 
 
-def get_year(release):
-    try:
-        result = str(re.search(r"\d{4}", release).group())
-        return result
-    except Exception:
-        return release
+
+
 
 
 def get_director(html):

@@ -7,7 +7,7 @@ from urllib.parse import urljoin
 
 from lxml import etree
 
-from .base import Context, CrawlerData, CrawlerException
+from .base import Context, CrawlerData, CrawlerException, get_year
 
 UncensoredOfficialSite = Literal["caribbeancom", "heyzo", "1pondo", "pacopacomama", "10musume"]
 
@@ -101,10 +101,8 @@ def split_tags(value: object) -> list[str]:
     return _dedupe([_clean_text(item) for item in re.split(r"[,/|、，\n\r]+", text) if _clean_text(item)])
 
 
-def get_year(release: str) -> str:
-    if match := re.search(r"\d{4}", release or ""):
-        return match.group()
-    return ""
+
+
 
 
 def normalize_release(value: object) -> str:

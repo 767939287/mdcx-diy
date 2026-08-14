@@ -71,6 +71,18 @@ def clean_string(text: str | None) -> str:
     return text.replace("\n", "").replace("\r", "").replace("\xa0", " ").replace("\u3000", " ")
 
 
+def get_year(release: str) -> str:
+    """从发行日期字符串中提取年份（前 4 位数字）.
+
+    优先使用正则匹配第一个连续 4 位数字. 若未匹配到但 release 非空, 返回原始值.
+    若 release 为空则返回空字符串.
+    """
+    if not release:
+        return ""
+    match = re.search(r"\d{4}", release)
+    return match.group() if match else release
+
+
 def re_findall(pattern: str, text: str, flags: int = 0) -> list[tuple[str, ...]]:
     """
     re.findall 的类型安全的封装.

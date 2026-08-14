@@ -8,7 +8,7 @@ from parsel import Selector
 from ..config.manager import manager
 from ..config.models import Website
 from ..models.types import CrawlerInput
-from .base import BaseCrawler, Context, CrawlerData, CrawlerException
+from .base import BaseCrawler, Context, CrawlerData, CrawlerException, get_year
 
 
 def get_web_number(html, number):
@@ -60,12 +60,8 @@ def get_release(html):
     return result[0].replace("發行時間: ", "").strip() if result else ""
 
 
-def get_year(release):
-    try:
-        result = str(re.search(r"\d{4}", release).group())
-        return result
-    except Exception:
-        return release
+
+
 
 
 def get_mosaic(html):

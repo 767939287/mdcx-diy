@@ -7,7 +7,7 @@ from lxml import etree
 from parsel import Selector
 
 from ..config.models import Website
-from .base import BaseCrawler, CrawlerData, CrawlerException
+from .base import BaseCrawler, CrawlerData, CrawlerException, get_year
 
 
 def get_title(html):
@@ -56,9 +56,8 @@ def get_release(html):
     return result[0].replace("/", "-") if result else ""
 
 
-def get_year(release):
-    result = re.findall(r"\d{4}", release)
-    return result[0] if result else ""
+
+
 
 
 def get_tag(html):

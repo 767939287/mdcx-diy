@@ -9,7 +9,7 @@ from parsel import Selector
 from ..config.manager import manager
 from ..config.models import Website
 from ..models.types import CrawlerInput
-from .base import BaseCrawler, Context, CrawlerData, CrawlerException
+from .base import BaseCrawler, Context, CrawlerData, CrawlerException, get_year
 from .guochan import get_actor_list, get_lable_list, get_number_list
 
 
@@ -90,9 +90,8 @@ def get_cover(html, mdtv_url):
     return result if result else ""
 
 
-def get_year(release):
-    result = re.search(r"\d{4}", release)
-    return result[0] if result else release
+
+
 
 
 def get_release(cover_url):

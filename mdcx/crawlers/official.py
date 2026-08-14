@@ -7,7 +7,7 @@ from lxml import etree
 from ..config.enums import Website
 from ..config.manager import manager
 from ..number import get_number_letters
-from .base import BaseCrawler, Context, CrawlerData, CrawlerException
+from .base import BaseCrawler, Context, CrawlerData, CrawlerException, get_year
 from .dahlia import DahliaCrawler
 from .faleno import FalenoCrawler
 from .official_uncensored import crawl_uncensored_official
@@ -85,10 +85,8 @@ def get_release(html):
     return result[0].replace("年", "-").replace("月", "-").replace("日", "") if result else ""
 
 
-def get_year(release):
-    if r := re.search(r"\d{4}", release):
-        return r.group()
-    return release
+
+
 
 
 def get_tag(html):

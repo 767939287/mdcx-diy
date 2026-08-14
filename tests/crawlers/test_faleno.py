@@ -1,6 +1,7 @@
 from lxml import etree
 
-from mdcx.crawlers.faleno import get_actor, get_release, get_runtime, get_trailer, get_year
+from mdcx.crawlers.base import get_year
+from mdcx.crawlers.faleno import get_actor, get_release, get_runtime, get_trailer
 
 
 def _build_current_detail_html():

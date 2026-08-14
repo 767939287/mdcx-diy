@@ -7,7 +7,7 @@ import zhconv
 
 from ..config.enums import Website
 from ..config.manager import manager
-from .base import BaseCrawler, Context, CrawlerData, CrawlerException
+from .base import BaseCrawler, Context, CrawlerData, CrawlerException, get_year
 
 
 def get_api_actor(actor_list):
@@ -32,12 +32,8 @@ def get_api_extrafanart(extrafanart_list):
     return extrafanart
 
 
-def get_year(release):
-    try:
-        result = str(re.search(r"\d{4}", release).group())
-        return result
-    except Exception:
-        return release
+
+
 
 
 def get_mosaic(

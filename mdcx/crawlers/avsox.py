@@ -9,7 +9,7 @@ from parsel import Selector
 from ..base.web import get_avsox_domain
 from ..config.models import Website
 from ..models.types import CrawlerInput
-from .base import Context, CrawlerData, CrawlerException, GenericBaseCrawler
+from .base import Context, CrawlerData, CrawlerException, GenericBaseCrawler, get_year
 
 
 def get_actor(html):
@@ -49,8 +49,8 @@ def get_release(html):
     return result[0].strip() if result else ""
 
 
-def get_year(release):
-    return release[:4] if release else release
+
+
 
 
 def get_runtime(html):

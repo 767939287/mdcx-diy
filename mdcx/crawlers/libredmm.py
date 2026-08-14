@@ -7,7 +7,7 @@ from lxml import etree
 from ..base.web import check_url, is_dmm_image_url, normalize_media_url
 from ..config.enums import Website
 from ..config.manager import manager
-from .base import BaseCrawler, Context, CrawlerData, CrawlerException
+from .base import BaseCrawler, Context, CrawlerData, CrawlerException, get_year
 
 
 def is_not_found(html):
@@ -54,11 +54,8 @@ def get_release(html):
     return release
 
 
-def get_year(release):
-    """从发行日期提取年份"""
-    if release and len(release) >= 4:
-        return release[:4]
-    return ""
+
+
 
 
 def get_directors(html):

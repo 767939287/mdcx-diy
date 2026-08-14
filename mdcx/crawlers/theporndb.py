@@ -10,7 +10,7 @@ from ..base.number import remove_escape_string
 from ..config.enums import Switch, Website
 from ..config.manager import manager
 from ..number import long_name
-from .base import BaseCrawler, Context, CrawlerData, CrawlerException
+from .base import BaseCrawler, Context, CrawlerData, CrawlerException, get_year
 
 TheporndbKind = Literal["scenes", "movies"]
 
@@ -19,11 +19,8 @@ def similarity(a, b):
     return SequenceMatcher(None, a, b).ratio()
 
 
-def get_year(release):
-    try:
-        return re.findall(r"\d{4}", release)[0]
-    except Exception:
-        return ""
+
+
 
 
 def get_number(series, release, title):

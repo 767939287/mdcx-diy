@@ -9,7 +9,7 @@ from lxml.html import soupparser
 from ..base.web import get_dmm_trailer
 from ..config.manager import manager
 from ..config.models import Website
-from .base import BaseCrawler, Context, CrawlerData, CrawlerException
+from .base import BaseCrawler, Context, CrawlerData, CrawlerException, get_year
 from .base.types import split_csv
 
 
@@ -286,9 +286,8 @@ def get_release(html):
     return result[0] if result else ""
 
 
-def get_year(release):
-    result = re.findall(r"\d{4}", release)
-    return result[0] if result else ""
+
+
 
 
 def get_tag(html):

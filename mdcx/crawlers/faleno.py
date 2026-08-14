@@ -101,9 +101,8 @@ def get_release(html):
     return get_timer_date(html, "配信")
 
 
-def get_year(release):
-    result = re.findall(r"\d{4}", release)
-    return result[0] if result else ""
+
+
 
 
 def get_tag(html):

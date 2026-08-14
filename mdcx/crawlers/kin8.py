@@ -6,7 +6,7 @@ from lxml import etree
 from parsel import Selector
 
 from ..config.models import Website
-from .base import BaseCrawler, Context, CrawlerData, CrawlerException
+from .base import BaseCrawler, Context, CrawlerData, CrawlerException, get_year
 
 seesaawiki_request_fail_flag = False
 
@@ -67,9 +67,8 @@ def get_release(html):
     return result[0].replace("/", "-").strip() if result else ""
 
 
-def get_year(release):
-    result = re.search(r"\d{4}", release)
-    return result[0] if result else release
+
+
 
 
 def get_runtime(html):
