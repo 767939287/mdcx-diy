@@ -350,7 +350,8 @@ class Scraper:
             signal.show_log_text(f" 🕷 {get_current_time()} 开始刮削：{Flags.scrape_starting}/{count_all} {show_name}")
             thread_time = 0
         else:
-            Flags.next_start_time += thread_time
+            async with Flags._counter_lock:
+                Flags.next_start_time += thread_time
 
         # 计算本线程开始剩余时间, 休眠并定时检查是否手动停止
         remain_time = int(Flags.next_start_time - time.time())
@@ -817,7 +818,8 @@ class Scraper:
                         return None, None
                     if waited >= wait_timeout:
                         LogBuffer.error().write(f"同番号等待超时（{wait_timeout}秒），取消等待：{movie_number}")
-                        Flags.json_get_status[movie_number] = False
+                        async with Flags._json_get_lock:
+                            Flags.json_get_status[movie_number] = False
                         return None, None
                     await asyncio.sleep(1)
                     waited += 1
