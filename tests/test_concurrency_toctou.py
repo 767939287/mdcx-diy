@@ -118,6 +118,22 @@ async def test_file_done_dic_trailer_check_then_set():
 
 
 @pytest.mark.asyncio
+async def test_next_start_time_concurrent_increment():
+    """多协程并发执行 next_start_time += thread_time 时，增量不丢失。"""
+    Flags.reset()
+    Flags.next_start_time = 100.0
+    thread_time = 5.0
+    n = 50
+
+    async def _increment() -> None:
+        async with Flags._counter_lock:
+            Flags.next_start_time += thread_time
+
+    await asyncio.gather(*[_increment() for _ in range(n)])
+    assert Flags.next_start_time == 100.0 + thread_time * n
+
+
+@pytest.mark.asyncio
 async def test_json_get_status_concurrent_update():
     """模拟 scraper.py 中 json_get_status 的并发更新。"""
     Flags.reset()
