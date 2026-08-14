@@ -165,3 +165,11 @@ def test_probe2_discovered_series():
         candidates = generate_cid_candidates(number)
         assert candidates[0] == first_cid, f"{number}: 首个候选 {candidates[0]} != {first_cid}"
         assert first_cid in candidates
+
+
+def test_probe3_discovered_series():
+    from mdcx.crawlers.dmm_direct import generate_cid_candidates
+
+    assert generate_cid_candidates("SDAM-100")[0] == "1sdam00100"
+    assert generate_cid_candidates("SSND-100")[0] == "h_205ssnd00100"
+    assert generate_cid_candidates("ONSD-100")[0] == "onsd00100"

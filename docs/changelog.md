@@ -19,6 +19,7 @@
 - **DMM cid 前缀表修正（avbase 实测复核）**：`ppd` 真实前缀 `143`（原误配 `24`，`24ppd*` 全 404）；`avop` 阈值小号前缀应为**无前缀**（`avop00168` 实测，原误配 `59`）；`sin` 是 duga PPV 系列（非 DMM 图源，`pic.duga.jp`）从表移除；确认 `hibl`/`mtsp`/`ksvr`/`ayb`/`hodv`/`zmen`/`dism`/`sdfk`/`nima` 前缀原表正确（此前"验证失败"是采样编号稀疏所致）
 - **DMM cid 前缀表第二轮补全（avbase 兜底）**：新增 23 个主流系列——无前缀 `ssni`/`sone`/`ofje`/`miab`/`ipvr`/`ipit`/`jul`/`jufd`/`juk`/`jux`/`waaa`/`hntd`/`jue`/`ebod`，前缀 `1` 的 `sdnm`/`sdms`/`sdmm`/`sdmf`/`fset`，`13`（gvh）、`18`（momj）、`h_113`（ggg）、`h_068`（mxgs）；`ipit`/`juk`/`sdmf`/`hntd`/`jue`/`ggg` 为 dmmapi 查不到、avbase 兜底命中；排除 kiray/simm/siro（DMM amateur 目录 `digital/amateur/`，dmm_direct 的 `digital/video/` 路径不覆盖）
 - **新增前缀探测工具 `dmm-probe`**：`scripts/dmm_prefix_probe.py` 固化"dmmapi 反推 + avbase 兜底 + awsimgsrc 直连多编号验证"流程，`uv run dmm-probe ssis,mide --emit-code` 可校验系列前缀并输出推荐补表片段，方便日后维护前缀表
+- **DMM cid 前缀表第三轮补全**：新增 `sdam`（前缀 `1`，SOD 系）、`ssnd`（前缀 `h_205`，Prestige 系，新前缀）、`onsd`（无前缀，Prestige 系）；排除 misd（avbase 给的 cid 为 `mis*` 且 awsimgsrc 验证失败）
 
 ### 修复
 
