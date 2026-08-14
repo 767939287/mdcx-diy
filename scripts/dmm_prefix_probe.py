@@ -25,6 +25,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import io
 import json
 import re
 import warnings
@@ -33,8 +34,11 @@ warnings.filterwarnings("ignore", message="Core Pydantic V1 functionality")
 
 from curl_cffi import requests
 from lxml import html as lxml_html
+from PIL import Image
 
 _TRIAL_NUMS = [100, 300, 500, 30, 60, 80, 200, 150]
+# 尺寸验证探测的编号段（不同系列编号分布差异大，多段探测取最佳）
+_SIZE_PROBE_NUMS = [100, 300, 538, 600, 800, 900]
 _DMMAPI = "https://api.thejavdb.net/v1/movies"
 _AVBASE = "https://www.avbase.net/works"
 _CDN = "https://awsimgsrc.dmm.co.jp/pics_dig/digital/video"
@@ -63,18 +67,31 @@ def _split_prefix(series: str, cid: str) -> tuple[str, int | None]:
     return head, None
 
 
-def _check_cdn(url: str, *, attempts: int = 4) -> bool:
-    """awsimgsrc 直连验证（BoringSSL 间歇抖动，多次重试）."""
+def _probe_size(url: str, *, attempts: int = 4) -> tuple[int, int] | None:
+    """awsimgsrc 直连下载并读取实际尺寸（BoringSSL 间歇抖动，多次重试）."""
     for _ in range(attempts):
         try:
             r = requests.get(url, impersonate="chrome", timeout=20)
-            if r.status_code == 200:
-                return True
-            if r.status_code != 404:
-                return False
+            if r.status_code != 200 or not r.content:
+                return None
+            try:
+                img = Image.open(io.BytesIO(r.content))
+                return img.size
+            except Exception:
+                return None
         except Exception:
             continue
-    return False
+    return None
+
+
+def _is_usable_portrait(size: tuple[int, int]) -> bool:
+    """竖版可用：宽≥500 且 高>宽（过滤 147x200 占位图）."""
+    w, h = size
+    return w >= 500 and h > w
+
+
+def _image_area(size: tuple[int, int]) -> int:
+    return size[0] * size[1]
 
 
 async def _probe_dmmapi(number: str) -> str | None:
@@ -144,9 +161,15 @@ async def probe_series(series: str, *, verify: bool = True) -> dict:
     result["cid"] = cid
     prefix, num = _split_prefix(series, cid)
     result["prefix"] = prefix
-    if verify and num is not None:
-        cid5 = f"{prefix}{series}{num:05d}"
-        result["verified"] = _check_cdn(f"{_CDN}/{cid5}/{cid5}ps.jpg")
+    if verify and prefix is not None:
+        best_size = None
+        for probe_num in _SIZE_PROBE_NUMS:
+            cid5 = f"{prefix}{series}{probe_num:05d}"
+            size = _probe_size(f"{_CDN}/{cid5}/{cid5}ps.jpg")
+            if size and (best_size is None or _image_area(size) > _image_area(best_size)):
+                best_size = size
+        result["size"] = best_size
+        result["verified"] = bool(best_size and _is_usable_portrait(best_size))
     return result
 
 
@@ -225,14 +248,15 @@ def main() -> None:
 
     rows = asyncio.run(_run(series, verify=not args.no_verify, attempts=args.attempts))
 
-    print(f"\n{'系列':<8} {'来源':<7} {'反推cid':<22} {'前缀':<12} {'验证':<4} 建议")
+    print(f"\n{'系列':<8} {'来源':<7} {'反推cid':<22} {'前缀':<12} {'尺寸':<12} 建议")
     print("-" * 80)
     for r in rows:
-        v = "V" if r.get("verified") else "-"
         src = r.get("source") or "-"
         cid = r.get("cid") or "未查到"
         prefix = r.get("prefix") or "无"
-        print(f"{r['series']:<8} {src:<7} {cid:<22} {prefix:<12} {v:<4} {_action(r)}")
+        size = r.get("size")
+        size_str = f"{size[0]}x{size[1]}" if size else "-"
+        print(f"{r['series']:<8} {src:<7} {cid:<22} {prefix:<12} {size_str:<12} {_action(r)}")
 
     if args.emit_code:
         print("\n推荐补表片段:")

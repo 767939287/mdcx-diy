@@ -101,11 +101,10 @@ _PREFIX_GROUPS: dict[str, list[str]] = {
     "17": ["bkd"],
     "18": ["momj", "ntrd"],
     "41": ["dok"],
+    "42": ["sma"],
     "49": ["avop", "madm"],
     "55": ["t28"],
-    "57": ["bdsr", "husr"],
     "77": ["cre"],
-    "83": ["sma"],
     "118": ["onez"],
     "143": ["ppd", "umd"],
     "433": ["mbd"],
@@ -120,15 +119,19 @@ _PREFIX_GROUPS: dict[str, list[str]] = {
     "h_1324": ["skmj"],
     "h_1371": ["zmen"],
     "h_1374": ["ksvr"],
+    "h_1454": ["bdsr", "husr"],
     "h_189": ["ymd"],
     "h_237": ["nact"],
     "h_910": ["vrtm"],
     "h_995": ["bokd"],
 }
 
-# 同名系列跨厂商前缀不同（如 sw: SWITCH=1、プラム=h_113），附加候选前缀兜底
+# 同名系列跨厂商/跨编号段前缀不同，附加候选前缀兜底
 _EXTRA_PREFIXES: dict[str, list[str]] = {
     "sw": ["h_113"],
+    "bdsr": ["57"],
+    "husr": ["57"],
+    "sma": ["83"],
 }
 
 _SPECIAL_THRESHOLDS: dict[str, tuple[int, str, str]] = {

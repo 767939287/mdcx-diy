@@ -183,7 +183,7 @@ def test_probe4_discovered_series():
         "DLDSS-100": "1dldss00100",
         "HUNT-100": "1hunt00100",
         "DOK-100": "41dok00100",
-        "HUSR-100": "57husr00100",
+        "HUSR-100": "h_1454husr00100",
         "CRE-100": "77cre00100",
         "MUKD-100": "mukd00100",
         "DASD-100": "dasd00100",
