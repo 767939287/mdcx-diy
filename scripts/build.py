@@ -303,6 +303,9 @@ class BuildManager:
             "mdcx.tools.sync_gfriends",
             "--hidden-import",
             "scripts.cover_backfill",
+            # DMM 高清直链构造器(libredmm/r18dev/javbus 与 cover_backfill 均函数内延迟导入)
+            "--hidden-import",
+            "mdcx.crawlers.dmm_direct",
             "--collect-all",
             "defusedxml",
             "--collect-all",

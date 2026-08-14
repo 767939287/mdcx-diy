@@ -187,3 +187,13 @@
     3. 它的中间产物（如本例的模块级 `_cache_data`）是不是由别处写入？本例 `load_cache()` 写的是 `minnano_crawler._cache_data` 不是 UI 字段，所以 UI 字段确实是死的，但**功能是活的**。
   - 死字段可以删，但字段对应的"功能有没有正常运行"必须先实测验证（最小复现 import / 跑一遍），不能因为字段没人用就直接判定整个功能在跑。
   - 用户反问"是不是可以复用"是高价值信号——小白的常识直觉能刺穿专家的盲点。
+
+[devbox 验证环境默认代理指向无进程的 127.0.0.1:7890]
+- Date: 2026-08-14
+- Context: 多次踩坑（r18dev/javbus 高清升级、DMM 图下载、check_url 验证时）——mdcx 客户端请求全部失败，现象是 `curl: (7) Failed to connect ... over proxy 127.0.0.1` 或 check_url 全返回 None
+- Category: 环境配置
+- Instructions:
+  - **根因**：mdcx 默认配置 `use_proxy=True` + `proxy=http://127.0.0.1:7890`，而 devbox 验证环境**没有运行该代理进程**，导致所有走 `manager.acquire_computed()` 的 client 请求（check_url、下载、刮削）连不上失败。这不是代码 bug，是验证环境 vs 主流程环境的差异。
+  - **踩坑特征**：`manager.config.proxy` 打印为 `http://127.0.0.1:7890`、`use_proxy=True`；同一 URL 用 `curl_cffi`/`curl` 直连却 200 正常。排查时先打印 `manager.config.use_proxy` 与 `manager.config.proxy` 即可定位。
+  - **验证环境绕过方法**：脚本开头 `manager._replace_config(manager.config.model_copy(deep=True))` 后设 `cfg.use_proxy=False`、`cfg.proxy=""` 再 `manager._replace_config(cfg)`，即可让 check_url/下载走直连。注意 `manager.config.proxy=""` 或 `use_proxy=False` 直接赋值**不生效**（Computed client 在 import 时已按旧配置构建），必须 `_replace_config` 重建；且这只是内存态，不影响配置文件。
+  - 真实用户环境（GUI/平台运行）有可用代理或直连，此问题仅 devbox 验证环境存在，**不要据此改产品代码**。
