@@ -342,15 +342,11 @@ def get_actress_list(html: etree._Element, base_url: str) -> list:
     return actresses
 
 
-_UNCENSORED_PREFIXES = ("FC2", "HEYZO", "1PONDO", "CARIB", "10MUCH", "200GANA", "PACO", "MKD", "MIUM")
-
-
 def _should_skip_dmm_upgrade(number: str) -> bool:
     """DMM 是有码源，跳过明显无码番号，避免无效候选请求."""
-    if "_" in number:
-        return True
-    upper = number.upper().replace(" ", "")
-    return upper.startswith(_UNCENSORED_PREFIXES)
+    from mdcx.crawlers.dmm_direct import is_uncensored_number
+
+    return is_uncensored_number(number)
 
 
 def _build_aws_cover_candidates(number: str) -> list[str]:

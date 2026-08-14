@@ -80,3 +80,14 @@ def test_image_candidates_pairing():
             assert "ps.jpg" in url
         else:
             assert "pl.jpg" in url
+
+
+def test_is_uncensored_number():
+    from mdcx.crawlers.dmm_direct import is_uncensored_number
+
+    assert is_uncensored_number("FC2-PPV-1234567")
+    assert is_uncensored_number("HEYZO-0123")
+    assert is_uncensored_number("CARIB_0421")
+    assert not is_uncensored_number("SSIS-538")
+    assert not is_uncensored_number("WANZ-100")
+    assert not is_uncensored_number("")

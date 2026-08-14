@@ -145,3 +145,13 @@ def generate_image_candidates(number: str) -> list[tuple[str, str]]:
         candidates.append(("portrait", f"{_DMM_CDN_BASE}/{cid}/{cid}ps.jpg"))
         candidates.append(("landscape", f"{_DMM_CDN_BASE}/{cid}/{cid}pl.jpg"))
     return candidates
+
+
+_UNCENSORED_PREFIXES = ("FC2", "HEYZO", "1PONDO", "CARIB", "10MUCH", "200GANA", "PACO", "MKD", "MIUM")
+
+
+def is_uncensored_number(number: str) -> bool:
+    """DMM 是有码源，判断番号是否为明显无码（含 `_` 或命中无码前缀），用于跳过 DMM 候选."""
+    if "_" in number:
+        return True
+    return (number or "").upper().replace(" ", "").startswith(_UNCENSORED_PREFIXES)

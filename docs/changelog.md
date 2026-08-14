@@ -13,6 +13,7 @@
 - **LibreDMM 高清图候选改用 dmm_direct**：`libredmm.py` 的 `_build_aws_cover_candidates`/`_build_aws_poster_candidates` 从简陋的 `_number_variants`（仅 `-`→`00`/去除两种）替换为 dmm_direct 前缀映射构造器，补齐有前缀系列（如 WANZ-100 → `3wanz00100ps.jpg`，原逻辑构造错）；SSIS-001（无前缀）与 dmmapi 实测 frontcover 完全一致；删除死代码 `_number_variants`/`_AWS_BASE`
 - **R18.dev 封面/海报升级为 DMM 高清**：r18 返回的 `jacket_full_url` 是 pics.dmm.co.jp 低清图，部分系列还是 mono 路径且 cid 未补零（如 SSIS-538 → `ssis538pl.jpg`，真实 DMM 高清图为 `ssis00538`）；`r18dev.py` 改用 dmm_direct 生成 awsimgsrc 高清 `pl`/`ps` 候选，`check_url` 验证成功后覆盖 thumb/poster（顺带补上 r18 缺失的竖版海报），失败回退原低清图
 - **JavBus 封面/海报升级为 DMM 高清**：javbus 的图是自家 CDN 低清镜像，`javbus.py` 改用 dmm_direct 生成 awsimgsrc 高清 `pl`/`ps` 候选，`check_url` 验证成功后升级 thumb/poster；无码番号（FC2/HEYZO/1pondo 等前缀或含 `_`）直接跳过，避免无效请求
+- **DMM 高清候选统一注入 Poster 选优**：`web.py` 的 `_build_poster_candidates` 在开启 `poster_auto_best` 时自动追加 DMM awsimgsrc 竖版高清候选（首个候选，仅 +1 次尺寸探测），让其他未在爬虫层升级的站点（javdb/avbase 等）也能被选优自动采用高清图；无码番号与已是 DMM 高清的 URL 自动跳过；无码判断提炼为 `dmm_direct.is_uncensored_number` 供各爬虫复用
 
 ### 修复
 

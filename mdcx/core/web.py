@@ -860,6 +860,30 @@ def _can_direct_download_poster_candidate(
     return False
 
 
+async def _build_dmm_poster_candidates(result) -> list[PosterCandidate]:
+    """构造 DMM 官方高清竖版海报候选（仅供 Poster 选优使用）.
+
+    在刮削源图基础上补充 awsimgsrc 高清 ps 候选，供选优按尺寸自动胜过低清原图。
+    只取首个候选，避免多前缀系列（如 ABF 有多个前缀变体）产生大量尺寸探测请求；
+    跳过无码番号与已是 DMM 高清的 URL。
+    """
+    number = (result.number or "").strip()
+    if not number:
+        return []
+    from mdcx.crawlers.dmm_direct import generate_image_candidates, is_uncensored_number
+
+    if is_uncensored_number(number):
+        return []
+    existing = MediaResourceContext.normalize_url(result.poster or "")
+    for orient, url in generate_image_candidates(number):
+        if orient != "portrait":
+            continue
+        if MediaResourceContext.normalize_url(url) == existing:
+            return []
+        return [PosterCandidate("dmm_direct", url, True)]
+    return []
+
+
 async def _build_poster_candidates(
     result: CrawlersResult,
     *,
@@ -874,6 +898,8 @@ async def _build_poster_candidates(
     ]
     if extra_candidates:
         candidates.extend(extra_candidates)
+    if poster_auto_best:
+        candidates.extend(await _build_dmm_poster_candidates(result))
     if _field_priority_try_all_images_enabled():
         candidates.extend(
             PosterCandidate(source, url, image_download) for source, url, image_download in result.poster_list if url
