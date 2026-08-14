@@ -197,3 +197,14 @@
   - **踩坑特征**：`manager.config.proxy` 打印为 `http://127.0.0.1:7890`、`use_proxy=True`；同一 URL 用 `curl_cffi`/`curl` 直连却 200 正常。排查时先打印 `manager.config.use_proxy` 与 `manager.config.proxy` 即可定位。
   - **验证环境绕过方法**：脚本开头 `manager._replace_config(manager.config.model_copy(deep=True))` 后设 `cfg.use_proxy=False`、`cfg.proxy=""` 再 `manager._replace_config(cfg)`，即可让 check_url/下载走直连。注意 `manager.config.proxy=""` 或 `use_proxy=False` 直接赋值**不生效**（Computed client 在 import 时已按旧配置构建），必须 `_replace_config` 重建；且这只是内存态，不影响配置文件。
   - 真实用户环境（GUI/平台运行）有可用代理或直连，此问题仅 devbox 验证环境存在，**不要据此改产品代码**。
+
+[GitHub CI 失败 runs 批量清理流程]
+- Date: 2026-08-14
+- Context: 用户希望批量删除 GitHub Actions 页面上 CI/CD Pipeline #579-#591 共13个失败 run
+- Category: 排错调试
+- Instructions:
+  - GitHub 凭据从 git credential helper 提取：`echo -e "protocol=https\nhost=github.com\n" | git credential fill`，取 password 字段作为 GH_TOKEN。
+  - `gh run list --workflow ci.yaml --limit 30 --json databaseId,conclusion,number` 列出所有 CI runs，筛选 conclusion=failure 的 databaseId。
+  - 逐条执行 `gh run delete <databaseId>` 即可删除。
+  - 批量删除示例：`for id in <ids>; do gh run delete "$id" && echo "deleted $id"; done`。
+  - GH_TOKEN 需在 bash 调用前 export（新 shell 不继承），用完即删避免泄露。
