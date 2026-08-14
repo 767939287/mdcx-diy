@@ -67,13 +67,12 @@ _PREFIX_GROUPS: dict[str, list[str]] = {
     "13": ["ayb", "gg", "gvg", "ovg"],
     "17": ["bkd"],
     "18": ["ntrd"],
-    "24": ["ppd"],
     "49": ["avop", "madm"],
     "55": ["t28"],
     "57": ["bdsr"],
     "83": ["sma"],
-    "118": ["onez", "sin"],
-    "143": ["umd"],
+    "118": ["onez"],
+    "143": ["ppd", "umd"],
     "433": ["mbd"],
     "436": ["abf"],
     "5642": ["hodv"],
@@ -95,7 +94,7 @@ _EXTRA_PREFIXES: dict[str, list[str]] = {
 }
 
 _SPECIAL_THRESHOLDS: dict[str, tuple[int, str, str]] = {
-    "avop": (168, "59", "1"),
+    "avop": (168, "", "1"),
     "gigl": (643, "h_860", ""),
     "ekdv": (655, "49", ""),
 }

@@ -20,14 +20,21 @@ def test_common_series_padded_five():
 
 
 def test_special_threshold_small():
-    assert "59avop00100" in generate_cid_candidates("AVOP-100")
-    assert "59avop00001" in generate_cid_candidates("AVOP-1")
+    assert "avop00100" in generate_cid_candidates("AVOP-100")
+    assert "avop00001" in generate_cid_candidates("AVOP-1")
 
 
 def test_special_threshold_large():
     assert "1avop00200" in generate_cid_candidates("AVOP-200")
     assert "h_860gigl00643" in generate_cid_candidates("GIGL-643")
     assert "gigl00644" in generate_cid_candidates("GIGL-644")
+
+
+def test_special_threshold_avop_boundary():
+    # ≤168 无前缀，>168 前缀 1（avbase 实测 avop00168 / 1avop00604）
+    assert generate_cid_candidates("AVOP-168")[0] == "avop00168"
+    assert generate_cid_candidates("AVOP-169")[0] == "1avop00169"
+    assert "59avop00168" not in generate_cid_candidates("AVOP-168")
 
 
 def test_prefix_group_members():
@@ -41,10 +48,10 @@ def test_real_verified_prefixes():
     assert generate_cid_candidates("SW-123") == ["1sw00123", "sw00123", "h_113sw00123"]
     assert generate_cid_candidates("WANZ-100")[0] == "3wanz00100"
     assert generate_cid_candidates("NTRD-100")[0] == "18ntrd00100"
-    assert generate_cid_candidates("PPD-100")[0] == "24ppd00100"
+    assert generate_cid_candidates("PPD-100")[0] == "143ppd00100"
     assert generate_cid_candidates("UMD-100")[0] == "143umd00100"
     assert generate_cid_candidates("MBD-100")[0] == "433mbd00100"
-    assert generate_cid_candidates("SIN-100")[0] == "118sin00100"
+    assert generate_cid_candidates("SIN-100")[0] == "sin00100"
     assert generate_cid_candidates("YMD-100")[0] == "h_189ymd00100"
     assert generate_cid_candidates("MADM-100")[0] == "49madm00100"
 
