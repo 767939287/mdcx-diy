@@ -43,6 +43,7 @@ _CRAWLER_BATCH_TIMEOUT = 60.0
 _CRAWL_CACHE_TTL = 90.0
 _CRAWL_CACHE_MAX_ENTRIES = 512
 _crawl_cache: dict[tuple[str, str], tuple[float, CrawlersResult]] = {}
+_crawl_cache_lock: asyncio.Lock = asyncio.Lock()
 SPECIFIC_CRAWLER_TITLE_LANGUAGE_SITES = {
     Website.AIRAV_CC,
     Website.IQQTV,
@@ -90,32 +91,32 @@ def _crawl_cache_key(task_input: CrawlerInput) -> tuple[str, str] | None:
     return str(file_path), number
 
 
-def _crawl_cache_get(key: tuple[str, str]) -> CrawlersResult | None:
+async def _crawl_cache_get(key: tuple[str, str]) -> CrawlersResult | None:
     """读取缓存, 命中且未过期时返回深拷贝, 否则返回 None."""
-    entry = _crawl_cache.get(key)
-    if not entry:
-        return None
-    cached_at, result = entry
-    if time.monotonic() - cached_at > _CRAWL_CACHE_TTL:
-        _crawl_cache.pop(key, None)
-        return None
-    return deepcopy(result)
+    async with _crawl_cache_lock:
+        entry = _crawl_cache.get(key)
+        if not entry:
+            return None
+        cached_at, result = entry
+        if time.monotonic() - cached_at > _CRAWL_CACHE_TTL:
+            _crawl_cache.pop(key, None)
+            return None
+        return deepcopy(result)
 
 
-def _crawl_cache_put(key: tuple[str, str], result: CrawlersResult) -> None:
-    """写入缓存（深拷贝存储, 避免外部修改污染缓存）."""
-    _crawl_cache[key] = (time.monotonic(), deepcopy(result))
-    if len(_crawl_cache) > _CRAWL_CACHE_MAX_ENTRIES:
-        # 超过容量上限时淘汰已过期条目, 避免长时间运行后缓存无限增长
-        now = time.monotonic()
-        expired = [k for k, (cached_at, _) in _crawl_cache.items() if now - cached_at > _CRAWL_CACHE_TTL]
-        for k in expired:
-            _crawl_cache.pop(k, None)
-        # 仍超限时仅保留最近写入的条目
+async def _crawl_cache_put(key: tuple[str, str], result: CrawlersResult) -> None:
+    """写入缓存（深拷贝存储, 避免外部修改污染缓存；锁保护防止淘汰逻辑迭代时 dict 变化）."""
+    async with _crawl_cache_lock:
+        _crawl_cache[key] = (time.monotonic(), deepcopy(result))
         if len(_crawl_cache) > _CRAWL_CACHE_MAX_ENTRIES:
-            newest = sorted(_crawl_cache.items(), key=lambda item: item[1][0], reverse=True)[:_CRAWL_CACHE_MAX_ENTRIES]
-            _crawl_cache.clear()
-            _crawl_cache.update(newest)
+            now = time.monotonic()
+            expired = [k for k, (cached_at, _) in _crawl_cache.items() if now - cached_at > _CRAWL_CACHE_TTL]
+            for k in expired:
+                _crawl_cache.pop(k, None)
+            if len(_crawl_cache) > _CRAWL_CACHE_MAX_ENTRIES:
+                newest = sorted(_crawl_cache.items(), key=lambda item: item[1][0], reverse=True)[:_CRAWL_CACHE_MAX_ENTRIES]
+                _crawl_cache.clear()
+                _crawl_cache.update(newest)
 
 
 @dataclass(frozen=True)
@@ -329,7 +330,7 @@ class FileScraper:
         # 同番号缓存命中：同批次相同番号文件直接复用结果，跳过整批站点请求
         cache_key = _crawl_cache_key(task_input)
         if cache_key:
-            cached = _crawl_cache_get(cache_key)
+            cached = await _crawl_cache_get(cache_key)
             if cached is not None:
                 return cached
         type_sites = list(classification.sites or [])
@@ -600,7 +601,7 @@ class FileScraper:
 
         # 写入同番号缓存, 供同批次相同番号文件复用
         if cache_key:
-            _crawl_cache_put(cache_key, reduced)
+            await _crawl_cache_put(cache_key, reduced)
 
         return reduced
 
@@ -672,7 +673,7 @@ class FileScraper:
         """
         cache_key = _crawl_cache_key(task_input)
         if cache_key:
-            cached = _crawl_cache_get(cache_key)
+            cached = await _crawl_cache_get(cache_key)
             if cached is not None:
                 return cached
         failed_info: list[str] = []
@@ -702,7 +703,7 @@ class FileScraper:
             if failed_info:
                 res.field_log = "\n    ⚡ 速度优先跳过: " + " -> ".join(failed_info)
             if cache_key:
-                _crawl_cache_put(cache_key, res)
+                await _crawl_cache_put(cache_key, res)
             return res
 
         if failed_info:
