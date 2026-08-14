@@ -738,7 +738,7 @@ async def get_file_info_v2(file_path: Path, copy_sub: bool = True) -> FileInfo:
 
 async def _migrate_picture_resource(
     number: str,
-    done_path: str | None,
+    done_path: str | Path | None,
     final_path: Path,
     new_path_with_filename: Path,
     old_path_with_filename: Path,
@@ -774,11 +774,11 @@ async def _migrate_picture_resource(
             exists = False
 
         if exists:
-            Flags.file_done_dic[number].update({local_key: final_path})
+            cast(dict[str, Path | None], Flags.file_done_dic[number])[local_key] = final_path
             for old_path in (old_path_with_filename, old_path_no_filename, new_path_with_filename):
                 if str(old_path).lower() != str(final_path).lower() and await aiofiles.os.path.exists(old_path):
                     await delete_file_async(old_path)
-        elif p := Flags.file_done_dic.get(number, cast(FileDoneDict, {})).get(local_key):
+        elif p := cast(Path | None, Flags.file_done_dic.get(number, cast(FileDoneDict, {})).get(local_key)):
             await copy_file_async(p, final_path)
     except Exception:
         signal.show_log_text(traceback.format_exc())
