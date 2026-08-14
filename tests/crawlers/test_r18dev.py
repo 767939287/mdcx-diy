@@ -389,7 +389,7 @@ async def test_upgrade_dmm_cover_success(monkeypatch):
     from mdcx.crawlers.base.types import CrawlerData
     from mdcx.crawlers.r18dev import _upgrade_dmm_cover
 
-    monkeypatch.setattr("mdcx.crawlers.r18dev.check_url", _ok)
+    monkeypatch.setattr("mdcx.base.web.check_url", _ok)
     ctx = _FakeCtx()
     data = CrawlerData(number="SSIS-001", thumb="old.jpg", poster="old.jpg")
     await _upgrade_dmm_cover(ctx, data)
@@ -402,7 +402,7 @@ async def test_upgrade_dmm_cover_fail_keeps_original(monkeypatch):
     from mdcx.crawlers.base.types import CrawlerData
     from mdcx.crawlers.r18dev import _upgrade_dmm_cover
 
-    monkeypatch.setattr("mdcx.crawlers.r18dev.check_url", _fail)
+    monkeypatch.setattr("mdcx.base.web.check_url", _fail)
     ctx = _FakeCtx()
     data = CrawlerData(number="SSIS-001", thumb="old.jpg", poster="old.jpg")
     await _upgrade_dmm_cover(ctx, data)
@@ -415,7 +415,7 @@ async def test_upgrade_dmm_cover_uses_data_number(monkeypatch):
     from mdcx.crawlers.base.types import CrawlerData
     from mdcx.crawlers.r18dev import _upgrade_dmm_cover
 
-    monkeypatch.setattr("mdcx.crawlers.r18dev.check_url", _ok)
+    monkeypatch.setattr("mdcx.base.web.check_url", _ok)
     ctx = _FakeCtx()
     data = CrawlerData(number="WANZ-100", thumb="old.jpg", poster="old.jpg")
     await _upgrade_dmm_cover(ctx, data)

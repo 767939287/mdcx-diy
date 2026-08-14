@@ -358,6 +358,12 @@ class JavdbApiCrawler(BaseCrawler):
         res.mosaic = "无码" if is_uncensored else "有码"
         if res.trailer and res.trailer.startswith("//"):
             res.trailer = "https:" + res.trailer
+        if not is_uncensored:
+            from mdcx.crawlers.dmm_direct import upgrade_dmm_cover
+
+            thumb, poster = await upgrade_dmm_cover(ctx, str(res.number or ""), res.thumb, res.poster)
+            res.thumb = thumb
+            res.poster = poster
         return res
 
     @classmethod

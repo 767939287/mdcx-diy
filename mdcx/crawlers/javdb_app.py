@@ -371,4 +371,10 @@ class JavdbAPICrawler(BaseCrawler):
         if res.runtime:
             res.year = res.release[:4] if res.release else ""
         res.mosaic = "无码" if self._number_key(res.number or "").startswith("FC2") else "有码"
+        if res.mosaic != "无码":
+            from mdcx.crawlers.dmm_direct import upgrade_dmm_cover
+
+            thumb, poster = await upgrade_dmm_cover(ctx, str(res.number or ""), res.thumb, res.poster)
+            res.thumb = thumb
+            res.poster = poster
         return res

@@ -74,7 +74,7 @@ async def _fail(url: str) -> None:
 async def test_upgrade_dmm_cover_success(monkeypatch):
     from mdcx.crawlers.javbus import _upgrade_dmm_cover
 
-    monkeypatch.setattr("mdcx.crawlers.javbus.check_url", _ok)
+    monkeypatch.setattr("mdcx.base.web.check_url", _ok)
     ctx = _FakeCtx()
     cover, poster = await _upgrade_dmm_cover(ctx, "SSIS-001", "old_cover.jpg", "old_poster.jpg")
     assert cover.endswith("ssis00001pl.jpg")
@@ -85,7 +85,7 @@ async def test_upgrade_dmm_cover_success(monkeypatch):
 async def test_upgrade_dmm_cover_fail_keeps_original(monkeypatch):
     from mdcx.crawlers.javbus import _upgrade_dmm_cover
 
-    monkeypatch.setattr("mdcx.crawlers.javbus.check_url", _fail)
+    monkeypatch.setattr("mdcx.base.web.check_url", _fail)
     ctx = _FakeCtx()
     cover, poster = await _upgrade_dmm_cover(ctx, "SSIS-001", "old_cover.jpg", "old_poster.jpg")
     assert cover == "old_cover.jpg"
@@ -99,7 +99,7 @@ async def test_upgrade_dmm_cover_skips_uncensored(monkeypatch):
     async def _should_not_be_called(url: str) -> str:
         raise AssertionError("无码番号不应发起候选请求")
 
-    monkeypatch.setattr("mdcx.crawlers.javbus.check_url", _should_not_be_called)
+    monkeypatch.setattr("mdcx.base.web.check_url", _should_not_be_called)
     ctx = _FakeCtx()
     cover, poster = await _upgrade_dmm_cover(ctx, "HEYZO-0123", "old_cover.jpg", "old_poster.jpg")
     assert cover == "old_cover.jpg"

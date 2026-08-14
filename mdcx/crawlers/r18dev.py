@@ -2,7 +2,6 @@ import json
 import re
 from typing import override
 
-from ..base.web import check_url
 from ..config.manager import manager
 from ..config.models import Website
 from ..models.types import CrawlerResult
@@ -152,23 +151,17 @@ def _series_number(id_str: str) -> tuple[str, str]:
 
 
 def _build_aws_cover_candidates(number: str) -> list[str]:
-    """从番号构造 DMM 高清封面 (thumb/pl.jpg) 候选 URL 列表.
+    """从番号构造 DMM 高清封面 (thumb/pl.jpg) 候选 URL 列表."""
+    from mdcx.crawlers.dmm_direct import build_aws_cover_candidates
 
-    复用 dmm_direct 的番号→DMM cid 构造器，取横版 pl 候选。
-    """
-    from mdcx.crawlers.dmm_direct import generate_image_candidates
-
-    return [url for orient, url in generate_image_candidates(number) if orient == "landscape"]
+    return build_aws_cover_candidates(number)
 
 
 def _build_aws_poster_candidates(number: str) -> list[str]:
-    """从番号构造 DMM 高清海报 (poster/ps.jpg) 候选 URL 列表.
+    """从番号构造 DMM 高清海报 (poster/ps.jpg) 候选 URL 列表."""
+    from mdcx.crawlers.dmm_direct import build_aws_poster_candidates
 
-    复用 dmm_direct 的番号→DMM cid 构造器，取竖版 ps 候选。
-    """
-    from mdcx.crawlers.dmm_direct import generate_image_candidates
-
-    return [url for orient, url in generate_image_candidates(number) if orient == "portrait"]
+    return build_aws_poster_candidates(number)
 
 
 async def _upgrade_dmm_cover(ctx, data: CrawlerData) -> None:
@@ -176,7 +169,6 @@ async def _upgrade_dmm_cover(ctx, data: CrawlerData) -> None:
 
     r18 的 jacket_full_url 是 pics.dmm.co.jp 低清图，部分系列还是 mono 路径且 cid 未补零
     （如 SSIS-538 -> ssis538pl.jpg），真实 DMM 高清图为 ssis00538（digital 路径）。
-    复用 dmm_direct 构造器生成高清候选，check_url 验证成功后覆盖 thumb/poster。
     """
     number = data.number if isinstance(data.number, str) else ""
     number = number.strip()
@@ -184,18 +176,11 @@ async def _upgrade_dmm_cover(ctx, data: CrawlerData) -> None:
         number = str(ctx.input.number or "").strip()
     if not number:
         return
-    for url in _build_aws_cover_candidates(number):
-        if await check_url(url):
-            if url != data.thumb:
-                ctx.debug(f"R18dev 封面升级为高清: {url}")
-                data.thumb = url
-            break
-    for url in _build_aws_poster_candidates(number):
-        if await check_url(url):
-            if url != data.poster:
-                ctx.debug(f"R18dev 海报升级为高清竖版: {url}")
-                data.poster = url
-            break
+    from mdcx.crawlers.dmm_direct import upgrade_dmm_cover
+
+    cover, poster = await upgrade_dmm_cover(ctx, number, str(data.thumb or ""), str(data.poster or ""))
+    data.thumb = cover
+    data.poster = poster
 
 
 class R18devCrawler(BaseCrawler):

@@ -144,23 +144,20 @@ def get_mosaic(tags):
 
 
 def _build_aws_cover_candidates(number: str) -> list[str]:
-    """从番号构造高清封面 (thumb/pl.jpg) 候选 URL 列表.
+    """从番号构造高清封面 (thumb/pl.jpg) 候选 URL 列表."""
+    from mdcx.crawlers.dmm_direct import build_aws_cover_candidates
 
-    复用 dmm_direct 的番号→DMM cid 构造器（含前缀映射表校准），取横版 pl 候选。
-    """
-    from mdcx.crawlers.dmm_direct import generate_image_candidates
-
-    return [url for orient, url in generate_image_candidates(number) if orient == "landscape"]
+    return build_aws_cover_candidates(number)
 
 
 def _build_aws_poster_candidates(number: str, thumb_url: str) -> list[str]:
     """从番号构造高清海报 (poster/ps.jpg) 候选 URL 列表.
 
-    复用 dmm_direct 的番号→DMM cid 构造器，取竖版 ps 候选；若已有 pl.jpg 图也尝试替换后缀。
+    取竖版 ps 候选；若已有 pl.jpg 图也尝试替换后缀。
     """
-    from mdcx.crawlers.dmm_direct import generate_image_candidates
+    from mdcx.crawlers.dmm_direct import build_aws_poster_candidates
 
-    candidates = [url for orient, url in generate_image_candidates(number) if orient == "portrait"]
+    candidates = build_aws_poster_candidates(number)
     # 如果 thumb_url 是标准 pl.jpg 格式，也尝试直接替换后缀
     if thumb_url and thumb_url.endswith("pl.jpg"):
         ps_url = thumb_url[:-6] + "ps.jpg"

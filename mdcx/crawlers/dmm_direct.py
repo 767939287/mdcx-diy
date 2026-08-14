@@ -205,3 +205,45 @@ def is_uncensored_number(number: str) -> bool:
     if "_" in number:
         return True
     return (number or "").upper().replace(" ", "").startswith(_UNCENSORED_PREFIXES)
+
+
+def build_aws_cover_candidates(number: str) -> list[str]:
+    """从番号构造 DMM 高清封面 (thumb/pl.jpg) 候选 URL 列表.
+
+    复用番号→DMM cid 构造器，取横版 pl 候选。
+    """
+    return [url for orient, url in generate_image_candidates(number) if orient == "landscape"]
+
+
+def build_aws_poster_candidates(number: str) -> list[str]:
+    """从番号构造 DMM 高清海报 (poster/ps.jpg) 候选 URL 列表.
+
+    复用番号→DMM cid 构造器，取竖版 ps 候选。
+    """
+    return [url for orient, url in generate_image_candidates(number) if orient == "portrait"]
+
+
+async def upgrade_dmm_cover(ctx, number: str, cover_url: str, poster_url: str) -> tuple[str, str]:
+    """尝试将爬虫低清/水印图升级为 DMM 高清 ps/pl，返回 (cover, poster).
+
+    复用 dmm_direct 生成 awsimgsrc 高清候选，check_url 验证成功后覆盖，
+    失败回退原图。无码番号直接跳过。
+    """
+    from mdcx.base.web import check_url
+
+    number = (number or "").strip()
+    if not number or is_uncensored_number(number):
+        return cover_url, poster_url
+    for url in build_aws_cover_candidates(number):
+        if await check_url(url):
+            if url != cover_url:
+                ctx.debug(f"封面升级为高清: {url}")
+            cover_url = url
+            break
+    for url in build_aws_poster_candidates(number):
+        if await check_url(url):
+            if url != poster_url:
+                ctx.debug(f"海报升级为高清竖版: {url}")
+            poster_url = url
+            break
+    return cover_url, poster_url

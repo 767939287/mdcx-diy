@@ -23,6 +23,7 @@
 - **DMM cid 前缀表第四轮补全**：新增 15 个系列——前缀 `1` 的 `kmhrs`/`dldss`/`hunt`，新前缀 `41`（dok）、`57`（husr）、`77`（cre），无前缀 `mukd`/`dasd`/`mymd`/`kawd`/`mudr`/`bf`/`cnd`/`dvdms`/`eyan`
 - **dmm-probe 工具修复：验证改为实际尺寸判定**：端到端验证发现此前 `_check_cdn` 只看 HTTP 200，把 DMM 低清占位图（147x200/800x536）误判为"高清通过"；改为下载读取实际分辨率 + 多编号段探测取最佳，竖版宽≥500 高>宽才算通过；cover_backfill 的尺寸校验（`_is_usable_dmm_portrait`/`_is_usable_dmm_landscape`）本就正确，端到端确认 SSIS/MILK 高清成功、低清系列正确回退
 - **DMM cid 前缀表 avbase 实际 cid 精确复核**：逐系列用 avbase 实际 cid 复核前缀——`bdsr`/`husr` 主前缀改为 `h_1454`（1529x2184 高清，原 `57` 前缀仅 1032x1468 且降为附加候选）、`sma` 主前缀改为 `42`（原 `83` 前缀只拿到 147x200 占位图，降为附加候选）；其余 44 个"不匹配"确认是 avbase 混入的 `xxxbod`/`xxxa/b` 多版本变体等误报，主前缀均正确
+- **DMM 高清升级统一提炼 + JavDB 三爬虫接入**：`dmm_direct` 新增公共 `build_aws_cover_candidates`/`build_aws_poster_candidates`/`upgrade_dmm_cover`（check_url 验证升级，无码跳过），javbus/r18dev/libredmm 的私有实现改为委托公共版（去重）；**JavDB / JavDB API / JavDB App** 三个爬虫在 `post_process` 接入升级——它们的图是 javdb 图床缩略图（`c0.jdbstatic.com` 哈希路径，非高清），现在有码番号刮削后直接升级为 DMM 官方高清（thumb 横版 pl / poster 竖版 ps），无码番号保持 javdb 原图
 
 ### 修复
 
