@@ -4,6 +4,7 @@ import time
 from contextlib import suppress
 from copy import deepcopy
 from dataclasses import dataclass
+from dataclasses import replace as _dc_replace
 from datetime import date
 from itertools import chain
 from typing import TYPE_CHECKING
@@ -365,12 +366,10 @@ class FileScraper:
         async def _fetch_site(key: tuple[Website, Language]) -> None:
             site, lang = key
             try:
-                task_input.language = lang
-                task_input.org_language = lang
+                ti = _dc_replace(task_input, language=lang, org_language=lang)
                 if site in MULTI_LANGUAGE_WEBSITES and lang == Language.UNDEFINED:
-                    task_input.language = Language.JP
-                    task_input.org_language = Language.JP
-                web_data = await self._call_crawler(task_input, site)
+                    ti = _dc_replace(ti, language=Language.JP, org_language=Language.JP)
+                web_data = await self._call_crawler(ti, site)
                 req_info.append(f"{sprint_source(*key)} ({web_data.debug_info.execution_time:.2f}s)")
                 if web_data.data is None:
                     if e := web_data.debug_info.error:
