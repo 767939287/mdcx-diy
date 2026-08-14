@@ -91,3 +91,33 @@ def test_is_uncensored_number():
     assert not is_uncensored_number("SSIS-538")
     assert not is_uncensored_number("WANZ-100")
     assert not is_uncensored_number("")
+
+
+def test_probe_discovered_prefixed_series():
+    from mdcx.crawlers.dmm_direct import generate_cid_candidates
+
+    expected = {
+        "MILK-100": "h_1240milk00100",
+        "HZGD-100": "h_1100hzgd00100",
+        "FONE-100": "h_491fone00100",
+        "BKD-100": "17bkd00100",
+        "ONEZ-100": "118onez00100",
+        "MADM-100": "49madm00100",
+        "ABF-030": "436abf00030",
+        "GG-100": "13gg00100",
+        "GVG-100": "13gvg00100",
+        "OVG-100": "13ovg00100",
+    }
+    for number, first_cid in expected.items():
+        candidates = generate_cid_candidates(number)
+        assert candidates[0] == first_cid, f"{number}: 首个候选 {candidates[0]} != {first_cid}"
+        assert first_cid in candidates
+
+
+def test_probe_discovered_prefix1_series():
+    from mdcx.crawlers.dmm_direct import generate_cid_candidates
+
+    for series in ["STARS", "START", "SDJS", "SDMT", "RCTD", "RCT", "FSDSS", "MMGH", "GS"]:
+        candidates = generate_cid_candidates(f"{series}-100")
+        assert candidates[0] == f"1{series.lower()}00100", f"{series}: {candidates[0]}"
+        assert f"1{series.lower()}00100" in candidates

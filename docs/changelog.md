@@ -15,6 +15,7 @@
 - **JavBus 封面/海报升级为 DMM 高清**：javbus 的图是自家 CDN 低清镜像，`javbus.py` 改用 dmm_direct 生成 awsimgsrc 高清 `pl`/`ps` 候选，`check_url` 验证成功后升级 thumb/poster；无码番号（FC2/HEYZO/1pondo 等前缀或含 `_`）直接跳过，避免无效请求
 - **DMM 高清候选统一注入 Poster 选优**：`web.py` 的 `_build_poster_candidates` 在开启 `poster_auto_best` 时自动追加 DMM awsimgsrc 竖版高清候选（首个候选，仅 +1 次尺寸探测），让其他未在爬虫层升级的站点（javdb/avbase 等）也能被选优自动采用高清图；无码番号与已是 DMM 高清的 URL 自动跳过；无码判断提炼为 `dmm_direct.is_uncensored_number` 供各爬虫复用
 - **DMM 图下载失败自动重试一次**：`AsyncWebClient.download` 对 DMM（awsimgsrc）图片下载失败时额外重试一次（该 CDN 曾出现偶发随机 404/连接抖动，request 层已重试网络错误但 404 为终态不重试），提升封面/海报下载成功率
+- **DMM cid 前缀表试点补全**：用 dmmapi（thejavdb API）反推真实 cid + awsimgsrc 直连多编号复核，新增 21 个主流系列前缀——`1` 组补 stars/start/sdjs/sdmt/rctd/rct/fsdss/mmgh/gs，`13` 组补 gg/gvg/ovg，新增 `17`（bkd）、`118`（onez）、`49`（madm）、`436`（abf）、`h_491`（fone）、`h_1100`（hzgd）、`h_1240`（milk）；其中 `h_1xxx` 系列此前不在通用候选里必然猜错，本次直接补齐
 
 ### 修复
 
