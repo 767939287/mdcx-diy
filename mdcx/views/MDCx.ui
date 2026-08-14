@@ -23921,7 +23921,7 @@ p, li { white-space: pre-wrap; }
 &lt;/ul&gt;
 
 &lt;h4&gt;四、网站选择&lt;/h4&gt;
-&lt;p&gt;网站下拉框由已注册的爬虫自动生成（当前 40+ 个），可按需选用全部网站或指定网站。主要来源包括：&lt;/p&gt;
+&lt;p&gt;网站下拉框由已注册的爬虫自动生成（当前 45 个），可按需选用全部网站或指定网站。主要来源包括：&lt;/p&gt;
 &lt;ul&gt;
 &lt;li&gt;&lt;b&gt;有码&lt;/b&gt;：DMM、JavDB、JavBus、Jav321、MGStage、Prestige、MissAV、AVSOX、MMTV、MyWife、Getchu、Faleno、LibreDMM 等&lt;/li&gt;
 &lt;li&gt;&lt;b&gt;无码&lt;/b&gt;：Kin8、airav_cc、Caribbeancom、HEYZO、1Pondo、Pacopacomama、10Musume 等&lt;/li&gt;
@@ -23959,10 +23959,10 @@ p, li { white-space: pre-wrap; }
 
 &lt;h4&gt;九、工具页面&lt;/h4&gt;
  &lt;ul&gt;
- &lt;li&gt;&lt;b&gt;演员库维护&lt;/b&gt;：直接操作 actor_database.xlsx。补全中文名（按 TMDB ID 补翻译）、补全 LibreDMM 链接、补全别名（可选来源：TMDB 或 minnano；默认仅补缺别名的条目，勾选「全量更新」则并入全部行，不覆盖本地已有别名）、minnano 补全（从 minnano-av 补缺生日/简介，日文字段自动翻译）、检查用户库（扫描格式/结构/数据异常并弹窗报告，安全项可一键自动修复，tmdb 项给人工修复步骤）、打开数据库（用默认程序打开 xlsx 供手工编辑）、剔除男演员（按 TMDB 性别删除男优）、校验 tmdbid 有效性（清除 TMDB 失效 id 并按名字重搜补回）、更新 nfo tmdbid（用本地库新 id 覆盖 nfo 旧 id）。网络请求自动并发，进度实时显示。&lt;/li&gt;
+ &lt;li&gt;&lt;b&gt;演员库维护&lt;/b&gt;：直接操作 actor_database.xlsx。补全中文名（按 TMDB ID 补翻译）、补全 LibreDMM 链接、补全别名（可选来源：TMDB 或 minnano；默认仅补缺别名的条目，勾选「全量更新」则并入全部行，不覆盖本地已有别名，支持「起始行/限量」分片续跑）、minnano 补全（从 minnano-av 补缺生日/简介，日文字段自动翻译）、检查用户库（扫描格式/结构/数据异常并弹窗报告，安全项可一键自动修复，tmdb 项给人工修复步骤）、打开数据库（用默认程序打开 xlsx 供手工编辑）、剔除男演员（按 TMDB 性别删除男优）、校验 tmdbid 有效性（清除 TMDB 失效 id 并按名字重搜补回）、更新 nfo tmdbid（用本地库新 id 覆盖 nfo 旧 id）。联网工具支持限量分片与「停止当前维护任务」按钮，网络请求自动并发，进度实时显示。&lt;/li&gt;
  &lt;li&gt;&lt;b&gt;Emby 演员管理器&lt;/b&gt;：填写 Emby 地址和 API 密钥后连接服务器，获取演员列表并按媒体库筛选；从 Gfriends / graphis.ne.jp / minnano-av / 本地文件夹匹配头像和背景图，从本地演员库 / 维基百科 / minnano-av / 数据库匹配简介和出生日期，预览后批量同步到 Emby。支持仅补缺失或强制重新获取。&lt;/li&gt;
  &lt;li&gt;&lt;b&gt;单文件刮削&lt;/b&gt;：指定某个文件的番号网址进行刮削，当存在相同番号时可手工指定。&lt;/li&gt;
- &lt;li&gt;&lt;b&gt;封面补图&lt;/b&gt;：输入番号（多个用空格分隔），自动刮削并补齐缺失的 poster.jpg 和 thumb.jpg，复用当前配置的站点优先级、命名、裁切、水印规则。&lt;/li&gt;
+ &lt;li&gt;&lt;b&gt;封面补图&lt;/b&gt;：输入番号（多个用空格分隔），自动刮削并补齐缺失的 poster.jpg 和 thumb.jpg，复用当前配置的站点优先级、命名、裁切、水印规则；所有站点拿不到图时自动走 DMM 官方高清直链兜底（约 110 个主流系列，竖版高清优先，无码番号跳过）。&lt;/li&gt;
  &lt;li&gt;&lt;b&gt;海报裁剪&lt;/b&gt;：将图片裁剪为 2:3 标准封面图大小，支持加水印。&lt;/li&gt;
  &lt;li&gt;&lt;b&gt;软链接助手&lt;/b&gt;：将挂载的网盘文件目录及子目录中的所有视频一键创建软链接到本地。&lt;/li&gt;
  &lt;li&gt;&lt;b&gt;移动视频/字幕&lt;/b&gt;：将待刮削目录下所有子目录中的视频移动到一个目录中方便查看。&lt;/li&gt;
