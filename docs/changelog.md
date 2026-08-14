@@ -4,107 +4,35 @@
 
 ### 功能
 
-- **补别名来源切换到 minnano**：补别名功能改用项目内置的 minnano 爬虫 `fetch_minnano_aliases`（复用 `_search_minnano_by_name`→`parse_minnano_page`→`_clean_alias` 链路）。minnano 天然带「别名」字段、无 CF 拦截，实测命中与质量合格（三上悠亜→鬼頭桃菜、河北彩花→河北彩伽、桃乃木かな→松嶋真麻）。`_clean_alias` 新增 >20 字长度闸拦截作品标题混入（真实别名如鬼頭桃菜/河北彩伽不受影响）；`sync_aliases` 分支、UI 来源下拉项、判定逻辑同步切换，pyuic6 重编译 `MDCx.py`（diff 仅 8 行）
-- **同番号刮削结果 TTL 缓存**：同批次中相同番号的文件（多 CD、重复文件）直接复用刮削结果，避免对同一番号重复请求所有站点。模块级缓存键含文件路径 + 番号（避免不同来源同番号互相污染），TTL 90 秒、容量上限 512 自动淘汰；命中与写入均深拷贝防外部修改污染。覆盖信息优先 `_call_crawlers` 与速度优先 `_call_speed_crawlers` 两条主路径，单站指定路径不缓存（用户显式重刮需实时）
-- **R18.dev 英文标题掩蔽还原**：日文标题缺失时，英文标题优先取服务端 `title_en_uncensored` 还原字段（如 `Sex S***e` → `Sex Slave`），该字段缺失时回退原始 `title_en`；日文标题存在时仍日文优先
-- **DMM 官方高清直链兜底**：新增番号→DMM cid 候选构造器 `mdcx/crawlers/dmm_direct.py`（13 组前缀映射、avop/gigl/ekdv 阈值系列、数字系列 T28 拆分），生成竖版 `ps`（awsimgsrc 高清 1032×1469）与横版 `pl`（2184×1469）直链；封面补全所有爬虫失败时走 DMM 官方直链兜底（`scripts/cover_backfill.py`）——**竖版优先**：先下载 `ps` 竖版高清图作 poster（thumb 优先横版 `pl`），竖版不存在或失败时下载横版 `pl` 作 thumb 并复用 mdcx 现有 `cut_thumb_to_poster` 裁剪逻辑（居中/有码右裁/人脸识别）生成竖版 poster，含尺寸校验过滤占位图
-- **DMM cid 前缀表实测校准**：用 dmmapi（thejavdb API）批量比对真实 cid 校准映射表——主流新系列（ssis/ipx/pred/mide/juq 等 23 个）实测为**无前缀**并固定；修正 `sw` 真实前缀为 `1`（SWITCH，原误配）且该系列跨厂商（プラム= `h_113`）改用附加前缀兜底；补入 wanz=`3`、ntrd=`18`、ppd=`24`、umd=`143`、mbd=`433`、sin=`118`、ymd=`h_189`、star/sdde/sdmu/sdab/dandy/fcdss=`1` 等实测前缀
-- **LibreDMM 高清图候选改用 dmm_direct**：`libredmm.py` 的 `_build_aws_cover_candidates`/`_build_aws_poster_candidates` 从简陋的 `_number_variants`（仅 `-`→`00`/去除两种）替换为 dmm_direct 前缀映射构造器，补齐有前缀系列（如 WANZ-100 → `3wanz00100ps.jpg`，原逻辑构造错）；SSIS-001（无前缀）与 dmmapi 实测 frontcover 完全一致；删除死代码 `_number_variants`/`_AWS_BASE`
-- **R18.dev 封面/海报升级为 DMM 高清**：r18 返回的 `jacket_full_url` 是 pics.dmm.co.jp 低清图，部分系列还是 mono 路径且 cid 未补零（如 SSIS-538 → `ssis538pl.jpg`，真实 DMM 高清图为 `ssis00538`）；`r18dev.py` 改用 dmm_direct 生成 awsimgsrc 高清 `pl`/`ps` 候选，`check_url` 验证成功后覆盖 thumb/poster（顺带补上 r18 缺失的竖版海报），失败回退原低清图
-- **JavBus 封面/海报升级为 DMM 高清**：javbus 的图是自家 CDN 低清镜像，`javbus.py` 改用 dmm_direct 生成 awsimgsrc 高清 `pl`/`ps` 候选，`check_url` 验证成功后升级 thumb/poster；无码番号（FC2/HEYZO/1pondo 等前缀或含 `_`）直接跳过，避免无效请求
-- **DMM 高清候选统一注入 Poster 选优**：`web.py` 的 `_build_poster_candidates` 在开启 `poster_auto_best` 时自动追加 DMM awsimgsrc 竖版高清候选（首个候选，仅 +1 次尺寸探测），让其他未在爬虫层升级的站点（javdb/avbase 等）也能被选优自动采用高清图；无码番号与已是 DMM 高清的 URL 自动跳过；无码判断提炼为 `dmm_direct.is_uncensored_number` 供各爬虫复用
-- **DMM 图下载失败自动重试一次**：`AsyncWebClient.download` 对 DMM（awsimgsrc）图片下载失败时额外重试一次（该 CDN 曾出现偶发随机 404/连接抖动，request 层已重试网络错误但 404 为终态不重试），提升封面/海报下载成功率
-- **DMM cid 前缀表试点补全**：用 dmmapi（thejavdb API）反推真实 cid + awsimgsrc 直连多编号复核，新增 21 个主流系列前缀——`1` 组补 stars/start/sdjs/sdmt/rctd/rct/fsdss/mmgh/gs，`13` 组补 gg/gvg/ovg，新增 `17`（bkd）、`118`（onez）、`49`（madm）、`436`（abf）、`h_491`（fone）、`h_1100`（hzgd）、`h_1240`（milk）；其中 `h_1xxx` 系列此前不在通用候选里必然猜错，本次直接补齐
-- **DMM cid 前缀表修正（avbase 实测复核）**：`ppd` 真实前缀 `143`（原误配 `24`，`24ppd*` 全 404）；`avop` 阈值小号前缀应为**无前缀**（`avop00168` 实测，原误配 `59`）；`sin` 是 duga PPV 系列（非 DMM 图源，`pic.duga.jp`）从表移除；确认 `hibl`/`mtsp`/`ksvr`/`ayb`/`hodv`/`zmen`/`dism`/`sdfk`/`nima` 前缀原表正确（此前"验证失败"是采样编号稀疏所致）
-- **DMM cid 前缀表第二轮补全（avbase 兜底）**：新增 23 个主流系列——无前缀 `ssni`/`sone`/`ofje`/`miab`/`ipvr`/`ipit`/`jul`/`jufd`/`juk`/`jux`/`waaa`/`hntd`/`jue`/`ebod`，前缀 `1` 的 `sdnm`/`sdms`/`sdmm`/`sdmf`/`fset`，`13`（gvh）、`18`（momj）、`h_113`（ggg）、`h_068`（mxgs）；`ipit`/`juk`/`sdmf`/`hntd`/`jue`/`ggg` 为 dmmapi 查不到、avbase 兜底命中；排除 kiray/simm/siro（DMM amateur 目录 `digital/amateur/`，dmm_direct 的 `digital/video/` 路径不覆盖）
-- **新增前缀探测工具 `dmm-probe`**：`scripts/dmm_prefix_probe.py` 固化"dmmapi 反推 + avbase 兜底 + awsimgsrc 直连多编号验证"流程，`uv run dmm-probe ssis,mide --emit-code` 可校验系列前缀并输出推荐补表片段，方便日后维护前缀表
-- **DMM cid 前缀表第三轮补全**：新增 `sdam`（前缀 `1`，SOD 系）、`ssnd`（前缀 `h_205`，Prestige 系，新前缀）、`onsd`（无前缀，Prestige 系）；排除 misd（avbase 给的 cid 为 `mis*` 且 awsimgsrc 验证失败）
-- **DMM cid 前缀表第四轮补全**：新增 15 个系列——前缀 `1` 的 `kmhrs`/`dldss`/`hunt`，新前缀 `41`（dok）、`57`（husr）、`77`（cre），无前缀 `mukd`/`dasd`/`mymd`/`kawd`/`mudr`/`bf`/`cnd`/`dvdms`/`eyan`
-- **dmm-probe 工具修复：验证改为实际尺寸判定**：端到端验证发现此前 `_check_cdn` 只看 HTTP 200，把 DMM 低清占位图（147x200/800x536）误判为"高清通过"；改为下载读取实际分辨率 + 多编号段探测取最佳，竖版宽≥500 高>宽才算通过；cover_backfill 的尺寸校验（`_is_usable_dmm_portrait`/`_is_usable_dmm_landscape`）本就正确，端到端确认 SSIS/MILK 高清成功、低清系列正确回退
-- **DMM cid 前缀表 avbase 实际 cid 精确复核**：逐系列用 avbase 实际 cid 复核前缀——`bdsr`/`husr` 主前缀改为 `h_1454`（1529x2184 高清，原 `57` 前缀仅 1032x1468 且降为附加候选）、`sma` 主前缀改为 `42`（原 `83` 前缀只拿到 147x200 占位图，降为附加候选）；其余 44 个"不匹配"确认是 avbase 混入的 `xxxbod`/`xxxa/b` 多版本变体等误报，主前缀均正确
-- **DMM 高清升级统一提炼 + JavDB 三爬虫接入**：`dmm_direct` 新增公共 `build_aws_cover_candidates`/`build_aws_poster_candidates`/`upgrade_dmm_cover`（check_url 验证升级，无码跳过），javbus/r18dev/libredmm 的私有实现改为委托公共版（去重）；**JavDB / JavDB API / JavDB App** 三个爬虫在 `post_process` 接入升级——它们的图是 javdb 图床缩略图（`c0.jdbstatic.com` 哈希路径，非高清），现在有码番号刮削后直接升级为 DMM 官方高清（thumb 横版 pl / poster 竖版 ps），无码番号保持 javdb 原图
-- **DMM/DMM API 爬虫 AWS 高清候选接入前缀表**：`dmm_new` 的 `_build_aws_thumb_candidates` 在原有 pics.dmm.co.jp 域名替换 + 简单补零候选基础上，追加 dmm_direct 前缀表生成的横版 pl 候选（`build_aws_cover_candidates`）——特殊前缀系列（如 ABF=436、MILK=h_1240、WANZ=3）的低清图现在能正确升级为 awsimgsrc 高清；候选经 `_pick_first_valid_image` 验证选优，失败回退原图
-- **avbase AWS 高清候选接入前缀表**：`_upgrade_dmm_image_url` 在域名替换候选（mono 路径结构不同常失败）之后追加 dmm_direct 前缀表横版 pl 候选；poster 从升级后的 thumb（pl）自动推导 ps 高清，无需额外候选
-- **工具页新增「检查用户库」+ 自动修复**：扫描运行库格式/结构/数据异常，弹窗分类报告。安全项一键自动修复（jp 空删除、jp 重复合并、keyword 规范化去重、生日越界清空、生涯无年份段删除、tmdb url 按 id 重写）；tmdb 相关项（缺 id 有 url、id/url 重复）仅报告并给手动修复步骤
-- **补全别名支持全量开关**：按钮旁新增「全量更新」开关。默认仅补缺别名行，「全量更新」并入全部行且不覆盖本地已有别名
-- **minnano 补全**：工具页新增「minnano 补全」按钮（从 minnano-av 补缺生日/简介，只补空缺不覆盖）；简介日文字段（出身/爱好/事务所/标签）自动翻译——事务所/标签优先 info 库映射 + 引擎兜底，遍历翻译引擎逐个尝试、失败保留原文；minnano 无数据时本地重排原简介/清洗残留
-- **演员库维护工具联网健壮性改进**：
-  - **独立停止按钮**：新增「停止当前维护任务」按钮，与主界面刮削停止独立；4 个联网工具滑动窗口每轮响应停止，保存已处理部分可续跑
-  - **滑动窗口 + 断点续传**：校验 tmdbid 由全量并发改滑动窗口（并发 5）；补中文名/补链接/补别名/校验 tmdbid 统一支持 `limit` 限量（默认 5000），`.tmdbid_verified.json`/`.gender_checked.json` 断点文件记录已处理项，分片续跑全量不重复请求
-  - **补全别名加「起始行/限量」分片续跑**：工具页新增「起始行」「限量」两个 SpinBox（默认 0/5000，0+5000 等同旧行为），透传 `run_actor_db_xlsx` 的 offset/limit 参数。手动停止时日志输出"最后处理到 xlsx 第 N 行，将「起始行」填入 N-1 即可续跑"，sync_aliases 处理日志带 `[行N]` 前缀便于人工定位。解决全量勾选「全量更新」时中断只能从第 1 行重发请求的问题——限流场景下逐片处理耗时较长，断点续跑避免重复网络往返；非 overwrite 模式原有 keyword 非空跳过兜底依然有效，offset 与其叠加。配套测试 3 个（offset 跳过/offset+limit 分片/非 overwrite 双重过滤）
-  - **LibreDMM 补链接加限流与共享会话**：`fetch_libredmm_link` 改模块级共享会话 + 独立限流器（1.5 req/s、突发 4、自适应降速），防 ban
-- **info 库全面重构优化**：三语言列（jp=日文/zh_cn=简体/zh_tw=繁体）；五源标签收集（javdb app 140 中文 / javbus 734 日文 / libredmm 92 / dmm_api 84 / avbase 67），内容标签 100% 覆盖；cn 翻译贴切度优化 107+60 项（子代理+人工审阅）；jp 中文残留 11 行改标准日文；以 keyword 为导向合并 53 组同概念标签（1265→1193 行），促销类标签入删除行
-- **info 库出厂库合并用户库机制**：`merge_info_db_from_backup`——cn 为合并键（避免 jp 变更致重复）、出厂库权威覆盖、用户新增行保留、md5 marker 跳过未变化行
-- **actor 库标签/事务所/生涯同步**：标签日文残留 11817→0（剔除 7000+ 促销/经历/厂牌词，翻译 3869 次，Google+人工校正 531 词映射）；标签 cn 变化真同步 7 个/174 次；事务所日文→英文公开名同步 460 次；生涯字段日文清洗（提取年份区间）
-- **check_actor_db 检查项整合**：新增 url 错配 3 项（error）、出生日期年份范围（error，1900-2030）、生涯无年份（error，支持全角数字）、简介日文残留（warning，排除出道字段）、简介非结构化（warning）、孤儿 hyperlink（XML 层解析）。出厂库运行 0 error、9 warning
-- **Emby 演员信息补全接入本地演员库（最高优先）**：自动补全 actor 信息时优先查询本地 `actor_database.xlsx`，命中即用本地「出生日期」填 PremiereDate/ProductionYear、本地「简介」填 Overview（换行转 `<br/>`），本地有简介则彻底跳过 wiki/minnano/数据库网络来源；仅本地简介缺失时才退回外部补齐，生日仍取本地。离线可用、降低外部依赖，返回统计新增 Local 计数
-- **Emby 演员管理器新增 graphis 头像和背景图**：匹配头像时新增 graphis.ne.jp 来源（位于 gfriends 之后、minnano 之前），同时下载 prof.jpg（头像）和 model.jpg（背景图），同步时一并上传到 Emby
-- **Emby 演员管理器接入本地演员库（最高优先）**：`search_actor_info` 优先查询本地 `actor_database.xlsx`，命中即用本地出生日期和简介回填，有简介则彻底跳过网络来源，与信息补全按钮行为一致
-- **Emby 演员管理器跳过逻辑精确化**：`_try_fetch_info` 不再仅靠 `has_overview` 布尔值跳过，改为重新拉取 Emby 当前 Overview 并检查是否为"无维基百科信息"占位符，占位符视为缺失重新获取
+- **DMM 官方高清直链**：新增番号→DMM cid 候选构造器 `dmm_direct`（前缀映射表覆盖 110+ 主流系列，含 `h_xxx`/数字特殊前缀与跨厂商附加前缀，用 dmmapi/avbase 实测校准，配套 `dmm-probe` 探测工具）；封面补全所有爬虫失败时走官方直链兜底（竖版 `ps` 高清作海报优先，横版 `pl` 裁剪兜底，无码番号跳过）
+- **DMM 高清覆盖九个爬虫**：LibreDMM / R18.dev / JavBus / JavDB 三站 / DMM / DMM API / avbase 刮削时直接把低清/水印图升级为 DMM 官方高清（统一 `upgrade_dmm_cover` + 前缀表候选，check_url 验证，失败回退原图）；开启「Poster 选优」时自动注入 DMM 高清候选按尺寸选优；DMM 图下载失败自动重试一次
+- **同番号刮削结果 TTL 缓存**：同批次相同番号文件（多 CD/重复文件）直接复用刮削结果，避免重复请求所有站点，TTL 90 秒 + 容量上限自动淘汰
+- **R18.dev 英文标题掩蔽还原**：日文标题缺失时用服务端 `title_en_uncensored` 还原掩蔽字段（`Sex S***e` → `Sex Slave`）
+- **补别名/补全功能调整**：补别名来源切换为内置 minnano 爬虫（无 CF 拦截、命中质量高），新增「全量更新」开关与「起始行/限量」分片续跑；新增「minnano 补全」按钮（补缺生日/简介，日文自动翻译）
+- **演员库维护工具健壮性**：新增「检查用户库」（扫描格式/结构/数据异常，安全项一键自动修复）与独立停止按钮；联网工具统一滑动窗口并发（TMDB 5 / LibreDMM 2）+ 限量分片 + 断点续跑；LibreDMM 补链接加限流与共享会话
+- **info 库重构与同步**：三语言列、五源标签收集、cn 翻译优化；出厂库合并用户库机制（cn 合并键 + md5 marker）；actor 库标签/事务所/生涯日文残留清理与同步；check_actor_db 检查项整合
+- **Emby 演员管理器增强**：信息补全与管理器接入本地演员库（最高优先，离线可用）；新增 graphis 头像/背景图来源；跳过逻辑精确化（识别"无维基百科信息"占位符）
 
 ### 修复
 
-- **PyInstaller 打包缺失 minnano 爬虫**：`scripts/build.py` 补充 `--hidden-import mdcx.tools.minnano_crawler`（延迟导入模块静态分析探测不到，modulegraph 验证 MISSING，打包后补别名功能会因模块缺失失效）
-- **JavDB 官方 API 图片域名映射更新**：JavDB API 现返回 `tp.spfcas.com/rhe951l4q/`（有水印），`javdb_app.py` 归一化覆盖该域名并转到无水印的 `c0.jdbstatic.com`，与老域名 `tp.cmastd.com`（亦无水印）并行兼容
-- **代理支持补全**：默认"走代理网站"列表加入 `minnano-av.com`（原 `amazon.co.jp, m.media-amazon.com, xcity.jp, dmm.co.jp`）；裸 `curl_cffi AsyncSession` 的 `fetch_libredmm_link` 在配置开启代理且目标在代理清单时按配置走代理——此前绕过代理配置。`is_proxy_host` 从 `AsyncWebClient` 内部抽取为模块级公共函数供裸 session 使用
-- **Emby 演员管理器 3 个 bug**：「仅补缺失演员」开关此前在 Emby API 查询时不传 `personTypes=Actor`，实际拉全库；详情拉取从串行改 `asyncio.gather + Semaphore(8)`（原本逐个 await 的 N+1 模式）；删除头像/背景图此前不读响应状态码（永远报成功），现按 200/204/404 判定
-- **Emby 演员管理器移植修复**：11 处 `mdcx.models.computed.ComputedManager` import 失败（模块在移植版不存在），全部改为 `manager.acquire_computed()` lease；3 处 `post_content` 返回 `b""` 空字节串被误判失败（falsy-bytes），判定改为 `err == "" and body is not None`
-- **minnano 缓存导入修复**：`emby_actor_manager_ui` 此前 `from .emby_actor_manager import load_cache` 会 ImportError（模块无该函数），改为正确 `from .minnano_crawler import load_cache`；同步过滤掉纯符号名（` .·・-`）时的前 5 条跳过日志
-- **演员管理器数据准确**：update/upload 返回空响应时不再误报失败
-- **新增「更新 nfo tmdbid」按钮**（演员库维护）：nfo 文件是刮削时静态写入的持久数据，库中 id 失效清除+补回后 nfo 里的旧 id 不会自动更新（Emby 服务器 Person id 只是 nfo 的派生，重扫会回退）。新增 `update_nfo_tmdb_ids`：批量扫描指定目录所有 nfo，用本地演员库（已校验+补回的新 id）**文本级替换** nfo 中 actor 的 `<tmdbid>`——旧 id 覆盖为新 id，原本没有 tmdbid 的补上；仅改 tmdbid 值，保留 nfo 其他内容与格式（不重建 nfo）。工具页新增「更新 nfo tmdbid」按钮 + 目录选择，带说明文字。配套测试 2 个（文本替换/端到端更新）
-- **新增「校验 tmdbid 有效性」按钮**（演员库维护）：TMDB 是公开平台，person id 可能被删除/重建/合并（如「三佳詩」旧 id 6231965 被 TMDB 删除后重建为 5882313），库中 id 静态存储不会自愈，失效 id 被刮削直接采用会导致拿错误资料或 404。新增 `verify_tmdb_ids`：扫描库中所有有 tmdbid 的行，并发调 TMDB `person/{id}` 校验，404（person 已删除）清除该行 tmdbid + tmdb url（回到无 id 状态，宁缺毋滥，刮削按名字重新搜索）；清除后**按名字重搜 TMDB 自动补回新 id**（复用 `query_single_actor_cached`，仅补 adult=True 且名字匹配的，如三佳詩 6231965→5882313）；网络错误/限流/5xx 保守保留不误清；支持 limit 限量与手动停止。工具页新增「校验 tmdbid 有效性」按钮（含说明文字）触发。配套测试 4 个（失效清除/全有效保留/网络错误保留/补回新 id）
-- **TMDB 演员匹配优化**（`tmdb_actor`）：`_expand_name_variants` 加入繁→简转换（zhconv zh-cn），覆盖 variant map 未收录的大量繁简字（`三佳詩`/`三佳诗`、`涼子`/`凉子`）——TMDB name/aka 常为简体、库名常为繁体，此前匹配失败导致漏配；`_query_single_actor` 候选排序 `adult=True` 权重提升至 `place_has_japan` 之前——AV 女优的 adult 标记是最强信号，优先于"日本出生地"（日本普通演员也出生日本），减少同名普通演员冒充 AV 女优的误选
-- **TMDB 演员匹配稳健性优化**（`tmdb_actor`）：候选从 `results[:5]` 放宽到 `results[:10]`（通用名时正确结果可能不在前 5）；新增 `hit_count` 命中变体数作为排序维度（置于 adult/place_has_japan 之后、popularity 之前），同名演员只命中 1 个通用变体的弱匹配不再与多变体命中的强匹配同等对待；`known_for_count` 改为从 search 接口的 `known_for` 字段取值——person detail 接口不含 `known_for`，此前恒为 0 是无效排序维度
-- **工具页布局重叠**：增高「演员库维护」组后曾与下方 `groupBox_7` 重叠 110px，连锁下移下方 6 个分组并同步滚动容器高度
-- **设置页 groupBox 布局重叠**：全面检查所有 tab 发现 2 处历史遗留重叠——命名页 `groupBox_40`（字段命名规则）与 `groupBox_8`（视频命名规则）重叠 181px、下载页 `groupBox_34`（创建剧照副本）与 `groupBox_66`（显示剧照）重叠 21px。连锁下移受影响 groupBox 及下方所有兄弟，统一间距为 19px，同步滚动区高度
-- **重复且无效的补全范围单选按钮**：设置-演员页 `frame_8`/`frame_9` 中误放了 4 个与正确版本（无后缀）视觉重复的"所有女优/仅缺少信息"单选按钮，无代码接线、点击无效，已删除
-- **MDCx.py 与 MDCx.ui 文案漂移**：将手工维护的界面文案（Emby 演员管理器描述含 graphis、项目主页 `mdcx-diy` 链接、帮助尾注）回写 `MDCx.ui` 作为唯一权威源，重编译不再回退文案
-- **`validate_crawler_registry` 误报**：已废弃枚举值 `Website.AIRAV`（仅用于兼容旧配置、无爬虫）不再算作缺失爬虫
-- **网络诊断超时硬上限**：诊断单个站点超时从 5 秒硬上限改为使用用户配置的超时时间（#25）
-- **网络诊断路由列**：诊断结果新增"路由"列，显示每个站点实际走代理还是直连，便于排查代理配置问题（#26）
-- **全面代码审查安全修复**：
-  - `shell=True` 命令注入风险（`utils/file.py` 用 `explorer /select` 打开路径）改为参数数组调用
-  - 移除 11 处 `?api_key=` URL 查询参数暴露（已有 Authorization 头）
-  - 修复 5 处无声 `except`（加 traceback/日志输出），`warm_cache.py` 新增下载 URL 白名单校验（防供应链投毒）
-- **minnano 演员日文名查找路径 bug**：`minnano_crawler._lookup_japanese_name` 硬编码相对路径 `resources/userdata/actor_database.xlsx` 逐行扫描——打包后 CWD 变化路径失效，且读的是出厂库而非运行时用户库（用户同步/刮削的新数据查不到）。重构为复用 `resources.get_actor_data`（内存缓存+反向索引，读运行时用户库），支持中文/日文/别名/归一化变体匹配，消除每次全表扫描。配套测试 5 个 `tests/test_minnano_lookup.py`
-- **minnano 缓存文件路径 bug**：`CACHE_FILE` 硬编码 `resources/userdata/minnano_cache.xlsx`，`_get_cache_path()` 解析为 `data_folder/resources/userdata/...`——打包后 `data_folder` 下无 `resources` 子目录，缓存读不到也写不进。改为标准用户数据目录 `userdata/minnano_cache.xlsx`（与 `resources.u()` 一致），`save_cache_row` 写入前自动创建父目录。配套测试 2 个（缓存路径、自动建目录+读写）
-- **actor_db 并发 UX bug**：`actor_db_finished` 信号带 task_id 精确定位完成按钮；新增 `_actor_db_running` 状态集合追踪在跑任务，主刮削结束的 `reset_buttons_status` 与 actor_db 完成回调均不再跨任务误启用按钮。抽取 `_run_actor_db_async` 通用模板消灭 6 处重复（isEnabled 检查 → setEnabled(False)+emit 文案 → executor.submit 协程 → finally 发完成信号）
-- **爬虫 xpath 防御下沉**：airav_cc / iqqtv / jav321 / javlibrary / cableav / madouqu / mdtv / avsox / hscangku / official 等 10 处裸 `xpath(...)[0]` 加空列表防御；修复 `airav_cc.get_cover` 中 JSON-LD `thumbnailUrl` 的二次索引（站点有时返回 str 而非 list，原代码 `data_dict.get("thumbnailUrl", "")[0]` 对空 str 会 IndexError）
-- **`update_nfo_tmdb_ids`**：`int(row["tmdbid"])` 加 `TypeError`/`ValueError` 防御（openpyxl 返回 float/str 混杂时不再炸）
-- **`main.py::_apply_ui_scale_factor`** 包 try/except，配置文件解析失败不阻断启动
-- **`tool_handlers._open_file_thread`** 异常路径改用 `traceback.format_exc()`，避免 PyQt 异常对象 str 化失败
+- **打包与网络**：PyInstaller 补充 minnano 爬虫 hidden-import；默认走代理列表补 `minnano-av.com` 且裸 session 按配置走代理；JavDB 图片域名归一（水印 `tp.spfcas.com` → 无水印 `c0.jdbstatic.com`）
+- **Emby 演员管理器**：「仅补缺失演员」不再拉全库、详情并发拉取、删除图按响应状态判定；移植版 import 修复、空响应不再误报失败、缓存导入路径修复
+- **演员库维护工具**：新增「更新 nfo tmdbid」与「校验 tmdbid 有效性」按钮；TMDB 演员匹配优化（繁→简转换、adult 权重优先、候选放宽 + 命中变体排序）；actor_db 并发 UX 修复（信号带 task_id、通用模板消重）
+- **UI 与布局**：工具页/设置页 groupBox 重叠连锁修复；删除无效单选按钮；MDCx.py 文案漂移回写 MDCx.ui；`validate_crawler_registry` 误报修复
+- **网络诊断**：站点超时改用用户配置值；新增"路由"列显示代理/直连
+- **安全**：修复 `shell=True` 注入风险、移除 11 处 `?api_key=` 暴露、修复 5 处静默异常 + 下载 URL 白名单
+- **minnano 路径 bug**：日文名查找与缓存文件改用运行时用户数据目录（打包后 CWD 失效问题）
+- **其他**：爬虫 xpath 防御下沉（10 处）、`update_nfo_tmdb_ids` 类型防御、UI 缩放异常不阻断启动、异常日志通道修复
 
 ### 工程质量
 
-- **单站失败原因结构化分类**：新增 `FailureReason` 枚举（not_found/blocked/timeout/parse_error/unknown，取值对齐 javapi 的 ScrapeStatus）；`FailureReason.classify()` 按异常特征归类（超时/CF 拦截/无结果/解析失败），`_call_crawlers` 的 `failure_reasons` 从 `dict[Website, str]` 升级为 `dict[Website, tuple[FailureReason, str]]`，日志仍透出原始错误文本
-- **ruff 自动修复 138 处**：RET504/RET505（不必要赋值/冗余 else）、RET501/RET502（隐式 None 返回）、RUF010（f-string 显式类型转换）、RUF100（清理无用 noqa)。`mdcx/` 全库通过，保留主分支 0 ruff 告警
-- **探测性 import 显式标注**：`cf_bypass/local_server.py`、`config/resources.py`、`core/amazon.py` 中 try/except ImportError 探活块加 `# noqa: F401` 注释说明用途，避免误判为无用 import
-- **`cf_bypass/local_server.py::uvicorn.Server`**：类型注解改 TYPE_CHECKING import，mypy 真正可识别
-- **`web_async.py::_download_chunk`**：返回值类型由 `str | None` 修正为 `str`（空串成功/非空失败的现约定），补文档；curl-cffi response patch 失败的静默点加诊断日志
-- **新增 `tests/test_actor_db_button_consistency.py`**：纯静态（无需 Qt 运行时）校验 `_ACTOR_DB_IDLE_TEXT_MAP` ↔ `MDCx.ui` ↔ `MyMainWindow` 顶层 `pyqtSignal(str)` 声明 ↔ `actor_db_finished` 信号契约四层一致，按钮改名/漏声明/map 漏收时 CI 立即红
-- **清理死代码**：移除 `PreparePreviewThread` 中未使用的 `info_sources` 属性
-- **记忆文件更新**：`.monkeycode/MEMORY.md` 合并工具页 UI 改动注意点（连锁下移、手工核对生成控件、comboBox 内部件误报）
-- **mypy 严格化（三阶段，彻底移除 `disable_error_code`）**：`pyproject.toml` 中 19 项 `disable_error_code` 全部移除，全项目 mypy 零抑制通过（133 文件）。`scripts/check.py` 的 `check` 命令加入 `mypy mdcx/`，推送前自检覆盖类型检查。各阶段：
-  - 移除 `assignment`/`arg-type`/`return-value` 并修复 43 处类型错误（变量类型冲突、可选值未收窄等）
-  - 移除 `no-redef`/`misc`/`var-annotated`/`list-item`/`func-returns-value`/`attr-defined`/`method-assign`（循环变量复用、except 外 walrus 赋值、重复注解等）
-  - 移除 `override`/`call-arg`/`call-overload`/`union-attr`/`annotation-unchecked`/`import-untyped`：`BaseCrawler` 泛型化使 9 个爬虫类的具体 Context 匹配超类签名；`file_done_dic` 安全默认值用 `cast`；Qt 控件 None 断言收窄；`parse_fanza_resp` None 安全化
-- **顺带修复的类型检查暴露 bug**：
-  - `CrawlerDebugInfo.search_urls/detail_urls` 默认 `None` 改为空列表，消除潜在 `.append()` 崩溃
-  - wiki 简介获取 `res_wiki.get("intro")`（实为 URL 字符串）改为 `actor_info.overview`
-  - `emby_actor_manager` 的 `wiki_intro` 未初始化导致 `UnboundLocalError`
-  - `cnmdb._run` 解引用 `None` 返回值补 `CrawlerException`
-  - 回滚修复 `get_checkbox`/`get_radio_buttons` 默认参数被误删的回归（28 处单参调用会 `TypeError`）
-- **UI 结构自动化测试**：新增 `tests/test_ui_structure.py`（5 个测试）固化 UI 结构约束——groupBox 同父容器不重叠/无负间距/不超滚动区、用户控件 objectName 唯一、`MDCx.py` 与 `MDCx.ui` 重编译同步（防手工漂移）。自动纳入 `uv run check` 与 CI pytest
-- **`validate_crawler_registry` 测试**：新增 `test_validate_crawler_registry_no_missing`，固化"新增 Website 枚举必须注册爬虫"且废弃值 AIRAV 不得有爬虫
-
-### 测试
-
-- 新增 `tests/test_emby_actor_manager_http.py` 共 9 个用例（HTTP 状态判定/并发聚合/falsy-bytes 边界）
+- **mypy 严格化**：移除全部 19 项 `disable_error_code`，全项目零抑制通过；`BaseCrawler` 泛型化等修复 43+ 处类型错误，顺带修复 5 个隐藏 bug
+- **测试增强**：UI 结构自动化测试、`validate_crawler_registry` 测试、Emby HTTP 测试、actor_db 按钮一致性测试；ruff 自动修复 138 处
+- **其他**：单站失败原因结构化分类（`FailureReason`）、死代码清理、`_download_chunk` 返回类型修正
 
 ### 文档
 
-- **使用说明 tab 更新**：项目主页链接修复为 `mdcx-diy`，上游项目信息改为 `sqzw-x/mdcx → Hazard804/mdcx → ZiPenOk/mdcx`
-- **README / INSTALL / FEATURES / USER_GUIDE / CONFIGURATION**：修复 3 处仓库链接，补充 graphis 和本地演员库等新功能描述
+- 使用说明 tab 与 README/INSTALL/FEATURES/USER_GUIDE 等更新（仓库链接修复、新功能描述）
 
 ## v2.0.3 (2026-08-03)
 
