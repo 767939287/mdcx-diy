@@ -201,8 +201,10 @@ def test_file_done_dic_safe_access():
             raise AssertionError(f"file.py:{i + 1} 直接索引访问 Flags.file_done_dic[number][...]: {stripped}")
         # 验证修复后的 .get() 模式存在（默认值参数可能带 cast 类型注解）
     assert "Flags.file_done_dic.get(number," in source, "file.py 中缺少安全的 Flags.file_done_dic.get() 访问"
+    assert "_migrate_picture_resource(" in source, "file.py 中缺少 _migrate_picture_resource 公共迁移函数"
     for field in ["local_poster", "local_thumb", "local_fanart"]:
-        assert f'.get("{field}")' in source, f"file.py 中缺少安全的 .get() 访问模式: {field}"
+        # 重构后 local_key 作为参数传入 _migrate_picture_resource
+        assert f'"{field}"' in source, f"file.py 中缺少安全的 local_key 参数: {field}"
 
 
 # ============================================================

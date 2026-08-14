@@ -736,6 +736,51 @@ async def get_file_info_v2(file_path: Path, copy_sub: bool = True) -> FileInfo:
     )
 
 
+async def _migrate_picture_resource(
+    number: str,
+    done_path: str | None,
+    final_path: Path,
+    new_path_with_filename: Path,
+    old_path_with_filename: Path,
+    old_path_no_filename: Path,
+    local_key: str,
+) -> tuple[bool, bool]:
+    """迁移单张封面图片到最终路径，返回 (exists, done_path_copy).
+
+    处理逻辑（poster/thumb/fanart 三块完全一致）:
+    1. 若 done_path 已存在且与 final_path 同目录，标记 done_path_copy=False，下载函数负责处理
+    2. 若 final_path 已存在则跳过
+    3. 依次尝试移动: new_path_with_filename -> old_path_with_filename -> old_path_no_filename
+    4. 全部不存在则 exists=False，尝试从 file_done_dic 的 local_* 复制
+    """
+    done_path_copy = True
+    exists = True
+    try:
+        if done_path and await aiofiles.os.path.exists(done_path) and split_path(done_path)[0] == split_path(final_path)[0]:
+            done_path_copy = False
+        elif await aiofiles.os.path.exists(final_path):
+            pass
+        elif new_path_with_filename != final_path and await aiofiles.os.path.exists(new_path_with_filename):
+            await move_file_async(new_path_with_filename, final_path)
+        elif old_path_with_filename != final_path and await aiofiles.os.path.exists(old_path_with_filename):
+            await move_file_async(old_path_with_filename, final_path)
+        elif old_path_no_filename != final_path and await aiofiles.os.path.exists(old_path_no_filename):
+            await move_file_async(old_path_no_filename, final_path)
+        else:
+            exists = False
+
+        if exists:
+            Flags.file_done_dic[number].update({local_key: final_path})
+            for old_path in (old_path_with_filename, old_path_no_filename, new_path_with_filename):
+                if str(old_path).lower() != str(final_path).lower() and await aiofiles.os.path.exists(old_path):
+                    await delete_file_async(old_path)
+        elif p := Flags.file_done_dic.get(number, cast(FileDoneDict, {})).get(local_key):
+            await copy_file_async(p, final_path)
+    except Exception:
+        signal.show_log_text(traceback.format_exc())
+    return exists, done_path_copy
+
+
 async def deal_old_files(
     number: str,
     info: OtherInfo,
@@ -869,152 +914,33 @@ async def deal_old_files(
     最终的图片处理：在最终的 rename pic 环节，如果最终路径有内容，则删除非最终路径的内容；如果最终路径没内容，表示图片是刚下载的，要改成最终路径。
     """
 
-    # poster 处理：寻找对应文件放到最终路径上。这样避免刮削失败时，旧的图片被删除
-    done_poster_path = Flags.file_done_dic.get(number, cast(FileDoneDict, {})).get("poster")
-    done_poster_path_copy = True
-    try:
-        # 图片最终路径等于已下载路径时，图片是已下载的，不需要处理
-        if (
-            done_poster_path
-            and await aiofiles.os.path.exists(done_poster_path)
-            and split_path(done_poster_path)[0] == split_path(poster_final_path)[0]
-        ):  # 如果存在已下载完成的文件，尝试复制
-            done_poster_path_copy = False  # 标记未复制！此处不复制，在poster download中复制
-        elif await aiofiles.os.path.exists(poster_final_path):
-            pass  # windows、mac大小写不敏感，暂不解决
-        elif poster_new_path_with_filename != poster_final_path and await aiofiles.os.path.exists(
-            poster_new_path_with_filename
-        ):
-            await move_file_async(poster_new_path_with_filename, poster_final_path)
-        elif poster_old_path_with_filename != poster_final_path and await aiofiles.os.path.exists(
-            poster_old_path_with_filename
-        ):
-            await move_file_async(poster_old_path_with_filename, poster_final_path)
-        elif poster_old_path_no_filename != poster_final_path and await aiofiles.os.path.exists(
-            poster_old_path_no_filename
-        ):
-            await move_file_async(poster_old_path_no_filename, poster_final_path)
-        else:
-            poster_exists = False
-
-        if poster_exists:
-            Flags.file_done_dic[number].update({"local_poster": poster_final_path})
-            # 清理旧图片
-            if poster_old_path_with_filename != poster_final_path and await aiofiles.os.path.exists(
-                poster_old_path_with_filename
-            ):
-                await delete_file_async(poster_old_path_with_filename)
-            if str(poster_old_path_no_filename).lower() != str(
-                poster_final_path
-            ).lower() and await aiofiles.os.path.exists(poster_old_path_no_filename):
-                await delete_file_async(poster_old_path_no_filename)
-            if str(poster_new_path_with_filename).lower() != str(
-                poster_final_path
-            ).lower() and await aiofiles.os.path.exists(poster_new_path_with_filename):
-                await delete_file_async(poster_new_path_with_filename)
-        elif p := Flags.file_done_dic.get(number, cast(FileDoneDict, {})).get("local_poster"):
-            await copy_file_async(p, poster_final_path)
-
-    except Exception:
-        signal.show_log_text(traceback.format_exc())
-
-    # thumb 处理：寻找对应文件放到最终路径上。这样避免刮削失败时，旧的图片被删除
-    done_thumb_path = Flags.file_done_dic.get(number, cast(FileDoneDict, {})).get("thumb")
-    done_thumb_path_copy = True
-    try:
-        # 图片最终路径等于已下载路径时，图片是已下载的，不需要处理
-        if (
-            done_thumb_path
-            and await aiofiles.os.path.exists(done_thumb_path)
-            and split_path(done_thumb_path)[0] == split_path(thumb_final_path)[0]
-        ):
-            done_thumb_path_copy = False  # 标记未复制！此处不复制，在 thumb download中复制
-        elif await aiofiles.os.path.exists(thumb_final_path):
-            pass
-        elif thumb_new_path_with_filename != thumb_final_path and await aiofiles.os.path.exists(
-            thumb_new_path_with_filename
-        ):
-            await move_file_async(thumb_new_path_with_filename, thumb_final_path)
-        elif thumb_old_path_with_filename != thumb_final_path and await aiofiles.os.path.exists(
-            thumb_old_path_with_filename
-        ):
-            await move_file_async(thumb_old_path_with_filename, thumb_final_path)
-        elif thumb_old_path_no_filename != thumb_final_path and await aiofiles.os.path.exists(
-            thumb_old_path_no_filename
-        ):
-            await move_file_async(thumb_old_path_no_filename, thumb_final_path)
-        else:
-            thumb_exists = False
-
-        if thumb_exists:
-            Flags.file_done_dic[number].update({"local_thumb": thumb_final_path})
-            # 清理旧图片
-            if str(thumb_old_path_with_filename).lower() != str(
-                thumb_final_path
-            ).lower() and await aiofiles.os.path.exists(thumb_old_path_with_filename):
-                await delete_file_async(thumb_old_path_with_filename)
-            if str(thumb_old_path_no_filename).lower() != str(
-                thumb_final_path
-            ).lower() and await aiofiles.os.path.exists(thumb_old_path_no_filename):
-                await delete_file_async(thumb_old_path_no_filename)
-            if str(thumb_new_path_with_filename).lower() != str(
-                thumb_final_path
-            ).lower() and await aiofiles.os.path.exists(thumb_new_path_with_filename):
-                await delete_file_async(thumb_new_path_with_filename)
-        elif p := Flags.file_done_dic.get(number, cast(FileDoneDict, {})).get("local_thumb"):
-            await copy_file_async(p, thumb_final_path)
-
-    except Exception:
-        signal.show_log_text(traceback.format_exc())
-
-    # fanart 处理：寻找对应文件放到最终路径上。这样避免刮削失败时，旧的图片被删除
-    done_fanart_path = Flags.file_done_dic.get(number, cast(FileDoneDict, {})).get("fanart")
-    done_fanart_path_copy = True
-    try:
-        # 图片最终路径等于已下载路径时，图片是已下载的，不需要处理
-        if (
-            done_fanart_path
-            and await aiofiles.os.path.exists(done_fanart_path)
-            and split_path(done_fanart_path)[0] == split_path(fanart_final_path)[0]
-        ):
-            done_fanart_path_copy = False  # 标记未复制！此处不复制，在 fanart download中复制
-        elif await aiofiles.os.path.exists(fanart_final_path):
-            pass
-        elif fanart_new_path_with_filename != fanart_final_path and await aiofiles.os.path.exists(
-            fanart_new_path_with_filename
-        ):
-            await move_file_async(fanart_new_path_with_filename, fanart_final_path)
-        elif fanart_old_path_with_filename != fanart_final_path and await aiofiles.os.path.exists(
-            fanart_old_path_with_filename
-        ):
-            await move_file_async(fanart_old_path_with_filename, fanart_final_path)
-        elif fanart_old_path_no_filename != fanart_final_path and await aiofiles.os.path.exists(
-            fanart_old_path_no_filename
-        ):
-            await move_file_async(fanart_old_path_no_filename, fanart_final_path)
-        else:
-            fanart_exists = False
-
-        if fanart_exists:
-            Flags.file_done_dic[number].update({"local_fanart": fanart_final_path})
-            # 清理旧图片
-            if fanart_old_path_with_filename != fanart_final_path and await aiofiles.os.path.exists(
-                fanart_old_path_with_filename
-            ):
-                await delete_file_async(fanart_old_path_with_filename)
-            if fanart_old_path_no_filename != fanart_final_path and await aiofiles.os.path.exists(
-                fanart_old_path_no_filename
-            ):
-                await delete_file_async(fanart_old_path_no_filename)
-            if fanart_new_path_with_filename != fanart_final_path and await aiofiles.os.path.exists(
-                fanart_new_path_with_filename
-            ):
-                await delete_file_async(fanart_new_path_with_filename)
-        elif p := Flags.file_done_dic.get(number, cast(FileDoneDict, {})).get("local_fanart"):
-            await copy_file_async(p, fanart_final_path)
-
-    except Exception:
-        signal.show_log_text(traceback.format_exc())
+    poster_exists, done_poster_path_copy = await _migrate_picture_resource(
+        number,
+        Flags.file_done_dic.get(number, cast(FileDoneDict, {})).get("poster"),
+        poster_final_path,
+        poster_new_path_with_filename,
+        poster_old_path_with_filename,
+        poster_old_path_no_filename,
+        "local_poster",
+    )
+    thumb_exists, done_thumb_path_copy = await _migrate_picture_resource(
+        number,
+        Flags.file_done_dic.get(number, cast(FileDoneDict, {})).get("thumb"),
+        thumb_final_path,
+        thumb_new_path_with_filename,
+        thumb_old_path_with_filename,
+        thumb_old_path_no_filename,
+        "local_thumb",
+    )
+    fanart_exists, done_fanart_path_copy = await _migrate_picture_resource(
+        number,
+        Flags.file_done_dic.get(number, cast(FileDoneDict, {})).get("fanart"),
+        fanart_final_path,
+        fanart_new_path_with_filename,
+        fanart_old_path_with_filename,
+        fanart_old_path_no_filename,
+        "local_fanart",
+    )
 
     # 更新图片地址
     info.poster_path = poster_final_path if poster_exists and done_poster_path_copy else None
