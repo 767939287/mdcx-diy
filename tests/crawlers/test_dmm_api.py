@@ -100,3 +100,21 @@ async def test_run_calls_api_and_reuses_dmm_image_processing(monkeypatch: pytest
     assert response.data.extrafanart == [
         "https://awsimgsrc.dmm.co.jp/pics_dig/digital/video/ssis00001/ssis00001jp-1.jpg"
     ]
+
+
+def test_build_aws_thumb_candidates_includes_dmm_direct_prefix(monkeypatch):
+    """特殊前缀系列（ABF）的低清图应能构造出 dmm_direct 前缀表高清候选."""
+    from mdcx.crawlers.dmm_new import DmmCrawler
+
+    crawler = DmmCrawler(client=None)
+    ctx = crawler.new_context(CrawlerInput.empty())
+    ctx.input.number = "ABF-042"
+    ctx.number_00 = "abf00042"
+    ctx.number_no_00 = "abf042"
+
+    candidates = crawler._build_aws_thumb_candidates(
+        ctx, "https://pics.dmm.co.jp/mono/movie/adult/118abf042/118abf042pl.jpg"
+    )
+
+    assert "https://awsimgsrc.dmm.co.jp/pics_dig/digital/video/436abf00042/436abf00042pl.jpg" in candidates
+    assert candidates[0].startswith("https://awsimgsrc.dmm.co.jp/pics_dig/")

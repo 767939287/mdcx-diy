@@ -151,6 +151,12 @@ class DmmCrawler(GenericBaseCrawler[DMMContext]):
             candidates.append(
                 f"https://awsimgsrc.dmm.co.jp/pics_dig/digital/video/{ctx.number_no_00}/{ctx.number_no_00}pl.jpg"
             )
+        # 用 dmm_direct 前缀表补充特殊前缀系列的高清候选（如 ABF=436、MILK=h_1240）
+        from mdcx.crawlers.dmm_direct import build_aws_cover_candidates
+
+        number = str(getattr(ctx.input, "number", "") or "").strip()
+        if number:
+            candidates.extend(build_aws_cover_candidates(number))
         return self._dedupe_urls(candidates)
 
     def _build_poster_candidates(self, thumb_url: str, poster_url: str) -> list[str]:

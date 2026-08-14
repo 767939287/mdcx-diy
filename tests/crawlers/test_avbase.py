@@ -91,6 +91,32 @@ async def test_sanitize_extrafanart_urls_keeps_full_batch_when_random_probe_pass
 
 
 @pytest.mark.asyncio
+async def test_upgrade_dmm_image_url_falls_back_to_prefix_table(monkeypatch: pytest.MonkeyPatch):
+    """特殊前缀系列（ABF）域名替换失败时，应回退到 dmm_direct 前缀表候选."""
+    called_urls: list[str] = []
+
+    async def fake_check_url(url: str, length: bool = False, real_url: bool = False):
+        called_urls.append(url)
+        # 域名替换候选（mono 路径）失败，仅前缀表候选 436abf00042pl.jpg 成功
+        if "awsimgsrc.dmm.co.jp/pics_dig/mono/" in url:
+            return None
+        return url
+
+    monkeypatch.setattr(avbase_module, "check_url", fake_check_url)
+
+    crawler = AvbaseCrawler(client=None)
+    ctx = crawler.new_context(CrawlerInput.empty())
+    ctx.input.number = "ABF-042"
+
+    result = await crawler._upgrade_dmm_image_url(
+        ctx, "https://pics.dmm.co.jp/mono/movie/adult/118abf042/118abf042pl.jpg"
+    )
+
+    assert result == "https://awsimgsrc.dmm.co.jp/pics_dig/digital/video/436abf00042/436abf00042pl.jpg"
+    assert "https://awsimgsrc.dmm.co.jp/pics_dig/digital/video/436abf00042/436abf00042pl.jpg" in called_urls
+
+
+@pytest.mark.asyncio
 async def test_sanitize_extrafanart_urls_falls_back_to_full_validation_when_random_probe_fails(
     monkeypatch: pytest.MonkeyPatch,
 ):

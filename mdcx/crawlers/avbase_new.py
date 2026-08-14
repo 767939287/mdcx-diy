@@ -333,6 +333,13 @@ class AvbaseCrawler(BaseCrawler):
             aws_url = normalized.replace("pics.dmm.co.jp", "awsimgsrc.dmm.co.jp/pics_dig").replace("/adult/", "/")
             if validated_aws := await self._check_image_url(ctx, aws_url):
                 return str(validated_aws)
+            # 域名替换失败（mono 路径结构不同/特殊前缀系列），用 dmm_direct 前缀表补横版 pl 候选
+            from mdcx.crawlers.dmm_direct import build_aws_cover_candidates
+
+            number = str(getattr(ctx.input, "number", "") or "").strip()
+            for candidate in build_aws_cover_candidates(number):
+                if validated := await self._check_image_url(ctx, candidate):
+                    return str(validated)
         if is_dmm_image_url(normalized):
             if validated_original := await self._check_image_url(ctx, normalized):
                 return str(validated_original)

@@ -23,6 +23,8 @@
 - **dmm-probe 工具修复：验证改为实际尺寸判定**：端到端验证发现此前 `_check_cdn` 只看 HTTP 200，把 DMM 低清占位图（147x200/800x536）误判为"高清通过"；改为下载读取实际分辨率 + 多编号段探测取最佳，竖版宽≥500 高>宽才算通过；cover_backfill 的尺寸校验（`_is_usable_dmm_portrait`/`_is_usable_dmm_landscape`）本就正确，端到端确认 SSIS/MILK 高清成功、低清系列正确回退
 - **DMM cid 前缀表 avbase 实际 cid 精确复核**：逐系列用 avbase 实际 cid 复核前缀——`bdsr`/`husr` 主前缀改为 `h_1454`（1529x2184 高清，原 `57` 前缀仅 1032x1468 且降为附加候选）、`sma` 主前缀改为 `42`（原 `83` 前缀只拿到 147x200 占位图，降为附加候选）；其余 44 个"不匹配"确认是 avbase 混入的 `xxxbod`/`xxxa/b` 多版本变体等误报，主前缀均正确
 - **DMM 高清升级统一提炼 + JavDB 三爬虫接入**：`dmm_direct` 新增公共 `build_aws_cover_candidates`/`build_aws_poster_candidates`/`upgrade_dmm_cover`（check_url 验证升级，无码跳过），javbus/r18dev/libredmm 的私有实现改为委托公共版（去重）；**JavDB / JavDB API / JavDB App** 三个爬虫在 `post_process` 接入升级——它们的图是 javdb 图床缩略图（`c0.jdbstatic.com` 哈希路径，非高清），现在有码番号刮削后直接升级为 DMM 官方高清（thumb 横版 pl / poster 竖版 ps），无码番号保持 javdb 原图
+- **DMM/DMM API 爬虫 AWS 高清候选接入前缀表**：`dmm_new` 的 `_build_aws_thumb_candidates` 在原有 pics.dmm.co.jp 域名替换 + 简单补零候选基础上，追加 dmm_direct 前缀表生成的横版 pl 候选（`build_aws_cover_candidates`）——特殊前缀系列（如 ABF=436、MILK=h_1240、WANZ=3）的低清图现在能正确升级为 awsimgsrc 高清；候选经 `_pick_first_valid_image` 验证选优，失败回退原图
+- **avbase AWS 高清候选接入前缀表**：`_upgrade_dmm_image_url` 在域名替换候选（mono 路径结构不同常失败）之后追加 dmm_direct 前缀表横版 pl 候选；poster 从升级后的 thumb（pl）自动推导 ps 高清，无需额外候选
 - **工具页新增「检查用户库」+ 自动修复**：扫描运行库格式/结构/数据异常，弹窗分类报告。安全项一键自动修复（jp 空删除、jp 重复合并、keyword 规范化去重、生日越界清空、生涯无年份段删除、tmdb url 按 id 重写）；tmdb 相关项（缺 id 有 url、id/url 重复）仅报告并给手动修复步骤
 - **补全别名支持全量开关**：按钮旁新增「全量更新」开关。默认仅补缺别名行，「全量更新」并入全部行且不覆盖本地已有别名
 - **minnano 补全**：工具页新增「minnano 补全」按钮（从 minnano-av 补缺生日/简介，只补空缺不覆盖）；简介日文字段（出身/爱好/事务所/标签）自动翻译——事务所/标签优先 info 库映射 + 引擎兜底，遍历翻译引擎逐个尝试、失败保留原文；minnano 无数据时本地重排原简介/清洗残留
