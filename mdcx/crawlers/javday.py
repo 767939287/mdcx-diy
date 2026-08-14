@@ -62,7 +62,9 @@ def get_tag(html):
     return ",".join(result)
 
 
-def get_real_number_title(number, title, number_list, appoint_number, appoint_url, lable_list, tag, actor, series, file_path_text=""):
+def get_real_number_title(
+    number, title, number_list, appoint_number, appoint_url, lable_list, tag, actor, series, file_path_text=""
+):
     if appoint_number:
         number = appoint_number
         temp_title = title.replace(number, "")

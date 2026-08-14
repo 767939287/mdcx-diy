@@ -49,10 +49,6 @@ def get_release(html):
     return result[0].strip() if result else ""
 
 
-
-
-
-
 def get_runtime(html):
     result = html.xpath(
         '//span[contains(text(),"长度:") or contains(text(),"長度:") or contains(text(),"収録時間:")]/../text()'

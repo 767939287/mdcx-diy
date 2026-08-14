@@ -67,10 +67,6 @@ def get_release(html):
     return result[0].replace("/", "-").strip() if result else ""
 
 
-
-
-
-
 def get_runtime(html):
     s = html.xpath('string(//td[@class="movie_table_td" and contains(text(), "再生時間")]/following-sibling::td)')
     runtime = ""

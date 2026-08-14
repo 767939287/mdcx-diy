@@ -64,10 +64,6 @@ def get_release(html):
     return result[0].replace("/", "-") if result and re.search(r"\d+", result[0]) else ""
 
 
-
-
-
-
 def get_director(html):
     result = html.xpath("//td[contains(text(),'監督：')]/following-sibling::td/text()")
     if not result:

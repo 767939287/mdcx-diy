@@ -85,10 +85,6 @@ def get_release(html):
     return result[0].replace("年", "-").replace("月", "-").replace("日", "") if result else ""
 
 
-
-
-
-
 def get_tag(html):
     result = html.xpath('//div[contains(text(), "ジャンル")]/following-sibling::div/div/a/text()')
     return ",".join(result).replace(",Blu-ray（ブルーレイ）", "")

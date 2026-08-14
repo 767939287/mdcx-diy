@@ -54,10 +54,6 @@ def get_release(html):
     return release
 
 
-
-
-
-
 def get_directors(html):
     """获取导演列表"""
     result = html.xpath('//dt[text()="Directors"]/following-sibling::dd[1]//li/text()')

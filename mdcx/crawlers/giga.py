@@ -45,10 +45,6 @@ def get_release(html):
     return result[0].replace("/", "-") if result else ""
 
 
-
-
-
-
 def get_runtime(html):
     result = html.xpath("//dt[contains(text(),'収録時間')]/following-sibling::dd/text()")
     if result:

@@ -56,10 +56,6 @@ def get_release(html):
     return result[0].replace("/", "-") if result else ""
 
 
-
-
-
-
 def get_tag(html):
     result = html.xpath('//a[@class="genre"]//text()')
     tag = ""

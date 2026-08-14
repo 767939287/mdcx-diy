@@ -756,7 +756,11 @@ async def _migrate_picture_resource(
     done_path_copy = True
     exists = True
     try:
-        if done_path and await aiofiles.os.path.exists(done_path) and split_path(done_path)[0] == split_path(final_path)[0]:
+        if (
+            done_path
+            and await aiofiles.os.path.exists(done_path)
+            and split_path(done_path)[0] == split_path(final_path)[0]
+        ):
             done_path_copy = False
         elif await aiofiles.os.path.exists(final_path):
             pass

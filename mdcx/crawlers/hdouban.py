@@ -32,10 +32,6 @@ def get_api_extrafanart(extrafanart_list):
     return extrafanart
 
 
-
-
-
-
 def get_mosaic(
     title,
     studio,

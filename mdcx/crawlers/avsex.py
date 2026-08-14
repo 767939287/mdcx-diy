@@ -94,10 +94,6 @@ def get_release(html):
     return result[0].replace("/", "-").strip() if result else ""
 
 
-
-
-
-
 def get_tag(html):
     result = html.xpath(
         '//dt[contains(text(), "類別") or contains(text(), "类别") or contains(text(), "標籤") or contains(text(), "标签")]/following-sibling::dd/a/@title'

@@ -40,10 +40,6 @@ def get_release(html):
     return result[0].replace("年", "-").replace("月", "-").replace("日", "").strip() if result else ""
 
 
-
-
-
-
 def get_runtime(html):
     result = html.xpath("//th[contains(text(),'収録時間')]/following-sibling::td//text()")
     return result[0].replace("分", "").strip() if result else ""

@@ -55,10 +55,6 @@ def get_release(html):
     return result[0].replace("上架日", "").strip() if result else ""
 
 
-
-
-
-
 def get_mosaic(html):
     result = html.xpath('//div[@class="tag_box d-flex flex-wrap p-1 col-12 mb-1"]/a[@class="tag"]/text()')
     total = ",".join(result)

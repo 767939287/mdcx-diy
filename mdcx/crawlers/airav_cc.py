@@ -55,10 +55,6 @@ def get_release(html):
     return ""
 
 
-
-
-
-
 def get_tag(html):
     result = html.xpath('//*[contains(text(), "標籤") or contains(text(), "标籤")]//a/text()')
     return ",".join(result) if result else ""

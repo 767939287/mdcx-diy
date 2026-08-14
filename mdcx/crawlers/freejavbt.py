@@ -286,10 +286,6 @@ def get_release(html):
     return result[0] if result else ""
 
 
-
-
-
-
 def get_tag(html):
     result = html.xpath(
         '//a[contains(concat(" ", normalize-space(@class), " "), " genre ")]//text()'

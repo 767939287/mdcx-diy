@@ -67,7 +67,9 @@ def getYear(release):
 
 
 def getMosaic(html):
-    select_tab = ",".join(html.xpath('//li[@class="active"]/a/text()')) if html.xpath('//li[@class="active"]/a/text()') else ""
+    select_tab = (
+        ",".join(html.xpath('//li[@class="active"]/a/text()')) if html.xpath('//li[@class="active"]/a/text()') else ""
+    )
     return "有码" if "有碼" in select_tab else "无码"
 
 

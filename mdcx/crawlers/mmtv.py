@@ -77,10 +77,6 @@ def get_outline(html):
     return outline, outline
 
 
-
-
-
-
 def get_release(res):
     release = re.search(r"\d{4}-\d{2}-\d{2}", res)
     return release[0] if release else ""

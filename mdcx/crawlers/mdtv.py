@@ -90,10 +90,6 @@ def get_cover(html, mdtv_url):
     return result if result else ""
 
 
-
-
-
-
 def get_release(cover_url):
     a = re.search(r"/(\d{4})(\d{2})(\d{2})-", cover_url)
     return f"{a[1]}-{a[2]}-{a[3]}" if a else ""

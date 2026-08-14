@@ -101,10 +101,6 @@ def get_release(html):
     return get_timer_date(html, "配信")
 
 
-
-
-
-
 def get_tag(html):
     result = html.xpath('//a[@class="genre"]//text()')
     tag = ""

@@ -114,7 +114,9 @@ async def _crawl_cache_put(key: tuple[str, str], result: CrawlersResult) -> None
             for k in expired:
                 _crawl_cache.pop(k, None)
             if len(_crawl_cache) > _CRAWL_CACHE_MAX_ENTRIES:
-                newest = sorted(_crawl_cache.items(), key=lambda item: item[1][0], reverse=True)[:_CRAWL_CACHE_MAX_ENTRIES]
+                newest = sorted(_crawl_cache.items(), key=lambda item: item[1][0], reverse=True)[
+                    :_CRAWL_CACHE_MAX_ENTRIES
+                ]
                 _crawl_cache.clear()
                 _crawl_cache.update(newest)
 

@@ -68,10 +68,6 @@ def get_release(html):
     return str(result).strip(" []").replace("'", "").replace(", ", ",") if result else ""
 
 
-
-
-
-
 def get_studio(html):
     result = html.xpath('//div[@id="video_maker"]/table/tr/td[@class="text"]/span/a/text()')
     return result[0] if result else ""

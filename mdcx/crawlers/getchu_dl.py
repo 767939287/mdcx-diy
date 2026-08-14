@@ -24,10 +24,6 @@ def get_release(html):
     return result[0].replace("/", "-") if result and re.search(r"\d+", result[0]) else ""
 
 
-
-
-
-
 def get_director(html):
     return html.xpath('string(//td[text()="作者"]/following-sibling::td)').strip()
 

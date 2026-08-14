@@ -20,10 +20,6 @@ def get_extrafanart(page_data):
     return result
 
 
-
-
-
-
 def get_tag(page_data):
     new_list = []
     for each in page_data["genre"]:
