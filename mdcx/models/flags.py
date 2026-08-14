@@ -78,8 +78,6 @@ class _Flags:
     file_done_dic: dict[str, FileDoneDict] = field(default_factory=dict)
     extrafanart_deal_set: set[Path] = field(default_factory=set)
     trailer_deal_set: set[Path] = field(default_factory=set)
-    theme_videos_deal_set: set[Path] = field(default_factory=set)
-    nfo_deal_set: set[Path] = field(default_factory=set)
     json_get_set: set[str] = field(default_factory=set)
     json_get_status: dict[str, bool | None] = field(default_factory=dict)
     json_data_dic: dict[str, ScrapeResult] = field(default_factory=dict)
@@ -123,8 +121,6 @@ class _Flags:
         self.file_done_dic = {}
         self.extrafanart_deal_set = set()
         self.trailer_deal_set = set()
-        self.theme_videos_deal_set = set()
-        self.nfo_deal_set = set()
         self.json_get_set = set()
         self.json_get_status = {}
         self.json_data_dic = {}
