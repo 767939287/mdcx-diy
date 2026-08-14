@@ -43,9 +43,6 @@ _DMMAPI = "https://api.thejavdb.net/v1/movies"
 _AVBASE = "https://www.avbase.net/works"
 _CDN = "https://awsimgsrc.dmm.co.jp/pics_dig/digital/video"
 
-# DMM 有码源，明显无码番号跳过
-_UNCENSORED = {"heyzo", "fc2", "1pondo", "carib", "10much", "200gana", "paco", "mkd", "mium"}
-
 
 def _extract_cid_from_url(url: str) -> str | None:
     """从 DMM 图 URL 提取 cid（兼容 awsimgsrc digital 与 pics.dmm.co.jp mono）."""
@@ -136,6 +133,8 @@ async def _probe_avbase(series: str) -> str | None:
 
 
 async def probe_series(series: str, *, verify: bool = True) -> dict:
+    from mdcx.crawlers.dmm_direct import is_uncensored_number
+
     series = series.strip().lower()
     result: dict = {
         "series": series,
@@ -144,7 +143,7 @@ async def probe_series(series: str, *, verify: bool = True) -> dict:
         "prefix": None,
         "verified": False,
     }
-    if not series or series in _UNCENSORED:
+    if not series or is_uncensored_number(series):
         return result
     cid = None
     for trial in _TRIAL_NUMS:
