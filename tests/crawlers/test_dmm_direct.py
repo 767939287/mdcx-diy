@@ -173,3 +173,29 @@ def test_probe3_discovered_series():
     assert generate_cid_candidates("SDAM-100")[0] == "1sdam00100"
     assert generate_cid_candidates("SSND-100")[0] == "h_205ssnd00100"
     assert generate_cid_candidates("ONSD-100")[0] == "onsd00100"
+
+
+def test_probe4_discovered_series():
+    from mdcx.crawlers.dmm_direct import generate_cid_candidates
+
+    expected = {
+        "KMHRS-100": "1kmhrs00100",
+        "DLDSS-100": "1dldss00100",
+        "HUNT-100": "1hunt00100",
+        "DOK-100": "41dok00100",
+        "HUSR-100": "57husr00100",
+        "CRE-100": "77cre00100",
+        "MUKD-100": "mukd00100",
+        "DASD-100": "dasd00100",
+        "MYMD-100": "mymd00100",
+        "KAWD-100": "kawd00100",
+        "MUDR-100": "mudr00100",
+        "BF-100": "bf00100",
+        "CND-100": "cnd00100",
+        "DVDMS-100": "dvdms00100",
+        "EYAN-100": "eyan00100",
+    }
+    for number, first_cid in expected.items():
+        candidates = generate_cid_candidates(number)
+        assert candidates[0] == first_cid, f"{number}: 首个候选 {candidates[0]} != {first_cid}"
+        assert first_cid in candidates
