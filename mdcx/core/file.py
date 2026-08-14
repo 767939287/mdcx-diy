@@ -630,9 +630,13 @@ async def get_file_info_v2(file_path: Path, copy_sub: bool = True) -> FileInfo:
             try:
                 async with aiofiles.open(nfo_old_path, encoding="utf-8") as f:
                     nfo_content = await f.read()
-                if not has_sub and ">中文字幕</" in nfo_content:
-                    c_word = cnword_style  # 中文字幕影片后缀
-                    has_sub = True
+                if not has_sub:
+                    if ">中文字幕</" in nfo_content:
+                        c_word = cnword_style
+                        has_sub = True
+                    elif "<genre>中文字幕</genre>" in nfo_content or "<tag>中文字幕</tag>" in nfo_content:
+                        c_word = cnword_style
+                        has_sub = True
                 if not mosaic:
                     if ">无码流出</" in nfo_content or ">無碼流出</" in nfo_content:
                         leak = leak_style
@@ -647,13 +651,10 @@ async def get_file_info_v2(file_path: Path, copy_sub: bool = True) -> FileInfo:
                         youma = youma_style
                         mosaic = "有码"
                     elif ">国产</" in nfo_content or ">國產</" in nfo_content:
-                        youma = youma_style
                         mosaic = "国产"
                     elif ">里番</" in nfo_content or ">裏番</" in nfo_content:
-                        youma = youma_style
                         mosaic = "里番"
                     elif ">动漫</" in nfo_content or ">動漫</" in nfo_content:
-                        youma = youma_style
                         mosaic = "动漫"
             except Exception:
                 signal.show_traceback_log(traceback.format_exc())
