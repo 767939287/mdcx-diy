@@ -72,8 +72,8 @@ MDCx 支持的功能全景。只想快速上手的话，先看 [QUICKSTART.md](Q
 ### DMM 官方高清直链
 
 - 封面/海报统一走 DMM 官方 awsimgsrc CDN 高清直链（竖版 `ps` 约 1032×1468、横版 `pl` 约 2184×1469），由 `mdcx/crawlers/dmm_direct.py` 的番号→DMM cid 前缀映射生成，覆盖约 110 个主流系列（含 `h_xxx`/数字特殊前缀与跨厂商附加前缀）。
-- **LibreDMM / R18.dev / JavBus** 三个爬虫在刮削时直接把返回的低清封面/海报升级为 DMM 高清（R18.dev 的 `jacket_full_url` 是 pics.dmm.co.jp 低清且部分系列 cid 未补零，JavBus 是自家 CDN 低清镜像），无码番号自动跳过。
-- 开启「Poster 选优」（poster_auto_best）时，候选池自动注入 DMM 竖版高清候选，按尺寸自动胜过低清原图，其他爬虫（javdb/avbase 等）也能受益。
+- **LibreDMM / R18.dev / JavBus / JavDB / JavDB API / JavDB App** 六个爬虫在刮削时直接把返回的低清封面/海报升级为 DMM 高清（R18.dev 的 `jacket_full_url` 是 pics.dmm.co.jp 低清且部分系列 cid 未补零，JavBus 是自家 CDN 低清镜像，JavDB 三站是 javdb 图床缩略图 `c0.jdbstatic.com` 哈希路径非高清），无码番号自动跳过。
+- 开启「Poster 选优」（poster_auto_best）时，候选池自动注入 DMM 竖版高清候选，按尺寸自动胜过低清原图，其他爬虫（avbase 等）也能受益。
 - DMM 图下载失败自动重试一次，应对 awsimgsrc 偶发的随机 404/连接抖动。
 
 ### 多网站结果合并
