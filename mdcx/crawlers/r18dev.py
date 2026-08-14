@@ -2,6 +2,7 @@ import json
 import re
 from typing import override
 
+from ..base.web import check_url
 from ..config.manager import manager
 from ..config.models import Website
 from ..models.types import CrawlerResult
@@ -148,6 +149,53 @@ def _series_number(id_str: str) -> tuple[str, str]:
     if m:
         return m.group(1), m.group(2)
     return "", ""
+
+
+def _build_aws_cover_candidates(number: str) -> list[str]:
+    """从番号构造 DMM 高清封面 (thumb/pl.jpg) 候选 URL 列表.
+
+    复用 dmm_direct 的番号→DMM cid 构造器，取横版 pl 候选。
+    """
+    from mdcx.crawlers.dmm_direct import generate_image_candidates
+
+    return [url for orient, url in generate_image_candidates(number) if orient == "landscape"]
+
+
+def _build_aws_poster_candidates(number: str) -> list[str]:
+    """从番号构造 DMM 高清海报 (poster/ps.jpg) 候选 URL 列表.
+
+    复用 dmm_direct 的番号→DMM cid 构造器，取竖版 ps 候选。
+    """
+    from mdcx.crawlers.dmm_direct import generate_image_candidates
+
+    return [url for orient, url in generate_image_candidates(number) if orient == "portrait"]
+
+
+async def _upgrade_dmm_cover(ctx, data: CrawlerData) -> None:
+    """尝试将 r18 返回的 DMM 低清图升级为 awsimgsrc 高清 ps/pl.
+
+    r18 的 jacket_full_url 是 pics.dmm.co.jp 低清图，部分系列还是 mono 路径且 cid 未补零
+    （如 SSIS-538 -> ssis538pl.jpg），真实 DMM 高清图为 ssis00538（digital 路径）。
+    复用 dmm_direct 构造器生成高清候选，check_url 验证成功后覆盖 thumb/poster。
+    """
+    number = data.number if isinstance(data.number, str) else ""
+    number = number.strip()
+    if not number:
+        number = str(ctx.input.number or "").strip()
+    if not number:
+        return
+    for url in _build_aws_cover_candidates(number):
+        if await check_url(url):
+            if url != data.thumb:
+                ctx.debug(f"R18dev 封面升级为高清: {url}")
+                data.thumb = url
+            break
+    for url in _build_aws_poster_candidates(number):
+        if await check_url(url):
+            if url != data.poster:
+                ctx.debug(f"R18dev 海报升级为高清竖版: {url}")
+                data.poster = url
+            break
 
 
 class R18devCrawler(BaseCrawler):
@@ -329,8 +377,10 @@ class R18devCrawler(BaseCrawler):
             except json.JSONDecodeError:
                 continue
             scraped_data = self._parse_json(data, ctx)
-            if scraped_data and not scraped_data.external_id:
-                scraped_data.external_id = detail_url
+            if scraped_data:
+                await _upgrade_dmm_cover(ctx, scraped_data)
+                if not scraped_data.external_id:
+                    scraped_data.external_id = detail_url
             return scraped_data
 
     @override

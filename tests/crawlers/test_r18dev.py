@@ -332,3 +332,92 @@ async def test_post_process_fills_originaltitle():
     result = await crawler.post_process(None, result)
 
     assert result.originaltitle == "Test Title"
+
+
+def test_build_aws_cover_candidates_ssis():
+    from mdcx.crawlers.r18dev import _build_aws_cover_candidates
+
+    assert _build_aws_cover_candidates("SSIS-001") == [
+        "https://awsimgsrc.dmm.co.jp/pics_dig/digital/video/ssis00001/ssis00001pl.jpg"
+    ]
+
+
+def test_build_aws_poster_candidates_ssis():
+    from mdcx.crawlers.r18dev import _build_aws_poster_candidates
+
+    assert _build_aws_poster_candidates("SSIS-001") == [
+        "https://awsimgsrc.dmm.co.jp/pics_dig/digital/video/ssis00001/ssis00001ps.jpg"
+    ]
+
+
+def test_build_aws_poster_candidates_prefixed_series():
+    from mdcx.crawlers.r18dev import _build_aws_poster_candidates
+
+    assert _build_aws_poster_candidates("WANZ-100")[0] == (
+        "https://awsimgsrc.dmm.co.jp/pics_dig/digital/video/3wanz00100/3wanz00100ps.jpg"
+    )
+    assert _build_aws_poster_candidates("SW-123") == [
+        "https://awsimgsrc.dmm.co.jp/pics_dig/digital/video/1sw00123/1sw00123ps.jpg",
+        "https://awsimgsrc.dmm.co.jp/pics_dig/digital/video/sw00123/sw00123ps.jpg",
+        "https://awsimgsrc.dmm.co.jp/pics_dig/digital/video/h_113sw00123/h_113sw00123ps.jpg",
+    ]
+
+
+class _FakeCtx:
+    class _Input:
+        number = "SSIS-001"
+
+    input = _Input()
+
+    def __init__(self):
+        self.logs = []
+
+    def debug(self, message: str):
+        self.logs.append(message)
+
+
+async def _ok(url: str) -> str:
+    return url
+
+
+async def _fail(url: str) -> None:
+    return None
+
+
+@pytest.mark.asyncio
+async def test_upgrade_dmm_cover_success(monkeypatch):
+    from mdcx.crawlers.base.types import CrawlerData
+    from mdcx.crawlers.r18dev import _upgrade_dmm_cover
+
+    monkeypatch.setattr("mdcx.crawlers.r18dev.check_url", _ok)
+    ctx = _FakeCtx()
+    data = CrawlerData(number="SSIS-001", thumb="old.jpg", poster="old.jpg")
+    await _upgrade_dmm_cover(ctx, data)
+    assert data.thumb.endswith("ssis00001pl.jpg")
+    assert data.poster.endswith("ssis00001ps.jpg")
+
+
+@pytest.mark.asyncio
+async def test_upgrade_dmm_cover_fail_keeps_original(monkeypatch):
+    from mdcx.crawlers.base.types import CrawlerData
+    from mdcx.crawlers.r18dev import _upgrade_dmm_cover
+
+    monkeypatch.setattr("mdcx.crawlers.r18dev.check_url", _fail)
+    ctx = _FakeCtx()
+    data = CrawlerData(number="SSIS-001", thumb="old.jpg", poster="old.jpg")
+    await _upgrade_dmm_cover(ctx, data)
+    assert data.thumb == "old.jpg"
+    assert data.poster == "old.jpg"
+
+
+@pytest.mark.asyncio
+async def test_upgrade_dmm_cover_uses_data_number(monkeypatch):
+    from mdcx.crawlers.base.types import CrawlerData
+    from mdcx.crawlers.r18dev import _upgrade_dmm_cover
+
+    monkeypatch.setattr("mdcx.crawlers.r18dev.check_url", _ok)
+    ctx = _FakeCtx()
+    data = CrawlerData(number="WANZ-100", thumb="old.jpg", poster="old.jpg")
+    await _upgrade_dmm_cover(ctx, data)
+    assert data.thumb.endswith("3wanz00100pl.jpg")
+    assert data.poster.endswith("3wanz00100ps.jpg")

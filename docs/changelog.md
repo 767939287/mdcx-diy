@@ -10,6 +10,8 @@
 - **R18.dev 英文标题掩蔽还原**：日文标题缺失时，英文标题优先取服务端 `title_en_uncensored` 还原字段（如 `Sex S***e` → `Sex Slave`），该字段缺失时回退原始 `title_en`；日文标题存在时仍日文优先
 - **DMM 官方高清直链兜底**：新增番号→DMM cid 候选构造器 `mdcx/crawlers/dmm_direct.py`（13 组前缀映射、avop/gigl/ekdv 阈值系列、数字系列 T28 拆分），生成竖版 `ps`（awsimgsrc 高清 1032×1469）与横版 `pl`（2184×1469）直链；封面补全所有爬虫失败时走 DMM 官方直链兜底（`scripts/cover_backfill.py`）——**竖版优先**：先下载 `ps` 竖版高清图作 poster（thumb 优先横版 `pl`），竖版不存在或失败时下载横版 `pl` 作 thumb 并复用 mdcx 现有 `cut_thumb_to_poster` 裁剪逻辑（居中/有码右裁/人脸识别）生成竖版 poster，含尺寸校验过滤占位图
 - **DMM cid 前缀表实测校准**：用 dmmapi（thejavdb API）批量比对真实 cid 校准映射表——主流新系列（ssis/ipx/pred/mide/juq 等 23 个）实测为**无前缀**并固定；修正 `sw` 真实前缀为 `1`（SWITCH，原误配）且该系列跨厂商（プラム= `h_113`）改用附加前缀兜底；补入 wanz=`3`、ntrd=`18`、ppd=`24`、umd=`143`、mbd=`433`、sin=`118`、ymd=`h_189`、star/sdde/sdmu/sdab/dandy/fcdss=`1` 等实测前缀
+- **LibreDMM 高清图候选改用 dmm_direct**：`libredmm.py` 的 `_build_aws_cover_candidates`/`_build_aws_poster_candidates` 从简陋的 `_number_variants`（仅 `-`→`00`/去除两种）替换为 dmm_direct 前缀映射构造器，补齐有前缀系列（如 WANZ-100 → `3wanz00100ps.jpg`，原逻辑构造错）；SSIS-001（无前缀）与 dmmapi 实测 frontcover 完全一致；删除死代码 `_number_variants`/`_AWS_BASE`
+- **R18.dev 封面/海报升级为 DMM 高清**：r18 返回的 `jacket_full_url` 是 pics.dmm.co.jp 低清图，部分系列还是 mono 路径且 cid 未补零（如 SSIS-538 → `ssis538pl.jpg`，真实 DMM 高清图为 `ssis00538`）；`r18dev.py` 改用 dmm_direct 生成 awsimgsrc 高清 `pl`/`ps` 候选，`check_url` 验证成功后覆盖 thumb/poster（顺带补上 r18 缺失的竖版海报），失败回退原低清图
 
 ### 修复
 
