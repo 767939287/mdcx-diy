@@ -324,8 +324,9 @@ class Scraper:
     async def _process_one_file_impl(self, task: tuple[Path, int, int]) -> None:
         # 获取顺序
         file_path, count, count_all = task
-        Flags.counting_order += 1
-        count = Flags.counting_order
+        async with Flags._counter_lock:
+            Flags.counting_order += 1
+            count = Flags.counting_order
 
         # 名字缩写
         show_name = file_path.name

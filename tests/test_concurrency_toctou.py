@@ -134,6 +134,21 @@ async def test_next_start_time_concurrent_increment():
 
 
 @pytest.mark.asyncio
+async def test_counting_order_concurrent_increment():
+    """多协程并发执行 counting_order += 1 时，每个协程获得唯一序号。"""
+    Flags.reset()
+    n = 50
+
+    async def _get_order() -> int:
+        async with Flags._counter_lock:
+            Flags.counting_order += 1
+            return Flags.counting_order
+
+    results = await asyncio.gather(*[_get_order() for _ in range(n)])
+    assert sorted(results) == list(range(1, n + 1))
+
+
+@pytest.mark.asyncio
 async def test_json_get_status_concurrent_update():
     """模拟 scraper.py 中 json_get_status 的并发更新。"""
     Flags.reset()
