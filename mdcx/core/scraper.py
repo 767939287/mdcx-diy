@@ -805,6 +805,11 @@ class Scraper:
                 if movie_number not in Flags.json_get_status:
                     Flags.json_get_set.add(movie_number)
                     Flags.json_get_status[movie_number] = None
+                    # 读模式下 movie_number 可能被 nfo_data.number 覆盖，与原 file_info.number 不同。
+                    # 释放方 _process_one_file_impl 的异常路径用 origin_number 释放，若二者不同需同时注册。
+                    if movie_number != file_info.number:
+                        Flags.json_get_set.add(file_info.number)
+                        Flags.json_get_status[file_info.number] = None
                     LogBuffer.log().write(f"\n 🟡 [Same Number] 首次刮削，开始共享番号数据：{movie_number}")
                     is_first = True
                 else:

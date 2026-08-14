@@ -306,7 +306,7 @@ class FileScraper:
         original_number = task_input.number
 
         # 259LUXU-1111， mgstage 和 avsex 之外使用 LUXU-1111（素人番号时，short_number有值，不带前缀数字；反之，short_number为空)
-        if short_number and website != "mgstage" and website != "avsex":
+        if short_number and website not in (Website.MGSTAGE, Website.AVSEX):
             task_input.number = short_number
 
         try:

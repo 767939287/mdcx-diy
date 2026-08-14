@@ -191,7 +191,12 @@ async def move_movie(other: OtherInfo, file_info: FileInfo, file_path: Path, fil
             if temp_file not in await aiofiles.os.listdir(temp_folder):
                 tmp_path = str(file_new_path) + ".MDCx.tmp"
                 await move_file_async(str(file_path), tmp_path)
-                # 使用 aiofiles.os.rename 实现原子替换（同文件系统内）
+                await asyncio.to_thread(os.rename, tmp_path, str(file_new_path))
+        else:
+            temp_folder, temp_file = split_path(str(file_new_path))
+            if temp_file not in await aiofiles.os.listdir(temp_folder):
+                tmp_path = str(file_new_path) + ".MDCx.tmp"
+                await move_file_async(str(file_path), tmp_path)
                 await asyncio.to_thread(os.rename, tmp_path, str(file_new_path))
         LogBuffer.log().write(f"\n 🍀 Movie done! \n 🙉 [Movie] {file_new_path}")
         file_info.file_path = file_new_path
@@ -638,7 +643,7 @@ async def get_file_info_v2(file_path: Path, copy_sub: bool = True) -> FileInfo:
                     elif ">无码</" in nfo_content or ">無碼</" in nfo_content:
                         wuma = wuma_style
                         mosaic = "无码"
-                    elif ">有碼</" in nfo_content or ">有碼</" in nfo_content:
+                    elif ">有码</" in nfo_content or ">有碼</" in nfo_content:
                         youma = youma_style
                         mosaic = "有码"
                     elif ">国产</" in nfo_content or ">國產</" in nfo_content:
@@ -773,7 +778,7 @@ async def _migrate_picture_resource(
         else:
             exists = False
 
-        if exists:
+        if exists and number in Flags.file_done_dic:
             cast(dict[str, Path | None], Flags.file_done_dic[number])[local_key] = final_path
             for old_path in (old_path_with_filename, old_path_no_filename, new_path_with_filename):
                 if str(old_path).lower() != str(final_path).lower() and await aiofiles.os.path.exists(old_path):
@@ -1019,8 +1024,10 @@ async def deal_old_files(
         else:
             trailer_exists = False
 
-        if trailer_exists:
-            Flags.file_done_dic[number].update({"local_trailer": trailer_new_file_path_with_filename})
+        if trailer_exists and number in Flags.file_done_dic:
+            cast(dict[str, Path | None], Flags.file_done_dic[number])["local_trailer"] = (
+                trailer_new_file_path_with_filename
+            )
             # 删除旧、新文件夹，用不到了(分集使用local trailer复制即可)
             if await aiofiles.os.path.exists(trailer_old_folder_path):
                 await asyncio.to_thread(shutil.rmtree, trailer_old_folder_path, ignore_errors=True)
