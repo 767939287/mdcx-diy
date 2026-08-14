@@ -56,7 +56,7 @@ def _parse_media_variant_text(text: str) -> MediaVariant:
         return MediaVariant.UNKNOWN
     if "blu-ray" in normalized or "blu ray" in normalized or "ブルーレイ" in normalized:
         return MediaVariant.BLURAY
-    if re.fullmatch(r"dvd", normalized):
+    if "dvd" in normalized:
         return MediaVariant.DVD
     return MediaVariant.UNKNOWN
 
@@ -71,18 +71,18 @@ def parse_media_variant(html: Selector) -> MediaVariant:
         '//li[contains(@class,"item-media") and contains(@class,"is-active")]'
         '//span[contains(@class,"ttl-media")]/text()',
     )
-    if variant := _parse_media_variant_text(active_media):
-        if variant != MediaVariant.UNKNOWN:
-            return variant
+    variant = _parse_media_variant_text(active_media)
+    if variant != MediaVariant.UNKNOWN:
+        return variant
 
     breadcrumb_media = extract_text(
         html,
         '(//nav[contains(@class,"area-breadcrumbs")]//li[contains(@class,"item-breadcrumbs")]'
         '//span[@itemprop="name"]/text())[last()]',
     )
-    if variant := _parse_media_variant_text(breadcrumb_media):
-        if variant != MediaVariant.UNKNOWN:
-            return variant
+    variant = _parse_media_variant_text(breadcrumb_media)
+    if variant != MediaVariant.UNKNOWN:
+        return variant
 
     tags = extract_all_texts(
         html,
@@ -275,6 +275,7 @@ class DigitalParser(DetailPageParser):
     async def parse(self, ctx: Context, html: Selector, **kwargs) -> CrawlerData:
         d = await super().parse(ctx, html, **kwargs)
         json_text = extract_text(html, '//script[@type="application/ld+json"]/text()')
+        json_data: DmmJsonSchema | None = None
         try:
             json_data = DmmJsonSchema.model_validate_json(json_text)
             if json_data.name:
@@ -301,8 +302,7 @@ class DigitalParser(DetailPageParser):
                 if rating is not None:
                     d.score = str(rating)
         except Exception as e:
-            ctx.debug(f"解析 JSON-LD 失败: {e} {json_data=}")
-            pass
+            ctx.debug(f"解析 JSON-LD 失败: {e}")
 
         return d
 

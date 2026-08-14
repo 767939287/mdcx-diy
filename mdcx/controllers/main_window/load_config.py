@@ -668,20 +668,14 @@ def load_config(self: "MyMAinWindow"):
 
         set_checkboxes(
             cd_char,
-            # 允许分集识别字母
             (self.Ui.checkBox_cd_part_a, CDChar.LETTER),
-            # 允许分集识别字母（重复）
-            (self.Ui.checkBox_cd_part_c, CDChar.LETTER),
-            # 允许分集识别数字
+            (self.Ui.checkBox_cd_part_c, CDChar.ENDC),
             (self.Ui.checkBox_cd_part_01, CDChar.DIGITAL),
             (self.Ui.checkBox_cd_part_1_xxx, CDChar.MIDDLE_NUMBER),
-            # 下划线分隔符
             (self.Ui.checkBox_cd_part_underline, CDChar.UNDERLINE),
             (self.Ui.checkBox_cd_part_space, CDChar.SPACE),
             (self.Ui.checkBox_cd_part_point, CDChar.POINT),
         )
-        # 特殊处理 endc
-        self.Ui.checkBox_cd_part_c.setChecked(CDChar.ENDC in cd_char)
         # endregion
 
         # 图片命名是否包含视频名
@@ -1046,6 +1040,10 @@ def load_config(self: "MyMAinWindow"):
         else:
             self.Ui.checkBox_dialog_qt.setChecked(False)
             self.options = QFileDialog.Option(0)
+        if Switch.HIDE_DOCK in switch_on:
+            self.Ui.checkBox_hide_dock_icon.setChecked(True)
+        else:
+            self.Ui.checkBox_hide_dock_icon.setChecked(False)
         if IS_WINDOWS:
             self.Ui.checkBox_hide_dock_icon.setEnabled(False)
             self.Ui.checkBox_hide_menu_icon.setEnabled(False)

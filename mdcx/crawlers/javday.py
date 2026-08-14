@@ -62,7 +62,7 @@ def get_tag(html):
     return ",".join(result)
 
 
-def get_real_number_title(number, title, number_list, appoint_number, appoint_url, lable_list, tag, actor, series):
+def get_real_number_title(number, title, number_list, appoint_number, appoint_url, lable_list, tag, actor, series, file_path_text=""):
     if appoint_number:
         number = appoint_number
         temp_title = title.replace(number, "")
@@ -70,7 +70,7 @@ def get_real_number_title(number, title, number_list, appoint_number, appoint_ur
             title = temp_title
     else:
         if number not in number_list or appoint_url:
-            title_number_list, filename_list = get_number_list(number, appoint_number, title)
+            title_number_list, filename_list = get_number_list(number, appoint_number, file_path_text)
             if title_number_list:
                 number = title_number_list[0]
                 number_list = title_number_list
@@ -188,6 +188,7 @@ class JavdayCrawler(BaseCrawler[JavdayContext]):
             tag,
             actor,
             series,
+            ctx.file_path_text,
         )
         actors = [item.strip() for item in actor.split(",") if item.strip()]
         return CrawlerData(

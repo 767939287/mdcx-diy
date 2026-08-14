@@ -24,7 +24,8 @@ def getWebNumber(html, number):
 
 def getActor(html):
     try:
-        return str(html.xpath('//div[@class="star-name"]/a/text()')).strip(" ['']").replace("'", "").replace(", ", ",")
+        result = html.xpath('//div[@class="star-name"]/a/text()')
+        return ",".join(result).strip() if result else ""
     except Exception:
         return ""
 
@@ -66,7 +67,7 @@ def getYear(release):
 
 
 def getMosaic(html):
-    select_tab = str(html.xpath('//li[@class="active"]/a/text()'))
+    select_tab = ",".join(html.xpath('//li[@class="active"]/a/text()')) if html.xpath('//li[@class="active"]/a/text()') else ""
     return "有码" if "有碼" in select_tab else "无码"
 
 
@@ -112,7 +113,7 @@ def getExtraFanart(html, url):  # 获取封面链接
 
 def getTag(html):  # 获取标签
     result = html.xpath('//span[@class="genre"]/label/a[contains(@href, "/genre/")]/text()')
-    return str(result).strip(" ['']").replace("'", "").replace(", ", ",") if result else ""
+    return ",".join(result).strip() if result else ""
 
 
 def get_actress_video_list(html: etree._Element, base_url: str) -> dict:
