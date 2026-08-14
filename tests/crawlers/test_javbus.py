@@ -1,3 +1,4 @@
+import pytest
 from lxml import etree
 
 from mdcx.crawlers.javbus import getRelease, getValidRelease, getYear
@@ -25,3 +26,81 @@ def test_get_release_placeholder_date_returns_invalid():
     assert release == "0000-00-00"
     assert getValidRelease(release) == ""
     assert getYear(release) == ""
+
+
+def test_should_skip_dmm_upgrade_uncensored():
+    from mdcx.crawlers.javbus import _should_skip_dmm_upgrade
+
+    assert _should_skip_dmm_upgrade("FC2-PPV-1234567")
+    assert _should_skip_dmm_upgrade("HEYZO-0123")
+    assert _should_skip_dmm_upgrade("CARIB_0421")
+    assert not _should_skip_dmm_upgrade("SSIS-538")
+    assert not _should_skip_dmm_upgrade("WANZ-100")
+
+
+def test_build_aws_cover_candidates_ssis():
+    from mdcx.crawlers.javbus import _build_aws_cover_candidates
+
+    assert _build_aws_cover_candidates("SSIS-001") == [
+        "https://awsimgsrc.dmm.co.jp/pics_dig/digital/video/ssis00001/ssis00001pl.jpg"
+    ]
+
+
+def test_build_aws_poster_candidates_prefixed_series():
+    from mdcx.crawlers.javbus import _build_aws_poster_candidates
+
+    assert _build_aws_poster_candidates("WANZ-100")[0] == (
+        "https://awsimgsrc.dmm.co.jp/pics_dig/digital/video/3wanz00100/3wanz00100ps.jpg"
+    )
+
+
+class _FakeCtx:
+    def __init__(self):
+        self.logs = []
+
+    def debug(self, message: str):
+        self.logs.append(message)
+
+
+async def _ok(url: str) -> str:
+    return url
+
+
+async def _fail(url: str) -> None:
+    return None
+
+
+@pytest.mark.asyncio
+async def test_upgrade_dmm_cover_success(monkeypatch):
+    from mdcx.crawlers.javbus import _upgrade_dmm_cover
+
+    monkeypatch.setattr("mdcx.crawlers.javbus.check_url", _ok)
+    ctx = _FakeCtx()
+    cover, poster = await _upgrade_dmm_cover(ctx, "SSIS-001", "old_cover.jpg", "old_poster.jpg")
+    assert cover.endswith("ssis00001pl.jpg")
+    assert poster.endswith("ssis00001ps.jpg")
+
+
+@pytest.mark.asyncio
+async def test_upgrade_dmm_cover_fail_keeps_original(monkeypatch):
+    from mdcx.crawlers.javbus import _upgrade_dmm_cover
+
+    monkeypatch.setattr("mdcx.crawlers.javbus.check_url", _fail)
+    ctx = _FakeCtx()
+    cover, poster = await _upgrade_dmm_cover(ctx, "SSIS-001", "old_cover.jpg", "old_poster.jpg")
+    assert cover == "old_cover.jpg"
+    assert poster == "old_poster.jpg"
+
+
+@pytest.mark.asyncio
+async def test_upgrade_dmm_cover_skips_uncensored(monkeypatch):
+    from mdcx.crawlers.javbus import _upgrade_dmm_cover
+
+    async def _should_not_be_called(url: str) -> str:
+        raise AssertionError("无码番号不应发起候选请求")
+
+    monkeypatch.setattr("mdcx.crawlers.javbus.check_url", _should_not_be_called)
+    ctx = _FakeCtx()
+    cover, poster = await _upgrade_dmm_cover(ctx, "HEYZO-0123", "old_cover.jpg", "old_poster.jpg")
+    assert cover == "old_cover.jpg"
+    assert poster == "old_poster.jpg"

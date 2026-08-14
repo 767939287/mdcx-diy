@@ -5,6 +5,7 @@ from typing import override
 
 from lxml import etree
 
+from ..base.web import check_url
 from ..config.enums import Website
 from ..config.manager import manager
 from ..core.mosaic import is_plain_uncensored_mosaic
@@ -341,6 +342,61 @@ def get_actress_list(html: etree._Element, base_url: str) -> list:
     return actresses
 
 
+_UNCENSORED_PREFIXES = ("FC2", "HEYZO", "1PONDO", "CARIB", "10MUCH", "200GANA", "PACO", "MKD", "MIUM")
+
+
+def _should_skip_dmm_upgrade(number: str) -> bool:
+    """DMM 是有码源，跳过明显无码番号，避免无效候选请求."""
+    if "_" in number:
+        return True
+    upper = number.upper().replace(" ", "")
+    return upper.startswith(_UNCENSORED_PREFIXES)
+
+
+def _build_aws_cover_candidates(number: str) -> list[str]:
+    """从番号构造 DMM 高清封面 (thumb/pl.jpg) 候选 URL 列表.
+
+    复用 dmm_direct 的番号→DMM cid 构造器，取横版 pl 候选。
+    """
+    from mdcx.crawlers.dmm_direct import generate_image_candidates
+
+    return [url for orient, url in generate_image_candidates(number) if orient == "landscape"]
+
+
+def _build_aws_poster_candidates(number: str) -> list[str]:
+    """从番号构造 DMM 高清海报 (poster/ps.jpg) 候选 URL 列表.
+
+    复用 dmm_direct 的番号→DMM cid 构造器，取竖版 ps 候选。
+    """
+    from mdcx.crawlers.dmm_direct import generate_image_candidates
+
+    return [url for orient, url in generate_image_candidates(number) if orient == "portrait"]
+
+
+async def _upgrade_dmm_cover(ctx, number: str, cover_url: str, poster_url: str) -> tuple[str, str]:
+    """尝试将 javbus 低清图升级为 DMM 高清 ps/pl，返回 (cover, poster).
+
+    javbus 的图是自家 CDN 低清镜像。复用 dmm_direct 生成 awsimgsrc 高清候选，
+    check_url 验证成功后覆盖，失败回退原图。无码番号直接跳过。
+    """
+    number = (number or "").strip()
+    if not number or _should_skip_dmm_upgrade(number):
+        return cover_url, poster_url
+    for url in _build_aws_cover_candidates(number):
+        if await check_url(url):
+            if url != cover_url:
+                ctx.debug(f"Javbus 封面升级为高清: {url}")
+            cover_url = url
+            break
+    for url in _build_aws_poster_candidates(number):
+        if await check_url(url):
+            if url != poster_url:
+                ctx.debug(f"Javbus 海报升级为高清竖版: {url}")
+            poster_url = url
+            break
+    return cover_url, poster_url
+
+
 async def get_real_url(client, ctx: Context, number, url_type, javbus_url, headers):  # 获取详情页链接
     if url_type == "us":  # 欧美
         url_search = "https://www.javbus.hair/search/" + number
@@ -451,6 +507,8 @@ class JavbusCrawler(BaseCrawler):
             image_download = True
             if extrafanart:
                 poster_url = extrafanart[0]
+
+        cover_url, poster_url = await _upgrade_dmm_cover(ctx, number, cover_url, poster_url)
 
         data = CrawlerData(
             number=number,
