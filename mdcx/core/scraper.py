@@ -713,86 +713,88 @@ class Scraper:
                         else:
                             # 预加载 workbook，所有查询结果的写操作先攒在内存，最后一次性落盘
                             _wb, _db_path = _load_actor_db_wb()
-                            async with aiohttp.ClientSession() as client:
-                                protocol = "https://"
-                                base = tmdb_api_base.strip()
-                                if base.startswith("http://"):
-                                    protocol = "http://"
-                                    base = base[7:]
-                                elif base.startswith("https://"):
+                            try:
+                                async with aiohttp.ClientSession() as client:
                                     protocol = "https://"
-                                    base = base[8:]
-                                base_url = f"{protocol}{base}" if base else "https://api.tmdb.org"
+                                    base = tmdb_api_base.strip()
+                                    if base.startswith("http://"):
+                                        protocol = "http://"
+                                        base = base[7:]
+                                    elif base.startswith("https://"):
+                                        protocol = "https://"
+                                        base = base[8:]
+                                    base_url = f"{protocol}{base}" if base else "https://api.tmdb.org"
 
-                                _read_mode_error_count = 0
-                                _read_mode_semaphore = asyncio.Semaphore(3)
+                                    _read_mode_error_count = 0
+                                    _read_mode_semaphore = asyncio.Semaphore(3)
 
-                                async def _query_one_actor(actor_name: str) -> None:
-                                    nonlocal _read_mode_error_count
-                                    row = search_actor_db_reverse(actor_name)
-                                    jp_name = str(row.get("jp")) if row and row.get("jp") else actor_name
-                                    try:
-                                        query_result = await query_single_actor_cached(
-                                            jp_name, base_url, tmdb_api_key, client
-                                        )
-                                        if query_result:
-                                            tmdbid = query_result["pid"]
-                                            existing_tmdb_ids[actor_name] = tmdbid
-                                            translations = query_result.get("translations", {})
-                                            aka = query_result.get("also_known_as", [])
-                                            jp_original = query_result.get("original_name", "") or jp_name
-                                            write_status = await update_actor_db_row(
-                                                jp=jp_original,
-                                                zh_cn=_normalize_translation(translations.get("zh_cn", "")),
-                                                zh_tw=_normalize_translation(translations.get("zh_tw", "")),
-                                                keyword=",".join(aka) if aka else "",
-                                                tmdbid=tmdbid,
-                                                append_keyword=True,
-                                                _wb=_wb,
+                                    async def _query_one_actor(actor_name: str) -> None:
+                                        nonlocal _read_mode_error_count
+                                        row = search_actor_db_reverse(actor_name)
+                                        jp_name = str(row.get("jp")) if row and row.get("jp") else actor_name
+                                        try:
+                                            query_result = await query_single_actor_cached(
+                                                jp_name, base_url, tmdb_api_key, client
                                             )
-                                            LogBuffer.log().write(
-                                                f"  ✅ [TMDB] {actor_name} -> tmdbid={tmdbid} (读取模式补充)"
-                                            )
-                                            if write_status == "inserted_tmdbid":
-                                                LogBuffer.log().write(
-                                                    f"  ✅ [演员数据库] 已写入 {jp_name} -> tmdbid={tmdbid}"
+                                            if query_result:
+                                                tmdbid = query_result["pid"]
+                                                existing_tmdb_ids[actor_name] = tmdbid
+                                                translations = query_result.get("translations", {})
+                                                aka = query_result.get("also_known_as", [])
+                                                jp_original = query_result.get("original_name", "") or jp_name
+                                                write_status = await update_actor_db_row(
+                                                    jp=jp_original,
+                                                    zh_cn=_normalize_translation(translations.get("zh_cn", "")),
+                                                    zh_tw=_normalize_translation(translations.get("zh_tw", "")),
+                                                    keyword=",".join(aka) if aka else "",
+                                                    tmdbid=tmdbid,
+                                                    append_keyword=True,
+                                                    _wb=_wb,
                                                 )
-                                            elif write_status == "inserted_new_row":
                                                 LogBuffer.log().write(
-                                                    f"  ✅ [演员数据库] 已新增 {jp_name}，并写入 tmdbid={tmdbid}"
+                                                    f"  ✅ [TMDB] {actor_name} -> tmdbid={tmdbid} (读取模式补充)"
                                                 )
-                                            elif write_status == "kept_existing_tmdbid":
-                                                LogBuffer.log().write(
-                                                    f"  ℹ️ [演员数据库] {jp_name} 已存在 tmdbid，保留原值"
-                                                )
-                                            elif write_status == "missing_openpyxl":
-                                                LogBuffer.log().write(
-                                                    f"  ⚠️ [演员数据库] 缺少 openpyxl，未写入 {jp_name} 的 tmdbid"
-                                                )
-                                            elif write_status == "file_locked":
-                                                LogBuffer.log().write(
-                                                    f"  ⚠️ [演员数据库] 文件被占用，未写入 {jp_name} 的 tmdbid"
-                                                )
-                                            elif write_status.startswith("write_failed:"):
-                                                LogBuffer.log().write(
-                                                    f"  ⚠️ [演员数据库] 写入失败，未保存 {jp_name} 的 tmdbid: {write_status.split(':', 1)[1]}"
-                                                )
-                                        else:
-                                            LogBuffer.log().write(f"  ⚠️ [TMDB] {actor_name} 未找到匹配的 TMDB 演员")
-                                    except Exception as e:
-                                        _read_mode_error_count += 1
-                                        LogBuffer.log().write(f"  ❌ [TMDB] {actor_name} 查询失败: {e}")
+                                                if write_status == "inserted_tmdbid":
+                                                    LogBuffer.log().write(
+                                                        f"  ✅ [演员数据库] 已写入 {jp_name} -> tmdbid={tmdbid}"
+                                                    )
+                                                elif write_status == "inserted_new_row":
+                                                    LogBuffer.log().write(
+                                                        f"  ✅ [演员数据库] 已新增 {jp_name}，并写入 tmdbid={tmdbid}"
+                                                    )
+                                                elif write_status == "kept_existing_tmdbid":
+                                                    LogBuffer.log().write(
+                                                        f"  ℹ️ [演员数据库] {jp_name} 已存在 tmdbid，保留原值"
+                                                    )
+                                                elif write_status == "missing_openpyxl":
+                                                    LogBuffer.log().write(
+                                                        f"  ⚠️ [演员数据库] 缺少 openpyxl，未写入 {jp_name} 的 tmdbid"
+                                                    )
+                                                elif write_status == "file_locked":
+                                                    LogBuffer.log().write(
+                                                        f"  ⚠️ [演员数据库] 文件被占用，未写入 {jp_name} 的 tmdbid"
+                                                    )
+                                                elif write_status.startswith("write_failed:"):
+                                                    LogBuffer.log().write(
+                                                        f"  ⚠️ [演员数据库] 写入失败，未保存 {jp_name} 的 tmdbid: {write_status.split(':', 1)[1]}"
+                                                    )
+                                            else:
+                                                LogBuffer.log().write(f"  ⚠️ [TMDB] {actor_name} 未找到匹配的 TMDB 演员")
+                                        except Exception as e:
+                                            _read_mode_error_count += 1
+                                            LogBuffer.log().write(f"  ❌ [TMDB] {actor_name} 查询失败: {e}")
 
-                                async def _limited_query(actor_name: str) -> None:
-                                    async with _read_mode_semaphore:
-                                        await _query_one_actor(actor_name)
+                                    async def _limited_query(actor_name: str) -> None:
+                                        async with _read_mode_semaphore:
+                                            await _query_one_actor(actor_name)
 
-                                tasks = [asyncio.create_task(_limited_query(a)) for a in still_missing]
-                                await asyncio.gather(*tasks)
+                                    tasks = [asyncio.create_task(_limited_query(a)) for a in still_missing]
+                                    await asyncio.gather(*tasks)
 
-                                if _wb is not None:
                                     _flush_actor_db_wb(_wb, _db_path)
-                                res.actor_tmdb_ids = existing_tmdb_ids
+                                    res.actor_tmdb_ids = existing_tmdb_ids
+                            finally:
+                                _wb.close()
 
         # 刮削json_data
         # 获取已刮削的json_data
@@ -1297,9 +1299,14 @@ async def move_sub(
         if await aiofiles.os.path.exists(sub_old_path) and not await aiofiles.os.path.exists(sub_new_path):
             if copy_flag:
                 if not await copy_file_async(sub_old_path, sub_new_path):
-                    LogBuffer.log().write("\n 🔴 Sub copy failed!")
-                    return
+                    LogBuffer.log().write(f"\n 🔴 Sub copy failed: {sub_old_path}")
+                    continue
+                LogBuffer.log().write("\n 🍀 Sub done!")
             elif not await move_file_async(sub_old_path, sub_new_path):
-                LogBuffer.log().write("\n 🔴 Sub move failed!")
-                return
-        LogBuffer.log().write("\n 🍀 Sub done!")
+                LogBuffer.log().write(f"\n 🔴 Sub move failed: {sub_old_path}")
+                continue
+            else:
+                LogBuffer.log().write("\n 🍀 Sub done!")
+        else:
+            if await aiofiles.os.path.exists(sub_old_path):
+                LogBuffer.log().write(f"\n 🍀 Sub already exists: {sub_new_path}")

@@ -131,7 +131,7 @@ class ScrapeClassification:
 
 
 def classify_scrape_task(task_input: CrawlTask, config: "Config", use_fixed_type: bool = True) -> ScrapeClassification:
-    file_number = task_input.number
+    file_number = task_input.number or ""
     file_path = task_input.file_path
     file_path_str = str(file_path).lower() if file_path else ""
     mosaic = task_input.mosaic
@@ -450,13 +450,10 @@ class FileScraper:
                 else:
                     # 如果网站数据尚未请求，则进行请求
                     try:
-                        task_input.language = f_lang
-                        task_input.org_language = f_lang
-                        # 多语言网站, 指定一个默认语言
+                        ti = _dc_replace(task_input, language=f_lang, org_language=f_lang)
                         if site in MULTI_LANGUAGE_WEBSITES and key[1] == Language.UNDEFINED:
-                            task_input.language = Language.JP
-                            task_input.org_language = Language.JP
-                        web_data = await self._call_crawler(task_input, site)
+                            ti = _dc_replace(ti, language=Language.JP, org_language=Language.JP)
+                        web_data = await self._call_crawler(ti, site)
                         req_info.append(f"{sprint_source(*key)} ({web_data.debug_info.execution_time:.2f}s)")
                         if web_data.data is None:
                             if e := web_data.debug_info.error:
