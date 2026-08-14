@@ -17,6 +17,7 @@
 - **DMM 图下载失败自动重试一次**：`AsyncWebClient.download` 对 DMM（awsimgsrc）图片下载失败时额外重试一次（该 CDN 曾出现偶发随机 404/连接抖动，request 层已重试网络错误但 404 为终态不重试），提升封面/海报下载成功率
 - **DMM cid 前缀表试点补全**：用 dmmapi（thejavdb API）反推真实 cid + awsimgsrc 直连多编号复核，新增 21 个主流系列前缀——`1` 组补 stars/start/sdjs/sdmt/rctd/rct/fsdss/mmgh/gs，`13` 组补 gg/gvg/ovg，新增 `17`（bkd）、`118`（onez）、`49`（madm）、`436`（abf）、`h_491`（fone）、`h_1100`（hzgd）、`h_1240`（milk）；其中 `h_1xxx` 系列此前不在通用候选里必然猜错，本次直接补齐
 - **DMM cid 前缀表修正（avbase 实测复核）**：`ppd` 真实前缀 `143`（原误配 `24`，`24ppd*` 全 404）；`avop` 阈值小号前缀应为**无前缀**（`avop00168` 实测，原误配 `59`）；`sin` 是 duga PPV 系列（非 DMM 图源，`pic.duga.jp`）从表移除；确认 `hibl`/`mtsp`/`ksvr`/`ayb`/`hodv`/`zmen`/`dism`/`sdfk`/`nima` 前缀原表正确（此前"验证失败"是采样编号稀疏所致）
+- **DMM cid 前缀表第二轮补全（avbase 兜底）**：新增 23 个主流系列——无前缀 `ssni`/`sone`/`ofje`/`miab`/`ipvr`/`ipit`/`jul`/`jufd`/`juk`/`jux`/`waaa`/`hntd`/`jue`/`ebod`，前缀 `1` 的 `sdnm`/`sdms`/`sdmm`/`sdmf`/`fset`，`13`（gvh）、`18`（momj）、`h_113`（ggg）、`h_068`（mxgs）；`ipit`/`juk`/`sdmf`/`hntd`/`jue`/`ggg` 为 dmmapi 查不到、avbase 兜底命中；排除 kiray/simm/siro（DMM amateur 目录 `digital/amateur/`，dmm_direct 的 `digital/video/` 路径不覆盖）
 
 ### 修复
 

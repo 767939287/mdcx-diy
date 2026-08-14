@@ -128,3 +128,40 @@ def test_probe_discovered_prefix1_series():
         candidates = generate_cid_candidates(f"{series}-100")
         assert candidates[0] == f"1{series.lower()}00100", f"{series}: {candidates[0]}"
         assert f"1{series.lower()}00100" in candidates
+
+
+def test_probe2_discovered_series():
+    from mdcx.crawlers.dmm_direct import generate_cid_candidates
+
+    expected = {
+        # 无前缀
+        "SSNI-100": "ssni00100",
+        "SONE-100": "sone00100",
+        "OFJE-100": "ofje00100",
+        "MIAB-100": "miab00100",
+        "IPVR-100": "ipvr00100",
+        "IPIT-100": "ipit00100",
+        "JUL-100": "jul00100",
+        "JUFD-100": "jufd00100",
+        "JUK-100": "juk00100",
+        "JUX-100": "jux00100",
+        "WAAA-100": "waaa00100",
+        "HNTD-100": "hntd00100",
+        "JUE-100": "jue00100",
+        "EBOD-100": "ebod00100",
+        # 前缀 1
+        "SDNM-100": "1sdnm00100",
+        "SDMS-100": "1sdms00100",
+        "SDMM-100": "1sdmm00100",
+        "SDMF-100": "1sdmf00100",
+        "FSET-100": "1fset00100",
+        # 前缀 13 / 18 / h_113 / h_068
+        "GVH-100": "13gvh00100",
+        "MOMJ-100": "18momj00100",
+        "GGG-100": "h_113ggg00100",
+        "MXGS-100": "h_068mxgs00100",
+    }
+    for number, first_cid in expected.items():
+        candidates = generate_cid_candidates(number)
+        assert candidates[0] == first_cid, f"{number}: 首个候选 {candidates[0]} != {first_cid}"
+        assert first_cid in candidates
