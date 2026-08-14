@@ -40,6 +40,9 @@ class _Flags:
     # 演员库 json_get_status / json_get_set 竞态防护
     _json_get_lock: asyncio.Lock = field(default_factory=_new_lock, repr=False)
 
+    # file_new_path_dic 的 check-then-set 竞态防护
+    _file_path_lock: asyncio.Lock = field(default_factory=_new_lock, repr=False)
+
     # 刮削相关
     rest_time_convert: int = 0
     rest_time_convert_: int = 0
@@ -105,6 +108,7 @@ class _Flags:
         self.succ_count = 0
         self.fail_count = 0
         self.file_new_path_dic = {}
+        self._file_path_lock = asyncio.Lock()
         self.pic_catch_set = set()
         self.file_done_dic = {}
         self.extrafanart_deal_set = set()

@@ -950,19 +950,20 @@ class Scraper:
         # 判断输出文件的路径是否重复
         if not skip_reorganize:
             if manager.config.soft_link == 0:
-                done_file_new_path_list = Flags.file_new_path_dic.get(file_new_path)
-                if not done_file_new_path_list:  # 如果字典中不存在同名的情况，存入列表，继续刮削
-                    Flags.file_new_path_dic[file_new_path] = [file_path]
-                else:
-                    done_file_new_path_list.append(file_path)  # 已存在时，添加到列表，停止刮削
-                    done_file_new_path_list.sort(reverse=True)
-                    LogBuffer.error().write(
-                        "存在重复文件（指刮削后的文件路径相同！），请检查:\n    🍁 "
-                        + "\n    🍁 ".join(str(path) for path in done_file_new_path_list)
-                    )
-                    res.outline = split_path(str(file_path))[1]
-                    res.tag = str(file_path)
-                    return None, None
+                async with Flags._file_path_lock:
+                    done_file_new_path_list = Flags.file_new_path_dic.get(file_new_path)
+                    if not done_file_new_path_list:
+                        Flags.file_new_path_dic[file_new_path] = [file_path]
+                    else:
+                        done_file_new_path_list.append(file_path)
+                        done_file_new_path_list.sort(reverse=True)
+                        LogBuffer.error().write(
+                            "存在重复文件（指刮削后的文件路径相同！），请检查:\n    🍁 "
+                            + "\n    🍁 ".join(str(path) for path in done_file_new_path_list)
+                        )
+                        res.outline = split_path(str(file_path))[1]
+                        res.tag = str(file_path)
+                        return None, None
 
         # 不移动文件时，NFO、图片等写入原目录
         if not manager.config.success_file_move:
