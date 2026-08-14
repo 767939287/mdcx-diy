@@ -1804,8 +1804,14 @@ class AsyncWebClient:
 
         content, error = await self.get_content(url, use_proxy=use_proxy)
         if not content:
-            self._log(f"🔴 下载失败: {url} {error}")
-            return False
+            if self._is_dmm_image_url(url):
+                # awsimgsrc 偶发随机 404/网络抖动，重试一次（request 内部已重试过网络错误）
+                await asyncio.sleep(0.5)
+                self._log(f"🟡 DMM 图下载失败，重试一次: {url} {error}")
+                content, error = await self.get_content(url, use_proxy=use_proxy)
+            if not content:
+                self._log(f"🔴 下载失败: {url} {error}")
+                return False
         if not webp:
             return await self._write_file_content(url, file_path, content)
         try:
