@@ -1,12 +1,11 @@
 # Changelog
 
-## v2.0.7 (2026-08-12) 当前版本
+## v2.0.4 (2026-08-14)
 
 ### 功能
 
-- **补别名来源从 AVWikiDB 切换到 minnano**：AVWikiDB 域名被 Cloudflare 拦截导致补别名功能不可用，切换到项目内置的 minnano 爬虫 `fetch_minnano_aliases`（复用 `_search_minnano_by_name`→`parse_minnano_page`→`_clean_alias` 链路）。minnano 天然带「别名」字段、无 CF 拦截，实测命中与质量合格（三上悠亜→鬼頭桃菜、河北彩花→河北彩伽、桃乃木かな→松嶋真麻）。`_clean_alias` 新增 >20 字长度闸拦截作品标题混入（真实别名如鬼頭桃菜/河北彩伽不受影响）；`sync_aliases` 的 avwiki 分支、UI 来源下拉项（AVWikiDB→minnano）、判定逻辑同步切换，pyuic6 重编译 `MDCx.py`（diff 仅 8 行）
+- **补别名来源切换到 minnano**：补别名功能改用项目内置的 minnano 爬虫 `fetch_minnano_aliases`（复用 `_search_minnano_by_name`→`parse_minnano_page`→`_clean_alias` 链路）。minnano 天然带「别名」字段、无 CF 拦截，实测命中与质量合格（三上悠亜→鬼頭桃菜、河北彩花→河北彩伽、桃乃木かな→松嶋真麻）。`_clean_alias` 新增 >20 字长度闸拦截作品标题混入（真实别名如鬼頭桃菜/河北彩伽不受影响）；`sync_aliases` 分支、UI 来源下拉项、判定逻辑同步切换，pyuic6 重编译 `MDCx.py`（diff 仅 8 行）
 - **同番号刮削结果 TTL 缓存**：同批次中相同番号的文件（多 CD、重复文件）直接复用刮削结果，避免对同一番号重复请求所有站点。模块级缓存键含文件路径 + 番号（避免不同来源同番号互相污染），TTL 90 秒、容量上限 512 自动淘汰；命中与写入均深拷贝防外部修改污染。覆盖信息优先 `_call_crawlers` 与速度优先 `_call_speed_crawlers` 两条主路径，单站指定路径不缓存（用户显式重刮需实时）
-- **默认走代理列表移除 avwikidb.com**：代理清单调整为 `amazon.co.jp, m.media-amazon.com, xcity.jp, dmm.co.jp, minnano-av.com`（avwikidb 域名已被 CF 拦截，继续保留在清单无意义）；`is_proxy_host("avwikidb.com")` 判断保留，用户手动加回时仍生效
 - **R18.dev 英文标题掩蔽还原**：日文标题缺失时，英文标题优先取服务端 `title_en_uncensored` 还原字段（如 `Sex S***e` → `Sex Slave`），该字段缺失时回退原始 `title_en`；日文标题存在时仍日文优先
 - **DMM 官方高清直链兜底**：新增番号→DMM cid 候选构造器 `mdcx/crawlers/dmm_direct.py`（13 组前缀映射、avop/gigl/ekdv 阈值系列、数字系列 T28 拆分），生成竖版 `ps`（awsimgsrc 高清 1032×1469）与横版 `pl`（2184×1469）直链；封面补全所有爬虫失败时走 DMM 官方直链兜底（`scripts/cover_backfill.py`）——**竖版优先**：先下载 `ps` 竖版高清图作 poster（thumb 优先横版 `pl`），竖版不存在或失败时下载横版 `pl` 作 thumb 并复用 mdcx 现有 `cut_thumb_to_poster` 裁剪逻辑（居中/有码右裁/人脸识别）生成竖版 poster，含尺寸校验过滤占位图
 - **DMM cid 前缀表实测校准**：用 dmmapi（thejavdb API）批量比对真实 cid 校准映射表——主流新系列（ssis/ipx/pred/mide/juq 等 23 个）实测为**无前缀**并固定；修正 `sw` 真实前缀为 `1`（SWITCH，原误配）且该系列跨厂商（プラム= `h_113`）改用附加前缀兜底；补入 wanz=`3`、ntrd=`18`、ppd=`24`、umd=`143`、mbd=`433`、sin=`118`、ymd=`h_189`、star/sdde/sdmu/sdab/dandy/fcdss=`1` 等实测前缀
@@ -24,105 +23,37 @@
 - **dmm-probe 工具修复：验证改为实际尺寸判定**：端到端验证发现此前 `_check_cdn` 只看 HTTP 200，把 DMM 低清占位图（147x200/800x536）误判为"高清通过"；改为下载读取实际分辨率 + 多编号段探测取最佳，竖版宽≥500 高>宽才算通过；cover_backfill 的尺寸校验（`_is_usable_dmm_portrait`/`_is_usable_dmm_landscape`）本就正确，端到端确认 SSIS/MILK 高清成功、低清系列正确回退
 - **DMM cid 前缀表 avbase 实际 cid 精确复核**：逐系列用 avbase 实际 cid 复核前缀——`bdsr`/`husr` 主前缀改为 `h_1454`（1529x2184 高清，原 `57` 前缀仅 1032x1468 且降为附加候选）、`sma` 主前缀改为 `42`（原 `83` 前缀只拿到 147x200 占位图，降为附加候选）；其余 44 个"不匹配"确认是 avbase 混入的 `xxxbod`/`xxxa/b` 多版本变体等误报，主前缀均正确
 - **DMM 高清升级统一提炼 + JavDB 三爬虫接入**：`dmm_direct` 新增公共 `build_aws_cover_candidates`/`build_aws_poster_candidates`/`upgrade_dmm_cover`（check_url 验证升级，无码跳过），javbus/r18dev/libredmm 的私有实现改为委托公共版（去重）；**JavDB / JavDB API / JavDB App** 三个爬虫在 `post_process` 接入升级——它们的图是 javdb 图床缩略图（`c0.jdbstatic.com` 哈希路径，非高清），现在有码番号刮削后直接升级为 DMM 官方高清（thumb 横版 pl / poster 竖版 ps），无码番号保持 javdb 原图
+- **工具页新增「检查用户库」+ 自动修复**：扫描运行库格式/结构/数据异常，弹窗分类报告。安全项一键自动修复（jp 空删除、jp 重复合并、keyword 规范化去重、生日越界清空、生涯无年份段删除、tmdb url 按 id 重写）；tmdb 相关项（缺 id 有 url、id/url 重复）仅报告并给手动修复步骤
+- **补全别名支持全量开关**：按钮旁新增「全量更新」开关。默认仅补缺别名行，「全量更新」并入全部行且不覆盖本地已有别名
+- **minnano 补全**：工具页新增「minnano 补全」按钮（从 minnano-av 补缺生日/简介，只补空缺不覆盖）；简介日文字段（出身/爱好/事务所/标签）自动翻译——事务所/标签优先 info 库映射 + 引擎兜底，遍历翻译引擎逐个尝试、失败保留原文；minnano 无数据时本地重排原简介/清洗残留
+- **演员库维护工具联网健壮性改进**：
+  - **独立停止按钮**：新增「停止当前维护任务」按钮，与主界面刮削停止独立；4 个联网工具滑动窗口每轮响应停止，保存已处理部分可续跑
+  - **滑动窗口 + 断点续传**：校验 tmdbid 由全量并发改滑动窗口（并发 5）；补中文名/补链接/补别名/校验 tmdbid 统一支持 `limit` 限量（默认 5000），`.tmdbid_verified.json`/`.gender_checked.json` 断点文件记录已处理项，分片续跑全量不重复请求
+  - **补全别名加「起始行/限量」分片续跑**：工具页新增「起始行」「限量」两个 SpinBox（默认 0/5000，0+5000 等同旧行为），透传 `run_actor_db_xlsx` 的 offset/limit 参数。手动停止时日志输出"最后处理到 xlsx 第 N 行，将「起始行」填入 N-1 即可续跑"，sync_aliases 处理日志带 `[行N]` 前缀便于人工定位。解决全量勾选「全量更新」时中断只能从第 1 行重发请求的问题——限流场景下逐片处理耗时较长，断点续跑避免重复网络往返；非 overwrite 模式原有 keyword 非空跳过兜底依然有效，offset 与其叠加。配套测试 3 个（offset 跳过/offset+limit 分片/非 overwrite 双重过滤）
+  - **LibreDMM 补链接加限流与共享会话**：`fetch_libredmm_link` 改模块级共享会话 + 独立限流器（1.5 req/s、突发 4、自适应降速），防 ban
+- **info 库全面重构优化**：三语言列（jp=日文/zh_cn=简体/zh_tw=繁体）；五源标签收集（javdb app 140 中文 / javbus 734 日文 / libredmm 92 / dmm_api 84 / avbase 67），内容标签 100% 覆盖；cn 翻译贴切度优化 107+60 项（子代理+人工审阅）；jp 中文残留 11 行改标准日文；以 keyword 为导向合并 53 组同概念标签（1265→1193 行），促销类标签入删除行
+- **info 库出厂库合并用户库机制**：`merge_info_db_from_backup`——cn 为合并键（避免 jp 变更致重复）、出厂库权威覆盖、用户新增行保留、md5 marker 跳过未变化行
+- **actor 库标签/事务所/生涯同步**：标签日文残留 11817→0（剔除 7000+ 促销/经历/厂牌词，翻译 3869 次，Google+人工校正 531 词映射）；标签 cn 变化真同步 7 个/174 次；事务所日文→英文公开名同步 460 次；生涯字段日文清洗（提取年份区间）
+- **check_actor_db 检查项整合**：新增 url 错配 3 项（error）、出生日期年份范围（error，1900-2030）、生涯无年份（error，支持全角数字）、简介日文残留（warning，排除出道字段）、简介非结构化（warning）、孤儿 hyperlink（XML 层解析）。出厂库运行 0 error、9 warning
+- **Emby 演员信息补全接入本地演员库（最高优先）**：自动补全 actor 信息时优先查询本地 `actor_database.xlsx`，命中即用本地「出生日期」填 PremiereDate/ProductionYear、本地「简介」填 Overview（换行转 `<br/>`），本地有简介则彻底跳过 wiki/minnano/数据库网络来源；仅本地简介缺失时才退回外部补齐，生日仍取本地。离线可用、降低外部依赖，返回统计新增 Local 计数
+- **Emby 演员管理器新增 graphis 头像和背景图**：匹配头像时新增 graphis.ne.jp 来源（位于 gfriends 之后、minnano 之前），同时下载 prof.jpg（头像）和 model.jpg（背景图），同步时一并上传到 Emby
+- **Emby 演员管理器接入本地演员库（最高优先）**：`search_actor_info` 优先查询本地 `actor_database.xlsx`，命中即用本地出生日期和简介回填，有简介则彻底跳过网络来源，与信息补全按钮行为一致
+- **Emby 演员管理器跳过逻辑精确化**：`_try_fetch_info` 不再仅靠 `has_overview` 布尔值跳过，改为重新拉取 Emby 当前 Overview 并检查是否为"无维基百科信息"占位符，占位符视为缺失重新获取
 
 ### 修复
 
 - **PyInstaller 打包缺失 minnano 爬虫**：`scripts/build.py` 补充 `--hidden-import mdcx.tools.minnano_crawler`（延迟导入模块静态分析探测不到，modulegraph 验证 MISSING，打包后补别名功能会因模块缺失失效）
 - **JavDB 官方 API 图片域名映射更新**：JavDB API 现返回 `tp.spfcas.com/rhe951l4q/`（有水印），`javdb_app.py` 归一化覆盖该域名并转到无水印的 `c0.jdbstatic.com`，与老域名 `tp.cmastd.com`（亦无水印）并行兼容
-
-### 工程质量
-
-- **单站失败原因结构化分类**：新增 `FailureReason` 枚举（not_found/blocked/timeout/parse_error/unknown，取值对齐 javapi 的 ScrapeStatus）；`FailureReason.classify()` 按异常特征归类（超时/CF 拦截/无结果/解析失败），`_call_crawlers` 的 `failure_reasons` 从 `dict[Website, str]` 升级为 `dict[Website, tuple[FailureReason, str]]`，日志仍透出原始错误文本
-
-## v2.0.6 (2026-08-11) 上一个版本
-
-### 修复
-
-- **代理支持补全**：默认"走代理网站"列表加入 `avwikidb.com`、`minnano-av.com`（原 `amazon.co.jp, m.media-amazon.com, xcity.jp, dmm.co.jp`）；裸 `curl_cffi AsyncSession` 的 `fetch_avwiki_aliases`/`fetch_libredmm_link` 在配置开启代理且目标在代理清单时按配置走代理——此前绕过代理配置。`is_proxy_host` 从 `AsyncWebClient` 内部抽取为模块级公共函数供裸 session 使用
+- **代理支持补全**：默认"走代理网站"列表加入 `minnano-av.com`（原 `amazon.co.jp, m.media-amazon.com, xcity.jp, dmm.co.jp`）；裸 `curl_cffi AsyncSession` 的 `fetch_libredmm_link` 在配置开启代理且目标在代理清单时按配置走代理——此前绕过代理配置。`is_proxy_host` 从 `AsyncWebClient` 内部抽取为模块级公共函数供裸 session 使用
 - **Emby 演员管理器 3 个 bug**：「仅补缺失演员」开关此前在 Emby API 查询时不传 `personTypes=Actor`，实际拉全库；详情拉取从串行改 `asyncio.gather + Semaphore(8)`（原本逐个 await 的 N+1 模式）；删除头像/背景图此前不读响应状态码（永远报成功），现按 200/204/404 判定
 - **Emby 演员管理器移植修复**：11 处 `mdcx.models.computed.ComputedManager` import 失败（模块在移植版不存在），全部改为 `manager.acquire_computed()` lease；3 处 `post_content` 返回 `b""` 空字节串被误判失败（falsy-bytes），判定改为 `err == "" and body is not None`
 - **minnano 缓存导入修复**：`emby_actor_manager_ui` 此前 `from .emby_actor_manager import load_cache` 会 ImportError（模块无该函数），改为正确 `from .minnano_crawler import load_cache`；同步过滤掉纯符号名（` .·・-`）时的前 5 条跳过日志
 - **演员管理器数据准确**：update/upload 返回空响应时不再误报失败
-
-### 测试
-
-- 新增 `tests/test_emby_actor_manager_http.py` 共 9 个用例（HTTP 状态判定/并发聚合/falsy-bytes 边界）
-
-## v2.0.5 (2026-08-10) 上一个版本
-
-### 功能
-
-- **工具页新增「检查用户库」+ 自动修复**：扫描运行库格式/结构/数据异常，弹窗分类报告。安全项一键自动修复（jp 空删除、jp 重复合并、keyword 规范化去重、生日越界清空、生涯无年份段删除、tmdb url 按 id 重写）；tmdb 相关项（缺 id 有 url、id/url 重复）仅报告并给手动修复步骤
-- **补全别名支持双来源 + 全量开关**：按钮旁新增来源下拉框（TMDB / AVWikiDB）与「全量更新」开关。AVWikiDB 源新增 `fetch_avwiki_aliases`（curl_cffi impersonate 请求，搜索页取首个 actor 链接后解析详情页「別名:」字段，防错校验主名与查询名规范化变体有交集才采信）。默认仅补缺别名行，「全量更新」并入全部行且不覆盖本地已有别名
-- **minnano 补全**：工具页新增「minnano 补全」按钮（从 minnano-av 补缺生日/简介，只补空缺不覆盖）；简介日文字段（出身/爱好/事务所/标签）自动翻译——事务所/标签优先 info 库映射 + 引擎兜底，遍历翻译引擎逐个尝试、失败保留原文；minnano 无数据时本地重排原简介/清洗残留
-- **移除「从 AVdb 同步」入口**：AVdb（Jav-Actors-Mapping）数据质量差（错误 id 映射、混入大量非 AV 人物、重复行、生日误填），移除工具页入口及配套 UI、信号、处理函数，保留 `sync_from_avdb` 底层函数与测试供脚本复用；连带移除失效的「校验 tmdbid 与名字匹配」孤儿复选框
-- **演员库维护工具联网健壮性改进**：
-  - **独立停止按钮**：新增「停止当前维护任务」按钮，与主界面刮削停止独立；4 个联网工具滑动窗口每轮响应停止，保存已处理部分可续跑
-  - **滑动窗口 + 断点续传**：校验 tmdbid 由全量并发改滑动窗口（并发 5）；补中文名/补链接/补别名/剔除男演员/校验 tmdbid 统一支持 `limit` 限量（默认 5000），`.tmdbid_verified.json`/`.gender_checked.json` 断点文件记录已处理项，分片续跑全量不重复请求
-  - **补全别名加「起始行/限量」分片续跑**：工具页新增「起始行」「限量」两个 SpinBox（默认 0/5000，0+5000 等同旧行为），透传 `run_actor_db_xlsx` 的 offset/limit 参数。手动停止时日志输出"最后处理到 xlsx 第 N 行，将「起始行」填入 N-1 即可续跑"，sync_aliases 处理日志带 `[行N]` 前缀便于人工定位。解决全量勾选「全量更新」时中断只能从第 1 行重发请求的问题——avwiki 限流 1.5 req/s × 每行 2 请求，3000 行约 65 分钟，断点续跑避免重复网络往返；非 overwrite 模式原有 keyword 非空跳过兜底依然有效，offset 与其叠加。配套测试 3 个（offset 跳过/offset+limit 分片/非 overwrite 双重过滤）
-  - **LibreDMM 补链接加限流与共享会话**：`fetch_libredmm_link` 改模块级共享会话 + 独立限流器（1.5 req/s、突发 4、自适应降速），防 ban
-- **出厂演员库全面清洗**（20191 → 18606 行）：
-  - **去重合并**：`merge_actor_db_duplicates.py` 合并无 id/有 id 重复行 17+18 个（别名并集、空缺补全），删前自动备份 `.bak.xlsx`
-  - **非演员清洗**：`clean_actor_db_non_actors.py` 删除三类混入行 457 个——导演/幕后 439（TMDB known_for_department ≠ Acting）、描述词/占位符 16、非 AV 主流人物 2；修复 delete_rows 末尾空行残留
-  - **占位行清理**：删除「前 4 列同值+后 5 列全空/仅生日/仅链接」的无信息量行 283+59+404+355 个（占位判定须用非只读模式避免误删）
-  - **tmdb url 错配修复（严重）**：11757 行「无 id 有 url」全部错配且大量共享同一 url（复制污染），`fix_actor_db_url_mismatch.py` 清空错配 url、删除 52 行无 jp 垃圾行；**db_guard.py 新增数据防线**——写 tmdb url 必须成对写匹配 id，保存后自动跑 check_actor_db
-  - **孤儿 hyperlink 修复（严重）**：openpyxl delete_rows 不同步 hyperlink ref 导致错位/残留，删行后按 cell 坐标重建超链接，孤儿归零
-  - **生涯/简介规范化**：生涯无年份残值（２０６～/引退済 等）清空；简介出道长标题/三围单值/前缀残留清理，出身/爱好日译中去掉日文对照；9 条非标准事务所专名保留不翻
-- **剔除男演员（男优清洗）**：隔离副本真实联网校验 5484 个 tmdbid 的 gender + 内置名单命中，删除 4 个男优（备份到「男优备份」sheet）；名单从 AVWikiDB 扩充 74 个（→697）、核查修正误收女优 2 个；补录 gender=0 识别盲区的漏网男优 23 个（→719）；「男优备份」1196 行全面核查确认无女优误删
-- **出厂库联网补全与校验**：LibreDMM 链接分片补全 120 → 2130 条（剩余为站点未收录）；5484 个 tmdbid 经 `api.tmdb.org` 全量校验全部有效；补中文名确认 2 条 TMDB 无有效中文名；sync_aliases 补全全部 24 条空别名
-- **info 库全面重构优化**：三语言列（jp=日文/zh_cn=简体/zh_tw=繁体）；五源标签收集（javdb app 140 中文 / javbus 734 日文 / libredmm 92 / dmm_api 84 / avbase 67），内容标签 100% 覆盖；cn 翻译贴切度优化 107+60 项（子代理+人工审阅）；jp 中文残留 11 行改标准日文；以 keyword 为导向合并 53 组同概念标签（1265→1193 行），促销类标签入删除行
-- **info 库出厂库合并用户库机制**：`merge_info_db_from_backup`——cn 为合并键（避免 jp 变更致重复）、出厂库权威覆盖、用户新增行保留、md5 marker 跳过未变化行
-- **actor 库标签/事务所/生涯同步**：标签日文残留 11817→0（剔除 7000+ 促销/经历/厂牌词，翻译 3869 次，Google+人工校正 531 词映射）；标签 cn 变化真同步 7 个/174 次；事务所日文→英文公开名同步 460 次；生涯字段日文清洗（提取年份区间）
-- **check_actor_db 检查项整合**：新增 url 错配 3 项（error）、出生日期年份范围（error，1900-2030）、生涯无年份（error，支持全角数字）、简介日文残留（warning，排除出道字段）、简介非结构化（warning）、孤儿 hyperlink（XML 层解析）。出厂库运行 0 error、9 warning
-
-### 修复
-
-- **actor_db 并发 UX bug**：`actor_db_finished` 信号带 task_id 精确定位完成按钮；新增 `_actor_db_running` 状态集合追踪在跑任务，主刮削结束的 `reset_buttons_status` 与 actor_db 完成回调均不再跨任务误启用按钮。抽取 `_run_actor_db_async` 通用模板消灭 6 处重复（isEnabled 检查 → setEnabled(False)+emit 文案 → executor.submit 协程 → finally 发完成信号）
-- **爬虫 xpath 防御下沉**：airav_cc / iqqtv / jav321 / javlibrary / cableav / madouqu / mdtv / avsox / hscangku / official 等 10 处裸 `xpath(...)[0]` 加空列表防御；修复 `airav_cc.get_cover` 中 JSON-LD `thumbnailUrl` 的二次索引（站点有时返回 str 而非 list，原代码 `data_dict.get("thumbnailUrl", "")[0]` 对空 str 会 IndexError）
-- **`update_nfo_tmdb_ids`**：`int(row["tmdbid"])` 加 `TypeError`/`ValueError` 防御（openpyxl 返回 float/str 混杂时不再炸）
-- **`main.py::_apply_ui_scale_factor`** 包 try/except，配置文件解析失败不阻断启动
-- **`tool_handlers._open_file_thread`** 异常路径改用 `traceback.format_exc()`，避免 PyQt 异常对象 str 化失败
-
-### 工程质量
-
-- **ruff 自动修复 138 处**：RET504/RET505（不必要赋值/冗余 else）、RET501/RET502（隐式 None 返回）、RUF010（f-string 显式类型转换）、RUF100（清理无用 noqa)。`mdcx/` 全库通过，保留主分支 0 ruff 告警
-- **探测性 import 显式标注**：`cf_bypass/local_server.py`、`config/resources.py`、`core/amazon.py` 中 try/except ImportError 探活块加 `# noqa: F401` 注释说明用途，避免误判为无用 import
-- **`cf_bypass/local_server.py::uvicorn.Server`**：类型注解改 TYPE_CHECKING import，mypy 真正可识别
-- **`web_async.py::_download_chunk`**：返回值类型由 `str | None` 修正为 `str`（空串成功/非空失败的现约定），补文档；curl-cffi response patch 失败的静默点加诊断日志
-- **新增 `tests/test_actor_db_button_consistency.py`**：纯静态（无需 Qt 运行时）校验 `_ACTOR_DB_IDLE_TEXT_MAP` ↔ `MDCx.ui` ↔ `MyMainWindow` 顶层 `pyqtSignal(str)` 声明 ↔ `actor_db_finished` 信号契约四层一致，按钮改名/漏声明/map 漏收时 CI 立即红
-
-## v2.0.4 (2026-08-04)
-
-### 功能
-
-- **从 AVdb 同步演员映射**：演员库维护工具新增「从 AVdb 同步」按钮，消费社区维护的 `actor-mapping.xml`（li-peifeng/Jav-Actors-Mapping），一键补齐中文名/繁体名/别名/出生日期/简介。数据源四选一：jsDelivr 加速（默认）/ GitHub 直连 / 自定义下载地址 / 本地 xml 文件
-- **演员数据库新增「出生日期」「简介」两列**：`bio_graphy` 解析出结构化出生日期（YYYY-MM-DD）与静态简介，剔除动态「N岁」年龄；老 7 列 xlsx 向后兼容
-- **智能合并写入**：匹配顺序 jp 精确 → 中文精确 → keyword 命中 → 未匹配新建；本地优先只补空缺、绝不覆盖已有数据；keyword 合并去重；tmdbid 冲突视为同一人并入别名而非新建
-- **数据库静态校验脚本**：`scripts/check_actor_db.py` 检查出厂 xlsx 的 jp 重复、keyword 脏数据/重复词、空字段、tmdbid 重复、出生日期格式，挂入 `uv run check`
-- **Emby 演员信息补全接入本地演员库（最高优先）**：自动补全 actor 信息时优先查询本地 `actor_database.xlsx`，命中即用本地「出生日期」填 PremiereDate/ProductionYear、本地「简介」填 Overview（换行转 `<br/>`），本地有简介则彻底跳过 wiki/minnano/数据库网络来源；仅本地简介缺失时才退回外部补齐，生日仍取本地。离线可用、降低外部依赖，返回统计新增 Local 计数
-- **Emby 演员管理器新增 graphis 头像和背景图**：匹配头像时新增 graphis.ne.jp 来源（位于 gfriends 之后、minnano 之前），同时下载 prof.jpg（头像）和 model.jpg（背景图），同步时一并上传到 Emby
-- **Emby 演员管理器接入本地演员库（最高优先）**：`search_actor_info` 优先查询本地 `actor_database.xlsx`，命中即用本地出生日期和简介回填，有简介则彻底跳过网络来源，与信息补全按钮行为一致
-- **Emby 演员管理器跳过逻辑精确化**：`_try_fetch_info` 不再仅靠 `has_overview` 布尔值跳过，改为重新拉取 Emby 当前 Overview 并检查是否为"无维基百科信息"占位符，占位符视为缺失重新获取
-- **剔除男演员（TMDB gender 校验）**：`actor_database.xlsx` 数据来自 AVdb 映射，包含男优（加藤鷹、しみけん 等）。新增「剔除男演员」按钮（演员库维护组）：按 tmdbid 调 TMDB `/person/{id}` 取 gender，gender=2（男）的行删除，删除前备份到独立「男优备份」sheet；gender 0/1、请求失败、无 tmdbid 一律保留不误删。支持限量与手动停止。同时 `sync_from_avdb` 新增 `filter_male=True` 源头过滤——待新建条目校验性别，男优直接跳过不写入，本地已有 tmdbid 不重复请求
-- **出厂库增量合并进用户库**：出厂库（`resources/userdata/actor_database.xlsx`）随软件版本更新（清洗修正、新增演员），但老用户已存在的用户库（`userdata/actor_database.xlsx`）此前只在首次创建时复制、之后不再同步，清洗成果无法到达老用户。新增 `resources.merge_actor_db_from_backup`：启动时把出厂库中「用户库没有的新条目」完整追加，并给「用户库已有但字段空缺」的条目补全（tmdbid/生日等）——只增不删、绝不覆盖用户已填的值、绝不删除用户库任何行；**别名列做并集合并去重，按「纯中文→中日混合→日文→罗马音」排序（中国人习惯）**；用出厂库 md5 写入 `userdata/.actor_db_merge_marker` 标记，出厂库未变化时跳过，避免每次启动重复扫描。配套测试 9 个 `tests/test_actor_db_merge.py`
-- **出厂库 tmdbid 全量验证补完**：确认出厂库 5657 个有 id 演员的验证状态——5511 个在身份排查 audit 中验证过，146 个补 id 时经软件正向搜索验证过，剩余 37 个未验证的逐一用 TMDB `person/{id}` 反查补齐：19 个 TMDB 已删除（404 失效 id，如 `桃乃木香奈`/`楓カレン`/`三佳詩`）、2 个错误映射（`星海レイカ`→Yuka Kojima、`ジゼル`→Tyra）→ 清除这 21 个 tmdbid；16 个确认片假名↔英文同人（`キャシー・ヘブン`→Cathy Heaven 等西方女优）→ 保留。有 tid 5678 → 5657，出厂库 id 全部验证通过（合并进用户库的 id 均为正确映射）
-- **清除出厂库中误收录的非 AV 人物 id**：用 TMDB `adult=False` 标记筛查出出厂库混入大量非 AV 人物——先清除 39 个确定项（好莱坞影星 `玛丽莲·梦露`/`汤唯`/`张雨绮`/`莎朗·斯通`、知名声优 `水樹奈々`/`林原めぐみ`/`竹内順子`、日本女演员 `橋本環奈`/`有村架純`/`長澤まさみ`），再对剩余 987 个 `adult=False` 用 `combined_credits` 作品名复核（强成人特征词 vs 主流作品占比，断点续传+进度展示）：366 个确认非 AV（声优/偶像/歌手/主流演员如 `坂本真綾`/`安室奈美恵`/`安宥真`/`白石麻衣`/`浜崎あゆみ`）清除 id，368 个有成人作品保留，245 个不确定保留（宁缺毋滥）。有 tid 5657 → 5252（其中 4485 个 adult=True 真 AV，767 个 adult=False 但复核 av/unknown 保留）
-- **删除确认非 AV 的演员行**：405 个复核确认非 AV 的人物（含 39 个确定项 + 366 个作品复核判定）从出厂库整行删除（非仅清 id），确保 `玛丽莲·梦露`/`安室奈美恵`/`橋本環奈` 等绝不在 AV 演员库。新增 `scripts/clean_actor_db_non_av.py` 固化该检测规则——遍历有 tmdbid 的演员，adult=True 保留、adult=False 拉作品复核、确认非 AV 整行删除（删除前备份 .bak，支持断点续传与进度展示），供以后重复清理。出厂库 20757 → 20352 行
-- **清除无 id 演员中混入的非 AV 人物**：对之前软件筛查遗留的 220 个「匹配到 TMDB 但 adult=False」的无 id 演员，逐一拉 `combined_credits` 完整作品复核——36 个确认非 AV（K-POP 偶像 `本田仁美`/`イェジ`/`スヨン`/`Lisa`、声优 `内田彩`、特摄演员 `川崎愛`/`高橋明日香`、歌手 `小野春菜` 等）删除整行，其中修正 1 个误判（`西永彩奈` 作品全为 Air control AV 系列，实为真 AV 女优，保留）；20 个有成人作品保留，161 个作品少/无法判断保留（宁缺毋滥）。出厂库 20352 → 20317 行
-- **同一演员重复行合并（A+B 类）**：发现出厂库存在大量「同一 TMDB person 对应多行」的情况——A 类空格差异（`高見えな`/`高見 えな`）13 对、B 类无 id 日文 + 有 id 中文/罗马音（`愛原つばさ`/`爱原翼`）37 对，合并 50 对删除 48 行。用 libredmm 作品数逐一验证主名方向，发现 7 对方向错误（`波形モネ`/`青木琴音` 等，主名应为作品多的 `青木琴音`）回滚重做；23 对 tie 经分类确认 keep 方向正确（日文原名/无空格为主名）。合并后别名并集、空缺字段补全，出厂库 20317 → 20269 行
-- **补全 libredmm 链接**：对 A+B 涉及的演员逐一搜索 libredmm 补全 href，链接从 74 → 122 个
-- **C 类双艺名/多重别名合并**：对出厂库中「两个日文艺名」的疑似同人（无码演员，libredmm 无记录）用 javdb app 演员 ID 体系判断主名——javdb `name` 字段是主名、`other_name` 是别名、作品数辅助判断（修复 actor 匹配逻辑后 `沖田いつき` 归一到主名 `赤瀬尚子`、`東雲れん`/`御坂りあ` 归一到 `御坂莉亞`）。合并 52 对单对 + 2 组多重别名（`園田かのこ`=華澤かこ+藤崎いのり、`麻宮わかな`=若宮エレナ+西村綾香，avwikidb 确认）+ 1 组重复 id（`櫻木梨乃`=真名瀬りか）。另用 avwikidb（用户手动查证）+ javdb + libredmm 三方交叉验证合并 2 组重复 id（`西倉まより`(主名,23部) + `鶴島さゆき`、`咲田ラン`(主名,12部) + `丸川あみ`）。出厂库 20269 → 20211 行
-- **无 id 演员重查补 id（融合软件 TMDB 方法）**：对 271 个「被清除 id + 仅名字」的无 id 演员，融合软件刮削 `query_single_actor_cached` 的成熟匹配（名字匹配 + `place_has_japan`/`adult`/`popularity`/`known_for_count` 优中选优，用 keyword 别名辅助搜索）——找到 257 个候选，其中 220 个 adult=True，再逐一反查验证库名/别名（含繁简）确实在 TMDB name/aka 中，确认补回 214 个正确 id（`桃乃木香奈`→2616715、`三佳詩`→5882313、`楓カレン`→2638477、`海野環`→1548446 等），剔除 43 个名字不匹配/错误映射（`白井ほの`→大沢美加、`未来`→志田未来、`夢華さら` 等）。有 tid 5270 → 5484
-
-### 修复
-
 - **新增「更新 nfo tmdbid」按钮**（演员库维护）：nfo 文件是刮削时静态写入的持久数据，库中 id 失效清除+补回后 nfo 里的旧 id 不会自动更新（Emby 服务器 Person id 只是 nfo 的派生，重扫会回退）。新增 `update_nfo_tmdb_ids`：批量扫描指定目录所有 nfo，用本地演员库（已校验+补回的新 id）**文本级替换** nfo 中 actor 的 `<tmdbid>`——旧 id 覆盖为新 id，原本没有 tmdbid 的补上；仅改 tmdbid 值，保留 nfo 其他内容与格式（不重建 nfo）。工具页新增「更新 nfo tmdbid」按钮 + 目录选择，带说明文字。配套测试 2 个（文本替换/端到端更新）
 - **新增「校验 tmdbid 有效性」按钮**（演员库维护）：TMDB 是公开平台，person id 可能被删除/重建/合并（如「三佳詩」旧 id 6231965 被 TMDB 删除后重建为 5882313），库中 id 静态存储不会自愈，失效 id 被刮削直接采用会导致拿错误资料或 404。新增 `verify_tmdb_ids`：扫描库中所有有 tmdbid 的行，并发调 TMDB `person/{id}` 校验，404（person 已删除）清除该行 tmdbid + tmdb url（回到无 id 状态，宁缺毋滥，刮削按名字重新搜索）；清除后**按名字重搜 TMDB 自动补回新 id**（复用 `query_single_actor_cached`，仅补 adult=True 且名字匹配的，如三佳詩 6231965→5882313）；网络错误/限流/5xx 保守保留不误清；支持 limit 限量与手动停止。工具页新增「校验 tmdbid 有效性」按钮（含说明文字）触发。配套测试 4 个（失效清除/全有效保留/网络错误保留/补回新 id）
 - **TMDB 演员匹配优化**（`tmdb_actor`）：`_expand_name_variants` 加入繁→简转换（zhconv zh-cn），覆盖 variant map 未收录的大量繁简字（`三佳詩`/`三佳诗`、`涼子`/`凉子`）——TMDB name/aka 常为简体、库名常为繁体，此前匹配失败导致漏配；`_query_single_actor` 候选排序 `adult=True` 权重提升至 `place_has_japan` 之前——AV 女优的 adult 标记是最强信号，优先于"日本出生地"（日本普通演员也出生日本），减少同名普通演员冒充 AV 女优的误选
 - **TMDB 演员匹配稳健性优化**（`tmdb_actor`）：候选从 `results[:5]` 放宽到 `results[:10]`（通用名时正确结果可能不在前 5）；新增 `hit_count` 命中变体数作为排序维度（置于 adult/place_has_japan 之后、popularity 之前），同名演员只命中 1 个通用变体的弱匹配不再与多变体命中的强匹配同等对待；`known_for_count` 改为从 search 接口的 `known_for` 字段取值——person detail 接口不含 `known_for`，此前恒为 0 是无效排序维度
-
 - **工具页布局重叠**：增高「演员库维护」组后曾与下方 `groupBox_7` 重叠 110px，连锁下移下方 6 个分组并同步滚动容器高度
-- **漏加 UI 控件**：生成文件 `MDCx.py` 曾漏加「从 AVdb 同步」的提示 label，导致运行时不显示，已补齐
 - **设置页 groupBox 布局重叠**：全面检查所有 tab 发现 2 处历史遗留重叠——命名页 `groupBox_40`（字段命名规则）与 `groupBox_8`（视频命名规则）重叠 181px、下载页 `groupBox_34`（创建剧照副本）与 `groupBox_66`（显示剧照）重叠 21px。连锁下移受影响 groupBox 及下方所有兄弟，统一间距为 19px，同步滚动区高度
 - **重复且无效的补全范围单选按钮**：设置-演员页 `frame_8`/`frame_9` 中误放了 4 个与正确版本（无后缀）视觉重复的"所有女优/仅缺少信息"单选按钮，无代码接线、点击无效，已删除
 - **MDCx.py 与 MDCx.ui 文案漂移**：将手工维护的界面文案（Emby 演员管理器描述含 graphis、项目主页 `mdcx-diy` 链接、帮助尾注）回写 `MDCx.ui` 作为唯一权威源，重编译不再回退文案
@@ -135,11 +66,21 @@
   - 修复 5 处无声 `except`（加 traceback/日志输出），`warm_cache.py` 新增下载 URL 白名单校验（防供应链投毒）
 - **minnano 演员日文名查找路径 bug**：`minnano_crawler._lookup_japanese_name` 硬编码相对路径 `resources/userdata/actor_database.xlsx` 逐行扫描——打包后 CWD 变化路径失效，且读的是出厂库而非运行时用户库（用户同步/刮削的新数据查不到）。重构为复用 `resources.get_actor_data`（内存缓存+反向索引，读运行时用户库），支持中文/日文/别名/归一化变体匹配，消除每次全表扫描。配套测试 5 个 `tests/test_minnano_lookup.py`
 - **minnano 缓存文件路径 bug**：`CACHE_FILE` 硬编码 `resources/userdata/minnano_cache.xlsx`，`_get_cache_path()` 解析为 `data_folder/resources/userdata/...`——打包后 `data_folder` 下无 `resources` 子目录，缓存读不到也写不进。改为标准用户数据目录 `userdata/minnano_cache.xlsx`（与 `resources.u()` 一致），`save_cache_row` 写入前自动创建父目录。配套测试 2 个（缓存路径、自动建目录+读写）
+- **actor_db 并发 UX bug**：`actor_db_finished` 信号带 task_id 精确定位完成按钮；新增 `_actor_db_running` 状态集合追踪在跑任务，主刮削结束的 `reset_buttons_status` 与 actor_db 完成回调均不再跨任务误启用按钮。抽取 `_run_actor_db_async` 通用模板消灭 6 处重复（isEnabled 检查 → setEnabled(False)+emit 文案 → executor.submit 协程 → finally 发完成信号）
+- **爬虫 xpath 防御下沉**：airav_cc / iqqtv / jav321 / javlibrary / cableav / madouqu / mdtv / avsox / hscangku / official 等 10 处裸 `xpath(...)[0]` 加空列表防御；修复 `airav_cc.get_cover` 中 JSON-LD `thumbnailUrl` 的二次索引（站点有时返回 str 而非 list，原代码 `data_dict.get("thumbnailUrl", "")[0]` 对空 str 会 IndexError）
+- **`update_nfo_tmdb_ids`**：`int(row["tmdbid"])` 加 `TypeError`/`ValueError` 防御（openpyxl 返回 float/str 混杂时不再炸）
+- **`main.py::_apply_ui_scale_factor`** 包 try/except，配置文件解析失败不阻断启动
+- **`tool_handlers._open_file_thread`** 异常路径改用 `traceback.format_exc()`，避免 PyQt 异常对象 str 化失败
 
 ### 工程质量
 
+- **单站失败原因结构化分类**：新增 `FailureReason` 枚举（not_found/blocked/timeout/parse_error/unknown，取值对齐 javapi 的 ScrapeStatus）；`FailureReason.classify()` 按异常特征归类（超时/CF 拦截/无结果/解析失败），`_call_crawlers` 的 `failure_reasons` 从 `dict[Website, str]` 升级为 `dict[Website, tuple[FailureReason, str]]`，日志仍透出原始错误文本
+- **ruff 自动修复 138 处**：RET504/RET505（不必要赋值/冗余 else）、RET501/RET502（隐式 None 返回）、RUF010（f-string 显式类型转换）、RUF100（清理无用 noqa)。`mdcx/` 全库通过，保留主分支 0 ruff 告警
+- **探测性 import 显式标注**：`cf_bypass/local_server.py`、`config/resources.py`、`core/amazon.py` 中 try/except ImportError 探活块加 `# noqa: F401` 注释说明用途，避免误判为无用 import
+- **`cf_bypass/local_server.py::uvicorn.Server`**：类型注解改 TYPE_CHECKING import，mypy 真正可识别
+- **`web_async.py::_download_chunk`**：返回值类型由 `str | None` 修正为 `str`（空串成功/非空失败的现约定），补文档；curl-cffi response patch 失败的静默点加诊断日志
+- **新增 `tests/test_actor_db_button_consistency.py`**：纯静态（无需 Qt 运行时）校验 `_ACTOR_DB_IDLE_TEXT_MAP` ↔ `MDCx.ui` ↔ `MyMainWindow` 顶层 `pyqtSignal(str)` 声明 ↔ `actor_db_finished` 信号契约四层一致，按钮改名/漏声明/map 漏收时 CI 立即红
 - **清理死代码**：移除 `PreparePreviewThread` 中未使用的 `info_sources` 属性
-- **AVdb 解析独立模块**：`mdcx/utils/xml_avdb.py`（纯标准库）含解析、出生日期提取、年龄剔除、转义清洗，配套 22 个单元测试
 - **记忆文件更新**：`.monkeycode/MEMORY.md` 合并工具页 UI 改动注意点（连锁下移、手工核对生成控件、comboBox 内部件误报）
 - **mypy 严格化（三阶段，彻底移除 `disable_error_code`）**：`pyproject.toml` 中 19 项 `disable_error_code` 全部移除，全项目 mypy 零抑制通过（133 文件）。`scripts/check.py` 的 `check` 命令加入 `mypy mdcx/`，推送前自检覆盖类型检查。各阶段：
   - 移除 `assignment`/`arg-type`/`return-value` 并修复 43 处类型错误（变量类型冲突、可选值未收窄等）
@@ -154,34 +95,14 @@
 - **UI 结构自动化测试**：新增 `tests/test_ui_structure.py`（5 个测试）固化 UI 结构约束——groupBox 同父容器不重叠/无负间距/不超滚动区、用户控件 objectName 唯一、`MDCx.py` 与 `MDCx.ui` 重编译同步（防手工漂移）。自动纳入 `uv run check` 与 CI pytest
 - **`validate_crawler_registry` 测试**：新增 `test_validate_crawler_registry_no_missing`，固化"新增 Website 枚举必须注册爬虫"且废弃值 AIRAV 不得有爬虫
 
+### 测试
+
+- 新增 `tests/test_emby_actor_manager_http.py` 共 9 个用例（HTTP 状态判定/并发聚合/falsy-bytes 边界）
+
 ### 文档
 
 - **使用说明 tab 更新**：项目主页链接修复为 `mdcx-diy`，上游项目信息改为 `sqzw-x/mdcx → Hazard804/mdcx → ZiPenOk/mdcx`
 - **README / INSTALL / FEATURES / USER_GUIDE / CONFIGURATION**：修复 3 处仓库链接，补充 graphis 和本地演员库等新功能描述
-
-### 演员库数据清洗
-
-- **存量垃圾数据清洗**：新增 `scripts/clean_actor_db_field_noise.py` 一次性清洗出厂 `actor_database.xlsx`，清理约 300 处字段噪声——名字混入系列/站点标签（`パコパコママ`/`FC2`/`グラドル`/`トリプルエックス`）、年份（`（2015）`）、国籍/事务所标注（`マオ（ベトナム）`/`Lisa【FALENO】`）、描述污染（`巨乳女子プロレスラー凛叶`/`生意気ツインテール18ちゃん`）；别名混入作品标题（`ラグジュTV`/`ママ友喰い`/`VOL.xx`）、名字+年龄（`あいみ 20歳`）、类型标签（`人妻`/`着エロ`）、悬空斜杠/残括号（`ただえりさ /`）；占位符名字（`素人奥様`）与简介碎片置空。保留罗马音/日文映射、读音、韩文别名等合法内容
-- **新数据自动清洗防线**：新增 `mdcx/utils/actor_clean.py` 统一语义清洗模块，`sync_from_avdb`（AVdb 同步）与 `update_actor_db_row`（刮削写入）入口自动应用——今后 AVdb 同步或刮削新增的演员数据自动剥离同名噪声；纯占位符名返回 `skipped_placeholder` 不写入脏数据。清洗脚本重构为复用该模块，存量清洗与新数据清洗共享同一规则源
-- **配套测试**：新增 `tests/test_actor_clean.py`（18 个用例）覆盖名字/别名的标签剥离、标注剥离、作品标题剔除、悬空斜杠修复、占位符识别、合法别名保留；`update_actor_db_row` 占位符保护与清洗写入各 1 个用例
-
-### TMDB 演员身份排查与清理
-
-- **背景**：AVdb 同步数据中发现部分 tmdbid 指向错误人物（如动画录音师、声优、好莱坞演员），经 TMDB API 全量排查 9251 个有 id 演员（9232 成功），识别出疑似非 AV 演员 3447 个
-- **排查方法**：第一波查 `person/{id}` 取 `adult` 标记与 `known_for_department`；第二波对 `adult=False` 的 4511 个查 `combined_credits` 作品，按作品名判断是否成人内容。校准确认知名 AV 女优（三上悠亜/波多野結衣等）均为 `adult=True`
-- **分类结果**：明确 AV（adult=True）4721 个、非 Acting 部门 934 个、Acting+有成人作品 1052 个、Acting+仅非成人作品 2414 个、Acting+无作品 99 个
-- **清理动作**：删除疑似非 AV 演员 3447 行（非 Acting 部门 934 + Acting 无成人作品 2414 + 无作品 99），出厂库 24243 → 20796 行，保留男优备份 sheet。宁缺毋滥——错误 id 比无 id 更糟（刮削兜底会取到错误人物资料），删除后刮削遇同名演员按名字重新搜索
-- **顺带修复**：清除 7120 行"无 tmdbid 但 url 有值"的孤儿 url（AVdb 源数据错误映射残留，url 内 id 与库中已有行重复但非同一演员，反推补 id 会固化错误）
-- **无 id 演员软件筛查**：复用项目 `query_single_actor_cached`（含 `include_adult=true`、名字变体扩展、性别过滤）按名字批量筛查 14952 个无 id 演员——14469 个无匹配（真 AV 女优 TMDB 未收录），483 个匹配到 person；其中 263 个 adult=True 可补 id、220 个 adult=False 疑似非 AV
-- **补 id 与去重**：263 个可补 id 中，116 个与库中已有 id 重复（9 个经别名证明是同一人应合并、107 个无法证明不补）；147 个全新 id 经 TMDB `also_known_as` 逐一验证后补入（146 个成功，1 个 `本庄ひな` 别名指向库中已存在的 `菊川みつ葉` 故撤销）。最终有 tid 5804 → 5950
-- **adult=False 的 220 个**：TMDB 标 non-adult 的匹配人物，抽查发现混杂两类——未标 adult 的 AV 女优（`愛田るか`/`浅倉麗`）与真非 AV 人物（`本田仁美`=IZ*ONE 偶像/`内田彩`=声优）。因 adult 标记与作品关键词判断均不可靠，**保留不处理**——它们保持无 id 状态，刮削按名字搜索自然容错，符合宁缺毋滥原则
-- **有 id 演员 id 反查（tmdbid 校验）**：AVdb 同步的数据准确性存疑，对全部 5950 个有 id 演员用 id 反查 TMDB `person/{id}`（`name`+`also_known_as` 归一化比对，复用软件 `_expand_name_variants`/`_norm_name_set` 匹配逻辑）——5642 个（94.8%）库名与 id 人物直接匹配确认正确；16 个片假名↔英文对照的西方女优（`キャシー・ヘブン`→`Cathy Heaven` 等）实为同人；258 个存疑（库名与 id 人物无法证实同一人），二次判定用软件 `query_single_actor_cached` 正向搜索复核，25 个被软件认可、233 个未证实
-- **清除 272 个存疑 id**：确认 AVdb 源存在真实错误映射（如 `平山加奈`→美国演员 Christa Allen、`森千里`→歌手森高千里、`恵美`→声优绪方惠美、`白井ほの`→大沢美加、`未来`→女演员志田未来），库名与 id 人物无任何关联。清除 272 个无法证实同一人的 tmdbid 与 tmdb url（含 14 个软件搜索结果与库内 id 不一致的），宁缺毋滥——回到无 id 状态，刮削按名字重新搜索自然容错。有 tid 5950 → 5678
-- **`sync_from_avdb` 写入防线**：新增 `mdcx/core/tmdb_actor.fetch_person_identity`（带 `_PERSON_IDENTITY_CACHE`）返回 `{gender, name, original_name, also_known_as}`；`actor_db_tool` 新增 `_tmdb_id_matches_entry`/`_entry_variants`/`_is_katakana_roman_pair` 归一化比对（复用软件既有 `_expand_name_variants`/`_norm_name_set` 匹配逻辑，片假名↔英文音译对照视为同人放行，请求失败保守放行）。`sync_from_avdb(verify_tmdbid=True)` 默认开启：待写入的新 tmdbid 先用 `person/{id}` 反查身份，与条目名不匹配则丢弃该 id 保留其他字段（`skipped_tmdbid` 计数，完成日志含「丢弃错误id」统计）；已存在于库中的 id 属历史数据不重复反查。GUI 新增「校验 tmdbid 与名字匹配」复选框（默认勾选）控制开关，见 `mdcx/views/MDCx.ui`。配套测试 6 个（匹配保留/错配丢弃/关闭校验/片假名放行/已存在不反查），`tests/test_actor_db_filter_male.py`
-- **生日字段误填清洗**：审计发现 `extract_birth_date` 会把 bio 中「XX年出道」「出道作品发行日期」误提取为生日——12346 行有生日的库中 2199+ 行 bio 明确是出道年份、526 行只填 4 位年份（几乎全是出道年）、171 条 2023+ 完整生日基本全是出道日期，emby 演员卡显示错误生日。修复 `mdcx/utils/xml_avdb.py`：`extract_birth_date` 改为**只在文本出现出生语义（出生/誕生/生年月日/生日）时提取**（新增 `_BIRTH_FULL_DATE_PATTERNS`/`_BIRTH_YEAR_MONTH_PATTERNS`/`_BIRTH_YEAR_PATTERNS`），宁缺毋滥拒绝出道/作品日期；配套测试 6 个（含拒绝出道年、作品日、出生语义保留）。存量数据以 AVdb 源重新提取修正——修正 2167 行（清除出道年份误填 + 补源中的真实出生日期），有生日 12346 → 10583（无 2025/2026 荒谬年份，知名演员正确生日如桃園怜奈 1996-07-27 保留）
-- **空 jp 主名行修复**：36 行日文原名缺失（软件 `read_actor_db_xlsx` 遇空 jp 直接跳过，永远加载不到）——11 行可救（有别名/简介/tmdbid，从 bio/别名提取主名补上，如 `高木由香`/`戸田さやか`/`渋谷レミ`），25 行垃圾/占位（`複数`/`管理者様、女優名を復元してください`/`凛女優情報`/`S級素人` 等）删除。空 jp 清零
-- **jp 主名重复行合并**：14 组同名行（如 `小沢優` 两行别名互补、`SARA` 一行含 `吉川澪,黒沢麗華` 被另一行覆盖、`アイカ` 一行缺生日）——保留信息更丰富的一行并合并别名/缺失字段，删除冗余行。重复 jp 清零，dict 加载不再丢别名
-- **别名重复词去重**：37 行别名列含重复项（`河北麻衣,河北麻衣`、`AIKA,AIKA`、`MARON,Maron`），单行纯去重（大小写不敏感）。`check_actor_db` 错误从 88 → 0（仅剩 22 个 zh_cn/zh_tw 为空的非阻断 warning，属「补全中文名」工具范畴）
 
 ## v2.0.3 (2026-08-03)
 
