@@ -523,7 +523,11 @@ async def trailer_download(
         # 预告片文件夹已在已处理列表时，返回（这时只需要下载一个，其他分集不需要下载）
         if trailer_folder_path in Flags.trailer_deal_set:
             return None
-        Flags.trailer_deal_set.add(trailer_folder_path)
+        async with Flags._trailer_lock:
+            if trailer_folder_path not in Flags.trailer_deal_set:
+                Flags.trailer_deal_set.add(trailer_folder_path)
+            else:
+                return None
         await _cleanup_download_part_files(trailer_file_path, trailer_file_path.with_suffix(".[DOWNLOAD].mp4"))
 
         # 不下载不保留时删除返回
@@ -555,8 +559,9 @@ async def trailer_download(
 
     # 选择保留文件，当存在文件时，不下载。（done trailer path 未设置时，把当前文件设置为 done trailer path，以便其他分集复制）
     if trailer_policy.should_keep and await aiofiles.os.path.exists(trailer_file_path):
-        if not Flags.file_done_dic.get(result.number, cast(FileDoneDict, {})).get("trailer"):
-            Flags.file_done_dic[result.number].update({"trailer": trailer_file_path})
+        async with Flags._file_done_lock:
+            if not Flags.file_done_dic.get(result.number, cast(FileDoneDict, {})).get("trailer"):
+                Flags.file_done_dic[result.number].update({"trailer": trailer_file_path})
             # 带文件名时，删除掉新、旧文件夹，用不到了。（其他分集如果没有，可以复制第一个文件的预告片。此时不删，没机会删除了）
             if not trailer_name:
                 if await aiofiles.os.path.exists(trailer_old_folder_path):
@@ -610,15 +615,16 @@ async def trailer_download(
                     await move_file_async(trailer_file_path_temp, trailer_file_path)
                     await delete_file_async(trailer_file_path_temp)
                 done_trailer_path = Flags.file_done_dic.get(result.number, cast(FileDoneDict, {})).get("trailer")
-                if not done_trailer_path:
-                    Flags.file_done_dic[result.number].update({"trailer": trailer_file_path})
-                    if trailer_name == 0:  # 带文件名，已下载成功，删除掉那些不用的文件夹即可
-                        if await aiofiles.os.path.exists(trailer_old_folder_path):
-                            await to_thread(shutil.rmtree, trailer_old_folder_path, ignore_errors=True)
-                        if trailer_new_folder_path != trailer_old_folder_path and await aiofiles.os.path.exists(
-                            trailer_new_folder_path
-                        ):
-                            await to_thread(shutil.rmtree, trailer_new_folder_path, ignore_errors=True)
+                async with Flags._file_done_lock:
+                    if not done_trailer_path:
+                        Flags.file_done_dic[result.number].update({"trailer": trailer_file_path})
+                        if trailer_name == 0:
+                            if await aiofiles.os.path.exists(trailer_old_folder_path):
+                                await to_thread(shutil.rmtree, trailer_old_folder_path, ignore_errors=True)
+                            if trailer_new_folder_path != trailer_old_folder_path and await aiofiles.os.path.exists(
+                                trailer_new_folder_path
+                            ):
+                                await to_thread(shutil.rmtree, trailer_new_folder_path, ignore_errors=True)
                 return True
             LogBuffer.log().write(
                 f"\n 🟠 Trailer size is incorrect! delete it! ({result.trailer_from} {file_size}/{content_length}) "
@@ -628,17 +634,18 @@ async def trailer_download(
         await delete_file_async(trailer_file_path_temp)
         LogBuffer.log().write(f"\n 🟠 Trailer download failed! ({trailer_url}) ")
 
-    if await aiofiles.os.path.exists(trailer_file_path):  # 使用旧文件
+    if await aiofiles.os.path.exists(trailer_file_path):
         done_trailer_path = Flags.file_done_dic.get(result.number, cast(FileDoneDict, {})).get("trailer")
-        if not done_trailer_path:
-            Flags.file_done_dic[result.number].update({"trailer": trailer_file_path})
-            if trailer_name == 0:  # 带文件名，已下载成功，删除掉那些不用的文件夹即可
-                if await aiofiles.os.path.exists(trailer_old_folder_path):
-                    await to_thread(shutil.rmtree, trailer_old_folder_path, ignore_errors=True)
-                if trailer_new_folder_path != trailer_old_folder_path and await aiofiles.os.path.exists(
-                    trailer_new_folder_path
-                ):
-                    await to_thread(shutil.rmtree, trailer_new_folder_path, ignore_errors=True)
+        async with Flags._file_done_lock:
+            if not done_trailer_path:
+                Flags.file_done_dic[result.number].update({"trailer": trailer_file_path})
+                if trailer_name == 0:
+                    if await aiofiles.os.path.exists(trailer_old_folder_path):
+                        await to_thread(shutil.rmtree, trailer_old_folder_path, ignore_errors=True)
+                    if trailer_new_folder_path != trailer_old_folder_path and await aiofiles.os.path.exists(
+                        trailer_new_folder_path
+                    ):
+                        await to_thread(shutil.rmtree, trailer_new_folder_path, ignore_errors=True)
         LogBuffer.log().write("\n 🟠 Trailer download failed! 将继续使用本地旧文件！")
         return True
 

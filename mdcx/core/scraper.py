@@ -407,16 +407,19 @@ class Scraper:
             if json_data and other:
                 if manager.config.main_mode == 4:
                     number = json_data.number
-                Flags.json_data_dic.update({number: ScrapeResult(file_info, json_data, other)})
-                for status_number in (origin_number, number):
-                    if status_number in Flags.json_get_status and Flags.json_get_status[status_number] is None:
-                        Flags.json_get_status[status_number] = True
+                async with Flags._json_get_lock:
+                    Flags.json_data_dic.update({number: ScrapeResult(file_info, json_data, other)})
+                    for status_number in (origin_number, number):
+                        if status_number in Flags.json_get_status and Flags.json_get_status[status_number] is None:
+                            Flags.json_get_status[status_number] = True
             elif origin_number in Flags.json_get_status and Flags.json_get_status[origin_number] is None:
-                Flags.json_get_status[origin_number] = False
+                async with Flags._json_get_lock:
+                    Flags.json_get_status[origin_number] = False
         except Exception as e:
             scrape_error = str(e)
             if origin_number in Flags.json_get_status and Flags.json_get_status[origin_number] is None:
-                Flags.json_get_status[origin_number] = False
+                async with Flags._json_get_lock:
+                    Flags.json_get_status[origin_number] = False
             self._check_stop(show_name)
             signal.show_traceback_log(traceback.format_exc())
             signal.show_log_text(traceback.format_exc())
@@ -997,17 +1000,18 @@ class Scraper:
                 return None, None
 
         # 初始化图片已下载地址的字典
-        if not Flags.file_done_dic.get(res.number):
-            Flags.file_done_dic[res.number] = FileDoneDict(
-                poster=None,
-                thumb=None,
-                fanart=None,
-                trailer=None,
-                local_poster=None,
-                local_thumb=None,
-                local_fanart=None,
-                local_trailer=None,
-            )
+        async with Flags._file_done_lock:
+            if not Flags.file_done_dic.get(res.number):
+                Flags.file_done_dic[res.number] = FileDoneDict(
+                    poster=None,
+                    thumb=None,
+                    fanart=None,
+                    trailer=None,
+                    local_poster=None,
+                    local_thumb=None,
+                    local_fanart=None,
+                    local_trailer=None,
+                )
 
         # 视频模式（原来叫整理模式）
         # 视频模式（仅根据刮削数据把电影命名为番号并分类到对应目录名称的文件夹下）
