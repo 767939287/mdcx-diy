@@ -101,6 +101,8 @@ class _Flags:
     local_number_cnword_set: set[str] = field(default_factory=set)
 
     def reset(self) -> None:
+        self.appoint_url = ""
+        self.website_name = ""
         self.failed_list = []
         self.counting_order = 0
         self.total_count = 0
@@ -142,6 +144,16 @@ class _Flags:
         self.actor_numbers_dic = {}
         self.local_number_set = set()
         self.local_number_cnword_set = set()
+        self.count_claw = 0
+        self.can_save_remain = False
+        self.remain_list = []
+        self.new_again_dic = {}
+        self.again_dic = {}
+        self.start_time = 0.0
+        self.file_mode = FileMode.Default
+        self.log_txt = None
+        self.scrape_like_text = ""
+        self.main_mode_text = ""
 
 
 Flags = _Flags()
