@@ -142,38 +142,25 @@ def get_mosaic(tags):
 # 高清图 URL 辅助函数
 # ---------------------------------------------------------------------------
 
-_AWS_BASE = "https://awsimgsrc.dmm.co.jp/pics_dig/digital/video"
-
-
-def _number_variants(number: str) -> tuple[str, str]:
-    """返回 (number_00, number_no_00) 两种番号小写格式.
-
-    - number_00: 连字符替换为 "00"，如 "SSIS-001" → "ssis00001"
-    - number_no_00: 连字符直接去除，如 "SSIS-001" → "ssis001"
-    """
-    lower = number.lower()
-    return lower.replace("-", "00"), lower.replace("-", "")
-
 
 def _build_aws_cover_candidates(number: str) -> list[str]:
-    """从番号构造高清封面 (thumb/pl.jpg) 候选 URL 列表."""
-    number_00, number_no_00 = _number_variants(number)
-    candidates: list[str] = []
-    if number_00:
-        candidates.append(f"{_AWS_BASE}/{number_00}/{number_00}pl.jpg")
-    if number_no_00 and number_no_00 != number_00:
-        candidates.append(f"{_AWS_BASE}/{number_no_00}/{number_no_00}pl.jpg")
-    return candidates
+    """从番号构造高清封面 (thumb/pl.jpg) 候选 URL 列表.
+
+    复用 dmm_direct 的番号→DMM cid 构造器（含前缀映射表校准），取横版 pl 候选。
+    """
+    from mdcx.crawlers.dmm_direct import generate_image_candidates
+
+    return [url for orient, url in generate_image_candidates(number) if orient == "landscape"]
 
 
 def _build_aws_poster_candidates(number: str, thumb_url: str) -> list[str]:
-    """从番号构造高清海报 (poster/ps.jpg) 候选 URL 列表."""
-    number_00, number_no_00 = _number_variants(number)
-    candidates: list[str] = []
-    if number_00:
-        candidates.append(f"{_AWS_BASE}/{number_00}/{number_00}ps.jpg")
-    if number_no_00 and number_no_00 != number_00:
-        candidates.append(f"{_AWS_BASE}/{number_no_00}/{number_no_00}ps.jpg")
+    """从番号构造高清海报 (poster/ps.jpg) 候选 URL 列表.
+
+    复用 dmm_direct 的番号→DMM cid 构造器，取竖版 ps 候选；若已有 pl.jpg 图也尝试替换后缀。
+    """
+    from mdcx.crawlers.dmm_direct import generate_image_candidates
+
+    candidates = [url for orient, url in generate_image_candidates(number) if orient == "portrait"]
     # 如果 thumb_url 是标准 pl.jpg 格式，也尝试直接替换后缀
     if thumb_url and thumb_url.endswith("pl.jpg"):
         ps_url = thumb_url[:-6] + "ps.jpg"
@@ -198,7 +185,6 @@ def _prefer_dmm_aws_url(url: str) -> str:
 
 def _upgrade_extrafanart_urls(urls: list[str], number: str) -> list[str]:
     """升级样图 URL 列表: 优先使用高清 CDN，回退到低清原图."""
-    number_00, number_no_00 = _number_variants(number)
     result: list[str] = []
     for url in urls:
         normalized = normalize_media_url(str(url or "").strip())
