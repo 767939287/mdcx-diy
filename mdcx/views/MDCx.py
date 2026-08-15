@@ -13506,7 +13506,7 @@ class Ui_MDCx(object):
                 "</ul>\n"
                 "\n"
                 "<h4>四、网站选择</h4>\n"
-                "<p>网站下拉框由已注册的爬虫自动生成（当前 45 个），可按需选用全部网站或指定网站。主要来源包括：</p>\n"
+                "<p>网站下拉框由已注册的爬虫自动生成（当前 46 个），可按需选用全部网站或指定网站。主要来源包括：</p>\n"
                 " <ul>\n"
                 " <li><b>有码</b>：仅能有码——DMM、DMM-API、LibreDMM、R18.dev、AVBase、Faleno、Giga、Dahlia、Xcity、Prestige、MGStage、Fantastica、CableAV、Getchu、Getchu-DMM、JavLibrary、Jav321、FreeJavBT、Lulubar；综合（有码+无码）——JavBus、JavDB 系、MissAV 系、Official、MMTV、airav.cc、AVSex、JavDay、IQQTV</li>\n"
                 " <li><b>无码</b>：Kin8、AVSOX 及综合站（JavBus、JavDB 系、MissAV 系、MMTV、airav.cc、AVSex、Official、JavDay、IQQTV）</li>\n"
@@ -13518,6 +13518,10 @@ class Ui_MDCx(object):
                 "\n"
                 "<h4>五、Cloudflare 绕过（CF Bypass）</h4>\n"
                 '<p>MDCx 内置 Cloudflare 绕过能力：遇到受 Cloudflare 保护的站点会自动尝试绕过，<b>无需额外配置或密钥</b>。也可在"设置 → 网络"中配置独立的 CF Bypass 代理。部分站点已提供免 CF 的数据接口（如 MissAV-API），优先选用可获得更稳定的抓取。</p>\n'
+                "<ul>\n"
+                '<li><b>内置 Bypass</b>：勾选"启用内置 Bypass"后自动启动本地服务，无需外部地址（需安装 cloakbrowser + cf_bypasser）。</li>\n'
+                "<li><b>Bypass 落地白名单</b>：可填写可信落地域名白名单（逗号分隔，支持 *.example.com 子域通配），用于校验 Bypass 服务落地/重定向后的最终域名，防止第三方服务被劫持时把恶意页面当数据；留空表示不校验（默认）。</li>\n"
+                "</ul>\n"
                 "\n"
                 "<h4>六、代理设置</h4>\n"
                 '<p>在"设置 → 网络"中配置：</p>\n'
@@ -13533,6 +13537,13 @@ class Ui_MDCx(object):
                 "<li><b>界面缩放</b>：设置 → 界面外观 → 高分屏缩放，提供 跟随系统 / 80% / 90% / 100% / 125% / 150% / 175% / 200% 共 8 档，保存后重启生效。</li>\n"
                 "<li><b>非整数倍缩放</b>：勾选后可启用 Windows 高 DPI 非整数缩放，缓解界面模糊。</li>\n"
                 "<li><b>暗色模式</b>：内置暗色主题切换。</li>\n"
+                "</ul>\n"
+                "\n"
+                "<h4>七之二、断点续刮与相似推荐</h4>\n"
+                "<ul>\n"
+                "<li><b>断点续刮</b>：刮削进度自动保存到本地数据库（userdata/scrape_state.db）。程序重启或崩溃后再次刮削，会自动跳过已完成的文件、恢复上次失败的未超限文件（最多自动重试 3 次），从上次进度继续。</li>\n"
+                "<li><b>失败重试</b>：刮削失败的文件自动记录，下次启动时重新尝试，连续失败 3 次后停止自动重试（可在结果树中对失败项右键强制重刮）。</li>\n"
+                "<li><b>相似片推荐</b>：在右侧结果树中对任意影片右键 →「查看相似片推荐」，基于标签/系列/片商/演员等自动推荐风格相近的影片，支持全部历史刮削结果，双击推荐项可跳转。</li>\n"
                 "</ul>\n"
                 "\n"
                 "<h4>八、其他设置</h4>\n"
