@@ -1,6 +1,6 @@
 import re
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 
 def fanza_tv_payload(cid: str):
@@ -235,31 +235,31 @@ class VideoSeason(BaseModel):
     description: str = ""
     # notices: str | None = None
     packageImage: str = ""
-    productionYear: int = 0
+    productionYear: int | None = None
     # isNewArrival: bool = False
     # customTag: str = ""
     # url: str = ""
     startPublicAt: str = ""
     # campaign: str | None = None
     # rating: VideoRating = Field(default_factory=VideoRating)
-    casts: list[Cast] = []
-    staffs: list[Staff] = []
+    casts: list[Cast] | None = None
+    staffs: list[Staff] | None = None
     # categories: list[Item] = []
-    genres: list[Item] = []
+    genres: list[Item] | None = None
     # metaDescription: str = ""
     keyVisualImage: str = ""
     # keyVisualWithoutLogoImage: str = ""
-    reviewSummary: ReviewSummary = Field(default_factory=ReviewSummary)
+    reviewSummary: ReviewSummary | None = None
     # priceSummary: str | None = None
     # svodEndDeliveryAt: str | None = None
 
 
 class VideoData(BaseModel):
-    video: VideoSeason = Field(default_factory=VideoSeason)
+    video: VideoSeason | None = None
 
 
 class DmmTvResponse(BaseModel):
-    data: VideoData = Field(default_factory=VideoData)
+    data: VideoData | None = None
 
 
 def parse_fanza_resp(resp: FanzaResp):

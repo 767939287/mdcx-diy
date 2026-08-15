@@ -360,6 +360,7 @@ def Init_Singal(self: "MyMAinWindow"):
     self.actor_db_finished.connect(self._on_actor_db_finished)
     self.label_result.connect(self.Ui.label_result.setText)
     self.label_show_version.connect(self.Ui.label_show_version.setText)  # endregion
+    self.version_check_done.connect(self._on_version_check_done)
 
 
 def Init_QSystemTrayIcon(self: "MyMAinWindow"):

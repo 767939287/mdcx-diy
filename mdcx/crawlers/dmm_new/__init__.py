@@ -1112,26 +1112,33 @@ class DmmCrawler(GenericBaseCrawler[DMMContext]):
             return CrawlerData()
         try:
             resp = DmmTvResponse.model_validate(response)
-            data = resp.data.video
+            data = resp.data.video if resp.data else None
         except Exception as e:
             ctx.debug(f"DMM TV API 响应解析失败: {e}")
             return CrawlerData()
+        if data is None:
+            ctx.debug(f"DMM TV API 返回空内容: {season_id=}")
+            return CrawlerData()
 
         studio = ""
-        if r := [item.staffName for item in data.staffs if item.roleName in ["制作プロダクション", "制作", "制作著作"]]:
+        if r := [
+            item.staffName
+            for item in (data.staffs or [])
+            if item.roleName in ["制作プロダクション", "制作", "制作著作"]
+        ]:
             studio = r[0]
 
         return CrawlerData(
             title=data.titleName,
             outline=data.description,
-            actors=[item.actorName for item in data.casts],
+            actors=[item.actorName for item in (data.casts or [])],
             poster=data.packageImage,
             thumb=data.keyVisualImage,
-            tags=[name for item in data.genres if (name := item.name) is not None],
+            tags=[name for item in (data.genres or []) if (name := item.name) is not None],
             release=data.startPublicAt,  # 2025-05-17T20:00:00Z
-            year=str(data.productionYear),
-            score=str(data.reviewSummary.averagePoint),
-            directors=[item.staffName for item in data.staffs if item.roleName == "監督"],
+            year=str(data.productionYear) if data.productionYear is not None else "",
+            score=str(data.reviewSummary.averagePoint) if data.reviewSummary else "",
+            directors=[item.staffName for item in (data.staffs or []) if item.roleName == "監督"],
             studio=studio,
             publisher=studio,
             external_id=detail_url,

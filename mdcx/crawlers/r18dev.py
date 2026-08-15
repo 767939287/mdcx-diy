@@ -229,7 +229,7 @@ class R18devCrawler(BaseCrawler):
         dvd_id = data.get("dvd_id", "")
         if dvd_id:
             normalized = _normalize_id(ctx.input.number)
-            returned = dvd_id.lower().replace("-", "").replace(" ", "")
+            returned = _normalize_id(dvd_id)
             if returned == normalized:
                 combined_url = f"{_API_BASE}/videos/vod/movies/detail/-/combined={content_id}/json"
                 ctx.debug(f"R18dev 精确匹配: {combined_url}")

@@ -152,6 +152,7 @@ class MyMAinWindow(QMainWindow):
     pushButton_actor_db_update_nfo_tmdbid = pyqtSignal(str)
     actor_db_finished = pyqtSignal(str)  # task_id；空串表示恢复所有按钮
     label_show_version = pyqtSignal(str)
+    version_check_done = pyqtSignal(bool)  # 版本检查完成（参数为是否有新版本），主线程执行 UI 操作
 
     # endregion
 
@@ -920,12 +921,13 @@ class MyMAinWindow(QMainWindow):
     def _show_version_thread(self):
         version_info = f"基于 MDC-GUI 修改 当前版本: {self.version_display}"
         download_link = ""
+        has_new_version = False
         latest_version = check_version()
         if latest_version:
             if int(self.localversion) < int(latest_version):
+                has_new_version = True
                 self.new_version = f"\n🍉 有新版本了！（{latest_version}）"
                 signal_qt.show_scrape_info()
-                self.Ui.label_show_version.setCursor(Qt.CursorShape.OpenHandCursor)  # 设置鼠标形状为十字形
                 version_info = f'基于 MDC-GUI 修改 · 当前版本: {self.version_display} （ <font color="red" >最新版本是: {latest_version}，请及时更新！🚀 </font>）'
                 download_link = f' ⬇️ <a href="{GITHUB_RELEASES_URL}">下载新版本</a>'
             else:
@@ -938,8 +940,8 @@ class MyMAinWindow(QMainWindow):
         if feedback or download_link:
             self.main_logs_show.emit(f"{feedback}{download_link}")
         signal_qt.show_log_text("================================================================================")
-        self.pushButton_check_javdb_cookie_clicked()  # 检测javdb cookie
-        self.pushButton_check_javbus_cookie_clicked()  # 检测javbus cookie
+        # QWidget 与 cookie 检查必须在主线程执行：通过信号调度回主线程
+        self.version_check_done.emit(has_new_version)
         if manager.config.use_database:
             ActressDB.init_db()
         try:
@@ -948,6 +950,13 @@ class MyMAinWindow(QMainWindow):
         except Exception:
             signal_qt.show_traceback_log(traceback.format_exc())
             signal_qt.show_log_text(traceback.format_exc())
+
+    def _on_version_check_done(self, has_new_version: bool):
+        """主线程：版本检查完成后的 UI 更新与 cookie 检测。"""
+        if has_new_version:
+            self.Ui.label_show_version.setCursor(Qt.CursorShape.OpenHandCursor)  # 设置鼠标形状为十字形
+        self.pushButton_check_javdb_cookie_clicked()  # 检测javdb cookie
+        self.pushButton_check_javbus_cookie_clicked()  # 检测javbus cookie
 
     # endregion
 
@@ -2420,7 +2429,7 @@ class MyMAinWindow(QMainWindow):
         """
         self.pushButton_show_log_clicked()  # 点击按钮后跳转到日志页面
 
-        if Switch.COPY_NETDISK_NFO in manager.config.switch_on != self.Ui.checkBox_copy_netdisk_nfo.isChecked():
+        if (Switch.COPY_NETDISK_NFO in manager.config.switch_on) != self.Ui.checkBox_copy_netdisk_nfo.isChecked():
             self.pushButton_save_config_clicked()
 
         try:
