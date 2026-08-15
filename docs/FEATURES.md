@@ -21,53 +21,62 @@ MDCx 支持的功能全景。只想快速上手的话，先看 [QUICKSTART.md](Q
 
 | 爬虫名 | 数据源 | 说明 |
 |--------|-------|------|
-| dmm | dmm.co.jp | 日本最大成人平台 FANZA |
-| dmm_api | JavDB v1 API | DMM 数据走 API |
-| javdb | javdb.com | JavDB 综合信息站 |
-| javdb_api | JavDB 镜像站 | 镜像站 HTML 直连，带简繁转换和异体字修正 |
-| javdb_app | JavDB 移动端 API | APK 逆向签名直连 |
-| javbus | javbus.com | 有码/无码分类搜索 |
-| jav321 | jav321.com | 综合信息 |
-| javlibrary | javlibrary.com | 老牌信息站 |
-| missav | missav.ai | 综合搜索 |
-| missav_api | Recombee API | 免墙直连，演员字段留空 |
-| mgstage | mgstage.com | 有码/素人官网 |
-| prestige | prestige-av.com | Prestige 官网 JSON API |
-| r18dev | r18.dev | JSON API 直连，番号自动补零 |
-| faleno | faleno.jp | Faleno 官网 |
-| fantastica | fantastica-av.com | VR 内容 |
-| giga | giga.co.jp | Giga 官网 |
-| dahlia | dahlia.co.jp | Dahlia 官网（不在前端显示） |
-| official | 各官网 | 按番号前缀路由到子爬虫 |
-| avbase | av-base.net | 有码信息站 |
-| cableav | cableav.video | 综合信息 |
-| freejavbt | freejavbt.com | 磁力信息站 |
-| hscangku | hsck.net | 综合信息 |
-| mmtv | 7mmtv.tv | 无码 |
-| mywife | mywife.cc | 综合 |
-| getchu | getchu.com | 游戏/视频综合 |
-| getchu_dmm | getchu.com | 委托 getchu 执行（不在前端显示） |
-| libredmm | libredmm.com | 开源信息站 |
-| xcity | xcity.jp | 综合 |
-| love6 | love6.net | FC2 类 |
-| kin8 | kin8.info | 无码 |
-| avsox | avsox.com | 无码 |
-| airav_cc | airav.cc | 无码 |
-| avsex | avsex.com | 无码 |
-| fc2 | fc2.com | FC2 官网 |
-| fc2club | fc2club.top | FC2 信息站 |
-| fc2hub | fc2hub.com | FC2 信息站 |
-| fc2ppvdb | fc2cmadb.com | FC2 PPV 数据库 |
-| hdouban | hdouban.com | 国产 |
-| cnmdb | cnmdb.tv | 国产 |
-| madouqu | madouqu.com | 国产 |
-| lulubar | lulubar.net | 国产 |
-| iqqtv | iqqtv.com | 国产 |
-| mdtv | mdtv.tv | 国产 |
-| javday | javday.tv | 国产 |
-| theporndb | api.theporndb.net | 欧美 |
+| dmm | dmm.co.jp | 日本最大成人平台 FANZA（仅能有码） |
+| dmm_api | JavDB v1 API | DMM 数据走 API（仅能有码） |
+| javdb | javdb.com | JavDB 综合信息站（综合：有码+无码） |
+| javdb_api | JavDB 镜像站 | 镜像站 HTML 直连，带简繁转换和异体字修正（综合：有码+无码） |
+| javdb_app | JavDB 移动端 API | APK 逆向签名直连（综合：有码+无码） |
+| javbus | javbus.com | 有码/无码分类搜索（综合：有码+无码） |
+| jav321 | jav321.com | 综合信息（仅能有码） |
+| javlibrary | javlibrary.com | 老牌信息站（仅能有码） |
+| missav | missav.ai | 综合搜索（综合：有码+无码） |
+| missav_api | Recombee API | 免墙直连，演员字段留空（综合：有码+无码） |
+| mgstage | mgstage.com | 有码/素人官网（仅能有码+素人） |
+| prestige | prestige-av.com | Prestige 官网 JSON API（仅能有码+素人） |
+| r18dev | r18.dev | JSON API 直连，番号自动补零（仅能有码） |
+| faleno | faleno.jp | Faleno 官网（仅能有码） |
+| fantastica | fantastica-av.com | VR 内容（仅能有码） |
+| giga | giga.co.jp | Giga 官网（仅能有码） |
+| dahlia | dahlia.co.jp | Dahlia 官网（不在前端显示）（仅能有码） |
+| official | 各官网 | 按番号前缀路由到子爬虫（综合：有码+无码） |
+| avbase | av-base.net | 有码信息站（仅能有码+素人） |
+| cableav | cableav.video | 综合信息（仅能有码） |
+| freejavbt | freejavbt.com | 磁力信息站（仅能有码） |
+| hscangku | hsck.net | 国产番号（国产） |
+| mmtv | 7mmtv.tv | 无码（综合：有码+无码） |
+| mywife | mywife.cc | No. 素人番号（素人） |
+| getchu | getchu.com | 游戏/视频综合（仅能有码） |
+| getchu_dmm | getchu.com | 委托 getchu 执行（不在前端显示）（仅能有码） |
+| libredmm | libredmm.com | 开源信息站（仅能有码） |
+| xcity | xcity.jp | 综合（仅能有码） |
+| love6 | love6.tv | FC2 番号（FC2） |
+| kin8 | kin8.info | 无码（无码专属） |
+| avsox | avsox.com | 无码（无码专属） |
+| airav_cc | airav.cc | 无码（综合：有码+无码） |
+| avsex | avsex.com | 无码（综合：有码+无码） |
+| fc2 | fc2.com | FC2 官网（FC2） |
+| fc2club | fc2club.top | FC2 信息站（FC2） |
+| fc2hub | fc2hub.com | FC2 信息站（FC2） |
+| fc2ppvdb | fc2cmadb.com | FC2 PPV 数据库（FC2） |
+| hdouban | hdouban.com | 国产（国产） |
+| cnmdb | cnmdb.tv | 国产（国产） |
+| madouqu | madouqu.com | 国产（国产） |
+| lulubar | lulubar.net | 仅能有码 |
+| iqqtv | iqqtv.com | 综合：有码+无码+素人+国产 |
+| mdtv | mdtv.tv | 国产（国产） |
+| javday | javday.tv | 综合：有码+无码+国产 |
+| theporndb | api.theporndb.net | 欧美（欧美） |
 
 > 注意：missav_api、r18dev、javdb_api 这三条是免墙通道，默认没启用，需要去「设置→站点」手动加。
+
+**各爬虫适用类型**（刮削类型默认网站源，可在「设置→站点」调整）：
+- **仅能有码**：dmm、dmm_api、libredmm、r18dev、avbase、faleno、giga、dahlia、xcity、prestige、mgstage、fantastica、cableav、getchu、getchu_dmm、javlibrary、jav321、freejavbt、lulubar
+- **无码专属**：avsox、kin8
+- **综合（有码+无码）**：javbus、javdb、javdb_api、javdb_app、missav、missav_api、javday、mmtv、airav_cc、avsex、official、iqqtv
+- **素人**：mgstage、prestige、javbus、javdb 系、dmm、dmm_api、avbase、mmtv、jav321、missav、missav_api、mywife、iqqtv
+- **FC2**：fc2、fc2club、fc2hub、fc2ppvdb、love6、javdb 系
+- **欧美**：theporndb
+- **国产**：hdouban、cnmdb、madouqu、iqqtv、mdtv、javday、hscangku
 
 ### DMM 官方高清直链
 

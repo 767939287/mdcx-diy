@@ -3069,66 +3069,24 @@ class MyMAinWindow(QMainWindow):
 
     # 设置-刮削网站和字段中的详细说明弹窗
     def pushButton_scrape_note_clicked(self):
-        self._show_tips("""<html>
+        from mdcx.crawlers import get_registered_crawler_site_values
+
+        sites_html = "".join(f"  <li>{site}</li>\n" for site in get_registered_crawler_site_values())
+        self._show_tips(f"""<html>
 <head/>
 <body>
   <p><span style=" font-weight:700;">所有可用网站:</span></p>
-  <li>airav_cc</li>
-  <li>avbase</li>
-  <li>avsex</li>
-  <li>avsox</li>
-  <li>cableav</li>
-  <li>cnmdb</li>
-  <li>dahlia</li>
-  <li>dmm</li>
-  <li>dmm_api</li>
-  <li>faleno</li>
-  <li>fantastica</li>
-  <li>fc2</li>
-  <li>fc2club</li>
-  <li>fc2hub</li>
-  <li>fc2ppvdb</li>
-  <li>freejavbt</li>
-  <li>getchu</li>
-  <li>getchu_dmm</li>
-  <li>giga</li>
-  <li>hdouban</li>
-  <li>hscangku</li>
-  <li>iqqtv</li>
-  <li>jav321</li>
-  <li>javbus</li>
-  <li>javday</li>
-  <li>javdb</li>
-  <li>javdb_api</li>
-  <li>javdb_app</li>
-  <li>javlibrary</li>
-  <li>kin8</li>
-  <li>libredmm</li>
-  <li>love6</li>
-  <li>lulubar</li>
-  <li>madouqu</li>
-  <li>mdtv</li>
-  <li>mgstage</li>
-  <li>missav</li>
-  <li>missav_api</li>
-  <li>mywife</li>
-  <li>7mmtv</li>
-  <li>official</li>
-  <li>prestige</li>
-  <li>r18dev</li>
-  <li>theporndb</li>
-  <li>xcity</li>
-  <p><span style=" font-weight:700;">指定类型影片可指定刮削网站:<span></p>
-  <p>· 有码：javdb、javbus、dmm、jav321、mgstage、prestige、missav、r18dev 等，javdb_api/missav_api/r18dev 是免墙通道</p>
-  <p>· 欧美：theporndb、javdb_app </p>
-  <p>· 国产：mdtv、madouqu、hdouban、cnmdb、javdb_app </p>
+{sites_html}  <p><span style=" font-weight:700;">指定类型影片可指定刮削网站:<span></p>
+  <p>· 有码：dmm、dmm_api、libredmm、r18dev、avbase、faleno、giga、dahlia、xcity、prestige、mgstage、fantastica、cableav、getchu、getchu_dmm、javlibrary、jav321、freejavbt、lulubar，以及 javbus、javdb 系、missav 系、official、mmtv、airav_cc、avsex、javday、iqqtv 等综合站；javdb_api/missav_api/r18dev 是免墙通道</p>
+  <p>· 无码：avsox、kin8，以及 javbus、javdb 系、missav 系、mmtv、airav_cc、avsex、official、javday、iqqtv 等综合站</p>
+  <p>· 欧美：theporndb</p>
+  <p>· 国产：hdouban、cnmdb、madouqu、iqqtv、mdtv、javday、hscangku</p>
   <p>· 里番：getchu_dmm </p>
   <p>· Mywife：mywife </p>
   <p>· GIGA：giga </p>
   <p>· Kin8：kin8 </p>
-  <p>· 无码：kin8、avsox、airav_cc、avsex、javdb_app </p>
-  <p>· 素人：mgstage、javbus、jav321、dmm、avbase </p>
-  <p>· FC2：fc2、fc2club、fc2hub、fc2ppvdb、love6、javdb_app </p>
+  <p>· 素人：mgstage、prestige、javbus、javdb 系、dmm、dmm_api、avbase、mmtv、jav321、missav、missav_api、mywife、iqqtv </p>
+  <p>· FC2：fc2、fc2club、fc2hub、fc2ppvdb、love6、javdb 系 </p>
 </body>
 </html>""")
 
