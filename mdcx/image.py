@@ -5,13 +5,11 @@ from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from pathlib import Path
 
-import aiofiles.os
 from PIL import Image, ImageFilter
 from PyQt6.QtCore import QObject, QSize, pyqtSignal
-from PyQt6.QtGui import QImage, QImageReader, QPixmap
+from PyQt6.QtGui import QImage, QImageReader
 
 from .signals import signal
-from .utils.file import delete_file_async
 
 POSTER_PREVIEW_SIZE = QSize(156, 220)
 THUMB_PREVIEW_SIZE = QSize(328, 220)
@@ -172,43 +170,6 @@ class PreviewImageLoader(QObject):
         except Exception:
             signal.show_log_text(traceback.format_exc())
             return _preview_placeholder(poster, "加载失败")
-
-
-async def get_pixmap(pic_path: Path, poster=True, pic_from=""):
-    try:
-        # 使用 QImageReader 加载，适合加载大文件，pixmap适合显示
-        # 判断是否可读取
-        reader = QImageReader(pic_path.as_posix())
-        if reader.canRead():
-            img = reader.read()
-            pix = QPixmap(img)
-            pic_width = img.size().width()
-            pic_height = img.size().height()
-            pic_file_size = int(await aiofiles.os.path.getsize(pic_path) / 1024)
-            if pic_width and pic_height:
-                if poster:
-                    if pic_width / pic_height > 156 / 220:
-                        w = 156
-                        h = int(156 * pic_height / pic_width)
-                    else:
-                        w = int(220 * pic_width / pic_height)
-                        h = 220
-                else:
-                    if pic_width / pic_height > 328 / 220:
-                        w = 328
-                        h = int(328 * pic_height / pic_width)
-                    else:
-                        w = int(220 * pic_width / pic_height)
-                        h = 220
-                msg = f"{pic_from.title()}: {pic_width}*{pic_height}/{pic_file_size}KB"
-                return [True, pix, msg, w, h]
-        await delete_file_async(pic_path)
-        if poster:
-            return [False, "", "封面图损坏", 156, 220]
-        return [False, "", "缩略图损坏", 328, 220]
-    except Exception:
-        signal.show_log_text(traceback.format_exc())
-        return [False, "", "加载失败", 156, 220]
 
 
 def cut_pic(pic_path: Path):

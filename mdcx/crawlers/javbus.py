@@ -396,6 +396,9 @@ async def get_real_url(client, ctx: Context, number, url_type, javbus_url, heade
         number_2 = number_1 + "_"
         if each_url.endswith(number_1) or number_2 in each_url:
             ctx.debug(f"番号地址: {each}")
+            # 搜索结果 href 可能是根相对路径（如 /SSIS-538），直接请求会因 host 为空而失败，需补全为绝对 URL
+            if each.startswith("/"):
+                each = javbus_url + each
             return each
     raise CrawlerException("搜索结果: 未匹配到番号！")
 

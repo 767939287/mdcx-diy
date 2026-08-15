@@ -26,11 +26,8 @@ class Parser(DetailPageParser):
 
     async def actors(self, ctx, html: Selector) -> list[str]:
         # parsel css 不支持 :has() 中的多个选择器, 这是一个已知问题: https://github.com/scrapy/cssselect/issues/138
-        return (
-            html.css("span:has(strong.female)")
-            .xpath("//strong[contains(@class, 'female')]/preceding-sibling::a/text()")
-            .getall()
-        )
+        # 注意不能用 html.css(...).xpath("//strong...")，// 会从文档根重新选择导致 css 作用域失效
+        return html.xpath("//strong[contains(@class, 'female')]/preceding-sibling::a/text()").getall()
 
     async def all_actors(self, ctx, html: Selector) -> list[str]:
         return (html.css("span:has(strong.female)") or html.css("span:has(strong.male)")).xpath("a/text()").getall()

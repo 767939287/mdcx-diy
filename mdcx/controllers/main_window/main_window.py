@@ -153,6 +153,7 @@ class MyMAinWindow(QMainWindow):
     actor_db_finished = pyqtSignal(str)  # task_id；空串表示恢复所有按钮
     label_show_version = pyqtSignal(str)
     version_check_done = pyqtSignal(bool)  # 版本检查完成（参数为是否有新版本），主线程执行 UI 操作
+    net_check_done = pyqtSignal()  # 网络检测完成，主线程恢复按钮状态
 
     # endregion
 
@@ -1116,7 +1117,6 @@ class MyMAinWindow(QMainWindow):
             signal_qt.show_log_text(traceback.format_exc())
         finally:
             signal_qt.stop = False
-        print(threading.enumerate())
 
     def show_stop_info_thread(
         self,
@@ -3421,7 +3421,7 @@ class MyMAinWindow(QMainWindow):
     def network_check(self):
         try:
             signal_qt.show_net_info("\n⛑ 开始检测网络...")
-            cancel_event = self.network_check_cancel_event or threading.Event()
+            cancel_event = threading.Event()
             self.network_check_cancel_event = cancel_event
             self.network_check_future = executor.submit(
                 run_network_check(progress=signal_qt.show_net_info, cancel_event=cancel_event)
@@ -3434,8 +3434,14 @@ class MyMAinWindow(QMainWindow):
             )
             signal_qt.show_traceback_log(str(e))
             signal_qt.show_traceback_log(traceback.format_exc())
-        self.network_check_cancel_event = None
-        self.network_check_future = None
+        finally:
+            self.network_check_cancel_event = None
+            self.network_check_future = None
+            # 按钮状态必须在主线程恢复，经信号调度
+            self.net_check_done.emit()
+
+    def _on_net_check_done(self):
+        """主线程：网络检测完成，恢复按钮状态。"""
         self.Ui.pushButton_check_net.setEnabled(True)
         self.Ui.pushButton_check_net.setText("开始检测")
         self.Ui.pushButton_check_net.setStyleSheet(
@@ -3445,6 +3451,9 @@ class MyMAinWindow(QMainWindow):
     # 网络检查
     def pushButton_check_net_clicked(self):
         if self.Ui.pushButton_check_net.text() == "开始检测":
+            if self.network_check_future is not None:
+                # 上一个检测线程尚未结束，避免并发启动多个实例
+                return
             self.Ui.pushButton_check_net.setText("停止检测")
             self.Ui.pushButton_check_net.setStyleSheet(
                 "QPushButton#pushButton_check_net{color: white;background-color:#3758D8;}QPushButton:hover#pushButton_check_net{color: white;background-color:#4C6EFF;}QPushButton:pressed#pushButton_check_net{color: white;background-color:#2F49B8;}"
@@ -3456,8 +3465,6 @@ class MyMAinWindow(QMainWindow):
                 signal_qt.show_traceback_log(traceback.format_exc())
                 signal_qt.show_net_info(traceback.format_exc())
         elif self.Ui.pushButton_check_net.text() == "停止检测":
-            self.Ui.pushButton_check_net.setText(" 停止检测 ")
-            self.Ui.pushButton_check_net.setText(" 停止检测 ")
             if self.network_check_cancel_event:
                 self.network_check_cancel_event.set()
             signal_qt.show_net_info("\n⛔️ 正在停止网络检测...")

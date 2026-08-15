@@ -108,6 +108,11 @@ class Parser(DetailPageParser):
         value = (duration_raw or "").strip()
         if not value:
             return ""
+        # 优先解析 h:mm:ss / mm:ss 格式，如 "1:30:00" -> 90、"2時間" 不应被当作 2 分钟
+        if m := re.match(r"^\s*(\d+):(\d+):(\d+)\s*$", value):
+            return str(int(m.group(1)) * 60 + int(m.group(2)))
+        if m := re.match(r"^\s*(\d+):(\d+)\s*$", value):
+            return str(int(m.group(1)) * 60 + int(m.group(2)))
         if not (match := re.search(r"\d+", value)):
             return value
 
@@ -391,6 +396,9 @@ class MissavCrawler(BaseCrawler):
     @classmethod
     def _number_from_url(cls, detail_url: str) -> str:
         slug = cls._extract_slug(detail_url)
+        if not cls._parse_code_parts(slug):
+            # slug 不是番号格式（如内部 ID），不应拿来覆盖 data.number
+            return ""
         return cls._normalize_number_case(slug)
 
     @classmethod

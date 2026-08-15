@@ -1043,7 +1043,7 @@ class Config(BaseModel):
                         data[name] = str_to_list(data[name], "|")
                     else:
                         data[name] = str_to_list(data[name], ",")
-                if info.annotation is type(timedelta) and re.match(r"^\d{2}:\d{2}:\d{2}$", data[name]):
+                if info.annotation is timedelta and re.match(r"^\d{2}:\d{2}:\d{2}$", data[name]):
                     h, m, s = map(int, data[name].split(":"))
                     data[name] = timedelta(hours=h, minutes=m, seconds=s)
             return data

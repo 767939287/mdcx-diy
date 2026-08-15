@@ -403,9 +403,8 @@ class MediaResourceContext:
 
     @staticmethod
     def _is_invalid_image_url(request_url: str, true_url: str) -> bool:
-        if _is_invalid_image_redirect_url(true_url):
-            return True
-        return is_dmm_image_url(request_url) and _is_invalid_image_redirect_url(true_url)
+        # 仅依据真实跳转 URL 判定；此前第二行 is_dmm_image_url(request_url) and ... 恒被首行短路，属冗余
+        return _is_invalid_image_redirect_url(true_url)
 
     @staticmethod
     def _build_request_url(url: str) -> tuple[str, bool]:
