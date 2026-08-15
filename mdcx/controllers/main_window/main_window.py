@@ -85,6 +85,7 @@ from mdcx.utils.file import (
 )
 from mdcx.utils.path import safe_rmtree
 from mdcx.views.MDCx import Ui_MDCx
+from mdcx.views.similar_window import SimilarDialog
 
 from ..cut_window import CutWindow
 from .handlers import show_netstatus
@@ -512,6 +513,7 @@ class MyMAinWindow(QMainWindow):
         self.menu_nfo = QAction(QIcon(resources.open_nfo_icon), "  编辑 NFO\tE", self)
         self.menu_play = QAction(QIcon(resources.play_icon), "  播放\tP", self)
         self.menu_hide = QAction(QIcon(resources.hide_boss_icon), "  隐藏\tQ", self)
+        self.menu_similar = QAction(QIcon(resources.open_folder_icon), "  查看相似片推荐", self)
 
         self.menu_start.triggered.connect(self.pushButton_start_scrape_clicked)
         self.menu_stop.triggered.connect(self.pushButton_start_scrape_clicked)
@@ -527,6 +529,7 @@ class MyMAinWindow(QMainWindow):
         self.menu_nfo.triggered.connect(self.main_open_nfo_click)
         self.menu_play.triggered.connect(self.main_play_click)
         self.menu_hide.triggered.connect(self.hide)
+        self.menu_similar.triggered.connect(self.main_show_similar_click)
 
         QShortcut(QKeySequence(self.tr("N")), self, self.search_by_number_clicked)
         QShortcut(QKeySequence(self.tr("U")), self, self.search_by_url_clicked)
@@ -594,6 +597,7 @@ class MyMAinWindow(QMainWindow):
         menu.addAction(self.menu_nfo)
         menu.addAction(self.menu_play)
         menu.addAction(self.menu_hide)
+        menu.addAction(self.menu_similar)
         menu.exec(self.Ui.page_main.mapToGlobal(pos))
         # menu.move(pos)
         # menu.show()
@@ -1875,6 +1879,40 @@ class MyMAinWindow(QMainWindow):
         if self._check_main_file_path():
             self.Ui.widget_nfo.show()
             self._show_nfo_info()
+
+    def main_show_similar_click(self):
+        """
+        主界面点查看相似片推荐
+        """
+        entries = self._get_selected_entries()
+        if not entries:
+            if not self.show_data or not self.show_data.data.number:
+                signal_qt.show_log_text(" 🔴 请先在结果树中选择一部影片，再查看相似推荐！")
+                return
+            target = self.show_data.data
+        else:
+            target = entries[0][2].data
+
+        corpus = SimilarDialog.collect_corpus(Flags.json_data_dic)
+        if len(corpus) < 2:
+            signal_qt.show_log_text(" 🔴 相似推荐需要至少 2 部已刮削影片，请先刮削更多！")
+            return
+
+        dialog = SimilarDialog(corpus, target, parent=self)
+        dialog.item_selected.connect(self._jump_to_similar_number)
+        dialog.exec()
+
+    def _jump_to_similar_number(self, number: str):
+        """双击相似推荐项后，在结果树中定位到对应影片。"""
+        for show_name, show_data in self.json_array.items():
+            if getattr(show_data, "data", None) and show_data.data.number == number:
+                item = self._find_result_item_by_name(show_name)
+                if item is not None:
+                    self.Ui.treeWidget_number.clearSelection()
+                    item.setSelected(True)
+                    self.Ui.treeWidget_number.scrollToItem(item)
+                    self.treeWidget_number_clicked()
+                break
 
     def main_open_right_menu(self):
         """
