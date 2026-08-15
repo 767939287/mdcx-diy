@@ -13,6 +13,7 @@ from PyQt6.QtWidgets import (
     QComboBox,
     QDialog,
     QDialogButtonBox,
+    QFileDialog,
     QGridLayout,
     QGroupBox,
     QHBoxLayout,
@@ -28,6 +29,7 @@ from PyQt6.QtWidgets import (
     QSplitter,
     QTableWidget,
     QTableWidgetItem,
+    QTextEdit,
     QVBoxLayout,
     QWidget,
 )
@@ -36,6 +38,7 @@ from ..config.manager import manager
 from .emby_actor_manager import (
     ActorInfo,
     fetch_actor_detail,
+    fetch_actor_info_from_source,
     fetch_all_actors,
     from_gfriends,
     from_graphis,
@@ -116,8 +119,8 @@ class FetchActorsThread(QThread):
             asyncio.set_event_loop(loop)
             actors = loop.run_until_complete(
                 fetch_all_actors(
-                    filter_actor_only=True,
-                    deduplicate=True,
+                    filter_actor_only=manager.config.actor_filter_only,
+                    deduplicate=manager.config.actor_deduplicate,
                     parent_ids=self.library_ids,
                     progress_callback=lambda c, t, m: self.progress.emit(c, t, m),
                 )
@@ -368,6 +371,10 @@ class EmbyActorManagerDialog(QDialog):
         btn_layout.addStretch()
         self.btn_test = QPushButton("测试连接")
         btn_layout.addWidget(self.btn_test)
+        self.btn_settings = QPushButton("设置")
+        btn_layout.addWidget(self.btn_settings)
+        self.btn_test_source = QPushButton("数据源测试")
+        btn_layout.addWidget(self.btn_test_source)
         grid.addLayout(btn_layout, 1, 0, 1, 4)
         help_label = QLabel(
             "使用说明：① 填写地址和密钥 → ② 连接/获取演员列表 → ③ 选择模式获取数据 → "
@@ -459,6 +466,16 @@ class EmbyActorManagerDialog(QDialog):
         self.btn_preview.clicked.connect(self._on_prepare_preview)
         self.btn_sync.clicked.connect(self._on_sync)
         self.btn_test.clicked.connect(self._on_test_connection)
+        self.btn_settings.clicked.connect(self._on_open_settings)
+        self.btn_test_source.clicked.connect(self._on_open_test_source)
+
+    def _on_open_settings(self):
+        dialog = EmbyActorSettingsDialog(self)
+        dialog.exec()
+
+    def _on_open_test_source(self):
+        dialog = ActorSourceTestDialog(self)
+        dialog.exec()
 
     def log(self, msg: str):
         import datetime
@@ -602,7 +619,7 @@ class EmbyActorManagerDialog(QDialog):
         self._preview_thread.mode = mode
         self._preview_thread.gfriends_index = self._gfriends_index
         self._preview_thread.cache_dir = self.cache_dir
-        self._preview_thread.image_sources = ["gfriends", "graphis", "minnano", "local"]
+        self._preview_thread.image_sources = list(manager.config.actor_image_sources)
 
         self._preview_thread.local_avatar_dir = (
             manager.config.actor_photo_folder if hasattr(manager.config, "actor_photo_folder") else ""
@@ -810,6 +827,308 @@ class EmbyActorManagerDialog(QDialog):
         sync_count = len(to_sync)
         self.btn_sync.setEnabled(sync_count > 0)
         self.btn_sync.setText(f"开始全部更新同步({sync_count} 项)" if sync_count > 0 else "开始全部更新同步")
+
+
+IMAGE_SOURCE_NAMES = {
+    "gfriends": "Gfriends 头像库",
+    "graphis": "graphis 头像/背景",
+    "minnano": "minnano-av 头像",
+    "local": "本地头像",
+}
+INFO_SOURCE_NAMES = {
+    "local": "本地演员库",
+    "wiki": "维基百科",
+    "minnano": "minnano-av 信息",
+    "database": "本地数据库",
+}
+
+
+class EmbyActorSettingsDialog(QDialog):
+    """Emby 演员数据源设置：数据源优先级排序 + 本地目录 + Gfriends + 数据库开关。"""
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Emby 演员设置")
+        self.setMinimumWidth(420)
+        layout = QVBoxLayout(self)
+
+        filter_group = QGroupBox("Emby 演员获取过滤")
+        filter_layout = QVBoxLayout(filter_group)
+        self.filter_only_check = QCheckBox("只获取演员类型（不含导演/编剧/制片人）")
+        self.filter_only_check.setChecked(manager.config.actor_filter_only)
+        filter_layout.addWidget(self.filter_only_check)
+        self.deduplicate_check = QCheckBox("重复演员去重（按名称合并）")
+        self.deduplicate_check.setChecked(manager.config.actor_deduplicate)
+        filter_layout.addWidget(self.deduplicate_check)
+        layout.addWidget(filter_group)
+
+        layout.addWidget(QLabel("头像数据源优先级（拖拽排序，上=优先）:"))
+        self.image_list = QListWidget()
+        self.image_list.setDragDropMode(QAbstractItemView.DragDropMode.InternalMove)
+        for src in manager.config.actor_image_sources:
+            item = QListWidgetItem(f"{src}（{IMAGE_SOURCE_NAMES.get(src, src)}）")
+            item.setData(Qt.ItemDataRole.UserRole, src)
+            self.image_list.addItem(item)
+        layout.addWidget(self.image_list)
+
+        layout.addWidget(QLabel("信息数据源优先级（拖拽排序，上=优先）:"))
+        self.info_list = QListWidget()
+        self.info_list.setDragDropMode(QAbstractItemView.DragDropMode.InternalMove)
+        for src in manager.config.actor_info_sources:
+            item = QListWidgetItem(f"{src}（{INFO_SOURCE_NAMES.get(src, src)}）")
+            item.setData(Qt.ItemDataRole.UserRole, src)
+            self.info_list.addItem(item)
+        layout.addWidget(self.info_list)
+
+        dir_row = QHBoxLayout()
+        dir_row.addWidget(QLabel("本地头像目录:"))
+        self.photo_folder_edit = QLineEdit(manager.config.actor_photo_folder)
+        browse_btn = QPushButton("浏览...")
+        browse_btn.clicked.connect(self._browse_photo_folder)
+        dir_row.addWidget(self.photo_folder_edit)
+        dir_row.addWidget(browse_btn)
+        layout.addLayout(dir_row)
+
+        layout.addWidget(QLabel("Gfriends GitHub 地址:"))
+        self.gfriends_edit = QLineEdit(str(manager.config.gfriends_github))
+        layout.addWidget(self.gfriends_edit)
+
+        self.use_db_check = QCheckBox("使用本地信息数据库")
+        self.use_db_check.setChecked(manager.config.use_database)
+        layout.addWidget(self.use_db_check)
+
+        btn_row = QHBoxLayout()
+        btn_row.addStretch()
+        save_btn = QPushButton("保存")
+        save_btn.clicked.connect(self._save)
+        cancel_btn = QPushButton("取消")
+        cancel_btn.clicked.connect(self.reject)
+        btn_row.addWidget(save_btn)
+        btn_row.addWidget(cancel_btn)
+        layout.addLayout(btn_row)
+
+    def _browse_photo_folder(self):
+        path = QFileDialog.getExistingDirectory(self, "选择本地头像目录", self.photo_folder_edit.text())
+        if path:
+            self.photo_folder_edit.setText(path)
+
+    def _save(self):
+        image_sources = [item.data(Qt.ItemDataRole.UserRole) for item in self.image_list]
+        info_sources = [item.data(Qt.ItemDataRole.UserRole) for item in self.info_list]
+        cfg = manager.config.model_copy(deep=True)
+        cfg.actor_image_sources = image_sources
+        cfg.actor_info_sources = info_sources
+        cfg.actor_filter_only = self.filter_only_check.isChecked()
+        cfg.actor_deduplicate = self.deduplicate_check.isChecked()
+        cfg.actor_photo_folder = self.photo_folder_edit.text().strip()
+        cfg.use_database = self.use_db_check.isChecked()
+        try:
+            cfg.gfriends_github = self.gfriends_edit.text().strip()
+        except Exception as e:
+            QMessageBox.warning(self, "提示", f"Gfriends 地址无效: {e}")
+            return
+        manager._replace_config(cfg)
+        self.accept()
+
+
+class ActorSourceTestDialog(QDialog):
+    """数据源测试窗口：按配置的数据源优先级逐源尝试获取头像/简介，展示各源结果。"""
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("数据源测试")
+        self.setMinimumSize(760, 560)
+        root = QVBoxLayout(self)
+
+        # 顶部：演员名输入 + 获取头像和简介
+        name_row = QHBoxLayout()
+        name_row.addWidget(QLabel("演员名:"))
+        self.name_edit = QLineEdit()
+        self.name_edit.setPlaceholderText("输入演员名（如：三上悠亚）")
+        self.name_edit.returnPressed.connect(lambda: self._run(True, True))
+        name_row.addWidget(self.name_edit)
+        self.btn_both = QPushButton("获取头像和简介")
+        self.btn_both.setObjectName("btnPrimary")
+        name_row.addWidget(self.btn_both)
+        root.addLayout(name_row)
+
+        # 主体：左(头像) + 中(信息字段表) + 右(快速设置面板)
+        main_row = QHBoxLayout()
+
+        # 左列：头像预览 + 获取头像
+        left_col = QVBoxLayout()
+        self.avatar_label = QLabel("头像预览")
+        self.avatar_label.setFixedSize(140, 190)
+        self.avatar_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.avatar_label.setStyleSheet("border: 1px solid #ccc; color: #888;")
+        left_col.addWidget(self.avatar_label)
+        self.btn_image = QPushButton("获取头像")
+        self.btn_image.setObjectName("btnPrimary")
+        left_col.addWidget(self.btn_image)
+        main_row.addLayout(left_col)
+
+        # 中列：详细信息预览（字段/值）+ 获取信息
+        info_col = QVBoxLayout()
+        info_col.addWidget(QLabel("详细信息预览:"))
+        self.info_table = QTableWidget(0, 2)
+        self.info_table.setHorizontalHeaderLabels(["字段", "值"])
+        self.info_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)
+        self.info_table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
+        self.info_table.verticalHeader().setVisible(False)
+        self.info_table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
+        info_col.addWidget(self.info_table)
+        self.btn_info = QPushButton("获取信息")
+        self.btn_info.setObjectName("btnPrimary")
+        info_col.addWidget(self.btn_info)
+        main_row.addLayout(info_col, stretch=1)
+
+        # 右列：快速设置面板（改即自动保存）
+        panel = QGroupBox("快速设置")
+        panel_layout = QVBoxLayout(panel)
+        panel_layout.addWidget(QLabel("头像数据源（拖拽排序）:"))
+        self.panel_image_list = QListWidget()
+        self.panel_image_list.setDragDropMode(QAbstractItemView.DragDropMode.InternalMove)
+        self._fill_source_list(self.panel_image_list, manager.config.actor_image_sources, IMAGE_SOURCE_NAMES)
+        panel_layout.addWidget(self.panel_image_list)
+        panel_layout.addWidget(QLabel("信息数据源（拖拽排序）:"))
+        self.panel_info_list = QListWidget()
+        self.panel_info_list.setDragDropMode(QAbstractItemView.DragDropMode.InternalMove)
+        self._fill_source_list(self.panel_info_list, manager.config.actor_info_sources, INFO_SOURCE_NAMES)
+        panel_layout.addWidget(self.panel_info_list)
+        panel_layout.addWidget(QLabel("本地头像目录:"))
+        folder_row = QHBoxLayout()
+        self.panel_folder_edit = QLineEdit(manager.config.actor_photo_folder)
+        browse_btn = QPushButton("浏览")
+        browse_btn.clicked.connect(self._browse_folder)
+        folder_row.addWidget(self.panel_folder_edit)
+        folder_row.addWidget(browse_btn)
+        panel_layout.addLayout(folder_row)
+        main_row.addWidget(panel)
+
+        root.addLayout(main_row)
+
+        # 底部：各数据源结果
+        root.addWidget(QLabel("各数据源结果:"))
+        self.result_text = QTextEdit()
+        self.result_text.setReadOnly(True)
+        self.result_text.setMaximumHeight(150)
+        root.addWidget(self.result_text)
+
+        self.btn_both.clicked.connect(lambda: self._run(True, True))
+        self.btn_image.clicked.connect(lambda: self._run(True, False))
+        self.btn_info.clicked.connect(lambda: self._run(False, True))
+
+        # 快速面板改动即自动保存
+        self.panel_image_list.model().rowsMoved.connect(self._save_quick_settings)
+        self.panel_info_list.model().rowsMoved.connect(self._save_quick_settings)
+        self.panel_folder_edit.textChanged.connect(self._save_quick_settings)
+
+    @staticmethod
+    def _fill_source_list(list_widget: QListWidget, sources: list[str], names: dict[str, str]):
+        list_widget.clear()
+        for src in sources:
+            item = QListWidgetItem(f"{src}（{names.get(src, src)}）")
+            item.setData(Qt.ItemDataRole.UserRole, src)
+            list_widget.addItem(item)
+
+    def _browse_folder(self):
+        path = QFileDialog.getExistingDirectory(self, "选择本地头像目录", self.panel_folder_edit.text())
+        if path:
+            self.panel_folder_edit.setText(path)
+
+    def _save_quick_settings(self, *args):
+        cfg = manager.config.model_copy(deep=True)
+        cfg.actor_image_sources = [item.data(Qt.ItemDataRole.UserRole) for item in self.panel_image_list]
+        cfg.actor_info_sources = [item.data(Qt.ItemDataRole.UserRole) for item in self.panel_info_list]
+        cfg.actor_photo_folder = self.panel_folder_edit.text().strip()
+        manager._replace_config(cfg)
+
+    def _run(self, need_image: bool, need_info: bool):
+        name = self.name_edit.text().strip()
+        if not name:
+            QMessageBox.warning(self, "提示", "请输入演员名")
+            return
+        import asyncio
+
+        loop = asyncio.new_event_loop()
+        try:
+            loop.run_until_complete(self._execute(name, need_image, need_info))
+        finally:
+            loop.close()
+
+    async def _execute(self, name: str, need_image: bool, need_info: bool):
+        self.result_text.clear()
+        self.info_table.setRowCount(0)
+        self.avatar_label.clear()
+        self.avatar_label.setText("头像预览")
+        actor = ActorInfo(name=name, actor_id="", server_id="")
+
+        if need_image:
+            gfriends_index = None
+            try:
+                gfriends_index = await get_gfriends_index()
+            except Exception:
+                pass
+            for src in manager.config.actor_image_sources:
+                result: object = None
+                try:
+                    if src == "gfriends" and gfriends_index:
+                        result = await from_gfriends(actor, gfriends_index, Path(tempfile.gettempdir()))
+                    elif src == "graphis":
+                        result = await from_graphis(actor, Path(tempfile.gettempdir()))
+                    elif src == "minnano":
+                        result = await from_minnano_image(actor, Path(tempfile.gettempdir()))
+                    elif src == "local":
+                        result = from_local_avatar(actor, manager.config.actor_photo_folder)
+                    else:
+                        self.result_text.append(f"头像[{src}]: 未知数据源")
+                        continue
+                except Exception as e:
+                    self.result_text.append(f"头像[{src}]: 异常 {e}")
+                    continue
+                if result:
+                    self.result_text.append(f"头像[{src}]: ✅ 命中")
+                    if isinstance(result, (str, Path)) and Path(result).exists():
+                        self._show_avatar(str(result))
+                    elif isinstance(result, tuple) and result and Path(result[0]).exists():
+                        self._show_avatar(str(result[0]))
+                else:
+                    self.result_text.append(f"头像[{src}]: 未命中")
+
+        if need_info:
+            for src in manager.config.actor_info_sources:
+                try:
+                    ok, desc, info = await fetch_actor_info_from_source(actor, src)
+                except Exception as e:
+                    self.result_text.append(f"信息[{src}]: 异常 {e}")
+                    continue
+                self.result_text.append(f"信息[{src}]: {'✅' if ok else '❌'} {desc}")
+                if ok:
+                    self._populate_info_table(info)
+
+    def _populate_info_table(self, info: object):
+        from ..models.emby import EMbyActressInfo
+
+        if not isinstance(info, EMbyActressInfo):
+            return
+        rows = [
+            ("生日", info.birthday),
+            ("年份", str(info.year) if info.year else ""),
+            ("出生地", ", ".join(info.locations or [])),
+            ("标签", ", ".join(info.taglines or [])),
+            ("简介", info.overview or ""),
+        ]
+        self.info_table.setRowCount(len(rows))
+        for r, (field, value) in enumerate(rows):
+            self.info_table.setItem(r, 0, QTableWidgetItem(field))
+            self.info_table.setItem(r, 1, QTableWidgetItem(str(value)))
+
+    def _show_avatar(self, path: str):
+        from PyQt6.QtGui import QPixmap
+
+        pix = QPixmap(path)
+        if not pix.isNull():
+            self.avatar_label.setPixmap(pix.scaled(self.avatar_label.size(), Qt.AspectRatioMode.KeepAspectRatio))
 
 
 def open_emby_actor_manager(parent=None):

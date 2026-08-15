@@ -598,6 +598,16 @@ class Config(BaseModel):
     gfriends_github: HttpUrl = Field(default=HttpUrl("https://github.com/gfriends/gfriends"), title="Gfriends Github")
     gfriends_local_path: str = Field(default="", title="Gfriends 本地仓库路径")
     actor_photo_folder: str = Field(default="", title="演员照片目录")
+    actor_image_sources: list[str] = Field(
+        default_factory=lambda: ["gfriends", "graphis", "minnano", "local"],
+        title="演员头像数据源优先级",
+    )
+    actor_info_sources: list[str] = Field(
+        default_factory=lambda: ["local", "wiki", "minnano", "database"],
+        title="演员信息数据源优先级",
+    )
+    actor_filter_only: bool = Field(default=True, title="只获取演员类型")
+    actor_deduplicate: bool = Field(default=True, title="重复演员去重")
     actor_photo_kodi_auto: bool = Field(default=False, title="演员照片Kodi自动")
     # endregion
 

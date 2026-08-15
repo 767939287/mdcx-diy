@@ -570,6 +570,53 @@ def from_local_avatar(actor: ActorInfo, local_avatar_dir: str) -> str | None:
     return None
 
 
+async def fetch_actor_info_from_source(actor: ActorInfo, source: str) -> tuple[bool, str, object]:
+    """按指定信息源获取演员信息，返回 (是否命中, 描述, EMbyActressInfo)。
+
+    供数据源测试窗口逐源展示。
+    """
+    from ..models.emby import EMbyActressInfo
+    from .actress_db import ActressDB
+    from .minnano_crawler import get_minnano_info
+    from .wiki import get_detail, search_wiki
+
+    info = EMbyActressInfo(name=actor.name, server_id=actor.server_id, id=actor.actor_id)
+    if source == "local":
+        local_data = resources.get_actor_data(actor.name)
+        if local_data.get("has_name"):
+            bio = (local_data.get("bio") or "").strip()
+            bd = (local_data.get("birth_date") or "").strip()
+            if bio or bd:
+                info.overview = bio.replace("\n", "<br/>")
+                info.birthday = bd
+                if not info.locations:
+                    info.locations = ["日本"]
+                return (
+                    True,
+                    f"本地演员库命中（{'简介' if bio else ''}{'+' if bio and bd else ''}{'生日' if bd else ''}）",
+                    info,
+                )
+        return False, "本地演员库未命中", info
+    if source == "wiki":
+        res_wiki, _ = await search_wiki(info)
+        if res_wiki:
+            result_wiki, _ = await get_detail(res_wiki, "", info)
+            if result_wiki and info.overview:
+                return True, f"维基百科命中（简介 {len(info.overview)} 字）", info
+        return False, "维基百科未命中", info
+    if source == "minnano":
+        res, _ = await get_minnano_info(info)
+        if res and (info.overview or info.birthday or info.taglines):
+            return True, "minnano-av 命中", info
+        return False, "minnano-av 未命中", info
+    if source == "database":
+        db_res = ActressDB.update_actor_info_from_db(info)
+        if db_res and (info.overview or info.birthday):
+            return True, "本地数据库命中", info
+        return False, "本地数据库未命中", info
+    return False, f"未知信息源: {source}", info
+
+
 async def search_actor_info(actor: ActorInfo, wiki_intro: str = "") -> bool:
     from ..models.emby import EMbyActressInfo
 
