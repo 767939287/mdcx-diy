@@ -3,12 +3,25 @@ import types
 from pathlib import Path
 from types import SimpleNamespace
 
+import pytest
+
 from mdcx.config.enums import Language
 from mdcx.config.models import Config
 
 # 生产 Config 的默认实例，用作 _DummyConfig 缺失字段的透明回退来源，
 # 避免桩缺字段（枚举列表 / 复杂默认值等）导致测试在访问 config.xxx 时报 AttributeError。
 _REAL_CONFIG = Config()
+
+
+@pytest.fixture(autouse=True)
+def _reset_dmm_upgrade_cache():
+    # upgrade_dmm_cover 的进程内缓存是模块级全局状态，测试间必须复位，
+    # 否则 test_javbus / test_r18dev 的成败会依赖测试执行顺序。
+    from mdcx.crawlers.dmm_direct import _clear_dmm_upgrade_cache
+
+    _clear_dmm_upgrade_cache()
+    yield
+    _clear_dmm_upgrade_cache()
 
 
 class _DummySignal:

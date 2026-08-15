@@ -10,7 +10,11 @@ cid = {mPrefix}{series}{编号5位补零}，mPrefix 由品牌(series)决定，�
 
 from __future__ import annotations
 
+import asyncio
 import re
+import threading
+import time
+from typing import Any
 
 _DMM_CDN_BASE = "https://awsimgsrc.dmm.co.jp/pics_dig/digital/video"
 
@@ -199,6 +203,31 @@ def generate_image_candidates(number: str) -> list[tuple[str, str]]:
 
 _UNCENSORED_PREFIXES = ("FC2", "HEYZO", "1PONDO", "CARIB", "10MUCH", "200GANA", "PACO", "MKD", "MIUM")
 
+_DMM_UPGRADE_CACHE_TTL = 10 * 60
+_DMM_UPGRADE_CACHE_MAX = 4096
+_dmm_upgrade_cache: dict[str, tuple[float, str | None, str | None]] = {}
+_dmm_upgrade_pending: dict[tuple[int, str], asyncio.Future[Any]] = {}
+_dmm_cache_lock = threading.Lock()
+
+
+def _normalize_dmm_number(number: str) -> str:
+    return re.sub(r"[^a-z0-9]", "", number.lower())
+
+
+def _clear_dmm_upgrade_cache() -> None:
+    """清空升级缓存与 in-flight 表（测试复位用）。"""
+    with _dmm_cache_lock:
+        _dmm_upgrade_cache.clear()
+        _dmm_upgrade_pending.clear()
+
+
+def _prune_dmm_upgrade_cache(now: float) -> None:
+    if len(_dmm_upgrade_cache) < _DMM_UPGRADE_CACHE_MAX:
+        return
+    expired = [key for key, (ts, _, _) in _dmm_upgrade_cache.items() if now - ts >= _DMM_UPGRADE_CACHE_TTL]
+    for key in expired:
+        _dmm_upgrade_cache.pop(key, None)
+
 
 def is_uncensored_number(number: str) -> bool:
     """DMM 是有码源，判断番号是否为明显无码（含 `_` 或命中无码前缀），用于跳过 DMM 候选."""
@@ -228,22 +257,63 @@ async def upgrade_dmm_cover(ctx, number: str, cover_url: str, poster_url: str) -
 
     复用 dmm_direct 生成 awsimgsrc 高清候选，check_url 验证成功后覆盖，
     失败回退原图。无码番号直接跳过。
+
+    探测结果按规范化番号进程内 TTL 缓存（成功缓存高清 URL，失败缓存 None），
+    并对同事件循环的并发调用做 in-flight 合并，避免 javbus/javdb/r18dev 等
+    站点并行刮削同一番号时重复探测相同候选。
     """
     from mdcx.base.web import check_url
 
     number = (number or "").strip()
     if not number or is_uncensored_number(number):
         return cover_url, poster_url
-    for url in build_aws_cover_candidates(number):
-        if await check_url(url):
-            if url != cover_url:
-                ctx.debug(f"封面升级为高清: {url}")
-            cover_url = url
-            break
-    for url in build_aws_poster_candidates(number):
-        if await check_url(url):
-            if url != poster_url:
-                ctx.debug(f"海报升级为高清竖版: {url}")
-            poster_url = url
-            break
-    return cover_url, poster_url
+    norm = _normalize_dmm_number(number)
+    now = time.monotonic()
+    with _dmm_cache_lock:
+        cached = _dmm_upgrade_cache.get(norm)
+    if cached is not None and now - cached[0] < _DMM_UPGRADE_CACHE_TTL:
+        cached_cover, cached_poster = cached[1], cached[2]
+        if cached_cover and cached_cover != cover_url:
+            ctx.debug(f"封面命中 DMM 升级缓存: {cached_cover}")
+        return (cached_cover or cover_url), (cached_poster or poster_url)
+
+    loop = asyncio.get_running_loop()
+    key = (id(loop), norm)
+    with _dmm_cache_lock:
+        pending = _dmm_upgrade_pending.get(key)
+    if pending is not None and not pending.done():
+        return await pending
+
+    future = loop.create_future()
+    with _dmm_cache_lock:
+        _dmm_upgrade_pending[key] = future
+    try:
+        cover_found = ""
+        for url in build_aws_cover_candidates(number):
+            if await check_url(url):
+                cover_found = url
+                break
+        poster_found = ""
+        for url in build_aws_poster_candidates(number):
+            if await check_url(url):
+                poster_found = url
+                break
+        if cover_found and cover_found != cover_url:
+            ctx.debug(f"封面升级为高清: {cover_found}")
+        if poster_found and poster_found != poster_url:
+            ctx.debug(f"海报升级为高清竖版: {poster_found}")
+        result = (cover_found or cover_url), (poster_found or poster_url)
+        now = time.monotonic()
+        with _dmm_cache_lock:
+            _dmm_upgrade_cache[norm] = (now, cover_found or None, poster_found or None)
+            _prune_dmm_upgrade_cache(now)
+        if not future.done():
+            future.set_result(result)
+        return result
+    except BaseException as exc:
+        if not future.done():
+            future.set_exception(exc)
+        raise
+    finally:
+        with _dmm_cache_lock:
+            _dmm_upgrade_pending.pop(key, None)

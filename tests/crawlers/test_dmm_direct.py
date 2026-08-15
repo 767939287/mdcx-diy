@@ -1,3 +1,5 @@
+import pytest
+
 from mdcx.crawlers.dmm_direct import generate_cid_candidates, generate_image_candidates
 
 
@@ -199,3 +201,77 @@ def test_probe4_discovered_series():
         candidates = generate_cid_candidates(number)
         assert candidates[0] == first_cid, f"{number}: 首个候选 {candidates[0]} != {first_cid}"
         assert first_cid in candidates
+
+
+class _FakeCtx:
+    def __init__(self):
+        self.logs = []
+
+    def debug(self, message):
+        self.logs.append(message)
+
+
+@pytest.mark.asyncio
+async def test_upgrade_dmm_cover_cache_hit_skips_probe(monkeypatch):
+    from mdcx.crawlers.dmm_direct import upgrade_dmm_cover
+
+    calls = []
+
+    async def _counting_ok(url):
+        calls.append(url)
+        return url
+
+    monkeypatch.setattr("mdcx.base.web.check_url", _counting_ok)
+    ctx = _FakeCtx()
+    cover1, poster1 = await upgrade_dmm_cover(ctx, "SSIS-001", "old_cover.jpg", "old_poster.jpg")
+    assert cover1.endswith("ssis00001pl.jpg")
+    assert poster1.endswith("ssis00001ps.jpg")
+    first_calls = len(calls)
+    cover2, poster2 = await upgrade_dmm_cover(ctx, "SSIS-001", "old_cover2.jpg", "old_poster2.jpg")
+    assert cover2 == cover1
+    assert poster2 == poster1
+    assert len(calls) == first_calls
+
+
+@pytest.mark.asyncio
+async def test_upgrade_dmm_cover_cache_failure_keeps_original(monkeypatch):
+    from mdcx.crawlers.dmm_direct import upgrade_dmm_cover
+
+    async def _fail(url):
+        return None
+
+    monkeypatch.setattr("mdcx.base.web.check_url", _fail)
+    ctx = _FakeCtx()
+    cover, poster = await upgrade_dmm_cover(ctx, "SSIS-001", "site_a_cover.jpg", "site_a_poster.jpg")
+    assert cover == "site_a_cover.jpg"
+    assert poster == "site_a_poster.jpg"
+    cover2, poster2 = await upgrade_dmm_cover(ctx, "SSIS-001", "site_b_cover.jpg", "site_b_poster.jpg")
+    assert cover2 == "site_b_cover.jpg"
+    assert poster2 == "site_b_poster.jpg"
+
+
+@pytest.mark.asyncio
+async def test_upgrade_dmm_cover_inflight_dedup(monkeypatch):
+    import asyncio
+
+    from mdcx.crawlers.dmm_direct import (
+        build_aws_cover_candidates,
+        build_aws_poster_candidates,
+        upgrade_dmm_cover,
+    )
+
+    calls = []
+
+    async def _counting_ok(url):
+        calls.append(url)
+        return url
+
+    monkeypatch.setattr("mdcx.base.web.check_url", _counting_ok)
+    ctx = _FakeCtx()
+    expected = len(build_aws_cover_candidates("SSIS-001")) + len(build_aws_poster_candidates("SSIS-001"))
+    results = await asyncio.gather(
+        upgrade_dmm_cover(ctx, "SSIS-001", "a_cover.jpg", "a_poster.jpg"),
+        upgrade_dmm_cover(ctx, "SSIS-001", "b_cover.jpg", "b_poster.jpg"),
+    )
+    assert len(calls) == expected
+    assert results[0][0] == results[1][0]
