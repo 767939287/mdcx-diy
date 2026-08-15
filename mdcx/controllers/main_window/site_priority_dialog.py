@@ -721,6 +721,7 @@ def _open_site_editor(window: "MyMAinWindow", scraping_type: FixedScrapingType) 
             sites,
         )
     manager.config.fill_missing_type_field_configs()
+    manager.save()
     refresh_site_priority_ui(window)
 
 
@@ -746,6 +747,7 @@ def _open_priority_editor(window: "MyMAinWindow", scraping_type: FixedScrapingTy
         return
     manager.config.type_field_configs[scraping_type] = dialog.field_configs()
     manager.config.fill_missing_type_field_configs()
+    manager.save()
     refresh_site_priority_ui(window)
 
 

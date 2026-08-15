@@ -89,7 +89,7 @@ class LibrarySelectDialog(QDialog):
         btn_layout.addWidget(btn_none)
         btn_layout.addStretch()
         layout.addLayout(btn_layout)
-        buttons = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
         buttons.accepted.connect(self.accept)
         buttons.rejected.connect(self.reject)
         layout.addWidget(buttons)
