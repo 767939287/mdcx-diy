@@ -221,7 +221,11 @@ async def test_upgrade_dmm_cover_cache_hit_skips_probe(monkeypatch):
         calls.append(url)
         return url
 
+    async def _hd_size(url):
+        return 1032, 1469
+
     monkeypatch.setattr("mdcx.base.web.check_url", _counting_ok)
+    monkeypatch.setattr("mdcx.base.web.get_imgsize", _hd_size)
     ctx = _FakeCtx()
     cover1, poster1 = await upgrade_dmm_cover(ctx, "SSIS-001", "old_cover.jpg", "old_poster.jpg")
     assert cover1.endswith("ssis00001pl.jpg")
@@ -266,7 +270,11 @@ async def test_upgrade_dmm_cover_inflight_dedup(monkeypatch):
         calls.append(url)
         return url
 
+    async def _hd_size(url):
+        return 1032, 1469
+
     monkeypatch.setattr("mdcx.base.web.check_url", _counting_ok)
+    monkeypatch.setattr("mdcx.base.web.get_imgsize", _hd_size)
     ctx = _FakeCtx()
     expected = len(build_aws_cover_candidates("SSIS-001")) + len(build_aws_poster_candidates("SSIS-001"))
     results = await asyncio.gather(

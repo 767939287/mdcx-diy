@@ -252,6 +252,21 @@ def build_aws_poster_candidates(number: str) -> list[str]:
     return [url for orient, url in generate_image_candidates(number) if orient == "portrait"]
 
 
+_DMM_HD_MIN_WIDTH = 1024
+
+
+async def _is_dmm_hd_image(url: str) -> bool:
+    """校验 DMM 图是否存在且为高清（宽≥1024）.
+
+    awsimgsrc 同一 URL 格式下会返回 147x200 缩略图或 1032x1469 高清图，
+    仅 check_url 验存在无法区分，需读取分辨率过滤缩略图占位图。
+    """
+    from mdcx.base.web import get_imgsize
+
+    width, _height = await get_imgsize(url)
+    return width >= _DMM_HD_MIN_WIDTH
+
+
 async def upgrade_dmm_cover(ctx, number: str, cover_url: str, poster_url: str) -> tuple[str, str]:
     """尝试将爬虫低清/水印图升级为 DMM 高清 ps/pl，返回 (cover, poster).
 
@@ -290,12 +305,12 @@ async def upgrade_dmm_cover(ctx, number: str, cover_url: str, poster_url: str) -
     try:
         cover_found = ""
         for url in build_aws_cover_candidates(number):
-            if await check_url(url):
+            if await check_url(url) and await _is_dmm_hd_image(url):
                 cover_found = url
                 break
         poster_found = ""
         for url in build_aws_poster_candidates(number):
-            if await check_url(url):
+            if await check_url(url) and await _is_dmm_hd_image(url):
                 poster_found = url
                 break
         if cover_found and cover_found != cover_url:

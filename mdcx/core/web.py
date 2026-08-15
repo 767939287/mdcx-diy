@@ -23,6 +23,7 @@ from ..base.web import (
     get_dmm_trailer,
     get_imgsize,
     get_url_content_length,
+    is_dmm_image_url,
 )
 from ..config.enums import DownloadableFile, FixedScrapingType, HDPicSource, KeepableFile
 from ..config.manager import manager
@@ -68,6 +69,7 @@ POSTER_DIRECT_DOWNLOAD_TYPES = {
 POSTER_AUTO_BEST_MIN_CROP_AREA_RATIO = 0.70
 POSTER_AUTO_BEST_MIN_CROP_HEIGHT_RATIO = 0.80
 POSTER_SKIP_AMAZON_MIN_BYTES = 400 * 1024
+POSTER_DMM_MIN_WIDTH = 1024
 
 
 @dataclass(frozen=True)
@@ -324,12 +326,23 @@ async def _should_skip_amazon_for_existing_poster(
     if not result.poster or result.poster_from == "Amazon":
         return False
 
+    poster_size = (0, 0)
     if result.scraping_type == FixedScrapingType.YOUMA and not poster_auto_best:
         if not await _is_existing_poster_better_than_youma_crop(result, other, media_context):
             return False
-    elif not _is_known_image_size(await _get_image_size(result.poster, media_context)):
-        LogBuffer.log().write("\n 🖼 Amazon搜索：当前 Poster 尺寸未知，继续搜索高清图")
-        return False
+    else:
+        poster_size = await _get_image_size(result.poster, media_context)
+        if not _is_known_image_size(poster_size):
+            LogBuffer.log().write("\n 🖼 Amazon搜索：当前 Poster 尺寸未知，继续搜索高清图")
+            return False
+
+    # DMM 官方 awsimgsrc 高清图（宽≥1024）直接按分辨率放行，避免被字节阈值误判
+    # （DMM 竖图 1032x1469 通常 240-420KB，小于 400KB 字节阈值而误走 Amazon 搜索）。
+    if is_dmm_image_url(result.poster) and poster_size[0] >= POSTER_DMM_MIN_WIDTH:
+        LogBuffer.log().write(
+            f"\n 🖼 Amazon搜索：当前 Poster 为 DMM 高清图({poster_size[0]}x{poster_size[1]})，跳过 Amazon"
+        )
+        return True
 
     content_length = (
         await media_context.get_content_length(result.poster)

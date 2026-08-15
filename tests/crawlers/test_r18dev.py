@@ -389,7 +389,11 @@ async def test_upgrade_dmm_cover_success(monkeypatch):
     from mdcx.crawlers.base.types import CrawlerData
     from mdcx.crawlers.r18dev import _upgrade_dmm_cover
 
+    async def _hd_size(url):
+        return 1032, 1469
+
     monkeypatch.setattr("mdcx.base.web.check_url", _ok)
+    monkeypatch.setattr("mdcx.base.web.get_imgsize", _hd_size)
     ctx = _FakeCtx()
     data = CrawlerData(number="SSIS-001", thumb="old.jpg", poster="old.jpg")
     await _upgrade_dmm_cover(ctx, data)
@@ -415,7 +419,11 @@ async def test_upgrade_dmm_cover_uses_data_number(monkeypatch):
     from mdcx.crawlers.base.types import CrawlerData
     from mdcx.crawlers.r18dev import _upgrade_dmm_cover
 
+    async def _hd_size(url):
+        return 1032, 1469
+
     monkeypatch.setattr("mdcx.base.web.check_url", _ok)
+    monkeypatch.setattr("mdcx.base.web.get_imgsize", _hd_size)
     ctx = _FakeCtx()
     data = CrawlerData(number="WANZ-100", thumb="old.jpg", poster="old.jpg")
     await _upgrade_dmm_cover(ctx, data)

@@ -74,7 +74,11 @@ async def _fail(url: str) -> None:
 async def test_upgrade_dmm_cover_success(monkeypatch):
     from mdcx.crawlers.javbus import _upgrade_dmm_cover
 
+    async def _hd_size(url):
+        return 1032, 1469
+
     monkeypatch.setattr("mdcx.base.web.check_url", _ok)
+    monkeypatch.setattr("mdcx.base.web.get_imgsize", _hd_size)
     ctx = _FakeCtx()
     cover, poster = await _upgrade_dmm_cover(ctx, "SSIS-001", "old_cover.jpg", "old_poster.jpg")
     assert cover.endswith("ssis00001pl.jpg")
