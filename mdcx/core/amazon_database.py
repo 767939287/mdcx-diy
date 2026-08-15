@@ -8,6 +8,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import TypedDict
 
+from ..utils.file import write_file_atomic
+
 
 class AsinRecord(TypedDict, total=False):
     """ASIN 记录结构"""
@@ -93,7 +95,7 @@ def merge_asin_db_from_backup(backup_path: Path, local_path: Path) -> None:
         if added or filled:
             wb.save(local_path)
         wb.close()
-        marker_path.write_text(backup_hash, encoding="utf-8")
+        write_file_atomic(marker_path, backup_hash, "utf-8")
         if added or filled:
             LogBuffer.log().write(f"  ℹ️ [ASIN 数据库] 出厂库增量合并: 新增 {added} 条, 补全 {filled} 个字段")
     except Exception as e:
@@ -491,6 +493,6 @@ async def export_asin_statistics(
         + "=" * 60
         + "\n"
     )
-    await asyncio.to_thread(output_path.write_text, report, encoding="utf-8")
+    await asyncio.to_thread(write_file_atomic, output_path, report, "utf-8")
 
     return stats

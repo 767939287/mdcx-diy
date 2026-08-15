@@ -50,6 +50,7 @@ from ..core.tmdb_actor import (
 )
 from ..models.log_buffer import LogBuffer
 from ..utils import get_used_time
+from ..utils.file import write_file_atomic, write_file_atomic_async
 
 
 @dataclass
@@ -1969,7 +1970,7 @@ async def clean_male_actors(*, limit: int = 5000, concurrency: int = 5) -> Clean
             # 持久化断点（已校验 gender 的 id 集合），便于限量分片续跑
             if checked_ids:
                 try:
-                    checked_file.write_text(json.dumps(sorted(checked_ids)), encoding="utf-8")
+                    write_file_atomic(checked_file, json.dumps(sorted(checked_ids)), "utf-8")
                 except OSError:
                     pass
 
@@ -2149,7 +2150,7 @@ async def verify_tmdb_ids(*, limit: int = 5000, concurrency: int = 5) -> VerifyT
             # 持久化断点（校验完成的 id 集合），便于限量分片续跑
             if verified_set:
                 try:
-                    verified_file.write_text(json.dumps(sorted(verified_set)), encoding="utf-8")
+                    write_file_atomic(verified_file, json.dumps(sorted(verified_set)), "utf-8")
                 except OSError:
                     pass
 
@@ -2353,8 +2354,7 @@ async def update_nfo_tmdb_ids(dir_path: Path, *, limit: int = 5000, concurrency:
             new_content, cnt = _update_nfo_tmdbids_text(content, id_map)
             if cnt:
                 try:
-                    async with aiofiles.open(nfo_path, "w", encoding="utf-8") as f:
-                        await f.write(new_content)
+                    await write_file_atomic_async(nfo_path, new_content)
                     result.updated_files += 1
                     result.updated_actors += cnt
                     _log_line(f"  ✅ [更新nfo] {nfo_path.name}: 更新 {cnt} 个 actor tmdbid")

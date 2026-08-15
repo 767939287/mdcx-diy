@@ -2,6 +2,7 @@ import asyncio
 import os
 import shutil
 import subprocess
+import tempfile
 import traceback
 from collections.abc import Iterable
 from pathlib import Path
@@ -211,18 +212,46 @@ def open_file_thread(p: Path, is_dir: bool) -> None:
 
 
 async def write_file_atomic_async(p: str | Path, content: str, encoding: str = "UTF-8") -> None:
-    """原子写入文本文件：先写同目录临时文件再 os.replace，避免写入中断损坏原文件。
+    """原子写入文本文件：同目录临时文件 + os.replace，避免写入中断损坏原文件。
 
-    临时文件与目标同目录，保证 os.replace 在同一文件系统上原子执行。
+    约束（借鉴 OpenAver 的 atomic_write 经验，防止历史踩坑）：
+    - 临时文件必须与目标同目录：跨卷 os.replace 会抛 EXDEV
+    - 使用 mkstemp 生成随机临时名，避免并发写同一目标互相撞 .tmp
+    - 先关闭 mkstemp 返回的 fd 再 os.replace：Windows 上打开着的句柄会阻止替换
+    - 失败时清理临时文件、原文件字节不变、原始异常原样上抛；
+      捕获 BaseException（KeyboardInterrupt/SystemExit 也要清临时文件）
     """
     p = Path(p)
-    tmp = p.with_name(f"{p.name}.tmp")
+    fd, tmp_name = tempfile.mkstemp(dir=p.parent, suffix=".tmp")
+    tmp = Path(tmp_name)
     try:
+        os.close(fd)
         async with aiofiles.open(tmp, "w", encoding=encoding) as f:
             await f.write(content)
         await asyncio.to_thread(os.replace, str(tmp), str(p))
-    except Exception:
-        await asyncio.to_thread(tmp.unlink, missing_ok=True)
+    except BaseException:
+        try:
+            await asyncio.to_thread(tmp.unlink, missing_ok=True)
+        except OSError:
+            pass
+        raise
+
+
+def write_file_atomic(p: str | Path, content: str, encoding: str = "UTF-8") -> None:
+    """同步版原子写入，供非 async 上下文使用（参数语义同 write_file_atomic_async）。"""
+    p = Path(p)
+    fd, tmp_name = tempfile.mkstemp(dir=p.parent, suffix=".tmp")
+    tmp = Path(tmp_name)
+    try:
+        os.close(fd)
+        with open(tmp, "w", encoding=encoding) as f:
+            f.write(content)
+        os.replace(tmp, p)
+    except BaseException:
+        try:
+            tmp.unlink(missing_ok=True)
+        except OSError:
+            pass
         raise
 
 

@@ -20,6 +20,7 @@ from ..crawlers.javbus import get_actress_video_list
 from ..models.flags import Flags
 from ..signals import signal
 from ..utils import get_used_time
+from ..utils.file import write_file_atomic_async
 
 
 async def _scraper_web(url):
@@ -255,8 +256,7 @@ async def check_missing_number(actor_flag):
         signal.show_log_text(
             "   提示：正在生成本地视频的番号信息数据...（第一次较慢，请耐心等待，以后只需要查找新视频，速度很快）"
         )
-        async with aiofiles.open(local_number_list, "w", encoding="utf-8") as f:
-            await f.write("{}")
+        await write_file_atomic_async(local_number_list, "{}")
     async with aiofiles.open(local_number_list, encoding="utf-8") as data:
         json_data = json.loads(await data.read())
         json_data = cast("dict[str, tuple[str, bool]]", json_data)
@@ -291,16 +291,16 @@ async def check_missing_number(actor_flag):
         if has_sub:
             Flags.local_number_cnword_set.add(number)  # 添加到本地有字幕的番号集合
 
-    async with aiofiles.open(local_number_list, "w", encoding="utf-8") as f:
-        await f.write(
-            json.dumps(
-                local_movies,
-                ensure_ascii=False,
-                sort_keys=True,
-                indent=4,
-                separators=(",", ": "),
-            )
-        )
+    await write_file_atomic_async(
+        local_number_list,
+        json.dumps(
+            local_movies,
+            ensure_ascii=False,
+            sort_keys=True,
+            indent=4,
+            separators=(",", ": "),
+        ),
+    )
     signal.show_log_text(f"🎉 获取完毕！共获取番号数量（{len(local_movies)}）({get_used_time(start_time_local)}s)")
 
     # 查询演员番号

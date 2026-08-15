@@ -21,6 +21,7 @@ from ..image import cut_pic, fix_pic_async
 from ..models.flags import Flags
 from ..signals import signal
 from ..utils import get_used_time
+from ..utils.file import write_file_atomic_async
 
 JELLYFIN_PERSON_FIELDS = ("Overview", "ProviderIds", "ProductionLocations", "Taglines", "Genres", "Tags")
 
@@ -290,15 +291,16 @@ async def _get_gfriends_actor_data() -> dict[str, str] | Literal[False] | None:
                             # https://raw.githubusercontent.com/gfriends/gfriends/master/Content/z-Derekhsu/%E5%A4%A2%E4%B9%83%E3%81%82%E3%81%84%E3%81%8B.jpg
                             actor_url = f"{raw_url}/master/Content/{each_key}/{value}"
                             new_gfriends_actor_data[key] = actor_url
-                async with aiofiles.open(gfriends_json_path, "w", encoding="utf-8") as f:
-                    json_content = json.dumps(
+                await write_file_atomic_async(
+                    gfriends_json_path,
+                    json.dumps(
                         new_gfriends_actor_data,
                         ensure_ascii=False,
                         sort_keys=True,
                         indent=4,
                         separators=(",", ": "),
-                    )
-                    await f.write(json_content)
+                    ),
+                )
                 return new_gfriends_actor_data
     else:
         return await asyncio.to_thread(_get_local_actor_photo)
