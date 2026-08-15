@@ -693,6 +693,11 @@ class EmbyActorManagerDialog(QDialog):
                 a.need_update_image = False
             if a.need_update_info:
                 a.has_overview = bool(a.new_overview and a.new_overview.strip())
+                a.existing_overview = a.new_overview or a.existing_overview
+                a.existing_taglines = list(a.new_taglines)
+                a.existing_production_year = a.new_production_year
+                a.existing_premiere_date = a.new_premiere_date
+                a.existing_production_locations = list(a.new_production_locations)
                 a.need_update_info = False
             if a.need_update_backdrop:
                 a.has_backdrop = bool(a.new_backdrop_path)
@@ -980,8 +985,9 @@ class ActorSourceTestDialog(QDialog):
         info_col.addWidget(self.btn_info)
         main_row.addLayout(info_col, stretch=1)
 
-        # 右列：快速设置面板（改即自动保存）
+        # 右列：快速设置面板（固定宽度，改即自动保存）
         panel = QGroupBox("快速设置")
+        panel.setFixedWidth(300)
         panel_layout = QVBoxLayout(panel)
         panel_layout.addWidget(QLabel("头像数据源（拖拽排序）:"))
         self.panel_image_list = QListWidget()
@@ -1214,6 +1220,7 @@ class ActorDetailDialog(QDialog):
 
         # 右侧快速设置面板（改即保存）
         panel = QGroupBox("快速设置")
+        panel.setFixedWidth(300)
         panel_layout = QVBoxLayout(panel)
         panel_layout.addWidget(QLabel("头像数据源（拖拽排序）:"))
         self.panel_image_list = QListWidget()
@@ -1225,6 +1232,14 @@ class ActorDetailDialog(QDialog):
         self.panel_info_list.setDragDropMode(QAbstractItemView.DragDropMode.InternalMove)
         self._fill_source_list(self.panel_info_list, manager.config.actor_info_sources, INFO_SOURCE_NAMES)
         panel_layout.addWidget(self.panel_info_list)
+        panel_layout.addWidget(QLabel("本地头像目录:"))
+        folder_row = QHBoxLayout()
+        self.panel_folder_edit = QLineEdit(manager.config.actor_photo_folder)
+        detail_browse_btn = QPushButton("浏览")
+        detail_browse_btn.clicked.connect(self._browse_folder)
+        folder_row.addWidget(self.panel_folder_edit)
+        folder_row.addWidget(detail_browse_btn)
+        panel_layout.addLayout(folder_row)
         root.addWidget(panel)
 
         self.btn_fetch_image.clicked.connect(lambda: self._run_fetch_image())
@@ -1238,6 +1253,7 @@ class ActorDetailDialog(QDialog):
         info_model = self.panel_info_list.model()
         if info_model:
             info_model.rowsMoved.connect(self._save_quick_settings)
+        self.panel_folder_edit.textChanged.connect(self._save_quick_settings)
 
         self._load_existing_avatar()
         if actor.new_image_path:
@@ -1255,7 +1271,13 @@ class ActorDetailDialog(QDialog):
         cfg = manager.config.model_copy(deep=True)
         cfg.actor_image_sources = [item.data(Qt.ItemDataRole.UserRole) for item in self.panel_image_list]
         cfg.actor_info_sources = [item.data(Qt.ItemDataRole.UserRole) for item in self.panel_info_list]
+        cfg.actor_photo_folder = self.panel_folder_edit.text().strip()
         manager._replace_config(cfg)
+
+    def _browse_folder(self):
+        path = QFileDialog.getExistingDirectory(self, "选择本地头像目录", self.panel_folder_edit.text())
+        if path:
+            self.panel_folder_edit.setText(path)
 
     def _populate_info_table(self):
         actor = self.actor
