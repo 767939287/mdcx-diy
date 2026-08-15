@@ -152,3 +152,21 @@ def test_generate_server_url_uses_new_jellyfin_endpoints(monkeypatch: pytest.Mon
     assert "api_key" not in backdrop_url
     assert "api_key" not in backdrop_url_0
     assert "api_key" not in update_url
+
+
+def test_is_jellyfin_server_emby_actor_image(monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setattr(manager.config, "server_type", "ln")
+    assert emby_actor_image._is_jellyfin_server() is True
+    monkeypatch.setattr(manager.config, "server_type", "jellyfin")
+    assert emby_actor_image._is_jellyfin_server() is True
+    monkeypatch.setattr(manager.config, "server_type", "emby")
+    assert emby_actor_image._is_jellyfin_server() is False
+
+
+def test_is_jellyfin_server_emby_actor_manager(monkeypatch: pytest.MonkeyPatch):
+    from mdcx.tools import emby_actor_manager
+
+    monkeypatch.setattr(manager.config, "server_type", "ln")
+    assert emby_actor_manager._is_jellyfin_server() is True
+    monkeypatch.setattr(manager.config, "server_type", "emby")
+    assert emby_actor_manager._is_jellyfin_server() is False

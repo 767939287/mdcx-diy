@@ -99,7 +99,8 @@ def _append_query(url: str, params: dict[str, str | None]) -> str:
 
 
 def _is_jellyfin_server() -> bool:
-    return manager.config.server_type == "jellyfin"
+    # server_type 配置为 Literal["emby", "ln"]，UI 用 "ln" 表示 Jellyfin
+    return manager.config.server_type != "emby"
 
 
 def _generate_server_url(actor: dict) -> tuple[str, str, str, str, str, str]:
