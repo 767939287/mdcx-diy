@@ -36,7 +36,6 @@ from ..signals import signal
 from ..utils import get_used_time, split_path
 from ..utils.file import check_pic_async, copy_file_async, delete_file_async, move_file_async
 from .amazon import (
-    _beam_search_amazon_ean13_from_ranked_digits,
     _detect_amazon_barcode_candidates_from_image_bytes_with_reason,
     _extract_amazon_barcode_label_roi,
     _get_amazon_barcode_detector_skip_reason,
@@ -81,7 +80,6 @@ class PosterCandidate:
 
 
 __all__ = [
-    "_beam_search_amazon_ean13_from_ranked_digits",
     "_detect_amazon_barcode_candidates_from_image_bytes_with_reason",
     "_extract_amazon_barcode_label_roi",
     "_get_amazon_barcode_detector_skip_reason",

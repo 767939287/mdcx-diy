@@ -105,7 +105,6 @@ async def save_asin_to_excel(
     excel_path: Path | None = None,
     *,
     sheet_name: str = "ASIN 数据库",
-    max_rows: int = 100000,
 ) -> Path:
     """
     保存 ASIN 记录到 Excel 文件
@@ -114,7 +113,6 @@ async def save_asin_to_excel(
         records: ASIN 记录列表
         excel_path: Excel 文件路径，默认保存到运行目录下的 amazon_asin_database.xlsx
         sheet_name: 工作表名称
-        max_rows: 单个 sheet 最大行数，超过会自动分 sheet
 
     Returns:
         Excel 文件路径
@@ -390,20 +388,15 @@ async def query_asin_database(
     try:
         import openpyxl
     except ImportError:
-        raise ImportError("请安装 openpyxl 库：pip install openpyxl")
+        from ..models.log_buffer import LogBuffer
+
+        LogBuffer.log().write("  ⚠️ [ASIN 数据库] 缺少 openpyxl，无法读取 amazon_asin_database.xlsx")
+        return []
 
     if excel_path is None:
         excel_path = _get_default_excel_path()
 
     if not excel_path.exists():
-        return []
-
-    try:
-        import openpyxl
-    except ImportError:
-        from ..models.log_buffer import LogBuffer
-
-        LogBuffer.log().write("  ⚠️ [ASIN 数据库] 缺少 openpyxl，无法读取 amazon_asin_database.xlsx")
         return []
 
     results: list[AsinRecord] = []

@@ -699,6 +699,9 @@ class Scraper:
                         if row and row.get("tmdbid"):
                             existing_tmdb_ids[actor_name] = row["tmdbid"]
                             LogBuffer.log().write(f"  ℹ️ [TMDB] {actor_name} -> tmdbid={row['tmdbid']} (xlsx缓存)")
+                    # 缓存命中部分必须立即回写 res，否则当 still_missing 为空（全命中）时
+                    # res.actor_tmdb_ids 不会被更新，NFO 仍缺这些 tmdbid
+                    res.actor_tmdb_ids = existing_tmdb_ids
 
                     # 仍未命中的演员，尝试用 xlsx 找到日文原名后查 TMDB API
                     still_missing = [a for a in missing_actors if a not in existing_tmdb_ids]

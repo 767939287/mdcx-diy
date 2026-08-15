@@ -422,29 +422,8 @@ class CutWindow(QDialog):
 
         return self.c_x, self.c_y, self.c_x2, self.c_y2
 
-    def do_cut_and_close(self):
-        executor.submit(self.to_cut())
-        self.close()
-
-    def do_cut(self):
-        executor.run(self.to_cut())
-
-    async def to_cut(self):
-        img_path = self.show_image_path  # 被裁剪的图片
-        thumb_path = self.cut_thumb_path  # 裁剪后的thumb路径
-
-        # 路径为空时，跳过
-        if (
-            not img_path
-            or not os.path.exists(img_path)
-            or not thumb_path
-            or not self.cut_poster_path
-            or not self.cut_fanart_path
-        ):
-            return None
-        self.main_window.img_path = img_path  # 裁剪后更新图片url，这样再次点击时才可以重新加载并裁剪
-
-        # 读取配置信息
+    def _collect_mark_list(self) -> list[str]:
+        """主线程采集裁剪水印选项（后台线程不可读 QWidget）。"""
         mark_list = []
         if self.Ui.radioButton_add_4k.isChecked():
             mark_list.append("4K")
@@ -460,14 +439,38 @@ class CutWindow(QDialog):
             mark_list.append("流出")
         elif self.Ui.radioButton_add_uncensored.isChecked():
             mark_list.append("无码")
+        return mark_list
+
+    def do_cut_and_close(self):
+        mark_list = self._collect_mark_list()
+        executor.submit(self.to_cut(mark_list))
+        self.close()
+
+    def do_cut(self):
+        mark_list = self._collect_mark_list()
+        executor.run(self.to_cut(mark_list))
+
+    async def to_cut(self, mark_list: list[str]):
+        img_path = self.show_image_path  # 被裁剪的图片
+        thumb_path = self.cut_thumb_path  # 裁剪后的thumb路径
+
+        # 路径为空时，跳过
+        if (
+            not img_path
+            or not os.path.exists(img_path)
+            or not thumb_path
+            or not self.cut_poster_path
+            or not self.cut_fanart_path
+        ):
+            return None
+        self.main_window.img_path = img_path  # 裁剪后更新图片url，这样再次点击时才可以重新加载并裁剪
 
         # 裁剪poster
         try:
-            img = Image.open(img_path)
+            img = Image.open(img_path).convert("RGB")
         except Exception:
             self.main_window.show_log_text(f"{traceback.format_exc()}\n Open Pic: {img_path}")
             return False
-        img = img.convert("RGB")
         img_new_png = img.crop((self.c_x, self.c_y, self.c_x2, self.c_y2))
         try:
             if os.path.exists(self.cut_poster_path):
@@ -505,15 +508,9 @@ class CutWindow(QDialog):
         img.close()
         img_new_png.close()
 
-        # 在主界面显示预览
-        await self.main_window._set_pixmap(
-            self.cut_poster_path,
-            thumb_path,
-            poster_from="cut",
-            cover_from="local",
-            force_reload=True,
-        )
+        # 在主界面显示预览（QWidget 只能主线程操作，经信号调度）
         self.main_window.change_to_mainpage.emit("")
+        self.main_window.request_preview_images.emit(str(self.cut_poster_path), str(thumb_path))
         return True
 
     def mousePressEvent(self, a0):

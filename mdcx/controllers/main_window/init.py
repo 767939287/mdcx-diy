@@ -330,8 +330,8 @@ def Init_Singal(self: "MyMAinWindow"):
     self.exec_save_config.connect(self.pushButton_save_config_clicked)
     self.set_pic_pixmap.connect(self.resize_label_and_setpixmap)
     self.set_pic_text.connect(self.Ui.label_poster_size.setText)
-    self.change_to_mainpage.connect(self.change_mainpage)
-    # endregion
+    self.change_to_mainpage.connect(self.change_mainpage)  # endregion
+    self.request_preview_images.connect(self._on_request_preview_images)
 
     # region 文本更新
     self.set_label_file_path.connect(self.Ui.label_file_path.setText)

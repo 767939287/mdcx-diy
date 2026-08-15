@@ -155,27 +155,6 @@ async def _check_asin_cache(number: str) -> dict | None:
     return None
 
 
-def _get_image_url_from_asin(asin: str) -> str | None:
-    """
-    从 ASIN 生成图片 URL
-
-    Amazon 图片 URL 格式：https://m.media-amazon.com/images/I/{ASIN}.01.SL1500.jpg
-
-    Args:
-        asin: ASIN 编号
-
-    Returns:
-        图片 URL，如果生成失败则返回 None
-    """
-    if not asin or len(asin) != 10:
-        return None
-
-    # 生成可能的图片 URL 格式
-    # 注意：这不是 100% 准确，因为 ASIN 和图片 ID 不一定相同
-    # 但在很多情况下可以工作，特别是对于数字商品
-    return f"https://m.media-amazon.com/images/I/{asin}.jpg"
-
-
 def is_amazon_hard_match(result: CrawlersResult) -> bool:
     return bool(getattr(result, "amazon_match_is_hard", False))
 
@@ -301,11 +280,6 @@ def _beam_search_amazon_ean13_candidates_from_ranked_digits(
         if len(result) >= limit:
             break
     return result
-
-
-def _beam_search_amazon_ean13_from_ranked_digits(ranked_digits: list[list[tuple[float, str]]]) -> str:
-    candidates = _beam_search_amazon_ean13_candidates_from_ranked_digits(ranked_digits, limit=1)
-    return candidates[0] if candidates else ""
 
 
 def _extract_amazon_barcode_label_roi(gray_image: object, detected_points: object) -> object | None:
@@ -650,16 +624,6 @@ def _detect_amazon_barcode_candidates_from_image_bytes_with_reason(image_bytes: 
     return [], "未识别到 EAN/JAN 条码"
 
 
-def _detect_amazon_barcode_from_image_bytes_with_reason(image_bytes: bytes) -> tuple[str, str]:
-    barcodes, reason = _detect_amazon_barcode_candidates_from_image_bytes_with_reason(image_bytes)
-    return (barcodes[0] if barcodes else ""), reason
-
-
-def _detect_amazon_barcode_from_image_bytes(image_bytes: bytes) -> str:
-    barcode, _ = _detect_amazon_barcode_from_image_bytes_with_reason(image_bytes)
-    return barcode
-
-
 async def _get_image_size(url: str, media_context: MediaResourceContext | None = None) -> tuple[int, int]:
     if media_context is not None:
         return await media_context.probe_original_size(url)
@@ -739,31 +703,6 @@ async def try_get_amazon_barcode_from_covers(
 ) -> str:
     barcodes = await try_get_amazon_barcodes_from_covers(result, media_context)
     return barcodes[0] if barcodes else ""
-
-
-async def _fetch_poster_from_asin(asin: str, media_context: MediaResourceContext) -> tuple[str, str]:
-    """直接用 ASIN 访问 Amazon 详情页获取封面图片 URL 和标题
-
-    Returns:
-        (图片URL, 商品标题)
-    """
-    detail_url = f"https://www.amazon.co.jp/dp/{asin}"
-    success, html_text = await get_amazon_data(detail_url)
-    if not success or not html_text:
-        return "", ""
-
-    img_url = ""
-    # 从 HTML 全文中用正则提取 Amazon 图片 URL（最可靠的方式）
-    matches = re.findall(r'https://m\.media-amazon\.com/images/I/[^"\s\'&]+\.(?:jpg|jpeg)', html_text, re.IGNORECASE)
-    if matches:
-        img_url = matches[0]
-
-    title = ""
-    tree = etree.fromstring(html_text, etree.HTMLParser())
-    title_nodes = tree.xpath('//span[@id="productTitle"]/text()')
-    if title_nodes:
-        title = title_nodes[0].strip()
-    return img_url, title
 
 
 async def get_big_pic_by_amazon(

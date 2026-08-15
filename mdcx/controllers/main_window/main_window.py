@@ -127,6 +127,7 @@ class MyMAinWindow(QMainWindow):
     set_pic_pixmap = pyqtSignal(list, list)  # 主界面显示封面、缩略图
     set_pic_text = pyqtSignal(str)  # 主界面显示封面信息
     change_to_mainpage = pyqtSignal(str)  # 切换到主界面
+    request_preview_images = pyqtSignal(str, str)  # 主线程刷新封面/缩略图预览（poster_path, thumb_path）
     label_result = pyqtSignal(str)
     pushButton_start_cap = pyqtSignal(str)
     pushButton_start_cap2 = pyqtSignal(str)
@@ -1309,16 +1310,6 @@ class MyMAinWindow(QMainWindow):
             force_reload=force_reload,
         )
 
-    async def _set_pixmap(
-        self,
-        poster_path: Path | None,
-        thumb_path: Path | None,
-        poster_from="",
-        cover_from="",
-        force_reload: bool = False,
-    ):
-        self._request_preview_images(poster_path, thumb_path, poster_from, cover_from, force_reload=force_reload)
-
     def _apply_preview_images(self, request_id: int, poster_pix: list, thumb_pix: list) -> None:
         if request_id != self.preview_request_id:
             return
@@ -1326,6 +1317,16 @@ class MyMAinWindow(QMainWindow):
         thumb_text = thumb_pix[2] if thumb_pix[2] != "暂无缩略图" else ""
         self.Ui.label_poster_size.setText((poster_text + " " + thumb_text).strip())
         self.resize_label_and_setpixmap(poster_pix, thumb_pix)
+
+    def _on_request_preview_images(self, poster_path: str, thumb_path: str) -> None:
+        """主线程：裁剪完成后刷新主界面预览（由 request_preview_images 信号触发）。"""
+        self._request_preview_images(
+            Path(poster_path) if poster_path else None,
+            Path(thumb_path) if thumb_path else None,
+            poster_from="cut",
+            cover_from="local",
+            force_reload=True,
+        )
 
     def resize_label_and_setpixmap(self, poster_pix, thumb_pix):
         if poster_pix is not None:
