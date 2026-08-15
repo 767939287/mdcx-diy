@@ -727,21 +727,15 @@ class EmbyActorManagerDialog(QDialog):
         filtered = self._get_filtered_actors()
         if row < len(filtered):
             actor = filtered[row]
+            dialog = ActorDetailDialog(actor, self, on_synced=self._on_detail_synced)
+            dialog.exec()
 
-            msg = (
-                f"演员: {actor.name}\n"
-                f"状态: {actor.status_text}\n"
-                f"服务器ID: {actor.server_id}\n\n"
-                f"已有信息:\n"
-                f"  简介: {'有' if actor.existing_overview else '无'}\n"
-                f"  出生日期: {actor.existing_premiere_date[:10] if actor.existing_premiere_date else '无'}\n"
-                f"  出生地: {', '.join(actor.existing_production_locations) if actor.existing_production_locations else '无'}\n"
-                f"  标签: {', '.join(actor.existing_taglines[:3]) if actor.existing_taglines else '无'}\n\n"
-                f"待更新:\n"
-                f"  头像: {'是' if actor.need_update_image else '否'}\n"
-                f"  信息: {'是' if actor.need_update_info else '否'}"
-            )
-            QMessageBox.information(self, f"演员详情 - {actor.name}", msg)
+    def _on_detail_synced(self, actor: ActorInfo):
+        # 同步单个演员后刷新主窗口表格与统计
+        self.log(f"✅ {actor.name} 同步完成，刷新列表")
+        self._populate_table(self._actors)
+        self._update_statistics(self._actors)
+        self._update_sync_button()
 
     def _get_filtered_actors(self) -> list[ActorInfo]:
         filter_mode = self.cmb_filter.currentText()
@@ -972,9 +966,13 @@ class ActorSourceTestDialog(QDialog):
         info_col.addWidget(QLabel("详细信息预览:"))
         self.info_table = QTableWidget(0, 2)
         self.info_table.setHorizontalHeaderLabels(["字段", "值"])
-        self.info_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)
-        self.info_table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
-        self.info_table.verticalHeader().setVisible(False)
+        h_header = self.info_table.horizontalHeader()
+        if h_header:
+            h_header.setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)
+            h_header.setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
+        v_header = self.info_table.verticalHeader()
+        if v_header:
+            v_header.setVisible(False)
         self.info_table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         info_col.addWidget(self.info_table)
         self.btn_info = QPushButton("获取信息")
@@ -1019,8 +1017,12 @@ class ActorSourceTestDialog(QDialog):
         self.btn_info.clicked.connect(lambda: self._run(False, True))
 
         # 快速面板改动即自动保存
-        self.panel_image_list.model().rowsMoved.connect(self._save_quick_settings)
-        self.panel_info_list.model().rowsMoved.connect(self._save_quick_settings)
+        img_model = self.panel_image_list.model()
+        if img_model:
+            img_model.rowsMoved.connect(self._save_quick_settings)
+        info_model = self.panel_info_list.model()
+        if info_model:
+            info_model.rowsMoved.connect(self._save_quick_settings)
         self.panel_folder_edit.textChanged.connect(self._save_quick_settings)
 
     @staticmethod
@@ -1129,6 +1131,281 @@ class ActorSourceTestDialog(QDialog):
         pix = QPixmap(path)
         if not pix.isNull():
             self.avatar_label.setPixmap(pix.scaled(self.avatar_label.size(), Qt.AspectRatioMode.KeepAspectRatio))
+
+
+class ActorDetailDialog(QDialog):
+    """演员详情编辑对话框：左栏现有数据，右栏新数据（可编辑），右侧快速设置面板。"""
+
+    def __init__(self, actor: ActorInfo, parent=None, on_synced=None):
+        super().__init__(parent)
+        self.actor = actor
+        self.on_synced = on_synced
+        self.setWindowTitle(f"演员详情 - {actor.name}")
+        self.setMinimumSize(900, 580)
+        root = QHBoxLayout(self)
+
+        # 左栏：现有数据（Emby 当前）
+        left = QGroupBox("现有数据")
+        left_layout = QVBoxLayout(left)
+        self.existing_avatar_label = QLabel("头像预览")
+        self.existing_avatar_label.setFixedSize(130, 180)
+        self.existing_avatar_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.existing_avatar_label.setStyleSheet("border: 1px solid #ccc; color: #888;")
+        left_layout.addWidget(self.existing_avatar_label)
+        self.existing_info = QTextEdit()
+        self.existing_info.setReadOnly(True)
+        self.existing_info.setPlainText(
+            "简介: "
+            + (actor.existing_overview or "无")
+            + "\n生日: "
+            + (actor.existing_premiere_date[:10] if actor.existing_premiere_date else "无")
+            + "\n出生地: "
+            + (", ".join(actor.existing_production_locations) if actor.existing_production_locations else "无")
+            + "\n标签: "
+            + (", ".join(actor.existing_taglines) if actor.existing_taglines else "无")
+        )
+        left_layout.addWidget(self.existing_info)
+        root.addWidget(left)
+
+        # 右栏：新数据（可编辑）
+        right = QGroupBox("新数据（同步前可编辑）")
+        right_layout = QVBoxLayout(right)
+        self.new_avatar_label = QLabel("新头像预览")
+        self.new_avatar_label.setFixedSize(130, 180)
+        self.new_avatar_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.new_avatar_label.setStyleSheet("border: 1px solid #ccc; color: #888;")
+        right_layout.addWidget(self.new_avatar_label)
+        right_layout.addWidget(QLabel("简介（可编辑）:"))
+        self.overview_edit = QTextEdit()
+        self.overview_edit.setPlainText(actor.new_overview)
+        right_layout.addWidget(self.overview_edit)
+        right_layout.addWidget(QLabel("信息（右键增删行，可编辑）:"))
+        self.info_table = QTableWidget(0, 2)
+        self.info_table.setHorizontalHeaderLabels(["字段", "值"])
+        h_header = self.info_table.horizontalHeader()
+        if h_header:
+            h_header.setSectionResizeMode(0, QHeaderView.ResizeMode.ResizeToContents)
+            h_header.setSectionResizeMode(1, QHeaderView.ResizeMode.Stretch)
+        v_header = self.info_table.verticalHeader()
+        if v_header:
+            v_header.setVisible(False)
+        self.info_table.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        self.info_table.customContextMenuRequested.connect(self._info_table_menu)
+        self._populate_info_table()
+        right_layout.addWidget(self.info_table)
+
+        btn_row = QHBoxLayout()
+        self.btn_fetch_image = QPushButton("获取头像")
+        self.btn_fetch_info = QPushButton("获取信息")
+        self.btn_sync_both = QPushButton("同步头像+简介")
+        self.btn_sync_image = QPushButton("只同步头像")
+        self.btn_sync_info = QPushButton("只同步简介")
+        for b in (
+            self.btn_fetch_image,
+            self.btn_fetch_info,
+            self.btn_sync_both,
+            self.btn_sync_image,
+            self.btn_sync_info,
+        ):
+            b.setObjectName("btnPrimary")
+            btn_row.addWidget(b)
+        right_layout.addLayout(btn_row)
+        root.addWidget(right, stretch=1)
+
+        # 右侧快速设置面板（改即保存）
+        panel = QGroupBox("快速设置")
+        panel_layout = QVBoxLayout(panel)
+        panel_layout.addWidget(QLabel("头像数据源（拖拽排序）:"))
+        self.panel_image_list = QListWidget()
+        self.panel_image_list.setDragDropMode(QAbstractItemView.DragDropMode.InternalMove)
+        self._fill_source_list(self.panel_image_list, manager.config.actor_image_sources, IMAGE_SOURCE_NAMES)
+        panel_layout.addWidget(self.panel_image_list)
+        panel_layout.addWidget(QLabel("信息数据源（拖拽排序）:"))
+        self.panel_info_list = QListWidget()
+        self.panel_info_list.setDragDropMode(QAbstractItemView.DragDropMode.InternalMove)
+        self._fill_source_list(self.panel_info_list, manager.config.actor_info_sources, INFO_SOURCE_NAMES)
+        panel_layout.addWidget(self.panel_info_list)
+        root.addWidget(panel)
+
+        self.btn_fetch_image.clicked.connect(lambda: self._run_fetch_image())
+        self.btn_fetch_info.clicked.connect(lambda: self._run_fetch_info())
+        self.btn_sync_both.clicked.connect(lambda: self._run_sync("both"))
+        self.btn_sync_image.clicked.connect(lambda: self._run_sync("image"))
+        self.btn_sync_info.clicked.connect(lambda: self._run_sync("info"))
+        img_model = self.panel_image_list.model()
+        if img_model:
+            img_model.rowsMoved.connect(self._save_quick_settings)
+        info_model = self.panel_info_list.model()
+        if info_model:
+            info_model.rowsMoved.connect(self._save_quick_settings)
+
+        self._load_existing_avatar()
+        if actor.new_image_path:
+            self._show_new_avatar(actor.new_image_path)
+
+    @staticmethod
+    def _fill_source_list(list_widget: QListWidget, sources: list[str], names: dict[str, str]):
+        list_widget.clear()
+        for src in sources:
+            item = QListWidgetItem(f"{src}（{names.get(src, src)}）")
+            item.setData(Qt.ItemDataRole.UserRole, src)
+            list_widget.addItem(item)
+
+    def _save_quick_settings(self, *args):
+        cfg = manager.config.model_copy(deep=True)
+        cfg.actor_image_sources = [item.data(Qt.ItemDataRole.UserRole) for item in self.panel_image_list]
+        cfg.actor_info_sources = [item.data(Qt.ItemDataRole.UserRole) for item in self.panel_info_list]
+        manager._replace_config(cfg)
+
+    def _populate_info_table(self):
+        actor = self.actor
+        rows = [
+            ("标签", ", ".join(actor.new_taglines)),
+            ("年份", str(actor.new_production_year) if actor.new_production_year else ""),
+            ("生日", actor.new_premiere_date),
+            ("出生地", ", ".join(actor.new_production_locations)),
+        ]
+        self.info_table.setRowCount(len(rows))
+        for r, (field, value) in enumerate(rows):
+            self.info_table.setItem(r, 0, QTableWidgetItem(field))
+            self.info_table.setItem(r, 1, QTableWidgetItem(value))
+
+    def _info_table_menu(self, pos):
+        from PyQt6.QtWidgets import QMenu
+
+        menu = QMenu(self)
+        add_action = menu.addAction("增加行")
+        del_action = menu.addAction("删除行")
+        chosen = menu.exec(self.info_table.viewport().mapToGlobal(pos))
+        if chosen == add_action:
+            row = self.info_table.rowCount()
+            self.info_table.insertRow(row)
+            self.info_table.setItem(row, 0, QTableWidgetItem(""))
+            self.info_table.setItem(row, 1, QTableWidgetItem(""))
+        elif chosen == del_action:
+            self.info_table.removeRow(self.info_table.currentRow())
+
+    def _load_existing_avatar(self):
+        if not self.actor.has_image:
+            self.existing_avatar_label.setText("无头像")
+            return
+        import asyncio
+
+        loop = asyncio.new_event_loop()
+        try:
+            loop.run_until_complete(self._download_existing_avatar())
+        finally:
+            loop.close()
+
+    async def _download_existing_avatar(self):
+        from .emby_actor_manager import _build_jellyfin_headers, _generate_server_url
+
+        _, _, pic_url, _, _, _ = _generate_server_url(
+            {"Name": self.actor.name, "Id": self.actor.actor_id, "ServerId": self.actor.server_id}
+        )
+        headers = _build_jellyfin_headers()
+        async with manager.acquire_computed() as computed:
+            body, err = await computed.async_client.get_content(pic_url, headers=headers, use_proxy=False)
+        if body:
+            tmp = Path(tempfile.gettempdir()) / f"emby_existing_{self.actor.actor_id}.jpg"
+            tmp.write_bytes(body)
+            self._show_pixmap(self.existing_avatar_label, str(tmp))
+
+    def _run_fetch_image(self):
+        import asyncio
+
+        loop = asyncio.new_event_loop()
+        try:
+            loop.run_until_complete(self._fetch_image())
+        finally:
+            loop.close()
+
+    async def _fetch_image(self):
+        from .emby_actor_manager import from_gfriends, from_graphis, from_local_avatar, from_minnano_image
+
+        gfriends_index = None
+        try:
+            gfriends_index = await get_gfriends_index()
+        except Exception:
+            pass
+        for src in manager.config.actor_image_sources:
+            result: object = None
+            try:
+                if src == "gfriends" and gfriends_index:
+                    result = await from_gfriends(self.actor, gfriends_index, Path(tempfile.gettempdir()))
+                elif src == "graphis":
+                    result = await from_graphis(self.actor, Path(tempfile.gettempdir()))
+                elif src == "minnano":
+                    result = await from_minnano_image(self.actor, Path(tempfile.gettempdir()))
+                elif src == "local":
+                    result = from_local_avatar(self.actor, manager.config.actor_photo_folder)
+            except Exception:
+                continue
+            if result:
+                path = result[0] if isinstance(result, tuple) and result else result
+                if isinstance(path, (str, Path)) and Path(path).exists():
+                    self.actor.new_image_path = str(path)
+                    self.actor.need_update_image = True
+                    self._show_new_avatar(str(path))
+                    return
+        self.new_avatar_label.setText("未获取到新头像")
+
+    def _run_fetch_info(self):
+        import asyncio
+
+        loop = asyncio.new_event_loop()
+        try:
+            ok = loop.run_until_complete(search_actor_info(self.actor))
+        finally:
+            loop.close()
+        if ok:
+            self.overview_edit.setPlainText(self.actor.new_overview)
+            self._populate_info_table()
+
+    def _run_sync(self, sync_type: str):
+        from .emby_actor_manager import sync_actor
+
+        self._apply_edits()
+        ok, msg = sync_actor(self.actor, sync_type)
+        QMessageBox.information(self, "同步结果", msg)
+        if ok and self.on_synced:
+            self.on_synced(self.actor)
+
+    def _apply_edits(self):
+        actor = self.actor
+        actor.new_overview = self.overview_edit.toPlainText().strip()
+        actor.new_taglines = []
+        actor.new_production_locations = []
+        actor.new_production_year = None
+        actor.new_premiere_date = ""
+        for r in range(self.info_table.rowCount()):
+            field_item = self.info_table.item(r, 0)
+            value_item = self.info_table.item(r, 1)
+            if not field_item or not value_item:
+                continue
+            field = field_item.text().strip()
+            value = value_item.text().strip()
+            if field == "标签":
+                actor.new_taglines = [x.strip() for x in value.split(",") if x.strip()]
+            elif field == "年份":
+                actor.new_production_year = int(value) if value.isdigit() else None
+            elif field == "生日":
+                actor.new_premiere_date = value
+            elif field == "出生地":
+                actor.new_production_locations = [x.strip() for x in value.split(",") if x.strip()]
+        if actor.new_overview or actor.new_taglines or actor.new_production_year or actor.new_premiere_date:
+            actor.need_update_info = True
+
+    def _show_new_avatar(self, path: str):
+        self._show_pixmap(self.new_avatar_label, path)
+
+    @staticmethod
+    def _show_pixmap(label: QLabel, path: str):
+        from PyQt6.QtGui import QPixmap
+
+        pix = QPixmap(path)
+        if not pix.isNull():
+            label.setPixmap(pix.scaled(label.size(), Qt.AspectRatioMode.KeepAspectRatio))
 
 
 def open_emby_actor_manager(parent=None):
