@@ -34,6 +34,7 @@ from ..config.enums import (
 from ..config.extend import get_movie_path_setting, parse_media_paths
 from ..config.manager import manager
 from ..config.resources import resources
+from ..core.scrape_cache import ScrapeStateCache
 from ..core.tmdb_actor import _normalize_translation
 from ..crawler import CrawlerProvider
 from ..models.enums import FileMode
@@ -93,6 +94,7 @@ class Scraper:
     def __init__(self, crawler_provider: "CrawlerProviderProtocol"):
         self.crawler_provider = crawler_provider
         self._rest_lock = asyncio.Lock()
+        self._state_cache: ScrapeStateCache | None = None
 
     async def _run_tasks_with_limit(self, movie_list: list[Path], task_count: int, thread_number: int) -> None:
         task_iter = iter(enumerate(movie_list, 1))
@@ -165,6 +167,9 @@ class Scraper:
             await self._run(file_mode, movie_list)
         finally:
             await self.crawler_provider.close()
+            if self._state_cache is not None:
+                self._state_cache.close()
+                self._state_cache = None
 
     async def _run(self, file_mode: FileMode, movie_list: list[Path] | None) -> None:
         Flags.reset()
@@ -173,6 +178,13 @@ class Scraper:
         Flags.scrape_start_time = time.time()  # 开始刮削时间
         Flags.file_mode = file_mode  # 刮削模式（工具单文件或主界面/日志点开始正常刮削）
 
+        # 初始化刮削状态缓存（断点续刮）。失败回退内存模式；递归调用（Again 模式）复用已打开的缓存。
+        if self._state_cache is None:
+            cache = ScrapeStateCache(resources.u("scrape_state.db"))
+            if cache.open():
+                self._state_cache = cache
+        else:
+            cache = self._state_cache
         signal.show_scrape_info("🔎 正在刮削中...")
 
         signal.set_main_info()  # 清空主界面显示信息
@@ -219,6 +231,33 @@ class Scraper:
                 movie_list.extend(await get_movie_list(file_mode, scan_path, scan_ignore_dirs))
         else:
             signal.show_log_text("\n ⏰ Start time: " + time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
+
+        # 断点续刮：过滤掉已完成且 mtime 未变的文件；恢复上次失败的未超限文件（跨会话重试）
+        if cache.is_usable():
+            try:
+                existing = set(movie_list)
+                cache.cleanup_missing(existing)
+                force = file_mode != FileMode.Default  # Again/单文件等模式视为强制重新刮削
+                if force:
+                    skipped = 0
+                else:
+                    before = len(movie_list)
+                    filtered = []
+                    for p in movie_list:
+                        mtime = await _safe_mtime(p)
+                        if not cache.should_skip(p, mtime, force=False):
+                            filtered.append(p)
+                    skipped = before - len(filtered)
+                    if skipped:
+                        movie_list = filtered
+                        signal.show_log_text(f" ⏭ 断点续刮：跳过 {skipped} 个已刮削且未变化的文件")
+                pending = cache.list_pending(existing)
+                if pending:
+                    movie_list.extend(pending)
+                    signal.show_log_text(f" 🔄 恢复 {len(pending)} 个上次失败的文件重新刮削")
+            except Exception as e:
+                signal.show_log_text(f" ⚠ 刮削状态缓存读取失败，按全量处理: {e}")
+
         Flags.remain_list = movie_list.copy()
         Flags.can_save_remain = True
 
@@ -446,6 +485,11 @@ class Scraper:
                     + file_info.definition
                 )
                 signal.show_list_name("succ", show_data, number)
+                if self._state_cache and self._state_cache.is_usable():
+                    try:
+                        self._state_cache.set_done(file_path, await _safe_mtime(file_path), number=number)
+                    except Exception:
+                        pass
             else:
                 Flags.fail_count = await Flags.increment("fail_count")
                 show_data.show_name = (
@@ -469,6 +513,11 @@ class Scraper:
                 Flags.failed_list.append((fail_file_path, error_msg))
                 await self._failed_file_info_show(str(Flags.fail_count), fail_file_path, error_msg)
                 signal.view_failed_list_settext.emit(f"失败 {Flags.fail_count}")
+                if self._state_cache and self._state_cache.is_usable():
+                    try:
+                        self._state_cache.set_failed(file_path, await _safe_mtime(file_path), error=error_msg)
+                    except Exception:
+                        pass
         except Exception as e:
             self._check_stop(show_name)
             signal.show_traceback_log(traceback.format_exc())
@@ -1148,6 +1197,15 @@ class Scraper:
         if await aiofiles.os.path.islink(p):
             info_str = f"{'🔴 ' + count + '.':<3} {p} \n    指向文件: {p.resolve()} \n    失败原因: {error_info} \n"
         signal.logs_failed_show.emit(info_str)
+
+
+async def _safe_mtime(file_path: Path) -> float:
+    """获取文件 mtime；失败返回 0（视为文件已变化，避免误跳过）。"""
+    try:
+        stat = await aiofiles.os.stat(file_path)
+        return float(getattr(stat, "st_mtime", 0.0) or 0.0)
+    except Exception:
+        return 0.0
 
 
 def _load_actor_db_wb():
