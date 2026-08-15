@@ -27,6 +27,7 @@ from PyQt6.QtWidgets import (
     QProgressBar,
     QPushButton,
     QSplitter,
+    QStatusBar,
     QTableWidget,
     QTableWidgetItem,
     QTextEdit,
@@ -325,6 +326,16 @@ class EmbyActorManagerDialog(QDialog):
         splitter.setStretchFactor(1, 1)
         main_layout.addWidget(splitter, 1)
 
+        # 底部状态栏：当前状态 + Emby 连接状态
+        self.status_bar = QStatusBar()
+        self.status_bar.showMessage("未连接")
+        main_layout.addWidget(self.status_bar)
+
+    def _set_status(self, message: str):
+        connected = hasattr(self, "_connected") and self._connected
+        prefix = "已连接" if connected else "未连接"
+        self.status_bar.showMessage(f"{prefix} | {message}")
+
     def _build_connection_section(self, parent_layout: QVBoxLayout):
         group = QGroupBox("Emby 连接设置")
         grid = QGridLayout(group)
@@ -360,7 +371,7 @@ class EmbyActorManagerDialog(QDialog):
         self.cmb_fetch_mode.setCurrentIndex(0)
         self.cmb_fetch_mode.setFixedWidth(220)
         btn_layout.addWidget(self.cmb_fetch_mode)
-        self.btn_preview = QPushButton("获取数据")
+        self.btn_preview = QPushButton("根据设定获取数据")
         self.btn_preview.setObjectName("btnPrimary")
         self.btn_preview.setEnabled(False)
         btn_layout.addWidget(self.btn_preview)
@@ -375,6 +386,8 @@ class EmbyActorManagerDialog(QDialog):
         btn_layout.addWidget(self.btn_settings)
         self.btn_test_source = QPushButton("数据源测试")
         btn_layout.addWidget(self.btn_test_source)
+        self.btn_clear_cache = QPushButton("清空缓存文件夹")
+        btn_layout.addWidget(self.btn_clear_cache)
         grid.addLayout(btn_layout, 1, 0, 1, 4)
         help_label = QLabel(
             "使用说明：① 填写地址和密钥 → ② 连接/获取演员列表 → ③ 选择模式获取数据 → "
@@ -468,6 +481,7 @@ class EmbyActorManagerDialog(QDialog):
         self.btn_test.clicked.connect(self._on_test_connection)
         self.btn_settings.clicked.connect(self._on_open_settings)
         self.btn_test_source.clicked.connect(self._on_open_test_source)
+        self.btn_clear_cache.clicked.connect(self._on_clear_cache)
 
     def _on_open_settings(self):
         dialog = EmbyActorSettingsDialog(self)
@@ -476,6 +490,35 @@ class EmbyActorManagerDialog(QDialog):
     def _on_open_test_source(self):
         dialog = ActorSourceTestDialog(self)
         dialog.exec()
+
+    def _on_clear_cache(self):
+        from ..config.resources import resources
+
+        cache_dirs = [self.cache_dir, resources.u("actor")]
+        reply = QMessageBox.question(
+            self,
+            "确认清空缓存",
+            "将删除已下载的演员头像缓存（下次获取时会重新下载）。\n是否继续？",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+        )
+        if reply != QMessageBox.StandardButton.Yes:
+            return
+        removed = 0
+        import shutil
+
+        for cache_dir in cache_dirs:
+            if not cache_dir.is_dir():
+                continue
+            for f in cache_dir.iterdir():
+                try:
+                    if f.is_dir():
+                        shutil.rmtree(f, ignore_errors=True)
+                    else:
+                        f.unlink()
+                    removed += 1
+                except Exception:
+                    continue
+        self.log(f"🧹 已清空 {len(cache_dirs)} 个缓存目录，删除 {removed} 个文件/目录")
 
     def log(self, msg: str):
         import datetime
@@ -528,6 +571,7 @@ class EmbyActorManagerDialog(QDialog):
                 self.btn_fetch.setEnabled(True)
                 manager.config.emby_url = url
                 manager.config.api_key = key
+                self._set_status("连接成功")
                 self.log(f"✅ {msg}")
             else:
                 self.log(f"❌ {msg}")
@@ -559,6 +603,7 @@ class EmbyActorManagerDialog(QDialog):
         self._set_buttons_enabled(False)
         self.progress_bar.setVisible(True)
         self.progress_bar.setValue(0)
+        self._set_status("获取演员列表...")
         self.log("📜 开始获取演员列表...")
         self._fetch_thread = FetchActorsThread(self)
         self._fetch_thread.library_ids = library_ids
@@ -575,6 +620,7 @@ class EmbyActorManagerDialog(QDialog):
 
     def _on_fetch_finished(self, actors: list[ActorInfo]):
         self._actors = actors
+        self._set_status("获取完成")
         self.log(f"获取完成，共 {len(actors)} 个演员")
         self._populate_table(actors)
         self._update_statistics(actors)
@@ -597,7 +643,7 @@ class EmbyActorManagerDialog(QDialog):
         if self._preview_thread and self._preview_thread.isRunning():
             self._preview_thread.cancel()
             self.log("⏹️ 用户取消")
-            self.btn_preview.setText("获取数据")
+            self.btn_preview.setText("根据设定获取数据")
             return
         mode_map = {
             "仅全部缺失头像+简介": "missing_all",
@@ -610,9 +656,10 @@ class EmbyActorManagerDialog(QDialog):
         mode = mode_map.get(self.cmb_fetch_mode.currentText(), "missing_all")
         self._set_buttons_enabled(False)
         self.btn_preview.setEnabled(True)
-        self.btn_preview.setText("停止")
+        self.btn_preview.setText("停止获取")
         self.progress_bar.setVisible(True)
         self.progress_bar.setValue(0)
+        self._set_status("获取数据中...")
         self.log(f"📥 正在获取数据（模式: {self.cmb_fetch_mode.currentText()}）")
         self._preview_thread = PreparePreviewThread(self)
         self._preview_thread.actors = self._actors
@@ -636,8 +683,9 @@ class EmbyActorManagerDialog(QDialog):
         to_sync = [a for a in actors if a.need_update_info or a.need_update_image or a.need_update_backdrop]
         self.btn_sync.setEnabled(len(to_sync) > 0)
         self.btn_sync.setText(f"开始全部更新同步({len(to_sync)} 项)")
+        self._set_status("数据准备完成")
         self.log(f"✅ 预览准备完成，{len(to_sync)} 项待同步")
-        self.btn_preview.setText("获取数据")
+        self.btn_preview.setText("根据设定获取数据")
         self.progress_bar.setVisible(False)
         self._set_buttons_enabled(True)
 
@@ -658,6 +706,7 @@ class EmbyActorManagerDialog(QDialog):
         self.progress_bar.setVisible(True)
         self.progress_bar.setValue(0)
         self.btn_sync.setText("同步中...")
+        self._set_status("同步中...")
         self.log(f"📛 开始同步 {len(to_sync)} 个演员...")
         self._sync_thread = SyncThread(self)
         self._sync_thread.actors = to_sync
@@ -682,6 +731,7 @@ class EmbyActorManagerDialog(QDialog):
         self.progress_bar.setVisible(False)
         self._set_buttons_enabled(True)
         self.btn_sync.setText("开始全部更新同步")
+        self._set_status("同步完成")
         self.log(f"同步完成！成功: {success}, 失败: {fail}")
         QMessageBox.information(self, "同步完成", f"✅ 成功: {success}\n❌ 失败: {fail}")
         for a in self._actors:
@@ -708,7 +758,7 @@ class EmbyActorManagerDialog(QDialog):
     def _on_thread_error(self, msg: str):
         self.progress_bar.setVisible(False)
         # 线程已结束，恢复按钮文本与状态，避免"停止/同步中..."残留
-        self.btn_preview.setText("获取数据")
+        self.btn_preview.setText("根据设定获取数据")
         self.btn_sync.setText("开始全部更新同步")
         self._set_buttons_enabled(True)
         self.log(f"🔶 错误: {msg}")
