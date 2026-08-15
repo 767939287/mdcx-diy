@@ -500,15 +500,13 @@ class EmbyActorManagerDialog(QDialog):
             return
         import asyncio
 
-        from ..models.computed import ComputedManager
-
         loop = asyncio.new_event_loop()
         try:
             asyncio.set_event_loop(loop)
             headers = {"Authorization": f'MediaBrowser Token="{key}"'}
 
             async def test():
-                async with ComputedManager() as computed:
+                async with manager.acquire_computed() as computed:
                     test_url = (
                         f"{url.rstrip('/')}/emby/System/Info?api_key={key}"
                         if "emby" in str(manager.config.server_type)
