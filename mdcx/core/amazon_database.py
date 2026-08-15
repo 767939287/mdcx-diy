@@ -29,6 +29,77 @@ def _get_default_excel_path() -> Path:
     return userdata_dir / "amazon_asin_database.xlsx"
 
 
+def merge_asin_db_from_backup(backup_path: Path, local_path: Path) -> None:
+    """把出厂 ASIN 库的增量同步进已存在的用户库（按番号去重，只增不删、不覆盖用户已有值）。
+
+    出厂库随软件版本更新（新增/修正番号→ASIN 映射），老用户的用户库不会自动获得
+    这些改进。此函数在启动时把出厂库中「用户库没有的番号」完整追加，给「用户库
+    已有但字段空缺」的条目补全，绝不覆盖用户已填的值、绝不删除用户库任何行。
+
+    用出厂库文件 md5 作为合并标记写入 local_path 同目录的 .asin_db_merge_marker，
+    出厂库内容未变时跳过，避免每次启动重复扫描。
+    """
+    from ..models.log_buffer import LogBuffer
+
+    try:
+        import openpyxl
+    except ImportError:
+        LogBuffer.log().write("  ⚠️ [ASIN 数据库] 缺少 openpyxl，无法合并 amazon_asin_database.xlsx")
+        return
+
+    if not backup_path.exists() or not local_path.exists():
+        return
+
+    import hashlib
+
+    marker_path = local_path.parent / ".asin_db_merge_marker"
+    try:
+        backup_hash = hashlib.md5(backup_path.read_bytes()).hexdigest()
+        if marker_path.exists() and marker_path.read_text(encoding="utf-8").strip() == backup_hash:
+            return  # 出厂库未变化，无需合并
+
+        wb = openpyxl.load_workbook(local_path)
+        ws = wb.active
+        number_row_map: dict[str, int] = {}
+        next_row = ws.max_row + 1
+        for row_no, row in enumerate(ws.iter_rows(min_row=2, max_col=6, values_only=True), start=2):
+            if row and row[0]:
+                number_row_map.setdefault(str(row[0]).strip().upper(), row_no)
+
+        added = 0
+        filled = 0
+        backup_wb = openpyxl.load_workbook(backup_path, read_only=True, data_only=True)
+        backup_ws = backup_wb.active
+        for row in backup_ws.iter_rows(min_row=2, max_col=6, values_only=True):
+            if not row or not row[0]:
+                continue
+            number = str(row[0]).strip().upper()
+            if number in number_row_map:
+                # 字段补全：仅填空缺，不覆盖已有值
+                existing_row = number_row_map[number]
+                for col_idx in range(1, 6):  # 番号列除外
+                    cur = ws.cell(row=existing_row, column=col_idx + 1).value
+                    new = row[col_idx] if col_idx < len(row) else None
+                    if (cur is None or str(cur).strip() == "") and new not in (None, ""):
+                        ws.cell(row=existing_row, column=col_idx + 1, value=new)
+                        filled += 1
+                continue
+            ws.append(list(row[:6]))
+            number_row_map[number] = next_row
+            next_row += 1
+            added += 1
+        backup_wb.close()
+
+        if added or filled:
+            wb.save(local_path)
+        wb.close()
+        marker_path.write_text(backup_hash, encoding="utf-8")
+        if added or filled:
+            LogBuffer.log().write(f"  ℹ️ [ASIN 数据库] 出厂库增量合并: 新增 {added} 条, 补全 {filled} 个字段")
+    except Exception as e:
+        LogBuffer.log().write(f"  ⚠️ [ASIN 数据库] 出厂库合并失败: {e}")
+
+
 async def save_asin_to_excel(
     records: list[AsinRecord],
     excel_path: Path | None = None,
@@ -75,6 +146,12 @@ async def save_asin_to_excel(
     ws = wb.active
     ws.title = sheet_name
 
+    # 去重：以番号为键，用户库已有该番号时跳过不写（避免重复行）
+    existing_numbers: set[str] = set()
+    for row in ws.iter_rows(min_row=2, values_only=True):
+        if row and row[0]:
+            existing_numbers.add(str(row[0]).strip().upper())
+
     if not ws["A1"].value:
         headers = [
             "影片番号",
@@ -94,6 +171,10 @@ async def save_asin_to_excel(
         ws.auto_filter.ref = f"A1:{get_column_letter(len(headers))}1"
 
     for record in records:
+        number = str(record.get("number", "") or "").strip().upper()
+        if not number or number in existing_numbers:
+            continue
+        existing_numbers.add(number)
         row_data = [
             record.get("number", ""),
             record.get("asin", ""),

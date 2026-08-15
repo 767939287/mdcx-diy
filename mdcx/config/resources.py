@@ -305,6 +305,9 @@ class Resources:
         # 加载数据库 xlsx
         merge_actor_db_from_backup(self.actor_db_backup_path, self.u("actor_database.xlsx"))
         merge_info_db_from_backup(self.info_db_backup_path, self.u("info_database.xlsx"))
+        from ..core.amazon_database import merge_asin_db_from_backup
+
+        merge_asin_db_from_backup(asin_db_backup_path, asin_db_local_path)
         self.reload_actor_db()
         self.reload_info_db()
 

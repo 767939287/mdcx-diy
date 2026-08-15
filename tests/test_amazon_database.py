@@ -84,6 +84,134 @@ async def test_save_asin_to_excel_formats_worksheet(_tmp_asin_db):
 
 
 @pytest.mark.asyncio
+async def test_save_asin_to_excel_dedup_same_number(_tmp_asin_db):
+    await amazon_database.save_asin_to_excel(
+        [
+            {
+                "number": "ABC-123",
+                "asin": "B000000001",
+                "title": "First",
+            }
+        ],
+        _tmp_asin_db,
+    )
+    # 同番号再次写入（即使 ASIN 不同）也跳过
+    await amazon_database.save_asin_to_excel(
+        [
+            {
+                "number": "ABC-123",
+                "asin": "B000000002",
+                "title": "Second",
+            }
+        ],
+        _tmp_asin_db,
+    )
+
+    wb = load_workbook(_tmp_asin_db)
+    ws = wb.active
+    numbers = [ws.cell(row=r, column=1).value for r in range(2, ws.max_row + 1)]
+    assert numbers == ["ABC-123"]
+    assert ws.cell(row=2, column=2).value == "B000000001"
+    wb.close()
+
+
+@pytest.mark.asyncio
+async def test_save_asin_to_excel_dedup_skips_only_duplicate(_tmp_asin_db):
+    await amazon_database.save_asin_to_excel(
+        [
+            {"number": "ABC-123", "asin": "B000000001"},
+            {"number": "DEF-456", "asin": "B000000002"},
+            {"number": "ABC-123", "asin": "B000000003"},  # 重复番号，应跳过
+        ],
+        _tmp_asin_db,
+    )
+
+    wb = load_workbook(_tmp_asin_db)
+    ws = wb.active
+    numbers = [ws.cell(row=r, column=1).value for r in range(2, ws.max_row + 1)]
+    assert numbers == ["ABC-123", "DEF-456"]
+    wb.close()
+
+
+@pytest.mark.asyncio
+async def test_merge_asin_db_from_backup(_tmp_asin_db, tmp_path):
+    from mdcx.core.amazon_database import merge_asin_db_from_backup
+
+    # 出厂库：旧番号(用户已有，且用户已填值) + 空缺番号(用户已有但字段空) + 新番号
+    backup_path = tmp_path / "backup.xlsx"
+    wb = load_workbook(backup_path) if backup_path.exists() else None
+    import openpyxl
+
+    if wb is None:
+        wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.append(["影片番号", "ASIN 编号", "影片链接", "商品标题", "封面 URL", "搜索关键词"])
+    ws.append(["ABC-123", "B000000001", "https://www.amazon.co.jp/dp/B000000001", "Factory Title", "", ""])
+    ws.append(["DEF-456", "B000000002", "", "Factory Title 2", "", ""])
+    ws.append(["NEW-001", "B000000003", "https://www.amazon.co.jp/dp/B000000003", "Factory New", "", ""])
+    wb.save(backup_path)
+    wb.close()
+
+    # 用户库：已有 ABC-123（含值）和 DEF-456（ASIN 空缺）
+    await amazon_database.save_asin_to_excel(
+        [
+            {"number": "ABC-123", "asin": "B999999999", "title": "User Kept Title", "product_url": "https://user.url"},
+            {"number": "DEF-456", "asin": ""},
+        ],
+        _tmp_asin_db,
+    )
+
+    merge_asin_db_from_backup(backup_path, _tmp_asin_db)
+
+    wb = load_workbook(_tmp_asin_db)
+    ws = wb.active
+    rows = {}
+    for r in range(2, ws.max_row + 1):
+        num = ws.cell(row=r, column=1).value
+        if num:
+            rows[num] = [ws.cell(row=r, column=c).value for c in range(2, 7)]
+    # 已有番号不覆盖用户值
+    assert rows["ABC-123"][0] == "B999999999"  # ASIN 不被出厂覆盖
+    assert rows["ABC-123"][1] == "https://user.url"  # 链接不被覆盖
+    # 空缺字段被补全
+    assert rows["DEF-456"][0] == "B000000002"
+    # 新番号追加
+    assert rows["NEW-001"][0] == "B000000003"
+    assert rows["NEW-001"][1] == "https://www.amazon.co.jp/dp/B000000003"
+    wb.close()
+
+
+@pytest.mark.asyncio
+async def test_merge_asin_db_from_backup_marker_skips(_tmp_asin_db, tmp_path):
+    import openpyxl
+
+    from mdcx.core.amazon_database import merge_asin_db_from_backup
+
+    backup_path = tmp_path / "backup.xlsx"
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.append(["影片番号", "ASIN 编号", "影片链接", "商品标题", "封面 URL", "搜索关键词"])
+    ws.append(["NEW-001", "B000000003", "", "", "", ""])
+    wb.save(backup_path)
+    wb.close()
+
+    await amazon_database.save_asin_to_excel([{"number": "ABC-123", "asin": "B000000001"}], _tmp_asin_db)
+    marker = _tmp_asin_db.parent / ".asin_db_merge_marker"
+
+    merge_asin_db_from_backup(backup_path, _tmp_asin_db)
+    assert marker.exists()
+
+    # 出厂库未变，第二次合并应跳过（不再新增重复）
+    merge_asin_db_from_backup(backup_path, _tmp_asin_db)
+
+    wb = load_workbook(_tmp_asin_db)
+    ws = wb.active
+    numbers = [ws.cell(row=r, column=1).value for r in range(2, ws.max_row + 1)]
+    assert numbers.count("NEW-001") == 1
+    wb.close()
+
+
+@pytest.mark.asyncio
 async def test_query_asin_database_by_number(_tmp_asin_db):
     await amazon_database.save_single_asin_record(
         number="ABC-123",
