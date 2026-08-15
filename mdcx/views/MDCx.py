@@ -13506,7 +13506,7 @@ class Ui_MDCx(object):
                 "</ul>\n"
                 "\n"
                 "<h4>四、网站选择</h4>\n"
-                "<p>网站下拉框由已注册的爬虫自动生成（当前 46 个），可按需选用全部网站或指定网站。主要来源包括：</p>\n"
+                "<p>网站下拉框由已注册的爬虫自动生成（当前 45 个），可按需选用全部网站或指定网站。主要来源包括：</p>\n"
                 " <ul>\n"
                 " <li><b>有码</b>：仅能有码——DMM、DMM-API、LibreDMM、R18.dev、AVBase、Faleno、Giga、Dahlia、Xcity、Prestige、MGStage、Fantastica、CableAV、Getchu、Getchu-DMM、JavLibrary、Jav321、FreeJavBT、Lulubar；综合（有码+无码）——JavBus、JavDB 系、MissAV 系、Official、MMTV、airav.cc、AVSex、JavDay、IQQTV</li>\n"
                 " <li><b>无码</b>：Kin8、AVSOX 及综合站（JavBus、JavDB 系、MissAV 系、MMTV、airav.cc、AVSex、Official、JavDay、IQQTV）</li>\n"
