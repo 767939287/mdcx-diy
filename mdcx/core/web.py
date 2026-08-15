@@ -69,7 +69,7 @@ POSTER_DIRECT_DOWNLOAD_TYPES = {
 POSTER_AUTO_BEST_MIN_CROP_AREA_RATIO = 0.70
 POSTER_AUTO_BEST_MIN_CROP_HEIGHT_RATIO = 0.80
 POSTER_SKIP_AMAZON_MIN_BYTES = 400 * 1024
-POSTER_DMM_MIN_WIDTH = 1024
+POSTER_DMM_MIN_WIDTH = 700
 
 
 @dataclass(frozen=True)
@@ -336,8 +336,8 @@ async def _should_skip_amazon_for_existing_poster(
             LogBuffer.log().write("\n 🖼 Amazon搜索：当前 Poster 尺寸未知，继续搜索高清图")
             return False
 
-    # DMM 官方 awsimgsrc 高清图（宽≥1024）直接按分辨率放行，避免被字节阈值误判
-    # （DMM 竖图 1032x1469 通常 240-420KB，小于 400KB 字节阈值而误走 Amazon 搜索）。
+    # DMM 官方 awsimgsrc 高清图（宽≥700）直接按分辨率放行，避免被字节阈值误判
+    # （DMM 竖图 745x1081/1032x1469 通常 170-420KB，小于 400KB 字节阈值而误走 Amazon 搜索）。
     if is_dmm_image_url(result.poster) and poster_size[0] >= POSTER_DMM_MIN_WIDTH:
         LogBuffer.log().write(
             f"\n 🖼 Amazon搜索：当前 Poster 为 DMM 高清图({poster_size[0]}x{poster_size[1]})，跳过 Amazon"

@@ -252,13 +252,13 @@ def build_aws_poster_candidates(number: str) -> list[str]:
     return [url for orient, url in generate_image_candidates(number) if orient == "portrait"]
 
 
-_DMM_HD_MIN_WIDTH = 1024
+_DMM_HD_MIN_WIDTH = 700
 
 
 async def _is_dmm_hd_image(url: str) -> bool:
-    """校验 DMM 图是否存在且为高清（宽≥1024）.
+    """校验 DMM 图是否存在且为高清（宽≥700）.
 
-    awsimgsrc 同一 URL 格式下会返回 147x200 缩略图或 1032x1469 高清图，
+    awsimgsrc 同一 URL 格式下会返回 147x200 缩略图或 745x1081/1032x1469 高清图，
     仅 check_url 验存在无法区分，需读取分辨率过滤缩略图占位图。
     """
     from mdcx.base.web import get_imgsize

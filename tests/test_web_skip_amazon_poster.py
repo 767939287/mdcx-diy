@@ -41,12 +41,21 @@ async def test_not_skip_amazon_dmm_thumbnail_poster(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_not_skip_amazon_dmm_mid_size_poster(monkeypatch):
+async def test_skip_amazon_dmm_mid_size_poster(monkeypatch):
     async def _image_size(url, media_context=None):
         return 745, 1081
 
+    monkeypatch.setattr("mdcx.core.web._get_image_size", _image_size)
+    assert await _should_skip_amazon_for_existing_poster(_make_result(DMM_HD_PS), None) is True
+
+
+@pytest.mark.asyncio
+async def test_not_skip_amazon_dmm_narrow_poster(monkeypatch):
+    async def _image_size(url, media_context=None):
+        return 588, 800
+
     async def _mid(url):
-        return 173 * 1024
+        return 152 * 1024
 
     monkeypatch.setattr("mdcx.core.web._get_image_size", _image_size)
     monkeypatch.setattr("mdcx.core.web.get_url_content_length", _mid)
