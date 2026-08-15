@@ -366,8 +366,8 @@ class MediaResourceContext:
         try:
             if response.status_code != 200:
                 return 0, 0
-            for chunk in response.iter_content(chunk_size):
-                file_head.write(await chunk)
+            async for chunk in response.aiter_content(chunk_size):
+                file_head.write(chunk)
                 if file_head.tell() > MAX_IMAGE_PROBE_BYTES:
                     return 0, 0
                 try:

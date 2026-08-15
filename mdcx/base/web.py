@@ -494,8 +494,8 @@ async def get_imgsize(url) -> tuple[int, int]:
         try:
             if response.status_code != 200:
                 return 0, 0
-            for chunk in response.iter_content(chunk_size):
-                file_head.write(await chunk)
+            async for chunk in response.aiter_content(chunk_size):
+                file_head.write(chunk)
                 try:
 
                     def _get_size():

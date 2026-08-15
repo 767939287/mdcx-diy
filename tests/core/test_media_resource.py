@@ -15,13 +15,10 @@ class _FakeResponse:
         self.headers = headers or {}
         self.status_code = 200
 
-    def iter_content(self, chunk_size: int):
+    async def aiter_content(self, chunk_size: int):
         content = self.content
-
-        async def _chunk():
-            return content[:chunk_size]
-
-        yield _chunk()
+        if content:
+            yield content[:chunk_size]
 
     async def aclose(self):
         return None
