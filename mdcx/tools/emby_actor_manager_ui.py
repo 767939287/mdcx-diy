@@ -6,7 +6,7 @@ from pathlib import Path
 
 from PyQt6.QtCore import Qt, QThread
 from PyQt6.QtCore import pyqtSignal as Signal
-from PyQt6.QtGui import QColor, QPixmap
+from PyQt6.QtGui import QColor
 from PyQt6.QtWidgets import (
     QAbstractItemView,
     QCheckBox,
@@ -259,10 +259,6 @@ class SyncThread(QThread):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.actors = []
-        self._cancel = False
-
-    def cancel(self):
-        self._cancel = True
 
     def run(self):
         try:
@@ -289,7 +285,6 @@ class EmbyActorManagerDialog(QDialog):
         self._preview_thread = None
         self._sync_thread = None
         self._fetch_thread = None
-        self._avatar_cache: dict[str, QPixmap | None] = {}
         self._init_ui()
         self._connect_signals()
 
@@ -414,13 +409,10 @@ class EmbyActorManagerDialog(QDialog):
         self.txt_search.setMaximumWidth(200)
         self.txt_search.textChanged.connect(self._on_filter_changed)
         filter_layout.addWidget(self.txt_search)
-        self.chk_show_table_avatar = QCheckBox("表格显示头像")
-        filter_layout.addWidget(self.chk_show_table_avatar)
         hint = QLabel("双击行可编辑")
         hint.setStyleSheet("color: #888888; font-size: 12px;")
         filter_layout.addWidget(hint)
         filter_layout.addStretch()
-        parent_layout.addLayout(stats_layout)
         parent_layout.addLayout(filter_layout)
         self.progress_bar = QProgressBar()
         self.progress_bar.setVisible(False)
@@ -548,7 +540,6 @@ class EmbyActorManagerDialog(QDialog):
             return
         library_ids = None if len(selected_ids) == len(libraries) else selected_ids
         self._set_buttons_enabled(False)
-        self._avatar_cache.clear()
         self.progress_bar.setVisible(True)
         self.progress_bar.setValue(0)
         self.log("📜 开始获取演员列表...")
