@@ -4,7 +4,7 @@ import asyncio
 import tempfile
 from pathlib import Path
 
-from PyQt6.QtCore import Qt, QThread
+from PyQt6.QtCore import Qt, QThread, QTimer
 from PyQt6.QtCore import pyqtSignal as Signal
 from PyQt6.QtGui import QColor
 from PyQt6.QtWidgets import (
@@ -754,6 +754,29 @@ class EmbyActorManagerDialog(QDialog):
                 a.need_update_backdrop = False
         self._populate_table(self._actors)
         self._update_statistics(self._actors)
+        # 同步完成后 3 秒自动重新获取演员列表，确保与 Emby 完全一致
+        self.log("⏳ 3 秒后自动刷新演员列表...")
+        QTimer.singleShot(3000, self._on_auto_refresh)
+
+    def _on_auto_refresh(self):
+        if not hasattr(self, "_connected") or not self._connected:
+            return
+        self._set_buttons_enabled(False)
+        self.log("🔄 正在自动刷新演员列表...")
+        self._refresh_thread = FetchActorsThread(self)
+        self._refresh_thread.progress.connect(self._on_fetch_progress)
+        self._refresh_thread.fetch_done.connect(self._on_auto_refresh_finished)
+        self._refresh_thread.error.connect(self._on_thread_error)
+        self._refresh_thread.start()
+
+    def _on_auto_refresh_finished(self, actors: list[ActorInfo]):
+        self._actors = actors
+        self._populate_table(actors)
+        self._update_statistics(actors)
+        self.btn_preview.setEnabled(len(actors) > 0)
+        self._set_status("自动刷新完成")
+        self.log(f"✅ 自动刷新完成，共 {len(actors)} 个演员")
+        self._set_buttons_enabled(True)
 
     def _on_thread_error(self, msg: str):
         self.progress_bar.setVisible(False)
