@@ -390,15 +390,20 @@ async def update_person_info(actor: ActorInfo) -> tuple[bool, str]:
         {"Name": actor.name, "Id": actor.actor_id, "ServerId": actor.server_id}
     )
     overview = (actor.new_overview or actor.existing_overview or "").replace("\n", "<br/>")
+    # 只下发非空字段，避免用空值覆盖服务器已有的 Taglines/拍摄地/ProviderIds 等
     payload: dict[str, object] = {
         "Name": actor.name,
         "Id": actor.actor_id,
         "ServerId": actor.server_id,
-        "Overview": overview,
-        "Taglines": actor.new_taglines or [],
-        "ProductionLocations": actor.new_production_locations or [],
-        "ProviderIds": actor.new_provider_ids or {},
     }
+    if overview:
+        payload["Overview"] = overview
+    if actor.new_taglines:
+        payload["Taglines"] = actor.new_taglines
+    if actor.new_production_locations:
+        payload["ProductionLocations"] = actor.new_production_locations
+    if actor.new_provider_ids:
+        payload["ProviderIds"] = actor.new_provider_ids
     if actor.new_production_year:
         payload["ProductionYear"] = actor.new_production_year
     if actor.new_premiere_date:
@@ -654,32 +659,41 @@ def sync_actor(actor: ActorInfo, sync_type: str = "both") -> tuple[bool, str]:
     try:
         if sync_type in ("both", "info"):
             if actor.need_update_info:
-                ok, msg = loop.run_until_complete(update_person_info(actor))
-                logs.append(msg)
+                try:
+                    ok, msg = loop.run_until_complete(update_person_info(actor))
+                    logs.append(msg)
+                except Exception as e:
+                    logs.append(f"❌ {actor.name} 更新信息异常: {e}")
         if sync_type in ("both", "image"):
             if actor.need_update_image:
-                if actor.new_image_path:
-                    delete_ok, delete_msg = loop.run_until_complete(delete_actor_image(actor))
+                try:
+                    if actor.new_image_path:
+                        delete_ok, delete_msg = loop.run_until_complete(delete_actor_image(actor))
+                        if not delete_ok:
+                            logs.append(delete_msg)
+                            logs.append(f"⏭️ {actor.name} 跳过上传 (因旧头像删除失败)")
+                        else:
+                            ok, msg = loop.run_until_complete(upload_actor_image(actor, actor.new_image_path))
+                            logs.append(msg)
+                    else:
+                        ok, msg = loop.run_until_complete(delete_actor_image(actor))
+                        logs.append(msg)
+                except Exception as e:
+                    logs.append(f"❌ {actor.name} 头像同步异常: {e}")
+            if actor.need_update_backdrop and actor.new_backdrop_path:
+                try:
+                    delete_ok, delete_msg = loop.run_until_complete(delete_actor_backdrop(actor))
                     if not delete_ok:
                         logs.append(delete_msg)
-                        logs.append(f"⏭️ {actor.name} 跳过上传 (因旧头像删除失败)")
+                        logs.append(f"⏭️ {actor.name} 跳过上传 (因旧背景删除失败)")
                     else:
-                        ok, msg = loop.run_until_complete(upload_actor_image(actor, actor.new_image_path))
+                        ok, msg = loop.run_until_complete(upload_actor_backdrop(actor, actor.new_backdrop_path))
                         logs.append(msg)
-                else:
-                    ok, msg = loop.run_until_complete(delete_actor_image(actor))
-                    logs.append(msg)
-            if actor.need_update_backdrop and actor.new_backdrop_path:
-                delete_ok, delete_msg = loop.run_until_complete(delete_actor_backdrop(actor))
-                if not delete_ok:
-                    logs.append(delete_msg)
-                    logs.append(f"⏭️ {actor.name} 跳过上传 (因旧背景删除失败)")
-                else:
-                    ok, msg = loop.run_until_complete(upload_actor_backdrop(actor, actor.new_backdrop_path))
-                    logs.append(msg)
+                except Exception as e:
+                    logs.append(f"❌ {actor.name} 背景同步异常: {e}")
     finally:
         loop.close()
-    # 把 delete 失败/skip 视为整体失败 (logs 含 ❌ 或 ⏭️) 以使 UI 标红
+    # 把 delete 失败/skip/异常 视为整体失败 (logs 含 ❌ 或 ⏭️) 以使 UI 标红
     success = not any(("❌" in log or "⏭️" in log) for log in logs) if logs else True
     return success, "\n".join(logs)
 

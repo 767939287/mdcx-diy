@@ -477,8 +477,10 @@ class EmbyActorManagerDialog(QDialog):
     def _set_buttons_enabled(self, enabled: bool):
         self.btn_connect.setEnabled(enabled)
         self.btn_fetch.setEnabled(enabled and hasattr(self, "_connected") and self._connected)
-        self.btn_preview.setEnabled(enabled and len(self._actors) > 0)
-        self.btn_sync.setEnabled(enabled)
+        actors = getattr(self, "_actors", None) or []
+        self.btn_preview.setEnabled(enabled and len(actors) > 0)
+        pending = any(a.need_update_info or a.need_update_image or a.need_update_backdrop for a in actors)
+        self.btn_sync.setEnabled(enabled and pending)
         self.btn_test.setEnabled(enabled)
 
     def _on_test_connection(self):
@@ -494,7 +496,6 @@ class EmbyActorManagerDialog(QDialog):
 
         loop = asyncio.new_event_loop()
         try:
-            asyncio.set_event_loop(loop)
             headers = {"Authorization": f'MediaBrowser Token="{key}"'}
 
             async def test():
@@ -693,9 +694,23 @@ class EmbyActorManagerDialog(QDialog):
 
     def _on_thread_error(self, msg: str):
         self.progress_bar.setVisible(False)
+        # 线程已结束，恢复按钮文本与状态，避免"停止/同步中..."残留
+        self.btn_preview.setText("获取数据")
+        self.btn_sync.setText("开始全部更新同步")
         self._set_buttons_enabled(True)
         self.log(f"🔶 错误: {msg}")
         QMessageBox.critical(self, "错误", msg)
+
+    def closeEvent(self, event):
+        # 线程运行中关闭窗口会触发 "QThread: Destroyed while thread is still running" 崩溃，
+        # 关闭前先取消并等待各后台线程结束。
+        for attr in ("_fetch_thread", "_preview_thread", "_sync_thread"):
+            thread = getattr(self, attr, None)
+            if thread is not None and thread.isRunning():
+                if hasattr(thread, "cancel"):
+                    thread.cancel()
+                thread.wait(5000)
+        super().closeEvent(event)
 
     def _on_filter_changed(self):
         self._populate_table(self._actors)
