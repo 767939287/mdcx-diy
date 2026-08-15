@@ -220,13 +220,19 @@ async def _get_gfriends_actor_data() -> dict[str, str] | Literal[False] | None:
         else:
             try:
                 date_time = re.findall(r'committedDate":"(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})', response)
-                lastest_time = time.strptime(date_time[0], "%Y-%m-%dT%H:%M:%S")
-                net_float = time.mktime(lastest_time) - time.timezone
+                from datetime import UTC, datetime
+
+                lastest_time = datetime.strptime(date_time[0], "%Y-%m-%dT%H:%M:%S").replace(tzinfo=UTC)
+                net_float = lastest_time.timestamp()
                 net_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(net_float))
             except Exception:
-                signal.show_log_text("🔴 Gfriends 历史页面解析失败！请向开发者报告! ")
-                return False
-            signal.show_log_text(f"✅ Gfriends 连接成功！最新数据更新时间: {net_time}")
+                # 解析失败时降级为"需要更新"，不要终止整个头像补全功能
+                signal.show_log_text("🔶 Gfriends 历史页面解析失败，将强制重新下载数据表")
+                net_float = 0.0
+                update_data = True
+                net_time = ""
+            if net_time:
+                signal.show_log_text(f"✅ Gfriends 连接成功！最新数据更新时间: {net_time}")
 
         # 更新：本地无文件时；更新时间过期；本地文件读取失败时，重新更新
         gfriends_json_path = resources.u("gfriends.json")
@@ -342,7 +348,7 @@ async def _get_graphis_pic(actor_name: str) -> tuple[Path | None, Path | None, s
             html = Selector(res)
             src = html.xpath("//div[@class='gp-model-box']/ul/li/a/img/@src").getall()
             jp_name = html.xpath("//li[@class='name-jp']/span/text()").getall()
-            if jp_name and actor_name in jp_name:
+            if jp_name and actor_name in jp_name and jp_name.index(actor_name) < len(src):
                 small_pic = src[jp_name.index(actor_name)]
                 big_pic = small_pic.replace("/prof.jpg", "/model.jpg")
                 result = await _do_download_and_return(
@@ -360,7 +366,7 @@ async def _get_graphis_pic(actor_name: str) -> tuple[Path | None, Path | None, s
             html = Selector(res)
             src = html.xpath("//div[@class='gp-model-box']/ul/li/a/img/@src").getall()
             jp_name = html.xpath("//li[@class='name-jp']/span/text()").getall()
-            if jp_name and actor_name in jp_name:
+            if jp_name and actor_name in jp_name and jp_name.index(actor_name) < len(src):
                 small_pic = src[jp_name.index(actor_name)]
                 big_pic = small_pic.replace("/prof.jpg", "/model.jpg")
                 result = await _do_download_and_return(
@@ -430,121 +436,130 @@ async def _update_emby_actor_photo_execute(actor_list: list[dict], gfriends_acto
         _raise_if_stop_requested()
         i += 1
         deal_percent = f"{i / count_all:.2%}"
-        # Emby 有头像时处理
-        actor_name = actor_js["Name"]
-        actor_imagetages = actor_js.get("ImageTags")
-        actor_backdrop_imagetages = actor_js.get("BackdropImageTags") or []
-        if " " in actor_name:
-            skip += 1
-            continue
-        actor_homepage, actor_person, pic_url, backdrop_url, backdrop_url_0, update_url = _generate_server_url(actor_js)
-        if actor_imagetages and EmbyAction.ACTOR_PHOTO_MISS in emby_on:
-            # self.show_log_text(f'\n{deal_percent} ✅ {i}/{count_all} 已有头像！跳过！ 👩🏻 {actor_name} \n{actor_homepage}')
-            skip += 1
-            continue
-
-        # 获取演员日文名字
-        actor_name_data = resources.get_actor_data(actor_name)
-        has_name = actor_name_data["has_name"]
-        jp_name = actor_name
-        if has_name:
-            jp_name = actor_name_data["jp"]
-
-        # graphis 判断
-        pic_path: Path | str | None
-        backdrop_path, logs = None, ""
-        if (
-            EmbyAction.ACTOR_PHOTO_NET in emby_on
-            and has_name
-            and (EmbyAction.GRAPHIS_BACKDROP in emby_on or EmbyAction.GRAPHIS_FACE in emby_on)
-        ):
-            pic_path, backdrop_path, logs = await _get_graphis_pic(jp_name)
-            _raise_if_stop_requested()
-        else:
-            pic_path = None
-
-        # 要上传的头像图片未找到时
-        if not pic_path:
-            pic_path = gfriends_actor_data.get(f"AI-Fix-{jp_name}.jpg")
-            if not pic_path:
-                pic_path = gfriends_actor_data.get(f"{jp_name}.jpg")
-            if not pic_path:
-                pic_path = gfriends_actor_data.get(f"{jp_name}.png")
-            if not pic_path:
-                if actor_imagetages:
-                    signal.show_log_text(
-                        f"\n{deal_percent} ✅ {i}/{count_all} 没有找到头像！继续使用原有头像！ 👩🏻 {actor_name} {logs}\n{actor_homepage}"
-                    )
-                    succ += 1
-                    continue
-                signal.show_log_text(
-                    f"\n{deal_percent} 🔴 {i}/{count_all} 没有找到头像！ 👩🏻 {actor_name}  {logs}\n{actor_homepage}"
-                )
-                fail += 1
+        try:
+            # Emby 有头像时处理
+            actor_name = actor_js["Name"]
+            actor_imagetages = actor_js.get("ImageTags")
+            actor_backdrop_imagetages = actor_js.get("BackdropImageTags") or []
+            if " " in actor_name:
+                skip += 1
                 continue
-        else:
-            pass
+            actor_homepage, _, pic_url, backdrop_url, _, update_url = _generate_server_url(actor_js)
+            if actor_imagetages and EmbyAction.ACTOR_PHOTO_MISS in emby_on:
+                # self.show_log_text(f'\n{deal_percent} ✅ {i}/{count_all} 已有头像！跳过！ 👩🏻 {actor_name} \n{actor_homepage}')
+                skip += 1
+                continue
 
-        # 头像需要下载时
-        if isinstance(pic_path, str) and "https://" in pic_path:
-            file_name = pic_path.split("/")[-1]
-            file_name_match = re.search(r"^[^?]+", file_name)
-            file_name = file_name_match.group(0) if file_name_match else f"{actor_name}.jpg"
-            file_path = actor_folder / file_name
-            if not await aiofiles.os.path.isfile(file_path):
-                if not await download_file_with_filepath(pic_path, file_path, actor_folder):
+            # 获取演员日文名字
+            actor_name_data = resources.get_actor_data(actor_name)
+            has_name = actor_name_data["has_name"]
+            jp_name = actor_name
+            if has_name:
+                jp_name = actor_name_data["jp"]
+
+            # graphis 判断
+            pic_path: Path | str | None
+            backdrop_path, logs = None, ""
+            if (
+                EmbyAction.ACTOR_PHOTO_NET in emby_on
+                and has_name
+                and (EmbyAction.GRAPHIS_BACKDROP in emby_on or EmbyAction.GRAPHIS_FACE in emby_on)
+            ):
+                pic_path, backdrop_path, logs = await _get_graphis_pic(jp_name)
+                _raise_if_stop_requested()
+            else:
+                pic_path = None
+
+            # 要上传的头像图片未找到时
+            if not pic_path:
+                pic_path = gfriends_actor_data.get(f"AI-Fix-{jp_name}.jpg")
+                if not pic_path:
+                    pic_path = gfriends_actor_data.get(f"{jp_name}.jpg")
+                if not pic_path:
+                    pic_path = gfriends_actor_data.get(f"{jp_name}.png")
+                if not pic_path:
+                    if actor_imagetages:
+                        signal.show_log_text(
+                            f"\n{deal_percent} ✅ {i}/{count_all} 没有找到头像！继续使用原有头像！ 👩🏻 {actor_name} {logs}\n{actor_homepage}"
+                        )
+                        succ += 1
+                        continue
                     signal.show_log_text(
-                        f"\n{deal_percent} 🔴 {i}/{count_all} 头像下载失败！ 👩🏻 {actor_name}  {logs}\n{actor_homepage}"
+                        f"\n{deal_percent} 🔴 {i}/{count_all} 没有找到头像！ 👩🏻 {actor_name}  {logs}\n{actor_homepage}"
                     )
                     fail += 1
                     continue
-            pic_path = file_path
-        pic_path = cast(Path, pic_path)
+            else:
+                pass
 
-        # 检查背景是否存在
-        if not backdrop_path:
-            backdrop_path = pic_path.with_name(pic_path.stem + "-big.jpg")
-            if not await aiofiles.os.path.isfile(backdrop_path):
-                await fix_pic_async(pic_path, backdrop_path)
-        _raise_if_stop_requested()
+            # 头像需要下载时
+            if isinstance(pic_path, str) and pic_path.startswith(("http://", "https://")):
+                file_name = pic_path.split("/")[-1]
+                file_name_match = re.search(r"^[^?]+", file_name)
+                file_name = file_name_match.group(0) if file_name_match else f"{actor_name}.jpg"
+                # 加演员名前缀，避免不同演员同 URL 末段时缓存文件碰撞
+                file_path = actor_folder / f"{actor_name}-{file_name}"
+                if not await aiofiles.os.path.isfile(file_path):
+                    if not await download_file_with_filepath(pic_path, file_path, actor_folder):
+                        signal.show_log_text(
+                            f"\n{deal_percent} 🔴 {i}/{count_all} 头像下载失败！ 👩🏻 {actor_name}  {logs}\n{actor_homepage}"
+                        )
+                        fail += 1
+                        continue
+                pic_path = file_path
+            pic_path = cast(Path, pic_path)
 
-        # 检查图片尺寸并裁剪为2:3
-        await asyncio.to_thread(cut_pic, pic_path)
-        _raise_if_stop_requested()
+            # 检查背景是否存在
+            if not backdrop_path:
+                backdrop_path = pic_path.with_name(pic_path.stem + "-big.jpg")
+                if not await aiofiles.os.path.isfile(backdrop_path):
+                    await fix_pic_async(pic_path, backdrop_path)
+            _raise_if_stop_requested()
 
-        # 清理旧图片（backdrop可以多张，不清理会一直累积）
-        if actor_backdrop_imagetages:
-            for _ in range(len(actor_backdrop_imagetages)):
+            # 检查图片尺寸并裁剪为2:3
+            await asyncio.to_thread(cut_pic, pic_path)
+            _raise_if_stop_requested()
+
+            # 清理旧图片（backdrop 可以多张，不清理会一直累积；按索引逐个删除）
+            if actor_backdrop_imagetages:
                 headers = _build_jellyfin_headers()
-                async with manager.acquire_computed() as computed:
-                    await computed.async_client.request("DELETE", backdrop_url_0, headers=headers, use_proxy=False)
+                for idx in range(len(actor_backdrop_imagetages)):
+                    del_url = f"{backdrop_url.rstrip('/')}/{idx}"
+                    async with manager.acquire_computed() as computed:
+                        await computed.async_client.request("DELETE", del_url, headers=headers, use_proxy=False)
 
-        # 头像和背景分别上传，避免头像成功时背景被跳过。
-        pic_ok, pic_err = await _upload_actor_photo(pic_url, pic_path)
-        _raise_if_stop_requested()
-        backdrop_ok, backdrop_err = await _upload_actor_photo(backdrop_url, backdrop_path)
-        _raise_if_stop_requested()
-        if pic_ok and backdrop_ok:
-            if not logs or logs == "🍊 graphis.ne.jp 无结果！":
-                if EmbyAction.ACTOR_PHOTO_NET in manager.config.emby_on:
-                    logs += " ✅ 使用 Gfriends 头像和背景！"
-                else:
-                    logs += " ✅ 使用本地头像库头像和背景！"
-            signal.show_log_text(
-                f"\n{deal_percent} ✅ {i}/{count_all} 头像更新成功！ 👩🏻 {actor_name}  {logs}\n{actor_homepage}"
-            )
-            succ += 1
-        else:
-            error_parts = []
-            if not pic_ok:
-                error_parts.append(f"头像上传失败: {pic_err}")
-            if not backdrop_ok:
-                error_parts.append(f"背景上传失败: {backdrop_err}")
-            err = " | ".join(error_parts)
-            signal.show_log_text(
-                f"\n{deal_percent} 🔴 {i}/{count_all} 头像上传失败！ 👩🏻 {actor_name}  {logs}\n{actor_homepage} {err}"
-            )
+            # 头像和背景分别上传，避免头像成功时背景被跳过。
+            pic_ok, pic_err = await _upload_actor_photo(pic_url, pic_path)
+            _raise_if_stop_requested()
+            backdrop_ok, backdrop_err = await _upload_actor_photo(backdrop_url, backdrop_path)
+            _raise_if_stop_requested()
+            if pic_ok and backdrop_ok:
+                if not logs or logs == "🍊 graphis.ne.jp 无结果！":
+                    if EmbyAction.ACTOR_PHOTO_NET in manager.config.emby_on:
+                        logs += " ✅ 使用 Gfriends 头像和背景！"
+                    else:
+                        logs += " ✅ 使用本地头像库头像和背景！"
+                signal.show_log_text(
+                    f"\n{deal_percent} ✅ {i}/{count_all} 头像更新成功！ 👩🏻 {actor_name}  {logs}\n{actor_homepage}"
+                )
+                succ += 1
+            else:
+                error_parts = []
+                if not pic_ok:
+                    error_parts.append(f"头像上传失败: {pic_err}")
+                if not backdrop_ok:
+                    error_parts.append(f"背景上传失败: {backdrop_err}")
+                err = " | ".join(error_parts)
+                signal.show_log_text(
+                    f"\n{deal_percent} 🔴 {i}/{count_all} 头像上传失败！ 👩🏻 {actor_name}  {logs}\n{actor_homepage} {err}"
+                )
+                fail += 1
+        except Exception as e:
+            # 单个演员异常不中断整个任务
             fail += 1
+            signal.show_log_text(
+                f"\n{deal_percent} 🔴 {i}/{count_all} 演员处理异常！ 👩🏻 {actor_js.get('Name', '?')}  {e}\n{actor_js.get('Id', '')}"
+            )
     signal.show_log_text(
         f"\n\n 🎉🎉🎉 演员头像补全完成！用时: {get_used_time(start_time)}秒 成功: {succ} 失败: {fail} 跳过: {skip}\n"
     )
