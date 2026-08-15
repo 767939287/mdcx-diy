@@ -18,7 +18,7 @@ from ..models.types import CrawlersResult, FileInfo, OtherInfo
 from ..number import get_number_letters
 from ..signals import signal
 from ..utils import get_used_time
-from ..utils.file import delete_file_async
+from ..utils.file import delete_file_async, write_file_atomic_async
 from ..utils.language import is_japanese
 from ..utils.xml import build_cdata, escape_xml_text, normalize_xml_text
 from .mosaic import normalize_mosaic
@@ -162,7 +162,7 @@ async def write_nfo(file_info: FileInfo, data: CrawlersResult, nfo_file: Path, o
     try:
         if not await aiofiles.os.path.exists(output_dir):
             await aiofiles.os.makedirs(output_dir)
-        await delete_file_async(nfo_file)  # 避免115出现重复文件
+        # 原子写入（临时文件 + os.replace）：避免115出现重复文件，同时防止写入中断损坏旧 NFO
 
         code = StringIO()
         print('<?xml version="1.0" encoding="UTF-8" standalone="yes"?>', file=code)
@@ -384,10 +384,9 @@ async def write_nfo(file_info: FileInfo, data: CrawlersResult, nfo_file: Path, o
 
         print("</movie>", file=code)
 
-        async with aiofiles.open(nfo_file, "w", encoding="UTF-8") as f:
-            await f.write(code.getvalue())
-            LogBuffer.log().write(f"\n 🍀 Nfo done! (new)({get_used_time(start_time)}s)")
-            return True
+        await write_file_atomic_async(nfo_file, code.getvalue())
+        LogBuffer.log().write(f"\n 🍀 Nfo done! (new)({get_used_time(start_time)}s)")
+        return True
 
     except Exception as e:
         LogBuffer.log().write(f"\n 🔴 Nfo failed! \n     {e!s}")

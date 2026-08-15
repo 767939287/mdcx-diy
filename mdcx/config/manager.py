@@ -117,10 +117,13 @@ class ConfigManager:
     def _write_config_text(path: Path, text: str) -> None:
         """写入配置文件并尽量收紧权限, 降低敏感字段(如 API Token)被同机其它用户/进程读取的风险。
 
+        - 原子写入：先写同目录 .tmp 再 os.replace，避免写入中断损坏整个配置
         - POSIX: chmod 0o600 (仅属主读写)
         - Windows: best-effort 用 icacls 去除继承并仅授予当前用户读写; 任何失败均吞掉, 不影响主流程
         """
-        path.write_text(text, encoding="UTF-8")
+        tmp = path.with_name(f"{path.name}.tmp")
+        tmp.write_text(text, encoding="UTF-8")
+        os.replace(str(tmp), str(path))
         try:
             if os.name == "posix":
                 os.chmod(path, 0o600)

@@ -210,6 +210,22 @@ def open_file_thread(p: Path, is_dir: bool) -> None:
             subprocess.Popen(["xdg-open", p])
 
 
+async def write_file_atomic_async(p: str | Path, content: str, encoding: str = "UTF-8") -> None:
+    """原子写入文本文件：先写同目录临时文件再 os.replace，避免写入中断损坏原文件。
+
+    临时文件与目标同目录，保证 os.replace 在同一文件系统上原子执行。
+    """
+    p = Path(p)
+    tmp = p.with_name(f"{p.name}.tmp")
+    try:
+        async with aiofiles.open(tmp, "w", encoding=encoding) as f:
+            await f.write(content)
+        await asyncio.to_thread(os.replace, str(tmp), str(p))
+    except Exception:
+        await asyncio.to_thread(tmp.unlink, missing_ok=True)
+        raise
+
+
 async def delete_file_async(p: str | Path):
     """异步删除文件"""
     p = Path(p)

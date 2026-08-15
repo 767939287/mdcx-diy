@@ -108,20 +108,22 @@ class LogBuffer:
         if with_task_name:
             task_name = LogBuffer.get_task_name()
             message = f"[{task_name}] {message}"
-        if self.buffer and self.buffer[-1] == message:
-            return
-        self.buffer.append(message)
+        with LogBuffer._lock:
+            if self.buffer and self.buffer[-1] == message:
+                return
+            self.buffer.append(message)
 
     def get(self):
-        result = "".join(self.buffer)
-        task_id = LogBuffer._get_task_id()
         with LogBuffer._lock:
+            result = "".join(self.buffer)
+            task_id = LogBuffer._get_task_id()
             for tid, categories in list(LogBuffer.all_buffers.items()):
                 if tid == task_id:
                     continue
                 for category, buf in categories.items():
                     if isinstance(buf, LogBuffer):
-                        result += "".join(buf.buffer)
+                        # 浅拷贝避免并发 append 时 "list changed size during iteration"
+                        result += "".join(list(buf.buffer))
         return result
 
     def last(self):
@@ -130,7 +132,8 @@ class LogBuffer:
         return self.buffer[-1]
 
     def clear(self):
-        self.buffer.clear()
+        with LogBuffer._lock:
+            self.buffer.clear()
 
     @staticmethod
     def get_task_name() -> str:
