@@ -3,7 +3,6 @@ Amazon 相关封面搜索与条码识别逻辑
 """
 # mypy: ignore-errors
 
-import asyncio
 import re
 import urllib.parse
 from asyncio import to_thread
@@ -1966,15 +1965,13 @@ async def get_big_pic_by_amazon(
                 )
                 detail_url_str = str(best_fallback_candidate.get("detail_url", ""))
                 asin = normalize_detail_url(detail_url_str).split("/dp/")[-1] if detail_url_str else ""
-                asyncio.create_task(
-                    _save_asin_record(
-                        result,
-                        asin=asin,
-                        title=str(best_fallback_candidate["pic_title"]),
-                        poster_url=str(best_fallback_candidate["url"]),
-                        search_keyword=str(current_title if "current_title" in locals() else ""),
-                        detail_url=detail_url_str,
-                    )
+                await _save_asin_record(
+                    result,
+                    asin=asin,
+                    title=str(best_fallback_candidate["pic_title"]),
+                    poster_url=str(best_fallback_candidate["url"]),
+                    search_keyword=str(current_title if "current_title" in locals() else ""),
+                    detail_url=detail_url_str,
                 )
                 LogBuffer.log().write(
                     f"\n 🟡 Amazon命中低清图：标题置信度 ({float(best_fallback_candidate['title_confidence']):.2f}) "

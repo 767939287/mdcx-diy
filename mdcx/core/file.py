@@ -804,6 +804,7 @@ async def deal_old_files(
     poster_final_path: Path,
     thumb_final_path: Path,
     fanart_final_path: Path,
+    naming_rule: str = "",
 ) -> tuple[bool, bool]:
     """
     处理本地已存在的thumb、poster、fanart、nfo
@@ -821,7 +822,10 @@ async def deal_old_files(
     trailer_old_file_path = trailer_old_folder_path / "trailer.mp4"
     trailer_new_file_path = trailer_new_folder_path / "trailer.mp4"
     trailer_old_file_path_with_filename = nfo_old_path.with_name(f"{file_name}-trailer.mp4")
-    trailer_new_file_path_with_filename = nfo_new_path.with_name(f"{file_name}-trailer.mp4")
+    # 带文件名时，新 trailer 目标文件名必须与 trailer_download 的命名一致（naming_rule + "-trailer.mp4"），
+    # 否则旧 trailer 移到错误位置无法被复用（曾用旧 file_name 导致重复下载/孤立文件）。
+    trailer_name_rule = naming_rule or file_name
+    trailer_new_file_path_with_filename = nfo_new_path.with_name(f"{trailer_name_rule}-trailer.mp4")
     theme_videos_old_path = folder_old_path / "backdrops"
     theme_videos_new_path = folder_new_path / "backdrops"
     extrafanart_extra_old_path = folder_old_path / "behind the scenes"

@@ -234,7 +234,10 @@ def _deal_res(res: CrawlersResult) -> CrawlersResult:
 
     # 评分
     if res.score:
-        res.score = f"{float(res.score):.1f}"
+        try:
+            res.score = f"{float(res.score):.1f}"
+        except ValueError:
+            res.score = ""
 
     # publisher
     if not res.publisher:

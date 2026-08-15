@@ -1042,6 +1042,7 @@ class Scraper:
                         poster_final_path,
                         thumb_final_path,
                         fanart_final_path,
+                        naming_rule,
                     )  # 清理旧的thumb、poster、fanart、nfo
                 await save_success_list(file_path, file_new_path)  # 保存成功列表
                 return res, other
@@ -1064,6 +1065,7 @@ class Scraper:
             poster_final_path,
             thumb_final_path,
             fanart_final_path,
+            naming_rule,
         )
 
         # 如果 final_pic_path 没处理过，这时才需要下载和加水印

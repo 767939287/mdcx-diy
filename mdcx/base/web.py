@@ -343,7 +343,7 @@ async def check_url(url: str, length: bool = False, real_url: bool = False):
     if is_dmm_image_url(normalized_url):
         return await _validate_dmm_image_url(normalized_url, length=length, real_url=real_url)
 
-    max_retries = 1
+    max_retries = 3
 
     async with manager.acquire_computed() as computed:
         client = computed.async_client
@@ -419,7 +419,7 @@ async def get_avsox_domain() -> str:
     if response is not None:
         res = re.findall(r'(https://[^"]+)', response)
         for s in res:
-            if s and "https://avsox.com" not in s or "api.qrserver.com" not in s:
+            if s and "https://avsox.com" not in s and "api.qrserver.com" not in s:
                 return s
     return domain
 
@@ -458,20 +458,12 @@ async def get_amazon_data(req_url: str) -> tuple[bool, str]:
     async with manager.acquire_computed() as computed:
         client = computed.async_client
         headers = build_amazon_headers(req_url)
+        # 最多重试 3 次。此处之前有一个"失败后用响应体提取 session 再带 cookie 重试"的
+        # 分支，但它在 html_info is None 时对空串做 findall 恒返回空，从未生效，已删除。
         html_info, error = await _request_with_amazon_throttle(headers)
         if html_info is None:
             html_info, error = await _request_with_amazon_throttle(headers)
         if html_info is None:
-            session_id = ""
-            ubid_acbjp = ""
-            if x := re.findall(r'sessionId: "([^"]+)', html_info or ""):
-                session_id = x[0]
-            if x := re.findall(r"ubid-acbjp=([^ ]+)", html_info or ""):
-                ubid_acbjp = x[0]
-            headers_o = {
-                "cookie": f"session-id={session_id}; ubid_acbjp={ubid_acbjp}",
-            }
-            headers.update(headers_o)
             html_info, error = await _request_with_amazon_throttle(headers)
         if html_info is None:
             return False, error

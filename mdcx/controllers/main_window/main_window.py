@@ -2532,6 +2532,15 @@ class MyMAinWindow(QMainWindow):
 
     def _move_file_thread(self):
         signal_qt.change_buttons_status.emit()
+        try:
+            self._move_files_core()
+        except Exception:
+            signal_qt.show_traceback_log(traceback.format_exc())
+            signal_qt.show_log_text(traceback.format_exc())
+        finally:
+            signal_qt.reset_buttons_status.emit()
+
+    def _move_files_core(self):
         movie_items = []
         for movie_path in get_movie_path_setting().movie_paths:
             if not Path(movie_path).exists():
@@ -2547,7 +2556,6 @@ class MyMAinWindow(QMainWindow):
         if not movie_items:
             signal_qt.show_log_text("No movie found!")
             signal_qt.show_log_text("================================================================================")
-            signal_qt.reset_buttons_status.emit()
             return
         signal_qt.show_log_text("Start move movies...")
         skip_list = []
@@ -2968,6 +2976,14 @@ class MyMAinWindow(QMainWindow):
                 btn.setEnabled(True)
             if sig is not None:
                 sig.emit(idle_text)
+
+        # 演员库任务全部结束后复位停止标志。
+        # pushButton_actor_db_stop_clicked 只置位不复位，若在非刮削状态点击停止，
+        # signal_qt.stop / Flags.stop_requested 将永久为 True，导致日志静默、下一任务秒停。
+        # 演员库任务与主刮削互斥（change_buttons_status 会禁用 actor_db 按钮），此处复位安全。
+        if not self._actor_db_running:
+            Flags.stop_requested = False
+            signal_qt.stop = False
 
     # region 设置页
     # region 选择目录
