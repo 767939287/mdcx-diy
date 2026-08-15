@@ -36,6 +36,7 @@ from PyQt6.QtWidgets import (
 )
 
 from ..config.manager import manager
+from ..utils import executor
 from .emby_actor_manager import (
     ActorInfo,
     fetch_actor_detail,
@@ -116,9 +117,7 @@ class FetchActorsThread(QThread):
 
     def run(self):
         try:
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-            actors = loop.run_until_complete(
+            actors = executor.run(
                 fetch_all_actors(
                     filter_actor_only=manager.config.actor_filter_only,
                     deduplicate=manager.config.actor_deduplicate,
@@ -129,8 +128,6 @@ class FetchActorsThread(QThread):
             self.fetch_done.emit(actors)
         except Exception as e:
             self.error.emit(str(e))
-        finally:
-            loop.close()
 
 
 class PreparePreviewThread(QThread):
@@ -164,12 +161,7 @@ class PreparePreviewThread(QThread):
             need_info = self.mode in ("missing_all", "missing_info", "force_all", "force_info")
             force = "force" in self.mode
             cancelled = False
-            loop = asyncio.new_event_loop()
-            try:
-                asyncio.set_event_loop(loop)
-                cancelled = loop.run_until_complete(self._process_all(need_image, need_info, force, total))
-            finally:
-                loop.close()
+            cancelled = executor.run(self._process_all(need_image, need_info, force, total))
             if not cancelled:
                 self.progress.emit(total, total, "预览数据准备完成")
             self.preview_done.emit(self.actors)
@@ -544,50 +536,47 @@ class EmbyActorManagerDialog(QDialog):
         if not url or not key:
             QMessageBox.warning(self, "提示", "请输入 Emby 地址和 API 密钥")
             return
-        import asyncio
+        headers = {"Authorization": f'MediaBrowser Token="{key}"'}
 
-        loop = asyncio.new_event_loop()
+        async def test():
+            async with manager.acquire_computed() as computed:
+                test_url = (
+                    f"{url.rstrip('/')}/emby/System/Info?api_key={key}"
+                    if "emby" in str(manager.config.server_type)
+                    else f"{url.rstrip('/')}/System/Info?api_key={key}"
+                )
+                resp, err = await computed.async_client.get_json(test_url, headers=headers, use_proxy=False)
+                if resp:
+                    name = resp.get("ServerName", "Emby")
+                    version = resp.get("Version", "")
+                    return True, f"连接成功！{name} v{version}"
+                return False, f"连接失败: {err}"
+
         try:
-            headers = {"Authorization": f'MediaBrowser Token="{key}"'}
-
-            async def test():
-                async with manager.acquire_computed() as computed:
-                    test_url = (
-                        f"{url.rstrip('/')}/emby/System/Info?api_key={key}"
-                        if "emby" in str(manager.config.server_type)
-                        else f"{url.rstrip('/')}/System/Info?api_key={key}"
-                    )
-                    resp, err = await computed.async_client.get_json(test_url, headers=headers, use_proxy=False)
-                    if resp:
-                        name = resp.get("ServerName", "Emby")
-                        version = resp.get("Version", "")
-                        return True, f"连接成功！{name} v{version}"
-                    return False, f"连接失败: {err}"
-
-            ok, msg = loop.run_until_complete(test())
-            if ok:
-                self._connected = True
-                self.btn_connect.setText("已连接")
-                self.btn_fetch.setEnabled(True)
-                manager.config.emby_url = url
-                manager.config.api_key = key
-                self._set_status("连接成功")
-                self.log(f"✅ {msg}")
-            else:
-                self.log(f"❌ {msg}")
-                QMessageBox.critical(self, "连接失败", msg)
-        finally:
-            loop.close()
+            ok, msg = executor.run(test())
+        except Exception as e:
+            ok, msg = False, f"连接失败: {e}"
+        if ok:
+            self._connected = True
+            self.btn_connect.setText("已连接")
+            self.btn_fetch.setEnabled(True)
+            manager.config.emby_url = url
+            manager.config.api_key = key
+            self._set_status("连接成功")
+            self.log(f"✅ {msg}")
+        else:
+            self.log(f"❌ {msg}")
+            QMessageBox.critical(self, "连接失败", msg)
 
     def _on_fetch(self):
         if not hasattr(self, "_connected") or not self._connected:
             QMessageBox.warning(self, "提示", "请先连接 Emby 服务器")
             return
-        loop = asyncio.new_event_loop()
         try:
-            libraries = loop.run_until_complete(get_media_folders())
-        finally:
-            loop.close()
+            libraries = executor.run(get_media_folders())
+        except Exception as e:
+            self.log(f"❌ 获取媒体库列表失败: {e}")
+            return
         if not libraries:
             self.log("❌ 无法获取媒体库列表")
             return
@@ -627,17 +616,14 @@ class EmbyActorManagerDialog(QDialog):
         self.btn_preview.setEnabled(len(actors) > 0)
         self.progress_bar.setVisible(False)
         self._set_buttons_enabled(True)
-        loop = asyncio.new_event_loop()
         try:
-            self._gfriends_index = loop.run_until_complete(get_gfriends_index())
+            self._gfriends_index = executor.run(get_gfriends_index())
             if self._gfriends_index:
                 self.log(f"✅ Gfriends 头像库加载完成，共 {len(self._gfriends_index)} 个头像")
         except Exception:
             import traceback
 
             self.log(f"🔶 Gfriends 索引加载失败: {traceback.format_exc()}")
-        finally:
-            loop.close()
 
     def _on_prepare_preview(self):
         if self._preview_thread and self._preview_thread.isRunning():
@@ -1129,13 +1115,7 @@ class ActorSourceTestDialog(QDialog):
         if not name:
             QMessageBox.warning(self, "提示", "请输入演员名")
             return
-        import asyncio
-
-        loop = asyncio.new_event_loop()
-        try:
-            loop.run_until_complete(self._execute(name, need_image, need_info))
-        finally:
-            loop.close()
+        executor.run(self._execute(name, need_image, need_info))
 
     async def _execute(self, name: str, need_image: bool, need_info: bool):
         self.result_text.clear()
@@ -1384,13 +1364,12 @@ class ActorDetailDialog(QDialog):
         if not self.actor.has_image:
             self.existing_avatar_label.setText("无头像")
             return
-        import asyncio
-
-        loop = asyncio.new_event_loop()
         try:
-            loop.run_until_complete(self._download_existing_avatar())
-        finally:
-            loop.close()
+            executor.run(self._download_existing_avatar())
+        except Exception:
+            import traceback
+
+            self.log(f"🔶 加载现有头像失败: {traceback.format_exc()}")
 
     async def _download_existing_avatar(self):
         from .emby_actor_manager import _build_jellyfin_headers, _generate_server_url
@@ -1407,13 +1386,12 @@ class ActorDetailDialog(QDialog):
             self._show_pixmap(self.existing_avatar_label, str(tmp))
 
     def _run_fetch_image(self):
-        import asyncio
-
-        loop = asyncio.new_event_loop()
         try:
-            loop.run_until_complete(self._fetch_image())
-        finally:
-            loop.close()
+            executor.run(self._fetch_image())
+        except Exception:
+            import traceback
+
+            self.log(f"🔶 获取头像失败: {traceback.format_exc()}")
 
     async def _fetch_image(self):
         from .emby_actor_manager import from_gfriends, from_graphis, from_local_avatar, from_minnano_image
@@ -1446,13 +1424,13 @@ class ActorDetailDialog(QDialog):
         self.new_avatar_label.setText("未获取到新头像")
 
     def _run_fetch_info(self):
-        import asyncio
-
-        loop = asyncio.new_event_loop()
         try:
-            ok = loop.run_until_complete(search_actor_info(self.actor))
-        finally:
-            loop.close()
+            ok = executor.run(search_actor_info(self.actor))
+        except Exception:
+            import traceback
+
+            self.log(f"🔶 获取简介失败: {traceback.format_exc()}")
+            ok = False
         if ok:
             self.overview_edit.setPlainText(self.actor.new_overview)
             self._populate_info_table()

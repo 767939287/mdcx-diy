@@ -15,6 +15,7 @@ from ..config.manager import manager
 from ..config.resources import resources
 from ..models.flags import Flags
 from ..signals import signal
+from ..utils import executor
 from .actress_db import ActressDB
 from .minnano_crawler import get_minnano_info
 from .wiki import get_detail, search_wiki
@@ -681,12 +682,12 @@ async def search_actor_info(actor: ActorInfo, wiki_intro: str = "") -> bool:
 
 def sync_actor(actor: ActorInfo, sync_type: str = "both") -> tuple[bool, str]:
     logs: list[str] = []
-    loop = asyncio.new_event_loop()
-    try:
+
+    async def _run() -> None:
         if sync_type in ("both", "info"):
             if actor.need_update_info:
                 try:
-                    ok, msg = loop.run_until_complete(update_person_info(actor))
+                    ok, msg = await update_person_info(actor)
                     logs.append(msg)
                 except Exception as e:
                     logs.append(f"❌ {actor.name} 更新信息异常: {e}")
@@ -694,31 +695,31 @@ def sync_actor(actor: ActorInfo, sync_type: str = "both") -> tuple[bool, str]:
             if actor.need_update_image:
                 try:
                     if actor.new_image_path:
-                        delete_ok, delete_msg = loop.run_until_complete(delete_actor_image(actor))
+                        delete_ok, delete_msg = await delete_actor_image(actor)
                         if not delete_ok:
                             logs.append(delete_msg)
                             logs.append(f"⏭️ {actor.name} 跳过上传 (因旧头像删除失败)")
                         else:
-                            ok, msg = loop.run_until_complete(upload_actor_image(actor, actor.new_image_path))
+                            ok, msg = await upload_actor_image(actor, actor.new_image_path)
                             logs.append(msg)
                     else:
-                        ok, msg = loop.run_until_complete(delete_actor_image(actor))
+                        ok, msg = await delete_actor_image(actor)
                         logs.append(msg)
                 except Exception as e:
                     logs.append(f"❌ {actor.name} 头像同步异常: {e}")
             if actor.need_update_backdrop and actor.new_backdrop_path:
                 try:
-                    delete_ok, delete_msg = loop.run_until_complete(delete_actor_backdrop(actor))
+                    delete_ok, delete_msg = await delete_actor_backdrop(actor)
                     if not delete_ok:
                         logs.append(delete_msg)
                         logs.append(f"⏭️ {actor.name} 跳过上传 (因旧背景删除失败)")
                     else:
-                        ok, msg = loop.run_until_complete(upload_actor_backdrop(actor, actor.new_backdrop_path))
+                        ok, msg = await upload_actor_backdrop(actor, actor.new_backdrop_path)
                         logs.append(msg)
                 except Exception as e:
                     logs.append(f"❌ {actor.name} 背景同步异常: {e}")
-    finally:
-        loop.close()
+
+    executor.run(_run())
     # 把 delete 失败/skip/异常 视为整体失败 (logs 含 ❌ 或 ⏭️) 以使 UI 标红
     success = not any(("❌" in log or "⏭️" in log) for log in logs) if logs else True
     return success, "\n".join(logs)
