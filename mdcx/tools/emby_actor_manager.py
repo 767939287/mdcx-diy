@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import asyncio
-import base64
 import json
 import os
 from collections.abc import Callable
@@ -426,22 +425,12 @@ async def upload_actor_image(actor: ActorInfo, image_path: str | Path) -> tuple[
     img_path = Path(image_path)
     if not img_path.exists():
         return False, f"❌ 图片文件不存在: {image_path}"
-    try:
-        async with aiofiles.open(img_path, "rb") as f:
-            img_data = await f.read()
-        b64_data = base64.b64encode(img_data).decode("ascii")
-        content_type = "image/jpeg" if img_path.suffix.lower() in (".jpg", ".jpeg") else "image/png"
-        header = {"Content-Type": content_type}
-        header = _build_jellyfin_headers(header)
-        async with manager.acquire_computed() as computed:
-            body, err = await computed.async_client.post_content(
-                url=pic_url, data=b64_data, headers=header, use_proxy=False
-            )
-        if err == "" and body is not None:
-            return True, f"✅ {actor.name} 头像上传成功"
-        return False, f"❌ {actor.name} 头像上传失败: {err or '服务器返回空响应'}"
-    except Exception as e:
-        return False, f"❌ {actor.name} 上传异常: {e}"
+    from .emby_actor_image import _upload_actor_photo
+
+    ok, err = await _upload_actor_photo(pic_url, img_path)
+    if ok:
+        return True, f"✅ {actor.name} 头像上传成功"
+    return False, f"❌ {actor.name} 头像上传失败: {err or '服务器返回空响应'}"
 
 
 async def delete_actor_image(actor: ActorInfo) -> tuple[bool, str]:
@@ -491,22 +480,12 @@ async def upload_actor_backdrop(actor: ActorInfo, image_path: str | Path) -> tup
     img_path = Path(image_path)
     if not img_path.exists():
         return False, f"❌ 背景图片文件不存在: {image_path}"
-    try:
-        async with aiofiles.open(img_path, "rb") as f:
-            img_data = await f.read()
-        b64_data = base64.b64encode(img_data).decode("ascii")
-        content_type = "image/jpeg" if img_path.suffix.lower() in (".jpg", ".jpeg") else "image/png"
-        header = {"Content-Type": content_type}
-        header = _build_jellyfin_headers(header)
-        async with manager.acquire_computed() as computed:
-            body, err = await computed.async_client.post_content(
-                url=backdrop_url, data=b64_data, headers=header, use_proxy=False
-            )
-        if err == "" and body is not None:
-            return True, f"✅ {actor.name} 背景上传成功"
-        return False, f"❌ {actor.name} 背景上传失败: {err or '服务器返回空响应'}"
-    except Exception as e:
-        return False, f"❌ {actor.name} 背景上传异常: {e}"
+    from .emby_actor_image import _upload_actor_photo
+
+    ok, err = await _upload_actor_photo(backdrop_url, img_path)
+    if ok:
+        return True, f"✅ {actor.name} 背景上传成功"
+    return False, f"❌ {actor.name} 背景上传失败: {err or '服务器返回空响应'}"
 
 
 def gfriends_find_actor(gfriends_index: dict[str, str], name: str) -> str | None:

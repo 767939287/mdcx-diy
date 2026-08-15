@@ -142,7 +142,7 @@ async def _upload_actor_photo(url: str, pic_path: Path) -> tuple[bool, str]:
             content = await f.read()
         # Emby/Jellyfin 头像上传接口都要求使用 base64 编码后的图片内容。
         content = base64.b64encode(content)
-        header = {"Content-Type": "image/jpeg" if pic_path.suffix in (".jpg", ".jpeg") else "image/png"}
+        header = {"Content-Type": "image/jpeg" if pic_path.suffix.lower() in (".jpg", ".jpeg") else "image/png"}
         header = _build_jellyfin_headers(header)
         async with manager.acquire_computed() as computed:
             r, err = await computed.async_client.post_content(url=url, data=content, headers=header, use_proxy=False)
