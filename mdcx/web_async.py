@@ -424,6 +424,12 @@ class AsyncWebClient:
         self._local_bypass_enabled = cf_bypass_auto and not self.cf_bypass_url
         self._local_bypass_server: LocalBypassServer | None = None
         self._bypass_token = ""  # 仅本地内置 bypass 服务鉴权用, 远程用户配置的服务不鉴权
+        # 本地内置 bypass 服务的健康状态机: "idle" -> "starting" -> "ready" / "dead"
+        # dead 表示服务已确认不可用(连续健康失败), 不再尝试重启/转发, 避免每片刮削空等超时
+        self._local_bypass_health: str = "idle"
+        self._local_bypass_consecutive_failures = 0
+        self._local_bypass_dead_threshold = 3  # 连续失败达此值标记 dead
+        self._local_bypass_retry_dead_after_s = 300.0  # dead 后冷却多久允许重新尝试
         self._local_bypass_prewarm_task: asyncio.Future | None = None
         self._local_bypass_start_lock = asyncio.Lock()
         self._cf_host_locks: dict[str, asyncio.Lock] = {}
@@ -462,11 +468,60 @@ class AsyncWebClient:
         self._local_bypass_prewarm_task = asyncio.ensure_future(self._ensure_local_bypass())
         self._log_cf("后台预热内置 Bypass 服务", host)
 
+    def _record_local_bypass_success(self) -> None:
+        """本地内置 bypass 请求成功：清空失败计数，恢复 ready 状态。"""
+        if not self._local_bypass_enabled:
+            return
+        was_dead = self._local_bypass_health == "dead"
+        self._local_bypass_consecutive_failures = 0
+        if was_dead:
+            self._local_bypass_health = "ready"
+            # 服务确已恢复：若本地服务仍在运行，重新启用 bypass 转发
+            if self._local_bypass_server and self._local_bypass_server.is_running:
+                self.cf_bypass_url = self._local_bypass_server.url
+                self._bypass_token = self._local_bypass_server.token
+                self._cf_bypass_enabled = True
+            self._log("本地 Bypass 服务恢复正常 (ready)")
+
+    def _record_local_bypass_failure(self) -> None:
+        """本地内置 bypass 请求失败（连接/超时）：累计失败，达阈值标记 dead。"""
+        if not self._local_bypass_enabled:
+            return
+        self._local_bypass_consecutive_failures += 1
+        if (
+            self._local_bypass_health != "dead"
+            and self._local_bypass_consecutive_failures >= self._local_bypass_dead_threshold
+        ):
+            self._local_bypass_health = "dead"
+            self._local_bypass_dead_at = time.monotonic()
+            # 解除启用状态，后续请求不再转发到假死服务，直接走原生 curl（避免每片刮削空等超时）
+            self._cf_bypass_enabled = False
+            self._log(
+                f"本地 Bypass 服务连续 {self._local_bypass_consecutive_failures} 次请求失败，"
+                f"标记为不可用 (dead)，后续刮削不再走 bypass，{int(self._local_bypass_retry_dead_after_s)}s 后可自动重试"
+            )
+
+    def _local_bypass_is_dead(self) -> bool:
+        """本地内置 bypass 是否处于 dead 状态（且未过冷却期）。"""
+        if self._local_bypass_health != "dead":
+            return False
+        dead_at = getattr(self, "_local_bypass_dead_at", 0.0)
+        if time.monotonic() - dead_at >= self._local_bypass_retry_dead_after_s:
+            # 冷却期结束，允许重新尝试启动
+            self._local_bypass_health = "idle"
+            self._local_bypass_consecutive_failures = 0
+            self._log("本地 Bypass 服务 dead 冷却期结束，允许重新尝试")
+            return False
+        return True
+
     async def _ensure_local_bypass(self) -> bool:
         if not self._local_bypass_enabled:
             return False
         if self._cf_bypass_enabled:
             return True
+        if self._local_bypass_is_dead():
+            self._log("本地 Bypass 服务处于 dead 状态，跳过本次启动")
+            return False
         if self._local_bypass_server and self._local_bypass_server.is_running:
             self.cf_bypass_url = self._local_bypass_server.url
             self._bypass_token = self._local_bypass_server.token
@@ -1175,25 +1230,31 @@ class AsyncWebClient:
                 response = None
                 error = "mirror 请求超时"
                 await self._record_transport_failure(error, pool_key=mirror_pool_key)
+                self._record_local_bypass_failure()
             except ConnectionError as exc:
                 response = None
                 error = f"mirror 连接错误: {exc}"
                 await self._record_transport_failure(error, pool_key=mirror_pool_key)
+                self._record_local_bypass_failure()
             except RequestException as exc:
                 response = None
                 error = f"mirror 请求异常: {exc}"
                 await self._record_transport_failure(error, pool_key=mirror_pool_key)
+                self._record_local_bypass_failure()
             except TimeoutError:
                 response = None
                 error = "mirror 请求等待超时"
                 await self._record_transport_failure(error, pool_key=mirror_pool_key)
+                self._record_local_bypass_failure()
             except Exception as exc:
                 response = None
                 error = f"mirror 未知错误: {exc}"
                 await self._record_transport_failure(error, pool_key=mirror_pool_key)
+                self._record_local_bypass_failure()
             if response is None:
                 return None, error
 
+            self._record_local_bypass_success()
             self._bind_response_effective_url(response, current_url)
             response.headers["x-mdcx-bypass-mode"] = "mirror"
 
@@ -1270,7 +1331,11 @@ class AsyncWebClient:
         )
 
         if response is None:
+            # 请求级失败（连接错误/超时等）：本地内置服务可能已假死，累计健康失败
+            self._record_local_bypass_failure()
             return None, error
+
+        self._record_local_bypass_success()
 
         if response.status_code >= 400:
             return None, f"HTTP {response.status_code}"
