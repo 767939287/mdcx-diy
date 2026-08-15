@@ -5,6 +5,7 @@
 "谁刮过、结果如何"。数据库损坏或不可用时回退到内存模式，不影响主流程。
 """
 
+import json
 import sqlite3
 import threading
 from dataclasses import dataclass
@@ -64,6 +65,10 @@ class ScrapeStateCache:
                 )
                 """
             )
+            # 迁移：旧表无 summary_json 列时补齐（存相似推荐所需的结果摘要）
+            columns = {row["name"] for row in conn.execute("PRAGMA table_info(scrape_state)").fetchall()}
+            if "summary_json" not in columns:
+                conn.execute("ALTER TABLE scrape_state ADD COLUMN summary_json TEXT NOT NULL DEFAULT ''")
             conn.commit()
             self._conn = conn
             return True
@@ -135,22 +140,24 @@ class ScrapeStateCache:
             error=row["error"],
         )
 
-    def set_done(self, file_path: Path, mtime: float, number: str = "") -> None:
+    def set_done(self, file_path: Path, mtime: float, number: str = "", summary: dict | None = None) -> None:
         import time
 
+        summary_json = json.dumps(summary, ensure_ascii=False) if summary else ""
         self._execute(
             """
-            INSERT INTO scrape_state (file_path, mtime, status, number, fail_count, scraped_at, error)
-            VALUES (?, ?, 'done', ?, 0, ?, '')
+            INSERT INTO scrape_state (file_path, mtime, status, number, fail_count, scraped_at, error, summary_json)
+            VALUES (?, ?, 'done', ?, 0, ?, '', ?)
             ON CONFLICT(file_path) DO UPDATE SET
                 mtime=excluded.mtime,
                 status='done',
                 number=excluded.number,
                 fail_count=0,
                 scraped_at=excluded.scraped_at,
-                error=''
+                error='',
+                summary_json=excluded.summary_json
             """,
-            (str(file_path), mtime, number, time.time()),
+            (str(file_path), mtime, number, time.time(), summary_json),
         )
 
     def set_failed(self, file_path: Path, mtime: float, error: str = "") -> None:
@@ -215,6 +222,25 @@ class ScrapeStateCache:
             if row["fail_count"] < max_retries and p in existing:
                 pending.append(p)
         return pending
+
+    def list_success_summaries(self) -> list[dict]:
+        """返回全部成功刮削的结果摘要（供跨会话相似推荐等使用）。
+
+        每条摘要包含 number/title/tags/series/studio/actors/release/runtime。
+        无 summary_json 的旧记录会被跳过。
+        """
+        rows = self._fetch(
+            "SELECT summary_json FROM scrape_state WHERE status = 'done' AND summary_json != ''",
+        )
+        summaries = []
+        for row in rows:
+            try:
+                data = json.loads(row["summary_json"])
+            except (ValueError, TypeError):
+                continue
+            if isinstance(data, dict) and data:
+                summaries.append(data)
+        return summaries
 
     def cleanup_missing(self, existing: set[Path]) -> int:
         """清理源文件已不存在的过期记录，返回清理条数。"""

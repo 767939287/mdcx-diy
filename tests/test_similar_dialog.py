@@ -71,3 +71,33 @@ def test_dialog_handles_tiny_corpus():
     assert dlg._list.count() == 1
     assert "暂无" in dlg._list.item(0).text()
     dlg.close()
+
+
+def test_collect_corpus_from_cache_returns_summary_items():
+    import tempfile
+    from pathlib import Path
+
+    from mdcx.core.scrape_cache import ScrapeStateCache
+    from mdcx.views.similar_window import _SummaryItem
+
+    with tempfile.TemporaryDirectory() as d:
+        cache = ScrapeStateCache(Path(d) / "scrape_state.db")
+        assert cache.open() is True
+        cache.set_done(
+            Path(d) / "a.mp4",
+            mtime=1.0,
+            number="ABC-1",
+            summary={"number": "ABC-1", "title": "T1", "tags": ["巨乳"], "series": "S", "studio": "ST"},
+        )
+        corpus = SimilarDialog.collect_corpus_from_cache(cache)
+        cache.close()
+        assert len(corpus) == 1
+        item = corpus[0]
+        assert isinstance(item, _SummaryItem)
+        assert item.number == "ABC-1"
+        assert item.tags == ["巨乳"]
+        assert item.series == "S"
+
+
+def test_collect_corpus_from_cache_none_cache_returns_empty():
+    assert SimilarDialog.collect_corpus_from_cache(None) == []

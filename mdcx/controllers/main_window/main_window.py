@@ -51,6 +51,7 @@ from mdcx.consts import GITHUB_ISSUES_URL, GITHUB_RELEASES_URL, IS_WINDOWS, LOCA
 from mdcx.core.naming import NameRenderOptions, NamingTarget, render_name
 from mdcx.core.network_check import run_network_check
 from mdcx.core.nfo import write_nfo
+from mdcx.core.scrape_cache import ScrapeStateCache
 from mdcx.core.scraper import again_search, get_remain_list, start_new_scrape
 from mdcx.crawlers.fc2ppvdb import (
     FC2CMADB_BASE_URL,
@@ -1893,7 +1894,18 @@ class MyMAinWindow(QMainWindow):
         else:
             target = entries[0][2].data
 
+        # 相似语料 = 历史成功结果（跨会话，来自 SQLite 缓存）+ 当次刮削结果
         corpus = SimilarDialog.collect_corpus(Flags.json_data_dic)
+        cache = ScrapeStateCache(resources.u("scrape_state.db"))
+        if cache.open():
+            try:
+                cached_corpus = SimilarDialog.collect_corpus_from_cache(cache)
+                seen_numbers = {getattr(c, "number", "") for c in corpus}
+                for c in cached_corpus:
+                    if c.number not in seen_numbers:
+                        corpus.append(c)
+            finally:
+                cache.close()
         if len(corpus) < 2:
             signal_qt.show_log_text(" 🔴 相似推荐需要至少 2 部已刮削影片，请先刮削更多！")
             return
@@ -1912,7 +1924,9 @@ class MyMAinWindow(QMainWindow):
                     item.setSelected(True)
                     self.Ui.treeWidget_number.scrollToItem(item)
                     self.treeWidget_number_clicked()
-                break
+                return
+        # 历史缓存中的结果不在当次结果树中，无法跳转，仅提示
+        signal_qt.show_log_text(f" 💡 番号 {number} 是历史刮削结果，不在本次结果树中，无法跳转")
 
     def main_open_right_menu(self):
         """

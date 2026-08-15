@@ -1,10 +1,26 @@
 """相似片推荐对话框：展示与当前选中影片最相似的刮削结果，双击可跳转。"""
 
+from dataclasses import dataclass, field
 
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtWidgets import QDialog, QLabel, QListWidget, QListWidgetItem, QVBoxLayout
 
 from ..core.similar import SimilarIndex
+
+
+@dataclass
+class _SummaryItem:
+    """承载 SQLite 缓存的结果摘要，满足 SimilarIndex 所需字段。"""
+
+    number: str = ""
+    title: str = ""
+    tags: list[str] = field(default_factory=list)
+    series: str = ""
+    studio: str = ""
+    actors: list[str] = field(default_factory=list)
+    release: str = ""
+    runtime: str = ""
+
 
 
 class SimilarDialog(QDialog):
@@ -77,7 +93,7 @@ class SimilarDialog(QDialog):
 
     @staticmethod
     def collect_corpus(json_data_dic: dict) -> list:
-        """从 Flags.json_data_dic 收集可作为相似语料的刮削结果。
+        """从 Flags.json_data_dic 收集当次刮削结果作为相似语料。
 
         过滤掉缺番号或完全无标签/无演员的结果，避免噪声。
         """
@@ -93,4 +109,36 @@ class SimilarDialog(QDialog):
             if not tags and not actors:
                 continue
             corpus.append(data)
+        return corpus
+
+    @staticmethod
+    def collect_corpus_from_cache(cache) -> list:
+        """从 SQLite 刮削状态缓存收集历史成功结果作为相似语料（跨会话）。
+
+        缓存不可用时返回空列表（调用方回退到当次刮削结果）。
+        """
+        if cache is None or not getattr(cache, "is_usable", lambda: False)():
+            return []
+        corpus = []
+        for summary in cache.list_success_summaries():
+            number = summary.get("number", "")
+            title = summary.get("title", "")
+            if not number or not title:
+                continue
+            tags = summary.get("tags") or []
+            actors = summary.get("actors") or []
+            if not tags and not actors:
+                continue
+            corpus.append(
+                _SummaryItem(
+                    number=str(number),
+                    title=str(title),
+                    tags=[str(t) for t in tags],
+                    series=str(summary.get("series") or ""),
+                    studio=str(summary.get("studio") or ""),
+                    actors=[str(a) for a in actors],
+                    release=str(summary.get("release") or ""),
+                    runtime=str(summary.get("runtime") or ""),
+                )
+            )
         return corpus

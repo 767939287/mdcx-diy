@@ -487,7 +487,19 @@ class Scraper:
                 signal.show_list_name("succ", show_data, number)
                 if self._state_cache and self._state_cache.is_usable():
                     try:
-                        self._state_cache.set_done(file_path, await _safe_mtime(file_path), number=number)
+                        summary = {
+                            "number": number,
+                            "title": json_data.title,
+                            "tags": list(json_data.tags),
+                            "series": json_data.series,
+                            "studio": json_data.studio,
+                            "actors": list(json_data.actors),
+                            "release": json_data.release,
+                            "runtime": json_data.runtime,
+                        }
+                        self._state_cache.set_done(
+                            file_path, await _safe_mtime(file_path), number=number, summary=summary
+                        )
                     except Exception:
                         pass
             else:

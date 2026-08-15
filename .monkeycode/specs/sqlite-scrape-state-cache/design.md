@@ -122,6 +122,15 @@ DB 连接使用 WAL 模式（`PRAGMA journal_mode=WAL`），支持多读单写�
 - **重试时机**：失败文件**本轮跳过**，状态表记 `failed`，**下次启动刮削时**重新入队（跨会话重试，避免当轮重复撞同一网络错误拖慢整体）
 - **清理时机**：`cleanup_missing` 在**每次刮削开始时**清理源文件已不存在的过期记录
 
+### 方案 B：结果摘要缓存（已实现）
+
+在 `scrape_state` 表增加 `summary_json` 列（旧表自动 `ALTER TABLE` 迁移），刮削成功时存储相似推荐所需的关键字段（number/title/tags/series/studio/actors/release/runtime）。
+
+- `set_done` 支持可选 `summary` 参数
+- `list_success_summaries()` 返回全部 `done` 且有摘要的记录
+- 相似推荐语料 = **历史成功结果（SQLite）+ 当次刮削结果（Flags.json_data_dic）**，跨会话可用
+- 历史结果双击跳转不可用（不在当次结果树中），仅提示番号
+
 ## Error Handling
 
 | 场景 | 处理 |

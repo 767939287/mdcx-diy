@@ -168,3 +168,30 @@ def test_set_done_updates_in_place(cache: ScrapeStateCache, tmp_path: Path):
     assert state.mtime == 2.0
     assert state.number == "NEW"
     assert state.fail_count == 0
+
+
+def test_list_success_summaries_returns_stored_summaries(cache: ScrapeStateCache, tmp_path: Path):
+    p1 = tmp_path / "a.mp4"
+    p2 = tmp_path / "b.mp4"
+    cache.set_done(p1, mtime=1.0, number="ABC-1", summary={"number": "ABC-1", "title": "T1", "tags": ["x"]})
+    cache.set_done(p2, mtime=1.0, number="ABC-2", summary={"number": "ABC-2", "title": "T2", "tags": ["y"]})
+    # 失败记录与无 summary 的 done 记录不应进入
+    cache.set_failed(tmp_path / "c.mp4", mtime=1.0, error="e")
+    summaries = cache.list_success_summaries()
+    assert len(summaries) == 2
+    numbers = {s["number"] for s in summaries}
+    assert numbers == {"ABC-1", "ABC-2"}
+
+
+def test_list_success_summaries_skips_invalid_json(cache: ScrapeStateCache, tmp_path: Path):
+    p = tmp_path / "a.mp4"
+    cache.set_done(p, mtime=1.0, number="ABC-1", summary={"number": "ABC-1", "title": "T", "tags": ["x"]})
+    # 手工写入损坏的 summary_json 模拟异常数据
+    import sqlite3
+
+    conn = sqlite3.connect(str(cache._db_path))
+    conn.execute("UPDATE scrape_state SET summary_json = 'not-json' WHERE file_path = ?", (str(p),))
+    conn.commit()
+    conn.close()
+    # 不应抛异常，损坏记录被跳过
+    assert cache.list_success_summaries() == []
