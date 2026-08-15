@@ -843,3 +843,122 @@ def test_sanitize_url_still_removes_polluted_suffix():
 
     assert sanitized is True
     assert sanitized_url == "https://x.com?a=1"
+
+
+@pytest.mark.asyncio
+async def test_call_bypass_html_rejects_untrusted_final_url():
+    client = AsyncWebClient(
+        timeout=1,
+        cf_bypass_url="http://127.0.0.1:8000",
+        cf_bypass_trusted_hosts="missav.ws",
+    )
+
+    async def fake_request(method, url, **kwargs):
+        return (
+            _fake_response(
+                status_code=200,
+                content=b"<html>ok</html>",
+                headers={
+                    "x-cf-bypasser-final-url": "https://evil.example.com/steal.html",
+                },
+            ),
+            "",
+        )
+
+    client.request = fake_request  # type: ignore[method-assign]
+
+    response, error = await client._call_bypass_html("https://missav.ws/SNOS-003/cn", use_proxy=False)
+
+    assert response is None
+    assert "不在白名单" in error
+
+
+@pytest.mark.asyncio
+async def test_call_bypass_html_allows_trusted_final_url():
+    client = AsyncWebClient(
+        timeout=1,
+        cf_bypass_url="http://127.0.0.1:8000",
+        cf_bypass_trusted_hosts="*.missav.ws",
+    )
+
+    async def fake_request(method, url, **kwargs):
+        return (
+            _fake_response(
+                status_code=200,
+                content=b"<html>ok</html>",
+                headers={
+                    "x-cf-bypasser-final-url": "https://cdn.missav.ws/poster.jpg",
+                },
+            ),
+            "",
+        )
+
+    client.request = fake_request  # type: ignore[method-assign]
+
+    response, error = await client._call_bypass_html("https://missav.ws/SNOS-003/cn", use_proxy=False)
+
+    assert error == ""
+    assert response is not None
+    assert response.url == "https://cdn.missav.ws/poster.jpg"
+
+
+@pytest.mark.asyncio
+async def test_call_bypass_mirror_rejects_untrusted_landing():
+    client = AsyncWebClient(
+        timeout=1,
+        cf_bypass_url="http://127.0.0.1:8000",
+        cf_bypass_trusted_hosts="missav.ws",
+    )
+
+    async def fake_curl_request(**kwargs):
+        return _fake_response(status_code=200, content=b"<html>ok</html>", headers={})
+
+    client._curl_request = fake_curl_request  # type: ignore[method-assign]
+
+    response, error = await client._call_bypass_mirror(
+        method="GET",
+        target_url="https://evil.example.com/steal.html",
+        headers=None,
+        cookies=None,
+        use_proxy=False,
+        data=None,
+        json_data=None,
+        timeout=None,
+        allow_redirects=True,
+    )
+
+    assert response is None
+    assert "不在白名单" in error
+
+
+@pytest.mark.asyncio
+async def test_call_bypass_mirror_rejects_untrusted_redirect_target():
+    client = AsyncWebClient(
+        timeout=1,
+        cf_bypass_url="http://127.0.0.1:8000",
+        cf_bypass_trusted_hosts="missav.ws",
+    )
+
+    async def fake_curl_request(**kwargs):
+        return _fake_response(
+            status_code=302,
+            content=b"",
+            headers={"location": "https://evil.example.com/steal.html"},
+        )
+
+    client._curl_request = fake_curl_request  # type: ignore[method-assign]
+
+    response, error = await client._call_bypass_mirror(
+        method="GET",
+        target_url="https://missav.ws/SNOS-003/cn",
+        headers=None,
+        cookies=None,
+        use_proxy=False,
+        data=None,
+        json_data=None,
+        timeout=None,
+        allow_redirects=True,
+    )
+
+    assert response is None
+    assert "不在白名单" in error

@@ -10306,6 +10306,36 @@ class Ui_MDCx(object):
         self.checkBox_cf_bypass_auto.setSizePolicy(sizePolicy)
         self.checkBox_cf_bypass_auto.setObjectName("checkBox_cf_bypass_auto")
         self.gridLayout_9.addWidget(self.checkBox_cf_bypass_auto, 4, 1, 1, 1)
+        self.label_cf_bypass_trusted_hosts = QtWidgets.QLabel(parent=self.gridLayoutWidget_9)
+        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Policy.Fixed, QtWidgets.QSizePolicy.Policy.Fixed)
+        sizePolicy.setHorizontalStretch(0)
+        sizePolicy.setVerticalStretch(0)
+        sizePolicy.setHeightForWidth(self.label_cf_bypass_trusted_hosts.sizePolicy().hasHeightForWidth())
+        self.label_cf_bypass_trusted_hosts.setSizePolicy(sizePolicy)
+        self.label_cf_bypass_trusted_hosts.setMinimumSize(QtCore.QSize(130, 0))
+        self.label_cf_bypass_trusted_hosts.setLayoutDirection(QtCore.Qt.LayoutDirection.RightToLeft)
+        self.label_cf_bypass_trusted_hosts.setAlignment(
+            QtCore.Qt.AlignmentFlag.AlignRight
+            | QtCore.Qt.AlignmentFlag.AlignTrailing
+            | QtCore.Qt.AlignmentFlag.AlignVCenter
+        )
+        self.label_cf_bypass_trusted_hosts.setObjectName("label_cf_bypass_trusted_hosts")
+        self.gridLayout_9.addWidget(self.label_cf_bypass_trusted_hosts, 6, 0, 1, 1)
+        self.lineEdit_cf_bypass_trusted_hosts = QtWidgets.QLineEdit(parent=self.gridLayoutWidget_9)
+        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Policy.Minimum, QtWidgets.QSizePolicy.Policy.Fixed)
+        sizePolicy.setHorizontalStretch(0)
+        sizePolicy.setVerticalStretch(0)
+        sizePolicy.setHeightForWidth(self.lineEdit_cf_bypass_trusted_hosts.sizePolicy().hasHeightForWidth())
+        self.lineEdit_cf_bypass_trusted_hosts.setSizePolicy(sizePolicy)
+        self.lineEdit_cf_bypass_trusted_hosts.setMinimumSize(QtCore.QSize(300, 30))
+        self.lineEdit_cf_bypass_trusted_hosts.setStyleSheet(
+            ' font: "Courier";\n'
+            "                                border: 1px solid rgba(0,0,0, 50);\n"
+            "                                border-radius: 15px;\n"
+            ""
+        )
+        self.lineEdit_cf_bypass_trusted_hosts.setObjectName("lineEdit_cf_bypass_trusted_hosts")
+        self.gridLayout_9.addWidget(self.lineEdit_cf_bypass_trusted_hosts, 6, 1, 1, 1)
         self.label_65 = QtWidgets.QLabel(parent=self.gridLayoutWidget_9)
         sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Policy.Fixed, QtWidgets.QSizePolicy.Policy.Fixed)
         sizePolicy.setHorizontalStretch(0)
@@ -13269,6 +13299,16 @@ class Ui_MDCx(object):
             _translate(
                 "MDCx",
                 "勾选后无需配置上方外部地址，MDCx 自动在后台启动内置 Bypass 服务（需安装 cloakbrowser + cf_bypasser）；修改后保存并重启软件生效",
+            )
+        )
+        self.label_cf_bypass_trusted_hosts.setText(_translate("MDCx", "Bypass落地白名单："))
+        self.lineEdit_cf_bypass_trusted_hosts.setPlaceholderText(
+            _translate("MDCx", "逗号分隔，如 javbus.com,*.javdb.com（留空不校验）")
+        )
+        self.lineEdit_cf_bypass_trusted_hosts.setToolTip(
+            _translate(
+                "MDCx",
+                "校验 Bypass 服务落地/重定向后的最终域名，防止第三方服务被劫持时把恶意页面当数据；支持 *.example.com 子域通配；留空表示不校验（默认）",
             )
         )
         self.label_65.setText(_translate("MDCx", "重试次数："))

@@ -704,6 +704,12 @@ class Config(BaseModel):
     cf_bypass_url: str = Field(default="", title="Cloudflare Bypass地址")
     cf_bypass_proxy: str = Field(default="", title="Cloudflare Bypass代理地址")
     cf_bypass_auto: bool = Field(default=False, title="启用内置CF Bypass")
+    cf_bypass_trusted_hosts: str = Field(
+        default="",
+        title="Bypass落地域名白名单",
+        description="逗号分隔的可信落地域名（支持 *.example.com 子域通配）。"
+        "用于校验 bypass 服务返回/重定向后的最终 URL 域名，防止第三方服务被劫持时把恶意页面当数据。留空表示不校验。",
+    )
     verify_ssl: bool = Field(default=True, title="HTTPS证书校验（关闭仅用于自签名代理/MITM调试）")
     timeout: int = Field(default=10, title="超时")
     retry: int = Field(default=3, title="重试")

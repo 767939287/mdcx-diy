@@ -380,6 +380,7 @@ class AsyncWebClient:
         cf_bypass_url: str = "",
         cf_bypass_proxy: str | None = None,
         cf_bypass_auto: bool = False,
+        cf_bypass_trusted_hosts: str = "",
         verify_ssl: bool = True,
         proxy_sites: list[str] | None = None,
         log_fn: Callable[[str], None] | None = None,
@@ -414,6 +415,12 @@ class AsyncWebClient:
         self.cf_bypass_proxy = (cf_bypass_proxy or "").strip()
         self._cf_bypass_enabled = bool(self.cf_bypass_url)
         self._cf_bypass_auto = cf_bypass_auto
+        # 可信落地域名白名单（逗号分隔，支持 *.example.com 子域通配）；为空则不校验
+        self._cf_bypass_trusted_hosts: set[str] = set()
+        for entry in (cf_bypass_trusted_hosts or "").split(","):
+            entry = entry.strip().lower()
+            if entry:
+                self._cf_bypass_trusted_hosts.add(entry)
         self._local_bypass_enabled = cf_bypass_auto and not self.cf_bypass_url
         self._local_bypass_server: LocalBypassServer | None = None
         self._bypass_token = ""  # 仅本地内置 bypass 服务鉴权用, 远程用户配置的服务不鉴权
@@ -959,6 +966,31 @@ class AsyncWebClient:
         normalized = error.strip()
         return normalized.startswith("mirror 返回 Cloudflare 挑战页") or "Cloudflare 挑战页" in normalized
 
+    def _is_trusted_bypass_landing(self, url: str) -> bool:
+        """校验 bypass 服务落地/重定向后的最终 URL 域名是否在白名单内。
+
+        - 未配置白名单（空集合）时返回 True（向后兼容，不校验）。
+        - 支持精确域名与子域通配（*.example.com 匹配 a.example.com，不匹配 example.com 自身）。
+        - 返回 False 意味着落地 URL 被第三方服务劫持/重定向到不可信域名，调用方应拒绝该响应。
+        """
+        if not self._cf_bypass_trusted_hosts:
+            return True
+        try:
+            split_result = urlsplit(str(url or "").strip())
+        except ValueError:
+            return False
+        host = (split_result.hostname or "").lower()
+        if not host:
+            return False
+        for pattern in self._cf_bypass_trusted_hosts:
+            if pattern.startswith("*."):
+                suffix = pattern[1:]  # ".example.com"
+                if host.endswith(suffix):
+                    return True
+            elif host == pattern:
+                return True
+        return False
+
     def _bind_response_effective_url(self, response: Response, final_url: str) -> None:
         normalized = (final_url or "").strip()
         if not normalized:
@@ -1172,16 +1204,27 @@ class AsyncWebClient:
                 return None, f"mirror HTTP {response.status_code}"
 
             if not allow_redirects or not self._is_redirect_response(response):
+                # 落地域名白名单校验：防止第三方 bypass 服务被劫持/重定向到不可信域名
+                if not self._is_trusted_bypass_landing(current_url):
+                    self._log_cf(f"🧱 mirror 落地域名不在白名单内，已拒绝: {current_url}", target_host)
+                    return None, f"mirror 落地域名不在白名单: {current_url}"
                 return response, ""
 
             response_headers = {str(k): str(v) for k, v in response.headers.items()}
             location = self._extract_header_case_insensitive(response_headers, "location").strip()
             if not location:
+                if not self._is_trusted_bypass_landing(current_url):
+                    self._log_cf(f"🧱 mirror 落地域名不在白名单内，已拒绝: {current_url}", target_host)
+                    return None, f"mirror 落地域名不在白名单: {current_url}"
                 return response, ""
 
             next_url = urljoin(current_url, location)
             if not next_url:
                 return None, "mirror 重定向 Location 为空"
+            # 重定向目标域名校验：不允许从可信域名跳到不可信域名
+            if not self._is_trusted_bypass_landing(next_url):
+                self._log_cf(f"🧱 mirror 重定向目标域名不在白名单内，已拒绝: {next_url}", target_host)
+                return None, f"mirror 重定向目标域名不在白名单: {next_url}"
             self._log_cf(f"➡️ mirror 跟随重定向: {current_url} -> {next_url}", target_host)
 
             if current_method not in ("GET", "HEAD") and response.status_code in (301, 302, 303):
@@ -1239,6 +1282,10 @@ class AsyncWebClient:
         final_url = (
             self._extract_header_case_insensitive(response_headers, "x-cf-bypasser-final-url").strip() or target_url
         )
+        # 落地域名白名单校验：防止第三方 bypass 服务返回被劫持的页面
+        if not self._is_trusted_bypass_landing(final_url):
+            self._log_cf(f"🧱 /html 落地域名不在白名单内，已拒绝: {final_url}")
+            return None, f"/html 落地域名不在白名单: {final_url}"
         self._bind_response_effective_url(response, final_url)
         response.headers["x-mdcx-bypass-mode"] = "html"
         return response, ""

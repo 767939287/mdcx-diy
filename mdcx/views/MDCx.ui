@@ -21710,6 +21710,59 @@
                             </property>
                           </widget>
                         </item>
+                        <item row="6" column="0">
+                          <widget class="QLabel" name="label_cf_bypass_trusted_hosts">
+                            <property name="sizePolicy">
+                              <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+                                <horstretch>0</horstretch>
+                                <verstretch>0</verstretch>
+                              </sizepolicy>
+                            </property>
+                            <property name="minimumSize">
+                              <size>
+                                <width>130</width>
+                                <height>0</height>
+                              </size>
+                            </property>
+                            <property name="layoutDirection">
+                              <enum>Qt::RightToLeft</enum>
+                            </property>
+                            <property name="text">
+                              <string>Bypass落地白名单：</string>
+                            </property>
+                            <property name="alignment">
+                              <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+                            </property>
+                          </widget>
+                        </item>
+                        <item row="6" column="1">
+                          <widget class="QLineEdit" name="lineEdit_cf_bypass_trusted_hosts">
+                            <property name="sizePolicy">
+                              <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
+                                <horstretch>0</horstretch>
+                                <verstretch>0</verstretch>
+                              </sizepolicy>
+                            </property>
+                            <property name="minimumSize">
+                              <size>
+                                <width>300</width>
+                                <height>30</height>
+                              </size>
+                            </property>
+                            <property name="styleSheet">
+                              <string notr="true"> font: "Courier";
+                                border: 1px solid rgba(0,0,0, 50);
+                                border-radius: 15px;
+</string>
+                            </property>
+                            <property name="placeholderText">
+                              <string>逗号分隔，如 javbus.com,*.javdb.com（留空不校验）</string>
+                            </property>
+                            <property name="toolTip">
+                              <string>校验 Bypass 服务落地/重定向后的最终域名，防止第三方服务被劫持时把恶意页面当数据；支持 *.example.com 子域通配；留空表示不校验（默认）</string>
+                            </property>
+                          </widget>
+                        </item>
                         <item row="7" column="0">
                           <widget class="QLabel" name="label_65">
                             <property name="sizePolicy">
