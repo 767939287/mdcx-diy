@@ -170,3 +170,26 @@ def test_is_jellyfin_server_emby_actor_manager(monkeypatch: pytest.MonkeyPatch):
     assert emby_actor_manager._is_jellyfin_server() is True
     monkeypatch.setattr(manager.config, "server_type", "emby")
     assert emby_actor_manager._is_jellyfin_server() is False
+
+
+@pytest.mark.asyncio
+async def test_get_emby_actor_list_emby_uses_actor_filter(monkeypatch: pytest.MonkeyPatch):
+    captured: dict = {}
+
+    async def fake_get_json(url: str, *, headers=None, use_proxy=True, **kwargs):
+        captured["url"] = url
+        return {"Items": []}, ""
+
+    monkeypatch.setattr(manager.config, "server_type", "emby")
+    monkeypatch.setattr(manager.config, "emby_url", "http://127.0.0.1:8096")
+    monkeypatch.setattr(manager.config, "api_key", "secret-token")
+    monkeypatch.setattr(manager.config, "user_id", "user-1")
+    monkeypatch.setattr(manager.computed.async_client, "get_json", fake_get_json)
+    monkeypatch.setattr(emby_actor_image.signal, "show_log_text", lambda text: None)
+
+    actor_list = await emby_actor_image._get_emby_actor_list()
+
+    assert actor_list == []
+    assert captured["url"].startswith("http://127.0.0.1:8096/emby/Persons?")
+    assert "personTypes=Actor" in captured["url"]
+    assert "ImageTags" in captured["url"]

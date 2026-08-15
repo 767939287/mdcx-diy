@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import asyncio
 import tempfile
-from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
 from PyQt6.QtCore import Qt, QThread
@@ -149,70 +148,75 @@ class PreparePreviewThread(QThread):
         self._cancel = True
 
     def run(self):
-        from .minnano_crawler import load_cache as minnano_load_cache
+        try:
+            from .minnano_crawler import load_cache as minnano_load_cache
 
-        minnano_load_cache()
-        total = len(self.actors)
-        if total == 0:
-            self.preview_done.emit(self.actors)
-            return
-        need_image = self.mode in ("missing_all", "missing_image", "force_all", "force_image")
-        need_info = self.mode in ("missing_all", "missing_info", "force_all", "force_info")
-        force = "force" in self.mode
-        completed = 0
-        cancelled = False
-
-        def process_one(actor: ActorInfo):
-            if self._cancel:
+            minnano_load_cache()
+            total = len(self.actors)
+            if total == 0:
+                self.preview_done.emit(self.actors)
                 return
-            if need_image:
-                self._try_fetch_image(actor, force)
-            if need_info:
-                self._try_fetch_info(actor, force)
+            need_image = self.mode in ("missing_all", "missing_image", "force_all", "force_image")
+            need_info = self.mode in ("missing_all", "missing_info", "force_all", "force_info")
+            force = "force" in self.mode
+            cancelled = False
+            loop = asyncio.new_event_loop()
+            try:
+                asyncio.set_event_loop(loop)
+                cancelled = loop.run_until_complete(self._process_all(need_image, need_info, force, total))
+            finally:
+                loop.close()
+            if not cancelled:
+                self.progress.emit(total, total, "预览数据准备完成")
+            self.preview_done.emit(self.actors)
+        except Exception:
+            import traceback
 
-        max_workers = 10
-        with ThreadPoolExecutor(max_workers=max_workers) as executor:
-            futures = {executor.submit(process_one, actor): actor for actor in self.actors}
-            for future in as_completed(futures):
-                if self._cancel:
-                    cancelled = True
-                    break
-                completed += 1
+            self.error.emit(f"获取数据失败: {traceback.format_exc()}")
+
+    async def _process_all(self, need_image: bool, need_info: bool, force: bool, total: int) -> bool:
+        """在单个 event loop 内并发处理所有演员，避免多线程多 loop 并发共享 async_client。"""
+        sem = asyncio.Semaphore(10)
+
+        async def guarded(actor: ActorInfo) -> ActorInfo:
+            async with sem:
                 try:
-                    future.result()
+                    if need_image:
+                        await self._try_fetch_image(actor, force)
+                    if need_info:
+                        await self._try_fetch_info(actor, force)
                 except Exception:
                     import traceback
 
-                    self.log(f"🔶 演员处理异常: {traceback.format_exc()}")
-                actor = futures[future]
-                self.progress.emit(completed, total, f"处理中: {actor.name} ({completed}/{total})")
-            if cancelled:
-                for f in futures:
-                    f.cancel()
-        if not cancelled:
-            self.progress.emit(total, total, "预览数据准备完成")
-        self.preview_done.emit(self.actors)
+                    from ..signals import signal
 
-    def _try_fetch_image(self, actor: ActorInfo, force: bool):
+                    signal.show_log_text(f"🔶 演员处理异常: {actor.name}: {traceback.format_exc()}")
+                return actor
+
+        completed = 0
+        cancelled = False
+        tasks = [guarded(actor) for actor in self.actors]
+        for coro in asyncio.as_completed(tasks):
+            if self._cancel:
+                cancelled = True
+                break
+            completed += 1
+            actor = await coro
+            self.progress.emit(completed, total, f"处理中: {actor.name} ({completed}/{total})")
+        return cancelled
+
+    async def _try_fetch_image(self, actor: ActorInfo, force: bool):
         if not force and actor.has_image:
             return
         for src in self.image_sources:
             if src == "gfriends" and self.gfriends_index:
-                loop = asyncio.new_event_loop()
-                try:
-                    result = loop.run_until_complete(from_gfriends(actor, self.gfriends_index, self.cache_dir))
-                finally:
-                    loop.close()
+                result = await from_gfriends(actor, self.gfriends_index, self.cache_dir)
                 if result:
                     actor.new_image_path = result
                     actor.need_update_image = True
                     return
             elif src == "graphis":
-                loop = asyncio.new_event_loop()
-                try:
-                    graphis_result = loop.run_until_complete(from_graphis(actor, self.cache_dir))
-                finally:
-                    loop.close()
+                graphis_result = await from_graphis(actor, self.cache_dir)
                 if isinstance(graphis_result, tuple):
                     avatar_path, backdrop_path = graphis_result
                     actor.new_image_path = avatar_path
@@ -222,11 +226,7 @@ class PreparePreviewThread(QThread):
                         actor.need_update_backdrop = True
                     return
             elif src == "minnano":
-                loop = asyncio.new_event_loop()
-                try:
-                    result = loop.run_until_complete(from_minnano_image(actor, self.cache_dir))
-                finally:
-                    loop.close()
+                result = await from_minnano_image(actor, self.cache_dir)
                 if result:
                     actor.new_image_path = result
                     actor.need_update_image = True
@@ -238,22 +238,14 @@ class PreparePreviewThread(QThread):
                     actor.need_update_image = True
                     return
 
-    def _try_fetch_info(self, actor: ActorInfo, force: bool):
+    async def _try_fetch_info(self, actor: ActorInfo, force: bool):
         if not force and actor.has_overview:
-            loop = asyncio.new_event_loop()
-            try:
-                detail = loop.run_until_complete(fetch_actor_detail(actor.name))
-            finally:
-                loop.close()
+            detail = await fetch_actor_detail(actor.name)
             if detail:
                 overview = (detail.get("Overview") or "").strip()
                 if overview and "无维基百科信息" not in overview:
                     return
-        loop = asyncio.new_event_loop()
-        try:
-            result = loop.run_until_complete(search_actor_info(actor))
-        finally:
-            loop.close()
+        result = await search_actor_info(actor)
         if result:
             actor.need_update_info = True
 

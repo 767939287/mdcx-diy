@@ -95,7 +95,14 @@ async def _get_emby_actor_list() -> list[dict]:
     # 获取 emby 的演员列表
     if "emby" == manager.config.server_type:
         server_name = "Emby"
-        url = _append_query(base_url + "/emby/Persons", {"userId": manager.config.user_id})
+        url = _append_query(
+            base_url + "/emby/Persons",
+            {
+                "personTypes": "Actor",
+                "fields": "ImageTags,BackdropImageTags",
+                "userId": manager.config.user_id,
+            },
+        )
     else:
         server_name = "Jellyfin"
         url = _append_query(

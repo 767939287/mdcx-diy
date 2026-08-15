@@ -6,8 +6,10 @@ from mdcx.tools.emby_actor_manager import (
     ActorInfo,
     _build_jellyfin_headers,
     _generate_server_url,
+    delete_actor_image,
     from_local_avatar,
     gfriends_find_actor,
+    search_actor_info,
 )
 
 
@@ -133,3 +135,50 @@ def test_actor_info_status_icon_returns_emoji():
 
     missing = ActorInfo(name="T", actor_id="id", server_id="s")
     assert missing.status_icon in ("❌", "⬜")
+
+
+@pytest.mark.asyncio
+async def test_search_actor_info_reads_dump_pascalcase_keys(monkeypatch: pytest.MonkeyPatch):
+    import mdcx.tools.emby_actor_manager as em
+
+    async def _no_wiki(info):
+        return None, ""
+
+    async def _fill_minnano(info, wiki_intro: str = ""):
+        info.overview = "测试简介"
+        info.taglines = ["测试标签"]
+        info.year = 2024
+        info.locations = ["日本"]
+        return True, ""
+
+    monkeypatch.setattr(em, "search_wiki", _no_wiki)
+    monkeypatch.setattr(em, "get_minnano_info", _fill_minnano)
+    actor = ActorInfo(name="Test", actor_id="id1", server_id="srv1")
+
+    found = await search_actor_info(actor)
+
+    assert found is True
+    assert actor.need_update_info is True
+    assert actor.new_overview == "测试简介"
+    assert actor.new_taglines == ["测试标签"]
+    assert actor.new_production_year == 2024
+    assert actor.new_production_locations == ["日本"]
+
+
+@pytest.mark.asyncio
+async def test_delete_actor_image_404_treated_as_success(monkeypatch: pytest.MonkeyPatch):
+    from mdcx.config.manager import manager
+
+    async def _fake_request(method, url, *, headers=None, use_proxy=None, **kwargs):
+        assert method == "DELETE"
+        return None, "DELETE 失败: HTTP 404"
+
+    monkeypatch.setattr(manager.config, "server_type", "emby")
+    monkeypatch.setattr(manager.config, "emby_url", "http://127.0.0.1:8096")
+    monkeypatch.setattr(manager.computed.async_client, "request", _fake_request)
+
+    actor = ActorInfo(name="Test", actor_id="id1", server_id="srv1")
+    ok, msg = await delete_actor_image(actor)
+
+    assert ok is True
+    assert "404" in msg

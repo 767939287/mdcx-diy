@@ -449,6 +449,9 @@ async def delete_actor_image(actor: ActorInfo) -> tuple[bool, str]:
     async with manager.acquire_computed() as computed:
         resp, err = await computed.async_client.request("DELETE", url, headers=headers, use_proxy=False)
     if resp is None:
+        # request() 对 HTTP>=400 返回 (None, err)，404 表示本来就没有，也视为"删干净了"
+        if "404" in str(err):
+            return True, f"✅ {actor.name} 旧头像本来就不存在 (HTTP 404)"
         return False, f"❌ {actor.name} 删除旧头像请求失败: {err}"
     status = int(resp.status_code)
     if status in (200, 204, 404):
@@ -467,6 +470,8 @@ async def delete_actor_backdrop(actor: ActorInfo) -> tuple[bool, str]:
     async with manager.acquire_computed() as computed:
         resp, err = await computed.async_client.request("DELETE", url, headers=headers, use_proxy=False)
     if resp is None:
+        if "404" in str(err):
+            return True, f"✅ {actor.name} 旧背景本来就不存在 (HTTP 404)"
         return False, f"❌ {actor.name} 删除旧背景请求失败: {err}"
     status = int(resp.status_code)
     if status in (200, 204, 404):
@@ -621,12 +626,22 @@ async def search_actor_info(actor: ActorInfo, wiki_intro: str = "") -> bool:
             _, _ = ActressDB.update_actor_info_from_db(info)
     if hasattr(info, "dump"):
         data = info.dump() if callable(info.dump) else info.__dict__
-        actor.new_overview = data.get("overview", data.get("new_overview", ""))
-        actor.new_taglines = data.get("taglines", data.get("new_taglines", []))
-        actor.new_production_year = data.get("production_year", data.get("new_production_year"))
-        actor.new_premiere_date = data.get("premiere_date", data.get("new_premiere_date", ""))
-        actor.new_production_locations = data.get("production_locations", data.get("new_production_locations", []))
-        actor.new_provider_ids = data.get("provider_ids", data.get("new_provider_ids", {}))
+
+        # dump() 返回 Emby/Jellyfin 规范键（PascalCase），兼容小写键兜底
+        def _get(*keys, default=None):
+            for key in keys:
+                if key in data:
+                    return data[key]
+            return default
+
+        actor.new_overview = _get("Overview", "overview", "new_overview", default="")
+        actor.new_taglines = _get("Taglines", "taglines", "new_taglines", default=[])
+        actor.new_production_year = _get("ProductionYear", "production_year", "new_production_year", default=None)
+        actor.new_premiere_date = _get("PremiereDate", "premiere_date", "new_premiere_date", default="")
+        actor.new_production_locations = _get(
+            "ProductionLocations", "production_locations", "new_production_locations", default=[]
+        )
+        actor.new_provider_ids = _get("ProviderIds", "provider_ids", "new_provider_ids", default={})
         if actor.new_overview or actor.new_taglines:
             actor.need_update_info = True
             return True
