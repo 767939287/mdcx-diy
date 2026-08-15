@@ -57,3 +57,6 @@ jobs:
 
       - name: Run check_actor_db
         run: uv run python -m scripts.check_actor_db
+
+      - name: Run check_info_db
+        run: uv run python -m scripts.check_info_db

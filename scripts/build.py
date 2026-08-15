@@ -168,7 +168,7 @@ class BuildManager:
             logger.info(f"\tcreate-dmg 版本: {r}")
 
         logger.info("检查必要文件...")
-        required_files = ["main.py", "mdcx", self._app_icon_path(), "resources", "libs"]
+        required_files = ["main.py", "mdcx", self._app_icon_path(), "resources"]
         for file_path in required_files:
             if not Path(file_path).exists():
                 raise BuildError(f"文件检查失败: {file_path}")
@@ -271,8 +271,6 @@ class BuildManager:
             "./mdcx",
             "--add-data",
             "resources:resources",
-            "--add-data",
-            "libs:.",
             "--icon",
             self._app_icon_path(),
             "--hidden-import",
@@ -336,6 +334,23 @@ class BuildManager:
             *(["--add-data", "chromium:chromium"] if Path("chromium").exists() else []),
             *[item for module in EXCLUDED_MODULES for item in ("--exclude-module", module)],
         ]
+
+        # curl_cffi 0.16+ 的 Windows wheel 用 delvewheel 打包, libcurl 等 DLL 放在包外兄弟目录
+        # curl_cffi.libs。--collect-all curl_cffi 只递归包内目录, 不会收集它, 若只靠 PyInstaller
+        # 隔离进程的 add_dll_directory 隐式注入则较脆弱, 这里显式 --add-binary 收集到同层目录。
+        if self.is_windows:
+            try:
+                import curl_cffi
+
+                libs_dir = Path(curl_cffi.__file__).resolve().parent.parent / "curl_cffi.libs"
+                if libs_dir.is_dir():
+                    logger.info(f"显式收集 curl_cffi.libs: {libs_dir}")
+                    cmd.extend(["--add-binary", f"{libs_dir}:curl_cffi.libs"])
+                else:
+                    logger.info("未发现 curl_cffi.libs (非 delvewheel 打包的 wheel), 跳过显式收集")
+            except Exception as e:
+                logger.warning(f"检测 curl_cffi.libs 失败, 依赖 PyInstaller 隐式注入: {e}")
+
         self._run_command(cmd, "✅ 生成 .spec 文件", "spec 文件生成失败")
 
     def _modify_spec(self):

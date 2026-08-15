@@ -101,9 +101,11 @@ def _enable_crash_dump() -> None:
                 stdout_file = open(log_dir / f"crash_{ts}.log", "w", encoding="utf-8")
                 sys.stdout = stdout_file
                 _crash_files.append(stdout_file)
-            stderr_file = open(log_dir / f"crash_{ts}.log", "a", encoding="utf-8")
-            sys.stderr = stderr_file
-            _crash_files.append(stderr_file)
+            # 仅冻结(onefile 无控制台)时重定向 stderr；源码运行保留终端输出，便于调试期直接看 traceback
+            if IS_PYINSTALLER:
+                stderr_file = open(log_dir / f"crash_{ts}.log", "a", encoding="utf-8")
+                sys.stderr = stderr_file
+                _crash_files.append(stderr_file)
         except Exception:
             pass
 
