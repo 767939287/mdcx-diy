@@ -146,7 +146,9 @@ Jinja2 模板引擎，支持条件渲染、智能截断。三类命名目标：�
 
 ### Amazon 缓存
 
-ASIN 数据库（Excel），搜索到的 ASIN 与番号对应关系持久化，避免重复搜索。
+ASIN 数据库（Excel `amazon_asin_database.xlsx`），搜索到的 ASIN 与番号对应关系持久化，避免重复搜索。
+- **读写**（`mdcx/core/amazon_database.py`）：`save_asin_to_excel` 写入按番号去重（同番号跳过）；`query_asin_database` 按番号/ASIN 查询；`update_asin_record` 原地更新 poster_url。
+- **出厂库/用户库两层**：出厂库 `resources/userdata/amazon_asin_database.xlsx`（git 跟踪），用户库 `userdata/amazon_asin_database.xlsx`；首启不存在则复制出厂库，之后启动时 `merge_asin_db_from_backup` 按番号把出厂新增/修正合并进用户库（md5 标记跳过、只增不删、不覆盖用户已填值）。
 
 ## 网络层
 
