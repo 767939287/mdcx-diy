@@ -986,6 +986,7 @@ class EmbyActorSettingsDialog(QDialog):
             QMessageBox.warning(self, "提示", f"Gfriends 地址无效: {e}")
             return
         manager._replace_config(cfg)
+        manager.save()
         self.accept()
 
 
@@ -1109,6 +1110,7 @@ class ActorSourceTestDialog(QDialog):
         cfg.actor_info_sources = [item.data(Qt.ItemDataRole.UserRole) for item in self.panel_info_list]
         cfg.actor_photo_folder = self.panel_folder_edit.text().strip()
         manager._replace_config(cfg)
+        manager.save()
 
     def _run(self, need_image: bool, need_info: bool):
         name = self.name_edit.text().strip()
@@ -1326,6 +1328,7 @@ class ActorDetailDialog(QDialog):
         cfg.actor_info_sources = [item.data(Qt.ItemDataRole.UserRole) for item in self.panel_info_list]
         cfg.actor_photo_folder = self.panel_folder_edit.text().strip()
         manager._replace_config(cfg)
+        manager.save()
 
     def _browse_folder(self):
         path = QFileDialog.getExistingDirectory(self, "选择本地头像目录", self.panel_folder_edit.text())
