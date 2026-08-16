@@ -971,8 +971,10 @@ class EmbyActorSettingsDialog(QDialog):
             self.photo_folder_edit.setText(path)
 
     def _save(self):
-        image_sources = [item.data(Qt.ItemDataRole.UserRole) for item in self.image_list]
-        info_sources = [item.data(Qt.ItemDataRole.UserRole) for item in self.info_list]
+        image_sources = [self.image_list.item(i).data(Qt.ItemDataRole.UserRole)
+                         for i in range(self.image_list.count())]
+        info_sources = [self.info_list.item(i).data(Qt.ItemDataRole.UserRole)
+                        for i in range(self.info_list.count())]
         cfg = manager.config.model_copy(deep=True)
         cfg.actor_image_sources = image_sources
         cfg.actor_info_sources = info_sources
