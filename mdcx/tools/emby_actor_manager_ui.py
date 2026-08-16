@@ -39,6 +39,7 @@ from ..config.resources import resources
 from ..utils import executor
 from .emby_actor_manager import (
     ActorInfo,
+    build_local_avatar_index,
     fetch_actor_detail,
     fetch_actor_info_from_source,
     fetch_all_actors,
@@ -143,6 +144,7 @@ class PreparePreviewThread(QThread):
         self.cache_dir = resources.u("emby_actor_cache")
         self.image_sources = ["gfriends", "graphis", "minnano", "local"]
         self.local_avatar_dir = ""
+        self._local_avatar_index: dict[str, str] | None = None
         self._cancel = False
 
     def cancel(self):
@@ -172,6 +174,10 @@ class PreparePreviewThread(QThread):
 
     async def _process_all(self, need_image: bool, need_info: bool, force: bool, total: int) -> bool:
         """在单个 event loop 内并发处理所有演员，避免多线程多 loop 并发共享 async_client。"""
+        if need_image and "local" in self.image_sources and self.local_avatar_dir:
+            self.progress.emit(0, total, "扫描本地头像目录...")
+            self._local_avatar_index = await asyncio.to_thread(build_local_avatar_index, self.local_avatar_dir)
+
         sem = asyncio.Semaphore(10)
 
         async def guarded(actor: ActorInfo) -> ActorInfo:
@@ -228,7 +234,7 @@ class PreparePreviewThread(QThread):
                     actor.need_update_image = True
                     return
             elif src == "local":
-                result = from_local_avatar(actor, self.local_avatar_dir)
+                result = from_local_avatar(actor, self.local_avatar_dir, self._local_avatar_index)
                 if result:
                     actor.new_image_path = result
                     actor.need_update_image = True

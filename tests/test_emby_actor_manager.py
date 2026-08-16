@@ -6,6 +6,7 @@ from mdcx.tools.emby_actor_manager import (
     ActorInfo,
     _build_jellyfin_headers,
     _generate_server_url,
+    build_local_avatar_index,
     delete_actor_image,
     from_local_avatar,
     gfriends_find_actor,
@@ -105,6 +106,51 @@ def test_from_local_avatar_returns_none_when_dir_not_exists(tmp_path: Path):
 def test_from_local_avatar_returns_none_when_dir_empty_string():
     actor = ActorInfo(name="三上悠亚", actor_id="id1", server_id="srv1")
     assert from_local_avatar(actor, "") is None
+
+
+def test_from_local_avatar_with_pre_scanned_index_hit(tmp_path: Path):
+    avatar_dir = tmp_path / "avatars"
+    avatar_dir.mkdir(parents=True)
+    pic = avatar_dir / "三上悠亚.jpg"
+    pic.write_text("fake", encoding="utf-8")
+
+    index = build_local_avatar_index(str(avatar_dir))
+    assert "三上悠亚" in index
+
+    actor = ActorInfo(name="三上悠亚", actor_id="id1", server_id="srv1")
+    result = from_local_avatar(actor, str(avatar_dir), pre_scanned_index=index)
+    assert result == str(pic)
+
+
+def test_from_local_avatar_with_pre_scanned_index_miss():
+    index = {"别的演员": "/some/path.jpg"}
+    actor = ActorInfo(name="三上悠亚", actor_id="id1", server_id="srv1")
+    assert from_local_avatar(actor, "/nonexistent", pre_scanned_index=index) is None
+
+
+def test_from_local_avatar_with_empty_index_returns_none():
+    actor = ActorInfo(name="三上悠亚", actor_id="id1", server_id="srv1")
+    assert from_local_avatar(actor, "/nonexistent", pre_scanned_index={}) is None
+
+
+def test_build_local_avatar_index_skips_non_image_files(tmp_path: Path):
+    avatar_dir = tmp_path / "avatars"
+    avatar_dir.mkdir(parents=True)
+    (avatar_dir / "actor1.jpg").write_text("fake", encoding="utf-8")
+    (avatar_dir / "actor2.png").write_text("fake", encoding="utf-8")
+    (avatar_dir / "readme.txt").write_text("fake", encoding="utf-8")
+    (avatar_dir / "actor1.json").write_text("{}", encoding="utf-8")
+
+    index = build_local_avatar_index(str(avatar_dir))
+    assert set(index.keys()) == {"actor1", "actor2"}
+
+
+def test_build_local_avatar_index_returns_empty_for_nonexistent_dir():
+    assert build_local_avatar_index("/nonexistent/path") == {}
+
+
+def test_build_local_avatar_index_returns_empty_for_empty_string():
+    assert build_local_avatar_index("") == {}
 
 
 def test_actor_info_status_text():

@@ -610,7 +610,13 @@ async def from_minnano_image(actor: ActorInfo, cache_dir: Path) -> str | None:
     return None
 
 
-def from_local_avatar(actor: ActorInfo, local_avatar_dir: str) -> str | None:
+def from_local_avatar(
+    actor: ActorInfo,
+    local_avatar_dir: str,
+    pre_scanned_index: dict[str, str] | None = None,
+) -> str | None:
+    if pre_scanned_index is not None:
+        return pre_scanned_index.get(actor.name)
     if not local_avatar_dir:
         return None
     avatar_dir = Path(local_avatar_dir)
@@ -620,6 +626,23 @@ def from_local_avatar(actor: ActorInfo, local_avatar_dir: str) -> str | None:
         if f.is_file() and f.suffix.lower() in (".jpg", ".jpeg", ".png") and f.stem == actor.name:
             return str(f)
     return None
+
+
+def build_local_avatar_index(local_avatar_dir: str) -> dict[str, str]:
+    """扫描本地头像目录，构建 {stem: path} 索引。
+
+    供批量预览场景一次性扫描，避免逐演员全树遍历。
+    """
+    index: dict[str, str] = {}
+    if not local_avatar_dir:
+        return index
+    avatar_dir = Path(local_avatar_dir)
+    if not avatar_dir.exists():
+        return index
+    for f in avatar_dir.rglob("*"):
+        if f.is_file() and f.suffix.lower() in (".jpg", ".jpeg", ".png") and f.stem not in index:
+            index[f.stem] = str(f)
+    return index
 
 
 async def fetch_actor_info_from_source(actor: ActorInfo, source: str) -> tuple[bool, str, object]:
