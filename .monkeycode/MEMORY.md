@@ -53,17 +53,19 @@
   - 已知：rich/typer 仅独立 CLI 脚本 `mdcx/cmd/crawl.py` 使用，不被打包，排除安全。
 
 [UI 改动注意事项]
-- Date: 2026-08-03（2026-08-04 更新）
-- Context: 多次调整工具页 UI（groupBox/按钮）时沉淀的约束
+- Date: 2026-08-03（2026-08-16 更新）
+- Context: 多次调整工具页 UI（groupBox/按钮）沉淀约束；网络页重写影 bug 与 Courier 字体中文方框问题
 - Category: 环境配置
 - Instructions:
   - 布局定义在 `mdcx/views/MDCx.ui`。**规范流程**：先改 `.ui` → `/workspace/.venv/bin/python3 -m PyQt6.uic.pyuic mdcx/views/MDCx.ui -o mdcx/views/MDCx.py` → `uv run ruff format mdcx/views/MDCx.py`。**不要手工改 MDCx.py**（`tests/test_ui_structure.py::test_mdcx_py_in_sync_with_ui` 把关）。
   - 改后验证 `import mdcx.views.MDCx` 可导入；改 UI 跑 `uv run check` 或 `uv run pytest tests/test_ui_structure.py -q` 自动验证，无需手写 offscreen 检查。
   - groupBox 在 `page_tool` 滚动区 `scrollAreaWidgetContents_gongju` 内绝对定位：增高某 groupBox 后须连锁把**其下方所有兄弟 groupBox** y 同步 +delta，并同步增高滚动区高度（底部留 20px）。曾只查紧邻下方 group 漏中间一个，导致 110px 重叠。
+  - **gridLayout 同 cell 冲突陷阱**：`<item row="X" column="Y">` 只能放一个 widget/layout；若多个 item 被放在同一行列会覆盖/重影。新增控件（如 Bypass 落地白名单）前先用 `grep -n` 扫描目标 layout 现有 row/col 分布，或跑 offscreen 脚本 `wid.mapTo(父).geometry()` 检查实际坐标。
   - **重编译会回退 MDCx.py 手工文案**：新文案必须回写 `MDCx.ui` 让 `.ui` 成唯一权威源；同步对比测试须用相对路径编译（pyuic6 会把输入路径写进头注释）。
   - findChildren 几何检查须排除 comboBox popup 内部子部件（QListView/QScrollBar 等 0,0/100x30/640x480 误报）；长文本用 `fontMetrics().boundingRect(...).height()`/`horizontalAdvance` 验证。
   - 新增按钮检查三处一致：`MDCx.ui` + `MDCx.py` + `mdcx/controllers/main_window/init.py`（clicked 槽 + setText 防重入）。删除按钮后清理失联 delegate 死代码。
   - 按钮防重入与协程安全参见 `[executor.submit 与跨线程 Qt 安全]`。
+  - **中文字体等宽方案**：所有设置页 groupBox 统一用 `font:"Courier New"`（项目惯例）；不用裸 `"Courier"`（西文专用字体，中文显示为方框）。全仓替换一次性完成：`sed -i 's/font:"Courier"/font:"Courier New"/g' mdcx/views/MDCx.ui && sed -i 's/font: "Courier"/font: "Courier New"/g' mdcx/views/MDCx.ui`。
 
 [Onefile 环境调试要点：静默退出与日志通道]
 - Date: 2026-08-03
