@@ -35,7 +35,7 @@ _IGNORED_DUPLICATE_PREFIXES = ("layoutWidget",)
 # 历史遗留的重复 objectName（设计器复制粘贴时保留了相同命名）。
 # 这些是存量问题，不影响功能（控件在布局内、文本运行时设置），
 # 允许它们通过白名单，但新增的重复 objectName 必须报错。
-_KNOWN_DUPLICATE_OBJECTNAMES = {"label_81", "label_60", "label_423", "label_424"}
+_KNOWN_DUPLICATE_OBJECTNAMES = {"label_81", "label_423", "label_424"}
 
 
 def _parse_ui():
