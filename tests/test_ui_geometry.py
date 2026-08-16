@@ -36,7 +36,13 @@ _POPUP_CLASSES = {"QListView", "QScrollBar", "QMenu", "QComboBoxListView", "QToo
 
 # 已知的合法重叠（非 bug）。新增条目前请先确认是否真为 bug。
 # 每项: (parent_objectname, widget1_objectname, widget2_objectname)
-_KNOWN_OK_OVERLAPS: set[tuple[str, str, str]] = set()
+_KNOWN_OK_OVERLAPS: set[tuple[str, str, str]] = {
+    # widget_setting 侧边栏：left_backgroud_widget 是全幅背景层，上层按钮/关闭区合法叠加
+    ("widget_setting", "close_widget", "left_backgroud_widget"),
+    ("widget_setting", "left_backgroud_widget", "widget_buttons"),
+    # groupBox_10 内「演示动画：」label_7 与其后的链接 label_get_cookie_url 紧邻设计
+    ("groupBox_10", "label_7", "label_get_cookie_url"),
+}
 
 
 def _skip_widget(w: QWidget) -> bool:
@@ -165,3 +171,62 @@ def test_gridlayouts_no_visible_overlap(main_window: QMainWindow) -> None:
                 continue
             failures.append(f"layout={ref_name!r} 重叠: {n1}{a} <-> {n2}{b} (面积 {_overlap_area(a, b)})")
     assert not failures, "检测到 gridLayout 内可见控件重叠（重影风险）:\n" + "\n".join(failures)
+
+
+def test_absolutely_positioned_children_no_overlap(main_window: QMainWindow) -> None:
+    """绝对定位子控件重叠检查。
+
+    覆盖父 widget 无 layout（layout() is None）的情形：子控件靠 setGeometry
+    绝对摆放（如 groupBox_10 内的 label_75/label_get_cookie_url/label_7 +
+    gridLayoutWidget_10）。三处动态注入收口后这些绝对坐标已固化进 .ui，
+    本测试防止「增高/下移固化时绝对定位控件互相压叠或溢出」类回归。
+    QStackedWidget/QTabWidget 自带 layout 不会进入本分支，其堆叠页天然
+    同位不误报。
+    """
+    _activate_all_tabs(main_window)
+    app = QApplication.instance()
+    failures: list[str] = []
+    for parent in main_window.findChildren(QWidget):
+        if parent.layout() is not None:
+            continue
+        # QMainWindow 的 centralWidget 在 offscreen 下未 resize，其直接子
+        # （tabWidget/各分区容器）几何退化，无法做有效重叠校验。
+        if parent.objectName() == "centralwidget":
+            continue
+        # tab 页容器（page_*）含运行时切换显示的日志/列表控件，offscreen 下
+        # 默认全 visible 会误报；非本次收口范围，排除。
+        if parent.objectName().startswith("page_"):
+            continue
+        _activate_ancestors(parent)
+        try:
+            parent.show()
+            parent.ensurePolished()
+            if app is not None:
+                app.processEvents()
+        except Exception:
+            pass
+        pg = parent.geometry()
+        if pg.isNull() or pg.width() <= 0 or pg.height() <= 0:
+            continue
+        ref_name = parent.objectName() or parent.__class__.__name__
+        boxes: list[tuple[str, tuple[int, int, int, int]]] = []
+        for child in parent.children():
+            if not isinstance(child, QWidget):
+                continue
+            if _skip_widget(child):
+                continue
+            bb = _bbox_in(child, parent)
+            if bb is None:
+                continue
+            # offscreen 下未激活布局的子控件几何退化为 1x1 占位，跳过
+            if bb[2] - bb[0] <= 1 and bb[3] - bb[1] <= 1:
+                continue
+            boxes.append((child.objectName() or child.__class__.__name__, bb))
+        for (n1, a), (n2, b) in combinations(boxes, 2):
+            if _overlap_area(a, b) <= 0:
+                continue
+            key = tuple(sorted((n1, n2)))
+            if (ref_name, key[0], key[1]) in _KNOWN_OK_OVERLAPS:
+                continue
+            failures.append(f"parent={ref_name!r} 绝对定位子重叠: {n1}{a} <-> {n2}{b} (面积 {_overlap_area(a, b)})")
+    assert not failures, "检测到绝对定位子控件重叠（重影风险）:\n" + "\n".join(failures)
