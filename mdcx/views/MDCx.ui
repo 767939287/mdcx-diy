@@ -13501,7 +13501,7 @@
                       <x>0</x>
                       <y>0</y>
                       <width>760</width>
-                      <height>2750</height>
+                      <height>2784</height>
                     </rect>
                   </property>
                   <widget class="QGroupBox" name="groupBox_trans">
@@ -13510,7 +13510,7 @@
                         <x>30</x>
                         <y>20</y>
                         <width>701</width>
-                        <height>216</height>
+                        <height>250</height>
                       </rect>
                     </property>
                     <property name="minimumSize">
@@ -13534,7 +13534,7 @@
                           <x>20</x>
                           <y>30</y>
                           <width>661</width>
-                          <height>176</height>
+                          <height>210</height>
                         </rect>
                       </property>
                       <layout class="QGridLayout" name="gridLayout_32">
@@ -13773,7 +13773,7 @@
                     <property name="geometry">
                       <rect>
                         <x>30</x>
-                        <y>250</y>
+                        <y>284</y>
                         <width>701</width>
                         <height>601</height>
                       </rect>
@@ -14089,7 +14089,7 @@
                     <property name="geometry">
                       <rect>
                         <x>30</x>
-                        <y>871</y>
+                        <y>905</y>
                         <width>701</width>
                         <height>130</height>
                       </rect>
@@ -14237,7 +14237,7 @@
                     <property name="geometry">
                       <rect>
                         <x>30</x>
-                        <y>1021</y>
+                        <y>1055</y>
                         <width>701</width>
                         <height>220</height>
                       </rect>
@@ -14478,7 +14478,7 @@
                     <property name="geometry">
                       <rect>
                         <x>30</x>
-                        <y>1261</y>
+                        <y>1295</y>
                         <width>701</width>
                         <height>520</height>
                       </rect>
@@ -14655,7 +14655,7 @@
                     <property name="geometry">
                       <rect>
                         <x>30</x>
-                        <y>1801</y>
+                        <y>1835</y>
                         <width>701</width>
                         <height>151</height>
                       </rect>
@@ -14802,7 +14802,7 @@
                     <property name="geometry">
                       <rect>
                         <x>30</x>
-                        <y>1972</y>
+                        <y>2006</y>
                         <width>701</width>
                         <height>151</height>
                       </rect>
@@ -14949,7 +14949,7 @@
                     <property name="geometry">
                       <rect>
                         <x>30</x>
-                        <y>2143</y>
+                        <y>2177</y>
                         <width>701</width>
                         <height>151</height>
                       </rect>
@@ -15096,7 +15096,7 @@
                     <property name="geometry">
                       <rect>
                         <x>30</x>
-                        <y>2314</y>
+                        <y>2348</y>
                         <width>701</width>
                         <height>151</height>
                       </rect>
@@ -15243,7 +15243,7 @@
                     <property name="geometry">
                       <rect>
                         <x>30</x>
-                        <y>2485</y>
+                        <y>2519</y>
                         <width>701</width>
                         <height>151</height>
                       </rect>
