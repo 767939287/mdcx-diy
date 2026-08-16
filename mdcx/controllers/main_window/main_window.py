@@ -85,6 +85,7 @@ from mdcx.views.similar_window import SimilarDialog
 
 from ..cut_window import CutWindow
 from .handlers import show_netstatus
+from .health_check import run_startup_health_checks
 from .init import Init_QSystemTrayIcon, Init_Singal, Init_Ui, init_QTreeWidget
 from .load_config import load_config
 from .save_config import save_config
@@ -241,6 +242,7 @@ class MyMAinWindow(QMainWindow):
             "▶️ 点击右上角 【开始检测】按钮以测试网络连通性。"
         )
         signal_qt.add_log("🍯 你可以点击左下角的图标来 显示 / 隐藏 请求信息面板！")
+        run_startup_health_checks()  # 启动自检：配置目录可写/代理可达/TMDB key
         self.show_version()  # 日志页面显示版本信息
         self.creat_right_menu()  # 加载右键菜单
         self.pushButton_main_clicked()  # 切换到主界面
