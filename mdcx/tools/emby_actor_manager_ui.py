@@ -1026,7 +1026,7 @@ async def _actor_source_test_execute(
 
     logs: list[str] = []
     avatar_path: str | None = None
-    info: dict | None = None
+    info: object = None
     actor = ActorInfo(name=name, actor_id="", server_id="")
 
     if need_image:
@@ -1176,7 +1176,7 @@ class ActorSourceTestDialog(QDialog):
         self._thread.error.connect(self._on_error)
         self._thread.start()
 
-    def _on_result(self, logs: list[str], avatar_path: str | None, info: dict | None):
+    def _on_result(self, logs: list[str], avatar_path: str | None, info: object):
         self.result_text.clear()
         for log in logs:
             self.result_text.append(log)
