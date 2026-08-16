@@ -118,12 +118,62 @@ class ConfigManager:
         """写入配置文件并尽量收紧权限, 降低敏感字段(如 API Token)被同机其它用户/进程读取的风险。
 
         - 原子写入：先写同目录 .tmp 再 os.replace，避免写入中断损坏整个配置
+        - Windows 下 os.replace 偶发 PermissionError (杀软瞬时扫描/只读属性/占用)：
+          重试 → 去只读 → 删目标改名 → 直接覆盖写，逐级回退保成功率
         - POSIX: chmod 0o600 (仅属主读写)
         - Windows: best-effort 用 icacls 去除继承并仅授予当前用户读写; 任何失败均吞掉, 不影响主流程
         """
         tmp = path.with_name(f"{path.name}.tmp")
         tmp.write_text(text, encoding="UTF-8")
-        os.replace(str(tmp), str(path))
+        try:
+            os.replace(str(tmp), str(path))
+        except PermissionError:
+            import stat
+            import time
+
+            replaced = False
+            # 1. 重试：应对杀毒软件实时扫描 .tmp 产生的瞬时占用 (Windows 上最常见)
+            for _ in range(6):
+                time.sleep(0.05)
+                try:
+                    os.replace(str(tmp), str(path))
+                    replaced = True
+                    break
+                except PermissionError:
+                    continue
+            # 2. 去只读属性后重试 (打包发布的资源文件可能带只读位)
+            if not replaced:
+                try:
+                    os.chmod(str(path), stat.S_IWRITE)
+                    os.replace(str(tmp), str(path))
+                    replaced = True
+                except PermissionError:
+                    pass
+            # 3. 删目标后改名 (绕过部分占用场景)
+            if not replaced:
+                try:
+                    path.unlink(missing_ok=True)
+                    tmp.rename(str(path))
+                    replaced = True
+                except Exception:
+                    pass
+            # 4. 最后手段：直接覆盖写目标 (非原子)，并清理 tmp，保证配置可保存
+            if not replaced:
+                try:
+                    tmp.unlink(missing_ok=True)
+                except Exception:
+                    pass
+                try:
+                    path.write_text(text, encoding="UTF-8")
+                    replaced = True
+                except Exception:
+                    pass
+            if not replaced:
+                raise PermissionError(
+                    f"配置文件写入被拒绝访问（可能被其它程序占用或目录无写权限）：{path}\n"
+                    "请关闭打开该文件的程序（编辑器/资源管理器预览/杀毒软件实时扫描）后重试；"
+                    "若目录需管理员权限，请以管理员身份运行或更换保存目录。"
+                ) from None
         try:
             if os.name == "posix":
                 os.chmod(path, 0o600)
