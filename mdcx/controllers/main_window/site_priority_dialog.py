@@ -17,7 +17,6 @@ from PyQt6.QtWidgets import (
     QMessageBox,
     QPushButton,
     QScrollArea,
-    QSizePolicy,
     QVBoxLayout,
     QWidget,
 )
@@ -626,14 +625,11 @@ def setup_site_priority_ui(window: "MyMAinWindow") -> None:
         FixedScrapingType.GUOCHAN: TypeWebsiteUi(FixedScrapingType.GUOCHAN, "国产", ui.lineEdit_website_guochan, 10),
     }
     for info in window._type_website_ui.values():
-        edit_button = _make_inline_button("编辑网站")
-        priority_button = _make_inline_button("字段优先级")
-        info.edit_button = edit_button
-        info.priority_button = priority_button
-        edit_button.clicked.connect(partial(_open_site_editor, window, info.scraping_type))
-        priority_button.clicked.connect(partial(_open_priority_editor, window, info.scraping_type))
-        ui.gridLayout_36.addWidget(edit_button, info.row, 2)
-        ui.gridLayout_36.addWidget(priority_button, info.row, 3)
+        key = info.scraping_type.name.lower()
+        info.edit_button = getattr(ui, f"pushButton_edit_website_{key}")
+        info.priority_button = getattr(ui, f"pushButton_priority_website_{key}")
+        info.edit_button.clicked.connect(partial(_open_site_editor, window, info.scraping_type))
+        info.priority_button.clicked.connect(partial(_open_priority_editor, window, info.scraping_type))
 
     _hide_legacy_field_website_group(window)
     apply_site_priority_theme(window)
@@ -677,14 +673,6 @@ def _style_inline_button(button: QPushButton, dark: bool = False) -> None:
         }}
         """
     )
-
-
-def _make_inline_button(text: str) -> QPushButton:
-    button = QPushButton(text)
-    button.setMinimumHeight(28)
-    button.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
-    _style_inline_button(button)
-    return button
 
 
 def _open_site_editor(window: "MyMAinWindow", scraping_type: FixedScrapingType) -> None:

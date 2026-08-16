@@ -12,6 +12,7 @@
 - 更新默认代理站点列表与使用说明文档
 - **UI 几何回归测试**：新增 `tests/test_ui_geometry.py`，offscreen 实例化 `Ui_MDCx`，遍历所有 `QGridLayout` 并强制激活布局（切换各 tab + 祖先链 setVisible），断言同 layout 内任意两个可见直接子控件包围盒无交集，挡住「同行同列多 item / 跨列长 label 溢出被邻列遮挡」类重影回归（与既有 XML 静态结构测试互补）
 - **百度翻译控件收口到 .ui**：`checkBox_baidu`/`label_baidu_appid`/`lineEdit_baidu_appid`/`label_baidu_key`/`lineEdit_baidu_key`/`label_baidu_hint` 从 `main_window.py::_setup_baidu_translate_ui` 运行时注入改为直接写进 `MDCx.ui`（`gridLayout_32` row4-6 + `horizontalLayout_20`），删除动态注入方法与运行时增高逻辑（增高固化到 .ui：`groupBox_trans`/`layoutWidget_2`/`scrollAreaWidgetContents_fanyi` +70、9 个兄弟 groupBox y+70）。`.ui` 成为唯一权威源，几何回归测试从此覆盖这些控件
+- **网站优先级按钮收口到 .ui**：`gridLayout_36` 内 6 个刮削类型（有码/无码/素人/FC2/欧美/国产）的「编辑网站」「字段优先级」共 12 个按钮从 `setup_site_priority_ui` 运行时 `_make_inline_button` 创建+`addWidget` 改为直接写进 `MDCx.ui`（row 0/2/4/6/8/10 col 2/3，objectName `pushButton_edit_website_{type}`/`pushButton_priority_website_{type}`），运行时只 `getattr` 赋值 + `connect` 信号 + `apply_site_priority_theme` 上主题样式；删除 `_make_inline_button` 工厂
 
 ## v2.0.5 (2026-08-15)
 
