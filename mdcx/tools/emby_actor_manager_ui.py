@@ -1424,7 +1424,7 @@ class ActorDetailDialog(QDialog):
             self.log(f"🔶 加载现有头像失败: {traceback.format_exc()}")
 
     async def _download_existing_avatar(self):
-        from .emby_actor_manager import _build_jellyfin_headers, _generate_server_url
+        from .emby_shared import _build_jellyfin_headers, _generate_server_url
 
         _, _, pic_url, _, _, _ = _generate_server_url(
             {"Name": self.actor.name, "Id": self.actor.actor_id, "ServerId": self.actor.server_id}
