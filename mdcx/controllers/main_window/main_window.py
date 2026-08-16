@@ -2555,27 +2555,18 @@ class MyMAinWindow(QMainWindow):
             log_prefix: 异常日志前缀（如 "演员库维护"、"剔除男演员"、"校验 tmdbid"）。
             coro_factory: 无参 callable，返回协程。协程内异常会被捕获并 show_log。
         """
-        btn = getattr(self.Ui, f"pushButton_{btn_attr}")
-        if not btn.isEnabled():
-            return
+        from mdcx.utils.qt_thread import run_in_background
 
-        btn.setEnabled(False)
-        getattr(self, f"pushButton_{btn_attr}").emit(busy_text)
+        run_in_background(
+            button=getattr(self.Ui, f"pushButton_{btn_attr}"),
+            coro_factory=coro_factory,
+            busy_signal=getattr(self, f"pushButton_{btn_attr}"),
+            busy_text=busy_text,
+            finished_signal=self.actor_db_finished,
+            finished_arg=btn_attr,
+            log_prefix=log_prefix,
+        )
         self._actor_db_running.add(btn_attr)
-
-        async def run():
-            try:
-                await coro_factory()
-            except Exception as e:
-                signal_qt.show_log_text(f"🔴 {log_prefix}异常: {e}")
-                import traceback as tb
-
-                signal_qt.show_log_text(tb.format_exc())
-            finally:
-                # 线程安全：仅发信号，由主线程槽恢复按钮状态
-                self.actor_db_finished.emit(btn_attr)
-
-        executor.submit(run())
 
     def _run_actor_db_tool(self, mode: str, **kwargs) -> None:
         """运行演员库维护工具（翻译/链接/别名/minnano 补全），统一走通用模板。"""

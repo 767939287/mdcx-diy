@@ -86,8 +86,10 @@
   - `AsyncBackgroundExecutor.submit(coro)` 只收单个协程对象，正确写法 `executor.submit(run())`；`submit(asyncio.run, run())` 报 TypeError。
   - 协程在后台线程事件循环执行，不可直接 `btn.setEnabled()`/`setText()` 跨线程操作 QWidget。模式：主线程点击时 setEnabled(False)+emit"运行中"，协程 finally 发射 pyqtSignal（线程安全），主线程槽恢复。参见 `main_window.py:_run_actor_db_tool`/`_on_actor_db_finished`。
   - `tool_handlers.py` 为模块级函数，`self.xxx` 不自动可用——确保方法在 `MyMAinWindow` 上或不用 self。
-  - **Emby 演员管理器阻塞陷阱**：`_on_connect`/`_on_fetch` 等按钮槽在 GUI 主线程调用 `executor.run()` 同步阻塞。Emby 服务器响应慢时会卡死 GUI（无日志输出、无反应）。调试时先确认 `signal.show_log_text`（主界面）vs `self.log`（管理器日志框）是两条独立通道，管理器日志为空不代表网络请求没在跑。
-  - **Emby 弹窗保存陷阱**：`EmbyActorSettingsDialog._save`、`ActorSourceTestDialog._save_quick_settings`、`ActorDetailDialog._save_quick_settings` 三处原来只调 `manager._replace_config()` 不写盘，退出重进配置恢复原样。必须补 `manager.save()`。
+- **Emby 演员管理器阻塞陷阱**：`_on_connect`/`_on_fetch` 等按钮槽在 GUI 主线程调用 `executor.run()` 同步阻塞。Emby 服务器响应慢时会卡死 GUI（无日志输出、无反应）。调试时先确认 `signal.show_log_text`（主界面）vs `self.log`（管理器日志框）是两条独立通道，管理器日志为空不代表网络请求没在跑。
+- **Emby 弹窗保存陷阱**：`EmbyActorSettingsDialog._save`、`ActorSourceTestDialog._save_quick_settings`、`ActorDetailDialog._save_quick_settings` 三处原来只调 `manager._replace_config()` 不写盘，退出重进配置恢复原样。必须补 `manager.save()`。
+- **跨线程收口工具**：新代码后台任务统一用 `mdcx/utils/qt_thread.py::run_in_background(button=, coro_factory=, busy_signal=, busy_text=, finished_signal=, finished_arg=, log_prefix=)`（防重入 + setEnabled(False) + busy_signal + submit + finally 发 finished_signal + 异常 show_log）；禁止直接 `executor.submit` 后在协程内碰 QWidget。`_run_actor_db_async` 已改为调用它作样板。
+- **跨线程安全扫描**：`scripts/check_thread_safety.py` AST 扫 `async def` 体内直接操作 QWidget setter（setEnabled/setText/setGeometry 等）的违规，当前 0 违规。新增后台协程前跑一遍防回归。
 
 [刮削并发架构参考]
 - Date: 2026-08-03
