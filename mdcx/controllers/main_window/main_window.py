@@ -446,16 +446,18 @@ class MyMAinWindow(QMainWindow):
                     child_geo.height(),
                 )
 
-        # 恢复 label_60 原始文字，另建 label_baidu_hint 显示百度提示（避免覆写导致重影）
-        self.Ui.label_60.setText("DeepL 与 DeepLX 为独立选项；分别填写对应配置后即可使用。")
+        # row4 用 label_baidu_hint 跨整行显示综合说明（合并 label_60 语义），避免
+        # col0 长文本溢出被 col1 的 label_60 遮挡产生重影
+        self.Ui.label_60.setVisible(False)
+        self.Ui.gridLayout_32.removeWidget(self.Ui.label_60)
         self.Ui.label_baidu_hint = QLabel(self.Ui.layoutWidget_2)
-        self.Ui.label_baidu_hint.setMinimumSize(self.Ui.label_80.minimumSize())
         self.Ui.label_baidu_hint.setStyleSheet("color: rgb(8, 128, 128);")
+        self.Ui.label_baidu_hint.setWordWrap(True)
         self.Ui.label_baidu_hint.setObjectName("label_baidu_hint")
         self.Ui.label_baidu_hint.setText(
-            "填写 DeepL API / DeepLX URL / 百度 API 凭据后，才会生效；未填写时会自动跳过。"
+            "DeepL 与 DeepLX 为独立选项；填写 DeepL API / DeepLX URL / 百度 API 凭据后才会生效，未填写时会自动跳过。"
         )
-        self.Ui.gridLayout_32.addWidget(self.Ui.label_baidu_hint, 4, 0, 1, 1)
+        self.Ui.gridLayout_32.addWidget(self.Ui.label_baidu_hint, 4, 0, 1, 2)
 
         self.Ui.checkBox_baidu = QCheckBox(self.Ui.layoutWidget_2)
         self.Ui.checkBox_baidu.setMinimumSize(self.Ui.checkBox_google.minimumSize())
