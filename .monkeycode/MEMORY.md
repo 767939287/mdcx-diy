@@ -77,13 +77,15 @@
   - 工具内部日志走 `LogBuffer.log().write()`（只存内存）不显示，误以为卡死；所有工具内部日志输出必须走 `signal_qt.show_log_text`。
 
 [executor.submit 与跨线程 Qt 安全]
-- Date: 2026-08-03
-- Context: 修复演员库工具按钮时发现两处同类 bug
+- Date: 2026-08-03（2026-08-16 更新）
+- Context: 修复演员库工具按钮 + Emby 演员管理器 executor.run 阻塞主线程问题
 - Category: 工作流协作
 - Instructions:
   - `AsyncBackgroundExecutor.submit(coro)` 只收单个协程对象，正确写法 `executor.submit(run())`；`submit(asyncio.run, run())` 报 TypeError。
   - 协程在后台线程事件循环执行，不可直接 `btn.setEnabled()`/`setText()` 跨线程操作 QWidget。模式：主线程点击时 setEnabled(False)+emit"运行中"，协程 finally 发射 pyqtSignal（线程安全），主线程槽恢复。参见 `main_window.py:_run_actor_db_tool`/`_on_actor_db_finished`。
   - `tool_handlers.py` 为模块级函数，`self.xxx` 不自动可用——确保方法在 `MyMAinWindow` 上或不用 self。
+  - **Emby 演员管理器阻塞陷阱**：`_on_connect`/`_on_fetch` 等按钮槽在 GUI 主线程调用 `executor.run()` 同步阻塞。Emby 服务器响应慢时会卡死 GUI（无日志输出、无反应）。调试时先确认 `signal.show_log_text`（主界面）vs `self.log`（管理器日志框）是两条独立通道，管理器日志为空不代表网络请求没在跑。
+  - **Emby 弹窗保存陷阱**：`EmbyActorSettingsDialog._save`、`ActorSourceTestDialog._save_quick_settings`、`ActorDetailDialog._save_quick_settings` 三处原来只调 `manager._replace_config()` 不写盘，退出重进配置恢复原样。必须补 `manager.save()`。
 
 [刮削并发架构参考]
 - Date: 2026-08-03
