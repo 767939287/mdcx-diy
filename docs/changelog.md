@@ -10,6 +10,7 @@
 ### 工程/文档
 
 - 更新默认代理站点列表与使用说明文档
+- **UI 几何回归测试**：新增 `tests/test_ui_geometry.py`，offscreen 实例化 `Ui_MDCx`，遍历所有 `QGridLayout` 并强制激活布局（切换各 tab + 祖先链 setVisible），断言同 layout 内任意两个可见直接子控件包围盒无交集，挡住「同行同列多 item / 跨列长 label 溢出被邻列遮挡」类重影回归（与既有 XML 静态结构测试互补）
 
 ## v2.0.5 (2026-08-15)
 
