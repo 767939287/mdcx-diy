@@ -2,7 +2,7 @@ import pytest
 
 from mdcx.models.flags import Flags
 from mdcx.signals import signal
-from mdcx.tools import emby_actor_info
+from mdcx.tools import emby_actor_info, emby_actor_manager
 
 
 @pytest.fixture(autouse=True)
@@ -67,12 +67,12 @@ def _mock_env(monkeypatch, local_data, post_ok=True):
     monkeypatch.setattr(emby_actor_info, "_generate_server_url", fake_generate_server_url)
     monkeypatch.setattr(emby_actor_info, "_is_jellyfin_server", fake_is_jellyfin)
     monkeypatch.setattr(emby_actor_info, "_build_jellyfin_headers", fake_headers)
-    monkeypatch.setattr(emby_actor_info, "search_wiki", fake_search_wiki)
-    monkeypatch.setattr(emby_actor_info, "get_detail", fake_get_detail)
-    monkeypatch.setattr(emby_actor_info, "get_minnano_info", fake_get_minnano)
-    monkeypatch.setattr(emby_actor_info.ActressDB, "update_actor_info_from_db", staticmethod(fake_db))
-    monkeypatch.setattr(emby_actor_info.resources, "get_actor_data", lambda name: local_data)
-    monkeypatch.setattr(emby_actor_info.manager, "acquire_computed", lambda: _Ctx())
+    monkeypatch.setattr(emby_actor_manager, "search_wiki", fake_search_wiki)
+    monkeypatch.setattr(emby_actor_manager, "get_detail", fake_get_detail)
+    monkeypatch.setattr(emby_actor_manager, "get_minnano_info", fake_get_minnano)
+    monkeypatch.setattr(emby_actor_manager.ActressDB, "update_actor_info_from_db", staticmethod(fake_db))
+    monkeypatch.setattr(emby_actor_manager.resources, "get_actor_data", lambda name: local_data)
+    monkeypatch.setattr(emby_actor_manager.manager, "acquire_computed", lambda: _Ctx())
     return state
 
 
@@ -131,7 +131,7 @@ async def test_local_query_exception_not_blocking(monkeypatch):
     def boom(name):
         raise RuntimeError("boom")
 
-    monkeypatch.setattr(emby_actor_info.resources, "get_actor_data", boom)
+    monkeypatch.setattr(emby_actor_manager.resources, "get_actor_data", boom)
     from mdcx.config.manager import manager
 
     monkeypatch.setattr(manager.config, "use_database", True)
@@ -156,7 +156,7 @@ async def test_local_post_failure_returns_zero(monkeypatch):
 def test_extract_bio_tags_structured_fields():
     """简介含结构化字段时应抽剥为对应 Emby 标签。"""
     bio = "身高: 164cm | 罩杯: F | 三围: 88/60/93 | 生涯: 2020~ | 出身: 宮城県 | 血型: A型 | 事务所: JETSTREAM(元・VERGER)"
-    tags = emby_actor_info._extract_bio_tags(bio)
+    tags = emby_actor_manager._extract_bio_tags(bio)
     assert "身高: 164cm" in tags
     assert "罩杯: F" in tags
     assert "三围: 88/60/93" in tags
@@ -168,8 +168,8 @@ def test_extract_bio_tags_structured_fields():
 
 def test_extract_bio_tags_empty_and_plain_bio():
     """无结构化字段或空文本不应抽出任何标签。"""
-    assert emby_actor_info._extract_bio_tags("") == []
-    assert emby_actor_info._extract_bio_tags("身高158cm\n三围B86") == []
+    assert emby_actor_manager._extract_bio_tags("") == []
+    assert emby_actor_manager._extract_bio_tags("身高158cm\n三围B86") == []
 
 
 @pytest.mark.asyncio

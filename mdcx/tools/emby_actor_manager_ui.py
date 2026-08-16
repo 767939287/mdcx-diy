@@ -274,7 +274,7 @@ class EmbyActorManagerDialog(QDialog):
         self.setWindowTitle("Emby 演员管理器")
         self.setMinimumSize(1100, 700)
         self.setStyleSheet(self._load_stylesheet())
-        self.cache_dir = resources.u("emby_actor_cache") / "emby_actor_cache"
+        self.cache_dir = resources.u("emby_actor_cache")
         self.cache_dir.mkdir(parents=True, exist_ok=True)
         self._actors: list[ActorInfo] = []
         self._gfriends_index = None

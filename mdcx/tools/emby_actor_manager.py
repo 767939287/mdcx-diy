@@ -3,19 +3,24 @@ from __future__ import annotations
 import asyncio
 import json
 import os
+import re
+import time
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
 
 import aiofiles
 import aiofiles.os
+from parsel import Selector
 
 from ..base.web import download_file_with_filepath
 from ..config.manager import manager
 from ..config.resources import resources
+from ..models.emby import EMbyActressInfo
 from ..models.flags import Flags
 from ..signals import signal
 from ..utils import executor
+from ..utils.file import write_file_atomic_async
 from .actress_db import ActressDB
 from .minnano_crawler import get_minnano_info
 from .wiki import get_detail, search_wiki
@@ -23,6 +28,23 @@ from .wiki import get_detail, search_wiki
 GFRIENDS_REPO = "https://raw.githubusercontent.com/gfriends/gfriends/master"
 GFRIENDS_FILETREE = f"{GFRIENDS_REPO}/Filetree.json"
 GFRIENDS_BASE = f"{GFRIENDS_REPO}/Content"
+
+_BIO_TAG_PATTERNS = (
+    (r"身高:\s*([0-9.]+)\s*cm", "身高: {0}cm"),
+    (r"罩杯:\s*([^\s/|]+)", "罩杯: {0}"),
+    (r"三围:\s*([0-9]+/[0-9]+/[0-9]+)", "三围: {0}"),
+    (r"生涯:\s*([0-9~\-]+)", "生涯: {0}"),
+    (r"出身:\s*([^\s|]+)", "出身: {0}"),
+    (r"血型:\s*([A-O]+型)", "血型: {0}"),
+)
+
+
+def _extract_bio_tags(bio: str) -> list[str]:
+    """从 actor_db 简介文本中抽剥结构化字段为 Emby 标签。
+
+    格式与 actor_db_tool._build_bio_line 保持一致（`键: 值 | ...`）。
+    """
+    return [fmt.format(m.group(1)) for pat, fmt in _BIO_TAG_PATTERNS if (m := re.search(pat, bio))]
 
 
 class ActorTaskStopped(Exception):
@@ -337,52 +359,110 @@ async def fetch_all_actors(
 
 
 async def get_gfriends_index() -> dict[str, str] | None:
+    """加载 Gfriends 头像索引，返回 {filename: url} 字典，失败返回 None。
+
+    优先使用本地仓库；否则从网络下载并缓存到 gfriends.json。
+    包含版本检测：查询远程 commits 页面，仅在过期时重新下载。
+    """
     gfriends_github = manager.config.gfriends_github
     gfriends_local_path = manager.config.gfriends_local_path
     raw_url = f"{gfriends_github}".replace("github.com/", "raw.githubusercontent.com/").replace("://www.", "://")
+    gfriends_json_path = resources.u("gfriends.json")
+
+    def _expand(data: dict) -> dict[str, str]:
+        """将 Filetree.json 原始格式展开为 {filename: url}；已展开则原样返回。"""
+        content = data.get("Content") if isinstance(data, dict) else None
+        if not content:
+            return data if isinstance(data, dict) else {}
+        result: dict[str, str] = {}
+        for category, items in content.items():
+            for filename, filepath in items.items():
+                if filename not in result:
+                    result[filename] = f"{raw_url}/master/Content/{category}/{filepath}"
+        return result
+
+    # 1) 本地仓库优先
     if gfriends_local_path and os.path.isdir(gfriends_local_path):
         local_filetree = os.path.join(gfriends_local_path, "Filetree.json")
         if os.path.isfile(local_filetree):
             try:
                 async with aiofiles.open(local_filetree, encoding="utf-8") as f:
-                    content = await f.read()
-                    data = json.loads(content)
-                content_data = data.get("Content")
-                result = {}
-                for category, items in content_data.items():
-                    for filename, filepath in items.items():
-                        if filename not in result:
-                            result[filename] = f"{raw_url}/master/Content/{category}/{filepath}"
-                return result
-            except Exception:
-                signal.show_log_text("⚠️ 本地 Gfriends index 读取失败，尝试远程下载")
-    gfriends_json_path = resources.u("gfriends.json")
+                    data = json.loads(await f.read())
+                return _expand(data)
+            except Exception as e:
+                signal.show_log_text(f"🔴 本地仓库解析失败: {e}，回退到网络")
+
+    # 2) 版本检测
+    update_data = False
+    net_float = 0.0
     if not await aiofiles.os.path.exists(gfriends_json_path):
-        signal.show_log_text("⏳ 下载 Gfriends 数据表...")
+        update_data = True
+    elif await aiofiles.os.path.getmtime(gfriends_json_path) < 1657285200:
+        update_data = True
+    else:
+        signal.show_log_text("⏳ 连接 Gfriends 网络头像库...")
+        net_url = f"{gfriends_github}/commits/master/Filetree.json"
+        async with manager.acquire_computed() as computed:
+            response, _ = await computed.async_client.get_text(net_url)
+        if response is None:
+            signal.show_log_text("🔴 Gfriends 查询最新数据更新时间失败！")
+            update_data = True
+        else:
+            net_time = ""
+            try:
+                from datetime import UTC, datetime
+
+                date_time = re.findall(r'committedDate":"(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})', response)
+                latest_time = datetime.strptime(date_time[0], "%Y-%m-%dT%H:%M:%S").replace(tzinfo=UTC)
+                net_float = latest_time.timestamp()
+                net_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(net_float))
+                signal.show_log_text(f"✅ Gfriends 连接成功！最新数据更新时间: {net_time}")
+            except Exception:
+                signal.show_log_text("🔶 Gfriends 历史页面解析失败，将强制重新下载数据表")
+                update_data = True
+
+            if not update_data:
+                local_float = await aiofiles.os.path.getmtime(gfriends_json_path)
+                local_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(local_float))
+                if not net_float or net_float > local_float:
+                    signal.show_log_text(f"🍉 本地缓存数据需要更新！本地数据更新时间: {local_time}")
+                    update_data = True
+                else:
+                    signal.show_log_text(f"✅ 本地缓存数据无需更新！本地数据更新时间: {local_time}")
+                    try:
+                        async with aiofiles.open(gfriends_json_path, encoding="utf-8") as f:
+                            data = json.loads(await f.read())
+                        return _expand(data)
+                    except Exception:
+                        signal.show_log_text("🔴 本地缓存数据读取失败！需重新缓存！")
+                        update_data = True
+
+    # 3) 下载并缓存
+    if update_data:
+        signal.show_log_text("⏳ 开始缓存 Gfriends 最新数据表...")
         filetree_url = f"{raw_url}/master/Filetree.json"
         async with manager.acquire_computed() as computed:
-            response, error = await computed.async_client.get_content(filetree_url)
-        if response is None:
-            signal.show_log_text("🔴 Gfriends 数据表下载失败")
+            filetree_response, _ = await computed.async_client.get_content(filetree_url)
+        if filetree_response is None:
+            signal.show_log_text("🔴 Gfriends 数据表获取失败！")
             return None
         async with aiofiles.open(gfriends_json_path, "wb") as f:
-            await f.write(response)
-    try:
-        async with aiofiles.open(gfriends_json_path, encoding="utf-8") as f:
-            content = await f.read()
-            data = json.loads(content)
-        if "Content" in data:
-            result = {}
-            content_data = data["Content"]
-            for category, items in content_data.items():
-                for filename, filepath in items.items():
-                    if filename not in result:
-                        result[filename] = f"{raw_url}/master/Content/{category}/{filepath}"
-            return result
-        return data
-    except Exception:
-        signal.show_log_text("⚠️ Gfriends index 文件解析失败")
-        return None
+            await f.write(filetree_response)
+        signal.show_log_text("✅ Gfriends 数据表已缓存！")
+        try:
+            async with aiofiles.open(gfriends_json_path, encoding="utf-8") as f:
+                data = json.loads(await f.read())
+            expanded = _expand(data)
+            await write_file_atomic_async(
+                gfriends_json_path,
+                json.dumps(expanded, ensure_ascii=False, sort_keys=True, indent=4, separators=(",", ": ")),
+            )
+            return expanded
+        except Exception:
+            signal.show_log_text("🔴 Gfriends 数据表展开失败！")
+            return _expand(data) if isinstance(data, dict) else None
+
+    return None
 
 
 async def update_person_info(actor: ActorInfo) -> tuple[bool, str]:
@@ -508,10 +588,26 @@ async def from_gfriends(actor: ActorInfo, gfriends_index: dict[str, str], cache_
     return None
 
 
+def _parse_graphis_html(html_text: str, actor_name: str) -> tuple[str, str] | None:
+    """从 graphis.ne.jp 页面 HTML 解析演员头像 URL。
+
+    Returns:
+        (small_pic_url, big_pic_url) 或 None（未找到）
+    """
+    html = Selector(html_text)
+    src = html.xpath("//div[@class='gp-model-box']/ul/li/a/img/@src").getall()
+    names = html.xpath("//li[@class='name-jp']/span/text()").getall()
+    if names and actor_name in names:
+        idx = names.index(actor_name)
+        if idx < len(src):
+            small_pic = src[idx]
+            big_pic = small_pic.replace("/prof.jpg", "/model.jpg")
+            return small_pic, big_pic
+    return None
+
+
 async def from_graphis(actor: ActorInfo, cache_dir: Path) -> tuple[str, str | None] | None:
     from urllib.parse import quote
-
-    from parsel import Selector
 
     local_data = resources.get_actor_data(actor.name)
     jp_name = actor.name
@@ -527,28 +623,21 @@ async def from_graphis(actor: ActorInfo, cache_dir: Path) -> tuple[str, str | No
             res, _ = await computed.async_client.get_text(url)
         if res is None:
             continue
-        html = Selector(res)
-        src = html.xpath("//div[@class='gp-model-box']/ul/li/a/img/@src").getall()
-        names = html.xpath("//li[@class='name-jp']/span/text()").getall()
-        if jp_name in names:
-            idx = names.index(jp_name)
-            if idx < len(src):
-                small_pic = src[idx]
-                big_pic = small_pic.replace("/prof.jpg", "/model.jpg")
-                avatar_path = cache_dir / f"{actor.name}_graphis.jpg"
-                if await download_file_with_filepath(small_pic, avatar_path, cache_dir):
-                    if avatar_path.exists():
-                        backdrop_path = cache_dir / f"{actor.name}_graphis_bg.jpg"
-                        backdrop_ok = await download_file_with_filepath(big_pic, backdrop_path, cache_dir)
-                        backdrop = str(backdrop_path) if backdrop_ok and backdrop_path.exists() else None
-                        return str(avatar_path), backdrop
+        parsed = _parse_graphis_html(res, jp_name)
+        if parsed is None:
+            continue
+        small_pic, big_pic = parsed
+        avatar_path = cache_dir / f"{actor.name}_graphis.jpg"
+        if await download_file_with_filepath(small_pic, avatar_path, cache_dir):
+            if avatar_path.exists():
+                backdrop_path = cache_dir / f"{actor.name}_graphis_bg.jpg"
+                backdrop_ok = await download_file_with_filepath(big_pic, backdrop_path, cache_dir)
+                backdrop = str(backdrop_path) if backdrop_ok and backdrop_path.exists() else None
+                return str(avatar_path), backdrop
     return None
 
 
 async def from_minnano_image(actor: ActorInfo, cache_dir: Path) -> str | None:
-    from ..models.emby import EMbyActressInfo
-    from .minnano_crawler import get_minnano_info
-
     info = EMbyActressInfo(name=actor.name, server_id="", id="")
     res, _ = await get_minnano_info(info, "")
     if res and hasattr(info, "avatar_url") and info.avatar_url:
@@ -576,11 +665,6 @@ async def fetch_actor_info_from_source(actor: ActorInfo, source: str) -> tuple[b
 
     供数据源测试窗口逐源展示。
     """
-    from ..models.emby import EMbyActressInfo
-    from .actress_db import ActressDB
-    from .minnano_crawler import get_minnano_info
-    from .wiki import get_detail, search_wiki
-
     info = EMbyActressInfo(name=actor.name, server_id=actor.server_id, id=actor.actor_id)
     if source == "local":
         local_data = resources.get_actor_data(actor.name)
@@ -618,44 +702,105 @@ async def fetch_actor_info_from_source(actor: ActorInfo, source: str) -> tuple[b
     return False, f"未知信息源: {source}", info
 
 
-async def search_actor_info(actor: ActorInfo, wiki_intro: str = "") -> bool:
-    from ..models.emby import EMbyActressInfo
+async def fill_actor_info_from_sources(
+    info: EMbyActressInfo,
+    *,
+    existing_overview: str = "",
+    skip_db_if_marker: bool = False,
+) -> tuple[dict[str, bool | int], list[str]]:
+    """从本地→wiki→minnano→db 链路补全演员信息到 info 对象（原地修改）。
 
-    info = EMbyActressInfo(name=actor.name, server_id=actor.server_id, id=actor.actor_id)
+    供内置补全和管理器工具共用。
+
+    Args:
+        info: EMbyActressInfo 对象，会被原地修改
+        existing_overview: Emby 服务器上已有的 overview（用于判断"数据库补全"标记）
+        skip_db_if_marker: 为 True 时，若 overview 含"数据库补全"则跳过 db 查询
+
+    Returns:
+        (sources, logs)
+        sources: {"local", "local_applied", "wiki", "minnano", "db"}
+        logs: 日志列表
+    """
+    logs: list[str] = []
+    local_found = False
+    local_birth_set = False
+    local_overview = ""
 
     # 0) 本地演员库命中回填（最优先，离线可用）
-    local_found = False
-    local_overview = ""
     try:
-        local_data = resources.get_actor_data(actor.name)
+        local_data = resources.get_actor_data(info.name)
         if local_data.get("has_name"):
             bd = (local_data.get("birth_date") or "").strip()
             bio = (local_data.get("bio") or "").strip()
             if bd:
                 info.birthday = bd
                 info.year = bd[:4]
+                local_birth_set = True
             if bio:
                 local_overview = bio.replace("\n", "<br/>")
                 info.overview = local_overview
+                for tag in _extract_bio_tags(bio):
+                    if tag not in info.tags:
+                        info.tags.append(tag)
             if not info.locations:
                 info.locations = ["日本"]
             local_found = True
+            msg_local = f"本地库命中: {info.name}"
+            if bd:
+                msg_local += f", 出生日期 {bd}"
+            if bio:
+                msg_local += f", 简介 {len(bio)} 字"
+            logs.append(msg_local)
     except Exception:
         local_found = False
 
+    wiki_found = False
+    minnano_found = False
+    db_exist = 0
+
     # 本地命中且简介非空：完全采用本地数据，跳过外部网络来源
     if not (local_found and local_overview):
-        res_wiki, _ = await search_wiki(info)
-        wiki_found = False
+        # wiki
         wiki_intro = ""
+        res_wiki, msg_wiki = await search_wiki(info)
+        logs.append(msg_wiki)
         if res_wiki is not None:
-            result_wiki, _ = await get_detail(res_wiki, "", info)
+            result_wiki, _ = await get_detail(res_wiki, msg_wiki, info)
             if result_wiki:
                 wiki_intro = info.overview or ""
                 wiki_found = True
-        res, _ = await get_minnano_info(info, wiki_intro)
-        if not res and not wiki_found and manager.config.use_database:
-            _, _ = ActressDB.update_actor_info_from_db(info)
+
+        # minnano
+        minnano_ok, msg = await get_minnano_info(info, wiki_intro)
+        logs.append(msg)
+        if minnano_ok:
+            minnano_found = True
+
+        # db（仅当 minnano 和 wiki 均未命中时）
+        if manager.config.use_database and not minnano_ok and not wiki_found:
+            if skip_db_if_marker and "数据库补全" in existing_overview:
+                db_exist = 0
+                logs.append(f"{info.name}: 已有数据库信息")
+            else:
+                db_exist, msg = ActressDB.update_actor_info_from_db(info)
+                logs.append(msg)
+
+    sources = {
+        "local": local_found,
+        "local_applied": local_found and (bool(local_overview) or local_birth_set),
+        "wiki": wiki_found,
+        "minnano": minnano_found,
+        "db": db_exist,
+    }
+    return sources, logs
+
+
+async def search_actor_info(actor: ActorInfo, wiki_intro: str = "") -> bool:
+    info = EMbyActressInfo(name=actor.name, server_id=actor.server_id, id=actor.actor_id)
+
+    _, _ = await fill_actor_info_from_sources(info)
+
     if hasattr(info, "dump"):
         data = info.dump() if callable(info.dump) else info.__dict__
 
