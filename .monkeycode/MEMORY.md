@@ -22,11 +22,12 @@
   - 在发现风险、缺陷、遗漏时主动指出，并尽量给出修复方案和进行验证。
 
 [提交推送与质量把关]
-- Date: 2026-07-18（2026-08-03、2026-08-15 更新）
-- Context: 用户要求改动/推送前必须征得同意，推送前自动跑测试；pre-commit 钩子经评估无需安装
+- Date: 2026-07-18（2026-08-03、2026-08-16 更新）
+- Context: 用户要求改动/推送前必须征得同意，推送前自动跑测试；pre-commit 钩子经评估无需安装；不开新分支直接推当前分支
 - Category: 工作流协作
 - Instructions:
   - 所有代码改动（新建/修改/删除文件）和提交推送（`git add`+`git commit`+`git push`）必须先说明内容与原因，获得同意后再执行。本指令优先级高于所有"自动执行"类指令。
+  - **直接在当前分支提交推送，不另开新分支**（覆盖 `.ai-ready/rules/auto-create-branch-on-master.md`）。`git add`+`git commit` 后直接 `git push` 到当前分支远程；用户指示开分支时才开。
   - 用户同意推送后，`git push` 前必须自动运行 `uv run check --skip-hook-install`（ruff format --check + ruff check + mypy mdcx/ + pytest --tb=short -m "not network" -x + check_actor_db），失败则修复再推，不强行推送。
   - **不安装 pre-commit 钩子/工具**：`.pre-commit-config.yaml` 两个 ruff 钩子 stages 为 `pre-merge-commit, pre-push`，普通 commit 不触发，`pre-commit install` 对其无效；`uv run check` 已覆盖其作用。
 
@@ -60,7 +61,8 @@
   - 布局定义在 `mdcx/views/MDCx.ui`。**规范流程**：先改 `.ui` → `/workspace/.venv/bin/python3 -m PyQt6.uic.pyuic mdcx/views/MDCx.ui -o mdcx/views/MDCx.py` → `uv run ruff format mdcx/views/MDCx.py`。**不要手工改 MDCx.py**（`tests/test_ui_structure.py::test_mdcx_py_in_sync_with_ui` 把关）。
   - 改后验证 `import mdcx.views.MDCx` 可导入；改 UI 跑 `uv run check` 或 `uv run pytest tests/test_ui_structure.py -q` 自动验证，无需手写 offscreen 检查。
   - groupBox 在 `page_tool` 滚动区 `scrollAreaWidgetContents_gongju` 内绝对定位：增高某 groupBox 后须连锁把**其下方所有兄弟 groupBox** y 同步 +delta，并同步增高滚动区高度（底部留 20px）。曾只查紧邻下方 group 漏中间一个，导致 110px 重叠。
-  - **gridLayout 同 cell 冲突陷阱**：`<item row="X" column="Y">` 只能放一个 widget/layout；若多个 item 被放在同一行列会覆盖/重影。新增控件（如 Bypass 落地白名单）前先用 `grep -n` 扫描目标 layout 现有 row/col 分布，或跑 offscreen 脚本 `wid.mapTo(父).geometry()` 检查实际坐标。
+  - **gridLayout 布局陷阱**：`<item row="X" column="Y">` 只能放一个 widget/layout；若多个 item 被放在同一行列会覆盖/重影。新增控件（如 Bypass 落地白名单）前先用 `grep -n` 扫描目标 layout 现有 row/col 分布，或跑 offscreen 脚本 `wid.mapTo(父).geometry()` 检查实际坐标。
+  - **gridLayout 跨列长 label 溢出遮挡**：动态注入控件放 col0（标签列，仅 ~130px）时，长说明 label 不换行会向右溢出进入 col1，被 col1 控件不透明背景遮挡，露出前半截产生重影。修复：长 label 用 `addWidget(w, row, 0, 1, 2)` 跨整行 + `setWordWrap(True)`，并移除/隐藏同行被替代的原 label。案例：`main_window.py::_setup_baidu_translate_ui` 的 `label_baidu_hint` 与 `.ui` 原有 `label_60` 重影（260816 修复）。
   - **重编译会回退 MDCx.py 手工文案**：新文案必须回写 `MDCx.ui` 让 `.ui` 成唯一权威源；同步对比测试须用相对路径编译（pyuic6 会把输入路径写进头注释）。
   - findChildren 几何检查须排除 comboBox popup 内部子部件（QListView/QScrollBar 等 0,0/100x30/640x480 误报）；长文本用 `fontMetrics().boundingRect(...).height()`/`horizontalAdvance` 验证。
   - 新增按钮检查三处一致：`MDCx.ui` + `MDCx.py` + `mdcx/controllers/main_window/init.py`（clicked 槽 + setText 防重入）。删除按钮后清理失联 delegate 死代码。
