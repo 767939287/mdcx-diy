@@ -13764,47 +13764,8 @@
                             </property>
                           </widget>
                         </item>
-                        <item row="0" column="0">
-                          <widget class="QLabel" name="label_81_bak">
-                            <property name="sizePolicy">
-                              <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
-                                <horstretch>0</horstretch>
-                                <verstretch>0</verstretch>
-                              </sizepolicy>
-                            </property>
-                            <property name="minimumSize">
-                              <size>
-                                <width>130</width>
-                                <height>30</height>
-                              </size>
-                            </property>
-                            <property name="layoutDirection">
-                              <enum>Qt::LeftToRight</enum>
-                            </property>
-                            <property name="text">
-                              <string>翻译引擎：</string>
-                            </property>
-                            <property name="alignment">
-                              <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-                            </property>
-                          </widget>
-                        </item>
-                        <item row="4" column="1">
-                          <widget class="QLabel" name="label_60_bak">
-                            <property name="sizePolicy">
-                              <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
-                                <horstretch>0</horstretch>
-                                <verstretch>0</verstretch>
-                              </sizepolicy>
-                            </property>
-                            <property name="styleSheet">
-                              <string notr="true">color: rgb(8, 128, 128);</string>
-                            </property>
-                            <property name="text">
-                              <string>DeepL 与 DeepLX 为独立选项；分别填写对应配置后即可使用。</string>
-                            </property>
-                          </widget>
-                        </item>
+                        
+                        
                       </layout>
                     </widget>
                   </widget>
