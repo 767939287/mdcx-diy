@@ -13501,7 +13501,7 @@
                       <x>0</x>
                       <y>0</y>
                       <width>760</width>
-                      <height>2784</height>
+                      <height>2854</height>
                     </rect>
                   </property>
                   <widget class="QGroupBox" name="groupBox_trans">
@@ -13510,7 +13510,7 @@
                         <x>30</x>
                         <y>20</y>
                         <width>701</width>
-                        <height>250</height>
+                        <height>320</height>
                       </rect>
                     </property>
                     <property name="minimumSize">
@@ -13534,7 +13534,7 @@
                           <x>20</x>
                           <y>30</y>
                           <width>661</width>
-                          <height>210</height>
+                          <height>280</height>
                         </rect>
                       </property>
                       <layout class="QGridLayout" name="gridLayout_32">
@@ -13563,19 +13563,116 @@
                             </property>
                           </widget>
                         </item>
-                        <item row="4" column="1">
-                          <widget class="QLabel" name="label_60">
+                        <item row="4" column="0" colspan="2">
+                          <widget class="QLabel" name="label_baidu_hint">
+                            <property name="styleSheet">
+                              <string notr="true">color: rgb(8, 128, 128);</string>
+                            </property>
+                            <property name="wordWrap">
+                              <bool>true</bool>
+                            </property>
+                            <property name="text">
+                              <string>DeepL 与 DeepLX 为独立选项；填写 DeepL API / DeepLX URL / 百度 API 凭据后才会生效，未填写时会自动跳过。</string>
+                            </property>
+                          </widget>
+                        </item>
+                        <item row="5" column="0">
+                          <widget class="QLabel" name="label_baidu_appid">
+                            <property name="sizePolicy">
+                              <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+                                <horstretch>0</horstretch>
+                                <verstretch>0</verstretch>
+                              </sizepolicy>
+                            </property>
+                            <property name="minimumSize">
+                              <size>
+                                <width>130</width>
+                                <height>30</height>
+                              </size>
+                            </property>
+                            <property name="layoutDirection">
+                              <enum>Qt::LeftToRight</enum>
+                            </property>
+                            <property name="frameShape">
+                              <enum>QFrame::NoFrame</enum>
+                            </property>
+                            <property name="text">
+                              <string>百度 APP ID：</string>
+                            </property>
+                            <property name="alignment">
+                              <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+                            </property>
+                          </widget>
+                        </item>
+                        <item row="5" column="1">
+                          <widget class="QLineEdit" name="lineEdit_baidu_appid">
                             <property name="sizePolicy">
                               <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
                                 <horstretch>0</horstretch>
                                 <verstretch>0</verstretch>
                               </sizepolicy>
                             </property>
+                            <property name="minimumSize">
+                              <size>
+                                <width>300</width>
+                                <height>30</height>
+                              </size>
+                            </property>
                             <property name="styleSheet">
-                              <string notr="true">color: rgb(8, 128, 128);</string>
+                              <string notr="true"> font: "Courier New";
+                                border: 1px solid rgba(0,0,0, 50);
+                                border-radius: 15px;
+</string>
+                            </property>
+                          </widget>
+                        </item>
+                        <item row="6" column="0">
+                          <widget class="QLabel" name="label_baidu_key">
+                            <property name="sizePolicy">
+                              <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+                                <horstretch>0</horstretch>
+                                <verstretch>0</verstretch>
+                              </sizepolicy>
+                            </property>
+                            <property name="minimumSize">
+                              <size>
+                                <width>130</width>
+                                <height>30</height>
+                              </size>
+                            </property>
+                            <property name="layoutDirection">
+                              <enum>Qt::LeftToRight</enum>
+                            </property>
+                            <property name="frameShape">
+                              <enum>QFrame::NoFrame</enum>
                             </property>
                             <property name="text">
-                              <string>DeepL 与 DeepLX 为独立选项；分别填写对应配置后即可使用。</string>
+                              <string>百度密钥：</string>
+                            </property>
+                            <property name="alignment">
+                              <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+                            </property>
+                          </widget>
+                        </item>
+                        <item row="6" column="1">
+                          <widget class="QLineEdit" name="lineEdit_baidu_key">
+                            <property name="sizePolicy">
+                              <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
+                                <horstretch>0</horstretch>
+                                <verstretch>0</verstretch>
+                              </sizepolicy>
+                            </property>
+                            <property name="minimumSize">
+                              <size>
+                                <width>300</width>
+                                <height>30</height>
+                              </size>
+                            </property>
+                            <property name="styleSheet">
+                              <string notr="true"> font: "Courier New";
+                                border: 1px solid rgba(0,0,0, 50);
+                                border-radius: 15px;
+</string>
                             </property>
                           </widget>
                         </item>
@@ -13643,6 +13740,19 @@
                                 </property>
                                 <property name="text">
                                   <string>Bing</string>
+                                </property>
+                              </widget>
+                            </item>
+                            <item>
+                              <widget class="QCheckBox" name="checkBox_baidu">
+                                <property name="minimumSize">
+                                  <size>
+                                    <width>93</width>
+                                    <height>30</height>
+                                  </size>
+                                </property>
+                                <property name="text">
+                                  <string>百度</string>
                                 </property>
                               </widget>
                             </item>
@@ -13773,7 +13883,7 @@
                     <property name="geometry">
                       <rect>
                         <x>30</x>
-                        <y>284</y>
+                        <y>354</y>
                         <width>701</width>
                         <height>601</height>
                       </rect>
@@ -14089,7 +14199,7 @@
                     <property name="geometry">
                       <rect>
                         <x>30</x>
-                        <y>905</y>
+                        <y>975</y>
                         <width>701</width>
                         <height>130</height>
                       </rect>
@@ -14237,7 +14347,7 @@
                     <property name="geometry">
                       <rect>
                         <x>30</x>
-                        <y>1055</y>
+                        <y>1125</y>
                         <width>701</width>
                         <height>220</height>
                       </rect>
@@ -14478,7 +14588,7 @@
                     <property name="geometry">
                       <rect>
                         <x>30</x>
-                        <y>1295</y>
+                        <y>1365</y>
                         <width>701</width>
                         <height>520</height>
                       </rect>
@@ -14655,7 +14765,7 @@
                     <property name="geometry">
                       <rect>
                         <x>30</x>
-                        <y>1835</y>
+                        <y>1905</y>
                         <width>701</width>
                         <height>151</height>
                       </rect>
@@ -14802,7 +14912,7 @@
                     <property name="geometry">
                       <rect>
                         <x>30</x>
-                        <y>2006</y>
+                        <y>2076</y>
                         <width>701</width>
                         <height>151</height>
                       </rect>
@@ -14949,7 +15059,7 @@
                     <property name="geometry">
                       <rect>
                         <x>30</x>
-                        <y>2177</y>
+                        <y>2247</y>
                         <width>701</width>
                         <height>151</height>
                       </rect>
@@ -15096,7 +15206,7 @@
                     <property name="geometry">
                       <rect>
                         <x>30</x>
-                        <y>2348</y>
+                        <y>2418</y>
                         <width>701</width>
                         <height>151</height>
                       </rect>
@@ -15243,7 +15353,7 @@
                     <property name="geometry">
                       <rect>
                         <x>30</x>
-                        <y>2519</y>
+                        <y>2589</y>
                         <width>701</width>
                         <height>151</height>
                       </rect>

@@ -14,7 +14,6 @@ from PyQt6.QtCore import QEvent, QItemSelectionModel, QPoint, QPointF, Qt, QTime
 from PyQt6.QtGui import QAction, QCursor, QGuiApplication, QHoverEvent, QIcon, QKeySequence, QPixmap, QShortcut
 from PyQt6.QtWidgets import (
     QApplication,
-    QCheckBox,
     QFileDialog,
     QHBoxLayout,
     QInputDialog,
@@ -227,7 +226,6 @@ class MyMAinWindow(QMainWindow):
         self.Ui.setupUi(self)  # 初始化 Ui
         self._bind_system_theme_refresh()
         self._setup_fc2ppvdb_cookie_ui()
-        self._setup_baidu_translate_ui()
         self.cutwindow = CutWindow(self)
         self.preview_image_loader = PreviewImageLoader(self)
         self.preview_image_loader.loaded.connect(self._apply_preview_images)
@@ -415,85 +413,6 @@ class MyMAinWindow(QMainWindow):
         self.Ui.label_fc2ppvdb_cookie_result.setObjectName("label_fc2ppvdb_cookie_result")
         self.Ui.horizontalLayout_fc2ppvdb_cookie.addWidget(self.Ui.label_fc2ppvdb_cookie_result)
         self.Ui.gridLayout_10.addLayout(self.Ui.horizontalLayout_fc2ppvdb_cookie, 5, 1, 1, 1)
-
-    def _setup_baidu_translate_ui(self):
-        delta_y = 70
-
-        trans_geo = self.Ui.groupBox_trans.geometry()
-        self.Ui.groupBox_trans.setGeometry(
-            trans_geo.x(), trans_geo.y(), trans_geo.width(), trans_geo.height() + delta_y
-        )
-
-        layout_geo = self.Ui.layoutWidget_2.geometry()
-        self.Ui.layoutWidget_2.setGeometry(
-            layout_geo.x(), layout_geo.y(), layout_geo.width(), layout_geo.height() + delta_y
-        )
-
-        content_geo = self.Ui.scrollAreaWidgetContents_fanyi.geometry()
-        self.Ui.scrollAreaWidgetContents_fanyi.setGeometry(
-            content_geo.x(), content_geo.y(), content_geo.width(), content_geo.height() + delta_y
-        )
-
-        for child in self.Ui.scrollAreaWidgetContents_fanyi.children():
-            if not isinstance(child, QWidget) or child is self.Ui.groupBox_trans:
-                continue
-            child_geo = child.geometry()
-            if child_geo.y() > trans_geo.y():
-                child.setGeometry(
-                    child_geo.x(),
-                    child_geo.y() + delta_y,
-                    child_geo.width(),
-                    child_geo.height(),
-                )
-
-        # row4 用 label_baidu_hint 跨整行显示综合说明（合并 label_60 语义），避免
-        # col0 长文本溢出被 col1 的 label_60 遮挡产生重影
-        self.Ui.label_60.setVisible(False)
-        self.Ui.gridLayout_32.removeWidget(self.Ui.label_60)
-        self.Ui.label_baidu_hint = QLabel(self.Ui.layoutWidget_2)
-        self.Ui.label_baidu_hint.setStyleSheet("color: rgb(8, 128, 128);")
-        self.Ui.label_baidu_hint.setWordWrap(True)
-        self.Ui.label_baidu_hint.setObjectName("label_baidu_hint")
-        self.Ui.label_baidu_hint.setText(
-            "DeepL 与 DeepLX 为独立选项；填写 DeepL API / DeepLX URL / 百度 API 凭据后才会生效，未填写时会自动跳过。"
-        )
-        self.Ui.gridLayout_32.addWidget(self.Ui.label_baidu_hint, 4, 0, 1, 2)
-
-        self.Ui.checkBox_baidu = QCheckBox(self.Ui.layoutWidget_2)
-        self.Ui.checkBox_baidu.setMinimumSize(self.Ui.checkBox_google.minimumSize())
-        self.Ui.checkBox_baidu.setObjectName("checkBox_baidu")
-        self.Ui.checkBox_baidu.setText("百度")
-        self.Ui.horizontalLayout_20.addWidget(self.Ui.checkBox_baidu)
-
-        self.Ui.label_baidu_appid = QLabel(self.Ui.layoutWidget_2)
-        self.Ui.label_baidu_appid.setMinimumSize(self.Ui.label_80.minimumSize())
-        self.Ui.label_baidu_appid.setLayoutDirection(self.Ui.label_80.layoutDirection())
-        self.Ui.label_baidu_appid.setFrameShape(self.Ui.label_80.frameShape())
-        self.Ui.label_baidu_appid.setAlignment(self.Ui.label_80.alignment())
-        self.Ui.label_baidu_appid.setObjectName("label_baidu_appid")
-        self.Ui.label_baidu_appid.setText("百度 APP ID：")
-        self.Ui.gridLayout_32.addWidget(self.Ui.label_baidu_appid, 5, 0, 1, 1)
-
-        self.Ui.lineEdit_baidu_appid = QLineEdit(self.Ui.layoutWidget_2)
-        self.Ui.lineEdit_baidu_appid.setMinimumSize(self.Ui.lineEdit_deepl_key.minimumSize())
-        self.Ui.lineEdit_baidu_appid.setStyleSheet(self.Ui.lineEdit_deepl_key.styleSheet())
-        self.Ui.lineEdit_baidu_appid.setObjectName("lineEdit_baidu_appid")
-        self.Ui.gridLayout_32.addWidget(self.Ui.lineEdit_baidu_appid, 5, 1, 1, 1)
-
-        self.Ui.label_baidu_key = QLabel(self.Ui.layoutWidget_2)
-        self.Ui.label_baidu_key.setMinimumSize(self.Ui.label_80.minimumSize())
-        self.Ui.label_baidu_key.setLayoutDirection(self.Ui.label_80.layoutDirection())
-        self.Ui.label_baidu_key.setFrameShape(self.Ui.label_80.frameShape())
-        self.Ui.label_baidu_key.setAlignment(self.Ui.label_80.alignment())
-        self.Ui.label_baidu_key.setObjectName("label_baidu_key")
-        self.Ui.label_baidu_key.setText("百度密钥：")
-        self.Ui.gridLayout_32.addWidget(self.Ui.label_baidu_key, 6, 0, 1, 1)
-
-        self.Ui.lineEdit_baidu_key = QLineEdit(self.Ui.layoutWidget_2)
-        self.Ui.lineEdit_baidu_key.setMinimumSize(self.Ui.lineEdit_deepl_key.minimumSize())
-        self.Ui.lineEdit_baidu_key.setStyleSheet(self.Ui.lineEdit_deepl_key.styleSheet())
-        self.Ui.lineEdit_baidu_key.setObjectName("lineEdit_baidu_key")
-        self.Ui.gridLayout_32.addWidget(self.Ui.lineEdit_baidu_key, 6, 1, 1, 1)
 
     def Init_Ui(self): ...
 
