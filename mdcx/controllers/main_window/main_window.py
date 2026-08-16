@@ -447,7 +447,6 @@ class MyMAinWindow(QMainWindow):
                 )
 
         self.Ui.label_60.setText("填写 DeepL API / DeepLX URL / 百度 API 凭据后，才会生效；未填写时会自动跳过。")
-        self.Ui.label_601.setText("填写 DeepL API / DeepLX URL / 百度 API 凭据后，才会生效；未填写时会自动跳过。")
 
         self.Ui.checkBox_baidu = QCheckBox(self.Ui.layoutWidget_2)
         self.Ui.checkBox_baidu.setMinimumSize(self.Ui.checkBox_google.minimumSize())
