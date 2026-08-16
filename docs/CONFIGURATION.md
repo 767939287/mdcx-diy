@@ -135,6 +135,12 @@
 | API Key | 从 Emby/Jellyfin 设置拿到的 API 密钥 |
 | 同步演员信息 | 自动更新演员简介/生日/出生地 |
 | 同步演员图片 | 自动上传演员头像 |
+| 演员头像数据源优先级 | 头像来源排序（gfriends / graphis / minnano / local），在 Emby 演员管理器「设置」对话框中拖拽排序 |
+| 演员信息数据源优先级 | 简介来源排序（local / wiki / minnano / database），同上 |
+| 只获取演员类型 | 只拉 Emby 中 personTypes=Actor 的条目 |
+| 重复演员去重 | 同名演员只取第一个 |
+| 本地头像目录 | 本地文件夹作为头像数据源 |
+| 演员缓存目录 | `userdata/emby_actor_cache/`，缓存已下载的头像（持久化，重启可复用） |
 
 ## 网络
 

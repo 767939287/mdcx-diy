@@ -107,6 +107,17 @@ Jinja2 模板引擎，支持条件渲染、智能截断。三类命名目标：�
 
 `normalize_mosaic()` 将各类标签归一化为：有码、无码、无码破解、流出、无码流出、国产。
 
+### Emby 演员工具（mdcx/tools/）
+
+四个模块协同实现 Emby/Jellyfin 演员头像与简介的匹配、预览、同步：
+
+- **emby_shared.py**：纯工具函数模块，5 个共用函数——`_generate_server_url`（地址拼接）、`_build_jellyfin_headers`（Jellyfin 鉴权头）、`_is_jellyfin_server`（服务器类型判断）、`_append_query`（URL 查询参数拼接）、`_upload_actor_photo`（头像上传）。被其余三模块共同导入，无循环依赖
+- **emby_actor_manager.py**：管理器核心——`get_gfriends_index`（Gfriends JSON 索引，含版本检测+缓存刷新+展开写回）、`_parse_graphis_html`（Graphis 页面解析，manager 与 image 共用）、`fill_actor_info_from_sources`（统一信息补全链路 local→wiki→minnano→db）、`build_local_avatar_index`（预扫描本地头像目录建立文件名索引）、`search_actor_info`/`from_graphis` 等
+- **emby_actor_image.py**：内置头像补全——`_get_gfriends_actor_data`（简化为 wrapper 调 manager 版）、`_get_graphis_pic`（调共用 `_parse_graphis_html`）、5 个 API 函数从 emby_shared 导入并 re-export（`# noqa: F401`）
+- **emby_actor_info.py**：内置信息补全——`_process_actor_async` 调 `fill_actor_info_from_sources` 统一链路，`_BIO_TAG_PATTERNS`/`_extract_bio_tags` 移至 manager 模块
+
+依赖方向：`emby_shared.py` ← `emby_actor_manager.py` ← `emby_actor_image.py` / `emby_actor_info.py`（单向，无循环）。
+
 ## 爬虫框架
 
 ### 基类
