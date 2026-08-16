@@ -488,7 +488,7 @@ class BuildManager:
         Args:
             args (list[str]): 命令行参数列表
             success_msg (str | None): 成功时的消息. Defaults to None.
-            error_msg (str ｜ None, optional): 错误时的异常消息, 若 None 则不抛出异常. Defaults to None.
+            error_msg (str | None, optional): 错误时的异常消息, 若 None 则不抛出异常. Defaults to None.
 
         Raises:
             BuildError: 当命令执行失败且 error_msg 不为 None
