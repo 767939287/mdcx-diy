@@ -22,7 +22,7 @@ from ..signals import signal
 from ..utils import executor
 from ..utils.file import write_file_atomic_async
 from .actress_db import ActressDB
-from .emby_shared import (
+from .emby_shared import (  # noqa: F401
     _append_query,
     _build_jellyfin_headers,
     _generate_server_url,
