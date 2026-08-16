@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import asyncio
-import tempfile
 from pathlib import Path
 
 from PyQt6.QtCore import Qt, QThread, QTimer
@@ -36,6 +35,7 @@ from PyQt6.QtWidgets import (
 )
 
 from ..config.manager import manager
+from ..config.resources import resources
 from ..utils import executor
 from .emby_actor_manager import (
     ActorInfo,
@@ -140,7 +140,7 @@ class PreparePreviewThread(QThread):
         self.actors = []
         self.mode = "missing_all"
         self.gfriends_index = None
-        self.cache_dir = Path(tempfile.gettempdir())
+        self.cache_dir = resources.u("emby_actor_cache")
         self.image_sources = ["gfriends", "graphis", "minnano", "local"]
         self.local_avatar_dir = ""
         self._cancel = False
@@ -274,7 +274,7 @@ class EmbyActorManagerDialog(QDialog):
         self.setWindowTitle("Emby 演员管理器")
         self.setMinimumSize(1100, 700)
         self.setStyleSheet(self._load_stylesheet())
-        self.cache_dir = Path(tempfile.gettempdir()) / "emby_actor_cache"
+        self.cache_dir = resources.u("emby_actor_cache") / "emby_actor_cache"
         self.cache_dir.mkdir(parents=True, exist_ok=True)
         self._actors: list[ActorInfo] = []
         self._gfriends_index = None
@@ -1039,11 +1039,11 @@ async def _actor_source_test_execute(
             result: object = None
             try:
                 if src == "gfriends" and gfriends_index:
-                    result = await from_gfriends(actor, gfriends_index, Path(tempfile.gettempdir()))
+                    result = await from_gfriends(actor, gfriends_index, resources.u("emby_actor_cache"))
                 elif src == "graphis":
-                    result = await from_graphis(actor, Path(tempfile.gettempdir()))
+                    result = await from_graphis(actor, resources.u("emby_actor_cache"))
                 elif src == "minnano":
-                    result = await from_minnano_image(actor, Path(tempfile.gettempdir()))
+                    result = await from_minnano_image(actor, resources.u("emby_actor_cache"))
                 elif src == "local":
                     result = from_local_avatar(actor, manager.config.actor_photo_folder)
                 else:
@@ -1433,7 +1433,7 @@ class ActorDetailDialog(QDialog):
         async with manager.acquire_computed() as computed:
             body, err = await computed.async_client.get_content(pic_url, headers=headers, use_proxy=False)
         if body:
-            tmp = Path(tempfile.gettempdir()) / f"emby_existing_{self.actor.actor_id}.jpg"
+            tmp = resources.u("emby_actor_cache") / f"emby_existing_{self.actor.actor_id}.jpg"
             tmp.write_bytes(body)
             self._show_pixmap(self.existing_avatar_label, str(tmp))
 
@@ -1457,11 +1457,11 @@ class ActorDetailDialog(QDialog):
             result: object = None
             try:
                 if src == "gfriends" and gfriends_index:
-                    result = await from_gfriends(self.actor, gfriends_index, Path(tempfile.gettempdir()))
+                    result = await from_gfriends(self.actor, gfriends_index, resources.u("emby_actor_cache"))
                 elif src == "graphis":
-                    result = await from_graphis(self.actor, Path(tempfile.gettempdir()))
+                    result = await from_graphis(self.actor, resources.u("emby_actor_cache"))
                 elif src == "minnano":
-                    result = await from_minnano_image(self.actor, Path(tempfile.gettempdir()))
+                    result = await from_minnano_image(self.actor, resources.u("emby_actor_cache"))
                 elif src == "local":
                     result = from_local_avatar(self.actor, manager.config.actor_photo_folder)
             except Exception:
