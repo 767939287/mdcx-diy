@@ -195,3 +195,49 @@ def test_list_success_summaries_skips_invalid_json(cache: ScrapeStateCache, tmp_
     conn.close()
     # 不应抛异常，损坏记录被跳过
     assert cache.list_success_summaries() == []
+
+
+def test_stats_counts_done_failed_exhausted(cache: ScrapeStateCache, tmp_path: Path):
+    p1, p2, p3 = tmp_path / "a.mp4", tmp_path / "b.mp4", tmp_path / "c.mp4"
+    cache.set_done(p1, mtime=1.0, number="ABC-1")
+    cache.set_failed(p2, mtime=1.0, error="e")
+    # p3 失败 3 次达上限（MAX_RETRY_COUNT=3）
+    for _ in range(3):
+        cache.set_failed(p3, mtime=1.0, error="e")
+    stats = cache.stats()
+    assert stats["done"] == 1
+    assert stats["failed"] == 2
+    assert stats["failed_exhausted"] == 1
+    assert stats["total"] == 3
+    assert stats["db_path"].endswith("scrape_state.db")
+    assert stats["db_size_kb"] > 0
+
+
+def test_list_failed_detail_returns_full_records(cache: ScrapeStateCache, tmp_path: Path):
+    p1, p2 = tmp_path / "a.mp4", tmp_path / "b.mp4"
+    cache.set_failed(p1, mtime=1.0, error="err A")
+    cache.set_failed(p2, mtime=2.0, error="err B")
+    failed = cache.list_failed_detail()
+    assert len(failed) == 2
+    errors = {f.error for f in failed}
+    assert errors == {"err A", "err B"}
+    assert all(f.status == "failed" for f in failed)
+    assert all(f.fail_count >= 1 for f in failed)
+
+
+def test_list_failed_detail_respects_limit(cache: ScrapeStateCache, tmp_path: Path):
+    for i in range(10):
+        cache.set_failed(tmp_path / f"{i}.mp4", mtime=1.0, error="e")
+    assert len(cache.list_failed_detail(limit=3)) == 3
+
+
+def test_delete_state_forces_rescrape(cache: ScrapeStateCache, tmp_path: Path):
+    p = tmp_path / "movie.mp4"
+    cache.set_done(p, mtime=100.0, number="ABC-1")
+    assert cache.should_skip(p, mtime=100.0) is True
+    # 删记录
+    assert cache.delete_state(p) is True
+    # 记录消失 → 不再跳过、不再重试
+    assert cache.get_state(p) is None
+    assert cache.should_skip(p, mtime=100.0) is False
+    assert cache.should_retry(p) is False

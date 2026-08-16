@@ -257,3 +257,69 @@ class ScrapeStateCache:
     def clear(self) -> None:
         """清空全部状态（供手动重置用）。"""
         self._execute("DELETE FROM scrape_state")
+
+    # ------------------------------------------------------------------
+    # 缓存管理 UI 支撑
+    # ------------------------------------------------------------------
+
+    def stats(self) -> dict:
+        """聚合统计：返回 done/failed/failed_exhausted/total 计数 + db 路径/大小。
+
+        - failed_exhausted：fail_count >= MAX_RETRY_COUNT 的失败记录（已不会自动重试）。
+        - db_size_kb：数据库文件大小（KB），不存在或不可读为 0。
+        """
+        result: dict = {
+            "done": 0,
+            "failed": 0,
+            "failed_exhausted": 0,
+            "total": 0,
+            "db_path": str(self._db_path),
+            "db_size_kb": 0,
+        }
+        rows = self._fetch("SELECT status, COUNT(*) AS cnt FROM scrape_state GROUP BY status")
+        for row in rows:
+            s, cnt = row["status"], row["cnt"]
+            result["total"] += cnt
+            if s == "done":
+                result["done"] = cnt
+            elif s == "failed":
+                result["failed"] = cnt
+        ex = self._fetch(
+            "SELECT COUNT(*) AS cnt FROM scrape_state WHERE status='failed' AND fail_count >= ?",
+            (MAX_RETRY_COUNT,),
+        )
+        if ex:
+            result["failed_exhausted"] = ex[0]["cnt"]
+        try:
+            result["db_size_kb"] = round(self._db_path.stat().st_size / 1024, 1) if self._db_path.exists() else 0
+        except Exception:
+            pass
+        return result
+
+    def list_failed_detail(self, limit: int = 500) -> list[ScrapeState]:
+        """返回失败记录详情（含 error/fail_count），按最后处理时间倒序，限 limit 条。"""
+        rows = self._fetch(
+            "SELECT file_path, mtime, status, number, fail_count, scraped_at, error "
+            "FROM scrape_state WHERE status='failed' ORDER BY scraped_at DESC LIMIT ?",
+            (limit,),
+        )
+        return [
+            ScrapeState(
+                file_path=r["file_path"],
+                mtime=r["mtime"],
+                status=r["status"],
+                number=r["number"],
+                fail_count=r["fail_count"],
+                scraped_at=r["scraped_at"],
+                error=r["error"],
+            )
+            for r in rows
+        ]
+
+    def delete_state(self, file_path: Path) -> bool:
+        """删除单文件状态记录（强制下次重刮）。
+
+        删记录后 should_skip/should_retry 均返回 False，下次扫描自然入队重新刮削。
+        返回是否删除成功（记录不存在也返回 True，语义为「不再有该记录」）。
+        """
+        return self._execute("DELETE FROM scrape_state WHERE file_path = ?", (str(file_path),))

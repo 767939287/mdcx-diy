@@ -1585,7 +1585,7 @@
                   <x>0</x>
                   <y>0</y>
                   <width>760</width>
-                  <height>2055</height>
+                  <height>2435</height>
                 </rect>
               </property>
               <property name="autoFillBackground">
@@ -2943,7 +2943,75 @@
                   </property>
                 </widget>
               </widget>
-            </widget>
+                            <widget class="QGroupBox" name="groupBox_scrape_cache">
+                  <property name="geometry">
+                    <rect>
+                      <x>30</x>
+                      <y>2075</y>
+                      <width>701</width>
+                      <height>340</height>
+                    </rect>
+                  </property>
+                  <property name="title">
+                    <string>刮削缓存管理（断点续刮/失败重试状态，清缓存只影响是否跳过，不删已生成 NFO）</string>
+                  </property>
+                  <widget class="QLabel" name="label_scrape_cache_done">
+                    <property name="geometry"><rect><x>20</x><y>30</y><width>120</width><height>21</height></rect></property>
+                    <property name="text"><string>已完成：0</string></property>
+                  </widget>
+                  <widget class="QLabel" name="label_scrape_cache_failed">
+                    <property name="geometry"><rect><x>150</x><y>30</y><width>120</width><height>21</height></rect></property>
+                    <property name="text"><string>失败：0</string></property>
+                  </widget>
+                  <widget class="QLabel" name="label_scrape_cache_exhausted">
+                    <property name="geometry"><rect><x>280</x><y>30</y><width>140</width><height>21</height></rect></property>
+                    <property name="text"><string>超限失败：0</string></property>
+                  </widget>
+                  <widget class="QLabel" name="label_scrape_cache_total">
+                    <property name="geometry"><rect><x>430</x><y>30</y><width>120</width><height>21</height></rect></property>
+                    <property name="text"><string>总计：0</string></property>
+                  </widget>
+                  <widget class="QPushButton" name="pushButton_scrape_cache_refresh">
+                    <property name="geometry"><rect><x>560</x><y>28</y><width>131</width><height>26</height></rect></property>
+                    <property name="text"><string>刷新统计</string></property>
+                  </widget>
+                  <widget class="QLabel" name="label_scrape_cache_dbpath">
+                    <property name="geometry"><rect><x>20</x><y>56</y><width>540</width><height>21</height></rect></property>
+                    <property name="text"><string>数据库：未加载</string></property>
+                    <property name="wordWrap"><bool>true</bool></property>
+                  </widget>
+                  <widget class="QLabel" name="label_scrape_cache_dbsize">
+                    <property name="geometry"><rect><x>560</x><y>56</y><width>131</width><height>21</height></rect></property>
+                    <property name="text"><string>大小：0 KB</string></property>
+                  </widget>
+                  <widget class="QTableWidget" name="tableWidget_scrape_cache_failed">
+                    <property name="geometry"><rect><x>20</x><y>90</y><width>661</width><height>200</height></rect></property>
+                    <property name="columnCount"><number>5</number></property>
+                    <property name="rowCount"><number>0</number></property>
+                    <property name="editTriggers"><set>QAbstractItemView::NoEditTriggers</set></property>
+                    <property name="selectionBehavior"><enum>QAbstractItemView::SelectRows</enum></property>
+                    <property name="alternatingRowColors"><bool>true</bool></property>
+                    <attribute name="horizontalHeaderDefaultSectionSize"><number>130</number></attribute>
+                    <column><property name="text"><string>文件名</string></property></column>
+                    <column><property name="text"><string>番号</string></property></column>
+                    <column><property name="text"><string>失败次数</string></property></column>
+                    <column><property name="text"><string>最后错误</string></property></column>
+                    <column><property name="text"><string>时间</string></property></column>
+                  </widget>
+                  <widget class="QPushButton" name="pushButton_scrape_cache_export">
+                    <property name="geometry"><rect><x>20</x><y>300</y><width>160</width><height>28</height></rect></property>
+                    <property name="text"><string>导出失败列表 CSV</string></property>
+                  </widget>
+                  <widget class="QPushButton" name="pushButton_scrape_cache_reset">
+                    <property name="geometry"><rect><x>190</x><y>300</y><width>130</width><height>28</height></rect></property>
+                    <property name="text"><string>重置选中记录</string></property>
+                  </widget>
+                  <widget class="QPushButton" name="pushButton_scrape_cache_clear">
+                    <property name="geometry"><rect><x>540</x><y>300</y><width>141</width><height>28</height></rect></property>
+                    <property name="text"><string>清空全部缓存</string></property>
+                  </widget>
+                </widget>
+</widget>
           </widget>
         </widget>
         <widget class="QWidget" name="page_setting">

@@ -22,6 +22,7 @@ from PyQt6.QtWidgets import (
     QMessageBox,
     QPushButton,
     QSystemTrayIcon,
+    QTableWidgetItem,
     QTreeWidgetItem,
 )
 
@@ -3435,6 +3436,128 @@ class MyMAinWindow(QMainWindow):
         return tips
 
     # 检查 fc2ppvdb cookie
+    # region 刮削缓存管理
+    def _open_scrape_cache(self) -> ScrapeStateCache | None:
+        cache = ScrapeStateCache(resources.u("scrape_state.db"))
+        if not cache.open():
+            signal_qt.show_log_text(" 🔴 刮削缓存数据库不可用")
+            return None
+        return cache
+
+    def pushButton_scrape_cache_refresh_clicked(self) -> None:
+        cache = self._open_scrape_cache()
+        if cache is None:
+            return
+        try:
+            stats = cache.stats()
+            failed = cache.list_failed_detail()
+        finally:
+            cache.close()
+        self._update_scrape_cache_ui(stats, failed)
+        signal_qt.show_log_text(
+            f" 刮削缓存已刷新：完成 {stats['done']} / 失败 {stats['failed']} / 总计 {stats['total']}"
+        )
+
+    def _update_scrape_cache_ui(self, stats: dict, failed: list) -> None:
+        self.Ui.label_scrape_cache_done.setText(f"已完成：{stats['done']}")
+        self.Ui.label_scrape_cache_failed.setText(f"失败：{stats['failed']}")
+        self.Ui.label_scrape_cache_exhausted.setText(f"超限失败：{stats['failed_exhausted']}")
+        self.Ui.label_scrape_cache_total.setText(f"总计：{stats['total']}")
+        self.Ui.label_scrape_cache_dbpath.setText(f"数据库：{stats['db_path']}")
+        self.Ui.label_scrape_cache_dbsize.setText(f"大小：{stats['db_size_kb']} KB")
+        tw = self.Ui.tableWidget_scrape_cache_failed
+        tw.setRowCount(len(failed))
+        for i, f in enumerate(failed):
+            name_item = QTableWidgetItem(Path(f.file_path).name)
+            name_item.setData(Qt.ItemDataRole.UserRole + 1, f.file_path)
+            tw.setItem(i, 0, name_item)
+            tw.setItem(i, 1, QTableWidgetItem(f.number))
+            tw.setItem(i, 2, QTableWidgetItem(str(f.fail_count)))
+            err = f.error or ""
+            tw.setItem(i, 3, QTableWidgetItem(err[:100] + ("…" if len(err) > 100 else "")))
+            tw.setItem(
+                i,
+                4,
+                QTableWidgetItem(
+                    time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(f.scraped_at)) if f.scraped_at else ""
+                ),
+            )
+        tw.resizeColumnsToContents()
+        tw.setColumnWidth(3, 260)
+
+    def pushButton_scrape_cache_export_clicked(self) -> None:
+        path, _ = QFileDialog.getSaveFileName(self, "导出失败列表", "scrape_failed.csv", "CSV (*.csv)")
+        if not path:
+            return
+        cache = self._open_scrape_cache()
+        if cache is None:
+            return
+        try:
+            failed = cache.list_failed_detail(limit=100000)
+        finally:
+            cache.close()
+        import csv
+
+        with open(path, "w", newline="", encoding="utf-8-sig") as fp:
+            w = csv.writer(fp)
+            w.writerow(["文件路径", "番号", "失败次数", "最后错误", "时间"])
+            for f in failed:
+                w.writerow(
+                    [
+                        f.file_path,
+                        f.number,
+                        f.fail_count,
+                        f.error,
+                        time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(f.scraped_at)) if f.scraped_at else "",
+                    ]
+                )
+        signal_qt.show_log_text(f" 已导出 {len(failed)} 条失败记录到 {path}")
+
+    def pushButton_scrape_cache_reset_clicked(self) -> None:
+        tw = self.Ui.tableWidget_scrape_cache_failed
+        rows = sorted({idx.row() for idx in tw.selectedIndexes()})
+        if not rows:
+            signal_qt.show_log_text(" 请先在表格中选中要重置的记录")
+            return
+        paths = []
+        for r in rows:
+            item = tw.item(r, 0)
+            if item is not None:
+                p = item.data(Qt.ItemDataRole.UserRole + 1)
+                if p:
+                    paths.append(p)
+        if not paths:
+            return
+        cache = self._open_scrape_cache()
+        if cache is None:
+            return
+        try:
+            for p in paths:
+                cache.delete_state(Path(p))
+        finally:
+            cache.close()
+        signal_qt.show_log_text(f" 已重置 {len(paths)} 条记录（下次刮削将重新处理）")
+        self.pushButton_scrape_cache_refresh_clicked()
+
+    def pushButton_scrape_cache_clear_clicked(self) -> None:
+        reply = QMessageBox.question(
+            self,
+            "确认清空缓存",
+            "将清空全部刮削缓存状态，下次刮削将重新处理所有文件。\n已生成的 NFO 不会被删除。确认清空？",
+        )
+        if reply != QMessageBox.StandardButton.Yes:
+            return
+        cache = self._open_scrape_cache()
+        if cache is None:
+            return
+        try:
+            cache.clear()
+        finally:
+            cache.close()
+        signal_qt.show_log_text(" 刮削缓存已全部清空")
+        self.pushButton_scrape_cache_refresh_clicked()
+
+    # endregion
     def pushButton_check_fc2ppvdb_cookie_clicked(self):
         input_cookie = self.Ui.plainTextEdit_cookie_fc2ppvdb.toPlainText().strip()
         if not input_cookie:
