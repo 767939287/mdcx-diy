@@ -496,6 +496,10 @@ class Scraper:
                             "actors": list(json_data.actors),
                             "release": json_data.release,
                             "runtime": json_data.runtime,
+                            "mosaic": json_data.mosaic,
+                            "publisher": json_data.publisher,
+                            "directors": list(json_data.directors),
+                            "score": json_data.score,
                         }
                         self._state_cache.set_done(
                             file_path, await _safe_mtime(file_path), number=number, summary=summary

@@ -13,6 +13,10 @@ class _Fake:
     actors: list[str] = field(default_factory=list)
     release: str = ""
     runtime: str = ""
+    mosaic: str = ""
+    publisher: str = ""
+    directors: list[str] = field(default_factory=list)
+    score: str = ""
 
 
 def _item(number: str, tags: list[str], **kw) -> _Fake:

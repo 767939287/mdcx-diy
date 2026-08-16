@@ -20,6 +20,10 @@ class _SummaryItem:
     actors: list[str] = field(default_factory=list)
     release: str = ""
     runtime: str = ""
+    mosaic: str = ""
+    publisher: str = ""
+    directors: list[str] = field(default_factory=list)
+    score: str = ""
 
 
 
@@ -139,6 +143,10 @@ class SimilarDialog(QDialog):
                     actors=[str(a) for a in actors],
                     release=str(summary.get("release") or ""),
                     runtime=str(summary.get("runtime") or ""),
+                    mosaic=str(summary.get("mosaic") or ""),
+                    publisher=str(summary.get("publisher") or ""),
+                    directors=[str(d) for d in summary.get("directors") or []],
+                    score=str(summary.get("score") or ""),
                 )
             )
         return corpus

@@ -226,7 +226,8 @@ class ScrapeStateCache:
     def list_success_summaries(self) -> list[dict]:
         """返回全部成功刮削的结果摘要（供跨会话相似推荐等使用）。
 
-        每条摘要包含 number/title/tags/series/studio/actors/release/runtime。
+        每条摘要包含 number/title/tags/series/studio/actors/release/runtime，
+        以及相似推荐特征扩展字段 mosaic/publisher/directors/score。
         无 summary_json 的旧记录会被跳过。
         """
         rows = self._fetch(
