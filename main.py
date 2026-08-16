@@ -105,15 +105,30 @@ def _enable_crash_dump() -> None:
                     f.write(text)
             except Exception:
                 pass
-            sys.__excepthook__(etype, evalue, etb)
+            try:
+                sys.__excepthook__(etype, evalue, etb)
+            except Exception:
+                pass
 
         sys.excepthook = _hook
     except Exception:
         pass
 
 
+def _ensure_stdio() -> None:
+    """PyInstaller windowed 模式下 sys.stdout/stderr 可能为 None，导致 print() 崩溃。
+
+    重定向到 devnull（不创建任何文件），excepthook 仍能在崩溃时懒创建 crash 目录写文件。
+    """
+    if sys.stdout is None:
+        sys.stdout = open(os.devnull, "w", encoding="utf-8")  # type: ignore[assignment]
+    if sys.stderr is None:
+        sys.stderr = open(os.devnull, "w", encoding="utf-8")  # type: ignore[assignment]
+
+
 def main() -> int:
     _enable_crash_dump()
+    _ensure_stdio()
     show_constants()
     _apply_ui_scale_factor()
     app, _ui = _create_application()
