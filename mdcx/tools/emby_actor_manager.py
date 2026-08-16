@@ -22,6 +22,13 @@ from ..signals import signal
 from ..utils import executor
 from ..utils.file import write_file_atomic_async
 from .actress_db import ActressDB
+from .emby_shared import (
+    _append_query,
+    _build_jellyfin_headers,
+    _generate_server_url,
+    _is_jellyfin_server,
+    _upload_actor_photo,
+)
 from .minnano_crawler import get_minnano_info
 from .wiki import get_detail, search_wiki
 
@@ -105,49 +112,6 @@ class ActorInfo:
         if not self.has_image and not self.has_overview:
             return "❌"
         return "⚠️"
-
-
-def _build_jellyfin_headers(headers: dict[str, str] | None = None) -> dict[str, str]:
-    request_headers = dict(headers or {})
-    request_headers["Authorization"] = f'MediaBrowser Token="{manager.config.api_key}"'
-    return request_headers
-
-
-def _append_query(url: str, params: dict[str, str | None]) -> str:
-    from urllib.parse import urlencode
-
-    query = urlencode({k: v for k, v in params.items() if v not in ("", None)})
-    return f"{url}?{query}" if query else url
-
-
-def _is_jellyfin_server() -> bool:
-    # server_type 配置为 Literal["emby", "ln"]，UI 用 "ln" 表示 Jellyfin
-    return manager.config.server_type != "emby"
-
-
-def _generate_server_url(actor: dict) -> tuple[str, str, str, str, str, str]:
-    server_type = manager.config.server_type
-    emby_url = str(manager.config.emby_url).rstrip("/")
-    from urllib.parse import quote
-
-    actor_name = quote(actor["Name"], safe="")
-    actor_id = actor["Id"]
-    server_id = actor.get("ServerId", "")
-    if "emby" == server_type:
-        actor_homepage = f"{emby_url}/web/index.html#!/item?id={actor_id}&serverId={server_id}"
-        actor_person = f"{emby_url}/emby/Persons/{actor_name}"
-        pic_url = f"{emby_url}/emby/Items/{actor_id}/Images/Primary"
-        backdrop_url = f"{emby_url}/emby/Items/{actor_id}/Images/Backdrop"
-        backdrop_url_0 = f"{emby_url}/emby/Items/{actor_id}/Images/Backdrop/0"
-        update_url = f"{emby_url}/emby/Items/{actor_id}"
-    else:
-        actor_homepage = f"{emby_url}/web/index.html#!/details?id={actor_id}&serverId={server_id}"
-        actor_person = _append_query(f"{emby_url}/Persons/{actor_name}", {"userId": manager.config.user_id})
-        pic_url = f"{emby_url}/Items/{actor_id}/Images/Primary"
-        backdrop_url = f"{emby_url}/Items/{actor_id}/Images/Backdrop"
-        backdrop_url_0 = f"{emby_url}/Items/{actor_id}/Images/Backdrop/0"
-        update_url = f"{emby_url}/Items/{actor_id}"
-    return actor_homepage, actor_person, pic_url, backdrop_url, backdrop_url_0, update_url
 
 
 async def get_emby_actor_list(filter_actor_only: bool = True) -> list[dict]:
@@ -506,7 +470,6 @@ async def upload_actor_image(actor: ActorInfo, image_path: str | Path) -> tuple[
     img_path = Path(image_path)
     if not img_path.exists():
         return False, f"❌ 图片文件不存在: {image_path}"
-    from .emby_actor_image import _upload_actor_photo
 
     ok, err = await _upload_actor_photo(pic_url, img_path)
     if ok:
@@ -561,7 +524,6 @@ async def upload_actor_backdrop(actor: ActorInfo, image_path: str | Path) -> tup
     img_path = Path(image_path)
     if not img_path.exists():
         return False, f"❌ 背景图片文件不存在: {image_path}"
-    from .emby_actor_image import _upload_actor_photo
 
     ok, err = await _upload_actor_photo(backdrop_url, img_path)
     if ok:

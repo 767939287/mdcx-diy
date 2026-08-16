@@ -25,15 +25,13 @@ from ..signals import signal
 from ..utils import get_used_time
 from ..utils.file import copy_file_async
 from .emby_actor_image import (
-    _build_jellyfin_headers,
-    _generate_server_url,
     _get_actor_detail,
     _get_emby_actor_list,
     _get_gfriends_actor_data,
-    _is_jellyfin_server,
     update_emby_actor_photo,
 )
 from .emby_actor_manager import fill_actor_info_from_sources
+from .emby_shared import _build_jellyfin_headers, _generate_server_url, _is_jellyfin_server
 from .minnano_crawler import load_cache
 
 
