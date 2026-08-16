@@ -1023,7 +1023,6 @@ async def _actor_source_test_execute(
     name: str, need_image: bool, need_info: bool
 ) -> tuple[list[str], str | None, dict | None]:
     """纯数据版本：不操作 UI，返回 (logs, avatar_path, info)。"""
-    from ..core.similar import extract_prefix
 
     logs: list[str] = []
     avatar_path: str | None = None
@@ -1218,13 +1217,6 @@ class ActorSourceTestDialog(QDialog):
         cfg.actor_photo_folder = self.panel_folder_edit.text().strip()
         manager._replace_config(cfg)
         manager.save()
-
-    def _run(self, need_image: bool, need_info: bool):
-        name = self.name_edit.text().strip()
-        if not name:
-            QMessageBox.warning(self, "提示", "请输入演员名")
-            return
-        executor.run(self._execute(name, need_image, need_info))
 
     def _populate_info_table(self, info: object):
         from ..models.emby import EMbyActressInfo
