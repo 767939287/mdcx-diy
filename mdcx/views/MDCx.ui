@@ -21235,7 +21235,7 @@
                       <x>0</x>
                       <y>0</y>
                       <width>760</width>
-                      <height>1680</height>
+                      <height>1820</height>
                     </rect>
                   </property>
                   <widget class="QGroupBox" name="groupBox_10">
@@ -21244,7 +21244,7 @@
                         <x>30</x>
                         <y>515</y>
                         <width>701</width>
-                        <height>531</height>
+                        <height>671</height>
                       </rect>
                     </property>
                     <property name="styleSheet">
@@ -21259,7 +21259,7 @@
                           <x>20</x>
                           <y>30</y>
                           <width>661</width>
-                          <height>280</height>
+                          <height>400</height>
                         </rect>
                       </property>
                       <layout class="QGridLayout" name="gridLayout_10">
@@ -21462,13 +21462,112 @@
                             </item>
                           </layout>
                         </item>
-                      </layout>
+                                              <item row="4" column="0">
+                          <widget class="QLabel" name="label_fc2ppvdb_cookie">
+                            <property name="sizePolicy">
+                              <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
+                                <horstretch>0</horstretch>
+                                <verstretch>0</verstretch>
+                              </sizepolicy>
+                            </property>
+                            <property name="minimumSize">
+                              <size>
+                                <width>130</width>
+                                <height>30</height>
+                              </size>
+                            </property>
+                            <property name="maximumSize">
+                              <size>
+                                <width>130</width>
+                                <height>16777215</height>
+                              </size>
+                            </property>
+                            <property name="layoutDirection">
+                              <enum>Qt::RightToLeft</enum>
+                            </property>
+                            <property name="text">
+                              <string>fc2ppvdb：
+（登录状态）</string>
+                            </property>
+                            <property name="alignment">
+                              <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+                            </property>
+                          </widget>
+                        </item>
+                        <item row="4" column="1">
+                          <widget class="QPlainTextEdit" name="plainTextEdit_cookie_fc2ppvdb">
+                            <property name="sizePolicy">
+                              <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+                                <horstretch>0</horstretch>
+                                <verstretch>0</verstretch>
+                              </sizepolicy>
+                            </property>
+                            <property name="minimumSize">
+                              <size>
+                                <width>400</width>
+                                <height>80</height>
+                              </size>
+                            </property>
+                            <property name="styleSheet">
+                              <string notr="true"> border: 1px solid rgba(0,0,0, 50);
+                                border-radius: 1px;
+                                font: "Courier";</string>
+                            </property>
+                            <property name="placeholderText">
+                              <string>请粘贴 fc2cmadb.com 登录后的完整 Cookie（含 XSRF-TOKEN 与 session 项）
+（需登录状态才能刮取演员数据，建议在浏览器登录后从开发者工具复制 Cookie）</string>
+                            </property>
+                          </widget>
+                        </item>
+                        <item row="5" column="1">
+                          <layout class="QHBoxLayout" name="horizontalLayout_fc2ppvdb_cookie">
+                            <item>
+                              <widget class="QPushButton" name="pushButton_check_fc2ppvdb_cookie">
+                                <property name="sizePolicy">
+                                  <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+                                    <horstretch>0</horstretch>
+                                    <verstretch>0</verstretch>
+                                  </sizepolicy>
+                                </property>
+                                <property name="text">
+                                  <string>检查cookie</string>
+                                </property>
+                              </widget>
+                            </item>
+                            <item>
+                              <widget class="QLabel" name="label_fc2ppvdb_cookie_result">
+                                <property name="sizePolicy">
+                                  <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+                                    <horstretch>0</horstretch>
+                                    <verstretch>0</verstretch>
+                                  </sizepolicy>
+                                </property>
+                                <property name="minimumSize">
+                                  <size>
+                                    <width>0</width>
+                                    <height>0</height>
+                                  </size>
+                                </property>
+                                <property name="layoutDirection">
+                                  <enum>Qt::RightToLeft</enum>
+                                </property>
+                                <property name="text">
+                                  <string />
+                                </property>
+                                <property name="alignment">
+                                  <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+                                </property>
+                              </widget>
+                            </item>
+                          </layout>
+                        </item>
+</layout>
                     </widget>
                     <widget class="QLabel" name="label_75">
                       <property name="geometry">
                         <rect>
                           <x>60</x>
-                          <y>330</y>
+                          <y>450</y>
                           <width>611</width>
                           <height>141</height>
                         </rect>
@@ -21508,7 +21607,7 @@
                       <property name="geometry">
                         <rect>
                           <x>130</x>
-                          <y>480</y>
+                          <y>600</y>
                           <width>430</width>
                           <height>21</height>
                         </rect>
@@ -21542,7 +21641,7 @@
                       <property name="geometry">
                         <rect>
                           <x>60</x>
-                          <y>480</y>
+                          <y>600</y>
                           <width>71</width>
                           <height>21</height>
                         </rect>
@@ -22174,7 +22273,7 @@
                     <property name="geometry">
                       <rect>
                         <x>30</x>
-                        <y>1306</y>
+                        <y>1446</y>
                         <width>701</width>
                         <height>301</height>
                       </rect>
@@ -22365,7 +22464,7 @@
                     <property name="geometry">
                       <rect>
                         <x>30</x>
-                        <y>1061</y>
+                        <y>1201</y>
                         <width>701</width>
                         <height>230</height>
                       </rect>

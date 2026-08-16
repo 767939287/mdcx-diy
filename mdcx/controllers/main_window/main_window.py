@@ -15,19 +15,14 @@ from PyQt6.QtGui import QAction, QCursor, QGuiApplication, QHoverEvent, QIcon, Q
 from PyQt6.QtWidgets import (
     QApplication,
     QFileDialog,
-    QHBoxLayout,
     QInputDialog,
-    QLabel,
     QLineEdit,
     QMainWindow,
     QMenu,
     QMessageBox,
-    QPlainTextEdit,
     QPushButton,
-    QSizePolicy,
     QSystemTrayIcon,
     QTreeWidgetItem,
-    QWidget,
 )
 
 from mdcx.base.file import (
@@ -225,7 +220,6 @@ class MyMAinWindow(QMainWindow):
         self.Ui = Ui_MDCx()  # 实例化 Ui
         self.Ui.setupUi(self)  # 初始化 Ui
         self._bind_system_theme_refresh()
-        self._setup_fc2ppvdb_cookie_ui()
         self.cutwindow = CutWindow(self)
         self.preview_image_loader = PreviewImageLoader(self)
         self.preview_image_loader.loaded.connect(self._apply_preview_images)
@@ -321,99 +315,6 @@ class MyMAinWindow(QMainWindow):
         )
 
     # region Init
-    def _setup_fc2ppvdb_cookie_ui(self):
-        # 扩展 cookie 设置区域，并把下面分组整体下移，避免重叠
-        delta_y = 140
-        group_geo = self.Ui.groupBox_10.geometry()
-        old_group_bottom = group_geo.y() + group_geo.height()
-        self.Ui.groupBox_10.setGeometry(group_geo.x(), group_geo.y(), group_geo.width(), group_geo.height() + delta_y)
-        content_geo = self.Ui.scrollAreaWidgetContents_wangluo.geometry()
-        self.Ui.scrollAreaWidgetContents_wangluo.setGeometry(
-            content_geo.x(),
-            content_geo.y(),
-            content_geo.width(),
-            content_geo.height() + delta_y,
-        )
-        for child in self.Ui.scrollAreaWidgetContents_wangluo.children():
-            if not isinstance(child, QWidget) or child is self.Ui.groupBox_10:
-                continue
-            child_geo = child.geometry()
-            if child_geo.y() >= old_group_bottom:
-                child.setGeometry(
-                    child_geo.x(),
-                    child_geo.y() + delta_y,
-                    child_geo.width(),
-                    child_geo.height(),
-                )
-        grid_geo = self.Ui.gridLayoutWidget_10.geometry()
-        self.Ui.gridLayoutWidget_10.setGeometry(grid_geo.x(), grid_geo.y(), grid_geo.width(), 400)
-        self.Ui.label_75.setGeometry(60, 450, 611, 141)
-        self.Ui.label_get_cookie_url.setGeometry(130, 600, 430, 21)
-        self.Ui.label_7.setGeometry(60, 600, 71, 21)
-
-        self.Ui.label_fc2ppvdb_cookie = QLabel(self.Ui.gridLayoutWidget_10)
-        sizePolicy = QSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Preferred)
-        sizePolicy.setHorizontalStretch(0)
-        sizePolicy.setVerticalStretch(0)
-        sizePolicy.setHeightForWidth(self.Ui.label_fc2ppvdb_cookie.sizePolicy().hasHeightForWidth())
-        self.Ui.label_fc2ppvdb_cookie.setSizePolicy(sizePolicy)
-        self.Ui.label_fc2ppvdb_cookie.setMinimumSize(130, 30)
-        self.Ui.label_fc2ppvdb_cookie.setMaximumSize(130, 16777215)
-        self.Ui.label_fc2ppvdb_cookie.setLayoutDirection(Qt.LayoutDirection.RightToLeft)
-        self.Ui.label_fc2ppvdb_cookie.setAlignment(
-            Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignTrailing | Qt.AlignmentFlag.AlignVCenter
-        )
-        self.Ui.label_fc2ppvdb_cookie.setText("fc2ppvdb：\n（登录状态）")
-        self.Ui.label_fc2ppvdb_cookie.setObjectName("label_fc2ppvdb_cookie")
-        self.Ui.gridLayout_10.addWidget(self.Ui.label_fc2ppvdb_cookie, 4, 0, 1, 1)
-
-        self.Ui.plainTextEdit_cookie_fc2ppvdb = QPlainTextEdit(self.Ui.gridLayoutWidget_10)
-        sizePolicy = QSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
-        sizePolicy.setHorizontalStretch(0)
-        sizePolicy.setVerticalStretch(0)
-        sizePolicy.setHeightForWidth(self.Ui.plainTextEdit_cookie_fc2ppvdb.sizePolicy().hasHeightForWidth())
-        self.Ui.plainTextEdit_cookie_fc2ppvdb.setSizePolicy(sizePolicy)
-        self.Ui.plainTextEdit_cookie_fc2ppvdb.setMinimumSize(400, 80)
-        self.Ui.plainTextEdit_cookie_fc2ppvdb.setStyleSheet(
-            " border: 1px solid rgba(0,0,0, 50);\n"
-            "                                border-radius: 1px;\n"
-            '                                font: "Courier";'
-        )
-        self.Ui.plainTextEdit_cookie_fc2ppvdb.setPlaceholderText(
-            "请粘贴 fc2cmadb.com 登录后的完整 Cookie（含 XSRF-TOKEN 与 session 项）\n"
-            "（需登录状态才能刮取演员数据，建议在浏览器登录后从开发者工具复制 Cookie）"
-        )
-        self.Ui.plainTextEdit_cookie_fc2ppvdb.setObjectName("plainTextEdit_cookie_fc2ppvdb")
-        self.Ui.gridLayout_10.addWidget(self.Ui.plainTextEdit_cookie_fc2ppvdb, 4, 1, 1, 1)
-
-        self.Ui.horizontalLayout_fc2ppvdb_cookie = QHBoxLayout()
-        self.Ui.horizontalLayout_fc2ppvdb_cookie.setObjectName("horizontalLayout_fc2ppvdb_cookie")
-        self.Ui.pushButton_check_fc2ppvdb_cookie = QPushButton(self.Ui.gridLayoutWidget_10)
-        sizePolicy = QSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Fixed)
-        sizePolicy.setHorizontalStretch(0)
-        sizePolicy.setVerticalStretch(0)
-        sizePolicy.setHeightForWidth(self.Ui.pushButton_check_fc2ppvdb_cookie.sizePolicy().hasHeightForWidth())
-        self.Ui.pushButton_check_fc2ppvdb_cookie.setSizePolicy(sizePolicy)
-        self.Ui.pushButton_check_fc2ppvdb_cookie.setText("检查cookie")
-        self.Ui.pushButton_check_fc2ppvdb_cookie.setObjectName("pushButton_check_fc2ppvdb_cookie")
-        self.Ui.horizontalLayout_fc2ppvdb_cookie.addWidget(self.Ui.pushButton_check_fc2ppvdb_cookie)
-
-        self.Ui.label_fc2ppvdb_cookie_result = QLabel(self.Ui.gridLayoutWidget_10)
-        sizePolicy = QSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
-        sizePolicy.setHorizontalStretch(0)
-        sizePolicy.setVerticalStretch(0)
-        sizePolicy.setHeightForWidth(self.Ui.label_fc2ppvdb_cookie_result.sizePolicy().hasHeightForWidth())
-        self.Ui.label_fc2ppvdb_cookie_result.setSizePolicy(sizePolicy)
-        self.Ui.label_fc2ppvdb_cookie_result.setMinimumSize(0, 0)
-        self.Ui.label_fc2ppvdb_cookie_result.setLayoutDirection(Qt.LayoutDirection.RightToLeft)
-        self.Ui.label_fc2ppvdb_cookie_result.setText("")
-        self.Ui.label_fc2ppvdb_cookie_result.setAlignment(
-            Qt.AlignmentFlag.AlignLeading | Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter
-        )
-        self.Ui.label_fc2ppvdb_cookie_result.setObjectName("label_fc2ppvdb_cookie_result")
-        self.Ui.horizontalLayout_fc2ppvdb_cookie.addWidget(self.Ui.label_fc2ppvdb_cookie_result)
-        self.Ui.gridLayout_10.addLayout(self.Ui.horizontalLayout_fc2ppvdb_cookie, 5, 1, 1, 1)
-
     def Init_Ui(self): ...
 
     def Init_Singal(self): ...
