@@ -971,10 +971,8 @@ class EmbyActorSettingsDialog(QDialog):
             self.photo_folder_edit.setText(path)
 
     def _save(self):
-        image_sources = [self.image_list.item(i).data(Qt.ItemDataRole.UserRole)
-                         for i in range(self.image_list.count())]
-        info_sources = [self.info_list.item(i).data(Qt.ItemDataRole.UserRole)
-                        for i in range(self.info_list.count())]
+        image_sources = [self.image_list.item(i).data(Qt.ItemDataRole.UserRole) for i in range(self.image_list.count())]
+        info_sources = [self.info_list.item(i).data(Qt.ItemDataRole.UserRole) for i in range(self.info_list.count())]
         cfg = manager.config.model_copy(deep=True)
         cfg.actor_image_sources = image_sources
         cfg.actor_info_sources = info_sources
@@ -990,6 +988,91 @@ class EmbyActorSettingsDialog(QDialog):
         manager._replace_config(cfg)
         manager.save()
         self.accept()
+
+
+class ActorSourceTestThread(QThread):
+    """数据源测试线程：在后台执行网络请求，通过信号回传结果。"""
+
+    result = Signal(list, object, object)  # logs, avatar_path, info_dict
+    error = Signal(str)
+
+    def __init__(self, parent, name: str, need_image: bool, need_info: bool):
+        super().__init__(parent)
+        self._name = name
+        self._need_image = need_image
+        self._need_info = need_info
+
+    def run(self):
+        try:
+            import asyncio
+
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            try:
+                logs, avatar_path, info = loop.run_until_complete(
+                    _actor_source_test_execute(self._name, self._need_image, self._need_info)
+                )
+                self.result.emit(logs, avatar_path, info)
+            finally:
+                loop.close()
+        except Exception as e:
+            self.error.emit(str(e))
+
+
+async def _actor_source_test_execute(
+    name: str, need_image: bool, need_info: bool
+) -> tuple[list[str], str | None, dict | None]:
+    """纯数据版本：不操作 UI，返回 (logs, avatar_path, info)。"""
+    from ..core.similar import extract_prefix
+
+    logs: list[str] = []
+    avatar_path: str | None = None
+    info: dict | None = None
+    actor = ActorInfo(name=name, actor_id="", server_id="")
+
+    if need_image:
+        gfriends_index = None
+        try:
+            gfriends_index = await get_gfriends_index()
+        except Exception:
+            pass
+        for src in manager.config.actor_image_sources:
+            result: object = None
+            try:
+                if src == "gfriends" and gfriends_index:
+                    result = await from_gfriends(actor, gfriends_index, Path(tempfile.gettempdir()))
+                elif src == "graphis":
+                    result = await from_graphis(actor, Path(tempfile.gettempdir()))
+                elif src == "minnano":
+                    result = await from_minnano_image(actor, Path(tempfile.gettempdir()))
+                elif src == "local":
+                    result = from_local_avatar(actor, manager.config.actor_photo_folder)
+                else:
+                    logs.append(f"头像[{src}]: 未知数据源")
+                    continue
+            except Exception as e:
+                logs.append(f"头像[{src}]: 异常 {e}")
+                continue
+            if result:
+                logs.append(f"头像[{src}]: ✅ 命中")
+                if isinstance(result, (str, Path)) and Path(result).exists():
+                    avatar_path = str(result)
+                elif isinstance(result, tuple) and result and Path(result[0]).exists():
+                    avatar_path = str(result[0])
+            else:
+                logs.append(f"头像[{src}]: 未命中")
+
+    if need_info:
+        for src in manager.config.actor_info_sources:
+            try:
+                ok, desc, data = await fetch_actor_info_from_source(actor, src)
+            except Exception as e:
+                logs.append(f"信息[{src}]: 异常 {e}")
+                continue
+            logs.append(f"信息[{src}]: {'✅' if ok else '❌'} {desc}")
+            if ok and data:
+                info = data
+    return logs, avatar_path, info
 
 
 class ActorSourceTestDialog(QDialog):
@@ -1084,6 +1167,28 @@ class ActorSourceTestDialog(QDialog):
         self.btn_image.clicked.connect(lambda: self._run(True, False))
         self.btn_info.clicked.connect(lambda: self._run(False, True))
 
+    def _run(self, need_image: bool, need_info: bool):
+        name = self.name_edit.text().strip()
+        if not name:
+            QMessageBox.warning(self, "提示", "请输入演员名")
+            return
+        self._thread = ActorSourceTestThread(self, name, need_image, need_info)
+        self._thread.result.connect(self._on_result)
+        self._thread.error.connect(self._on_error)
+        self._thread.start()
+
+    def _on_result(self, logs: list[str], avatar_path: str | None, info: dict | None):
+        self.result_text.clear()
+        for log in logs:
+            self.result_text.append(log)
+        if avatar_path and Path(avatar_path).exists():
+            self._show_avatar(avatar_path)
+        if info:
+            self._populate_info_table(info)
+
+    def _on_error(self, msg: str):
+        self.result_text.append(f"❌ 错误: {msg}")
+
         # 快速面板改动即自动保存
         img_model = self.panel_image_list.model()
         if img_model:
@@ -1120,56 +1225,6 @@ class ActorSourceTestDialog(QDialog):
             QMessageBox.warning(self, "提示", "请输入演员名")
             return
         executor.run(self._execute(name, need_image, need_info))
-
-    async def _execute(self, name: str, need_image: bool, need_info: bool):
-        self.result_text.clear()
-        self.info_table.setRowCount(0)
-        self.avatar_label.clear()
-        self.avatar_label.setText("头像预览")
-        actor = ActorInfo(name=name, actor_id="", server_id="")
-
-        if need_image:
-            gfriends_index = None
-            try:
-                gfriends_index = await get_gfriends_index()
-            except Exception:
-                pass
-            for src in manager.config.actor_image_sources:
-                result: object = None
-                try:
-                    if src == "gfriends" and gfriends_index:
-                        result = await from_gfriends(actor, gfriends_index, Path(tempfile.gettempdir()))
-                    elif src == "graphis":
-                        result = await from_graphis(actor, Path(tempfile.gettempdir()))
-                    elif src == "minnano":
-                        result = await from_minnano_image(actor, Path(tempfile.gettempdir()))
-                    elif src == "local":
-                        result = from_local_avatar(actor, manager.config.actor_photo_folder)
-                    else:
-                        self.result_text.append(f"头像[{src}]: 未知数据源")
-                        continue
-                except Exception as e:
-                    self.result_text.append(f"头像[{src}]: 异常 {e}")
-                    continue
-                if result:
-                    self.result_text.append(f"头像[{src}]: ✅ 命中")
-                    if isinstance(result, (str, Path)) and Path(result).exists():
-                        self._show_avatar(str(result))
-                    elif isinstance(result, tuple) and result and Path(result[0]).exists():
-                        self._show_avatar(str(result[0]))
-                else:
-                    self.result_text.append(f"头像[{src}]: 未命中")
-
-        if need_info:
-            for src in manager.config.actor_info_sources:
-                try:
-                    ok, desc, info = await fetch_actor_info_from_source(actor, src)
-                except Exception as e:
-                    self.result_text.append(f"信息[{src}]: 异常 {e}")
-                    continue
-                self.result_text.append(f"信息[{src}]: {'✅' if ok else '❌'} {desc}")
-                if ok:
-                    self._populate_info_table(info)
 
     def _populate_info_table(self, info: object):
         from ..models.emby import EMbyActressInfo
