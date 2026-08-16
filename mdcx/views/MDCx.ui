@@ -13765,7 +13765,7 @@
                           </widget>
                         </item>
                         <item row="0" column="0">
-                          <widget class="QLabel" name="label_81">
+                          <widget class="QLabel" name="label_81_bak">
                             <property name="sizePolicy">
                               <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
                                 <horstretch>0</horstretch>
@@ -13790,7 +13790,7 @@
                           </widget>
                         </item>
                         <item row="4" column="1">
-                          <widget class="QLabel" name="label_60">
+                          <widget class="QLabel" name="label_60_bak">
                             <property name="sizePolicy">
                               <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
                                 <horstretch>0</horstretch>
@@ -22124,7 +22124,7 @@
                           </widget>
                         </item>
                         <item row="0" column="0">
-                          <widget class="QLabel" name="label_423">
+                          <widget class="QLabel" name="label_423_wl">
                             <property name="sizePolicy">
                               <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
                                 <horstretch>0</horstretch>
@@ -22174,7 +22174,7 @@
                           </widget>
                         </item>
                         <item row="1" column="0">
-                          <widget class="QLabel" name="label_424">
+                          <widget class="QLabel" name="label_424_wl">
                             <property name="sizePolicy">
                               <sizepolicy hsizetype="Fixed" vsizetype="Preferred">
                                 <horstretch>0</horstretch>
