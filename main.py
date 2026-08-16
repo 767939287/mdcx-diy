@@ -75,78 +75,39 @@ def _create_application() -> tuple[QApplication, MyMAinWindow]:
 
 
 def _enable_crash_dump() -> None:
-    """注册崩溃转储：Python 异常 traceback + C 层 segfault 堆栈 + stdout/stderr 落盘。
+    """注册崩溃转储：Python 异常 traceback 写入 MAIN_PATH/crash/ 目录。
 
-    用于诊断 onefile 无控制台环境下程序静默退出的问题。仅诊断用，失败不阻断启动。
-    日志写入 MAIN_PATH/crash/ 目录，正常运行时无任何文件生成。
+    用于诊断程序静默退出的问题。仅诊断用，失败不阻断启动。
+    crash 目录仅在程序实际崩溃时才创建，正常运行时不产生任何文件。
     """
     try:
-        import atexit
-        import faulthandler
         import traceback as _tb
         from datetime import datetime
 
-        log_dir = MAIN_PATH / "crash"
-        log_dir.mkdir(parents=True, exist_ok=True)
         ts = datetime.now().strftime("%Y%m%d_%H%M%S")
 
-        # 保存打开的文件句柄，程序正常退出时 flush+close，防 SIGKILL 时漏数据
-        _crash_files: list[object] = []
-
-        # 1) 重定向 stdout/stderr 到文件（onefile 无控制台时 print/异常输出会丢失）
+        # C 层崩溃 (segfault) 堆栈：尝试启用，无 stderr 时静默跳过
+        # （打包 windowed 模式下 sys.stderr 可能不可用，segfault 堆栈无法落盘）
         try:
-            if sys.__stdout__ is not None:
-                sys.stdout = sys.__stdout__
-            else:
-                stdout_file = open(log_dir / f"crash_{ts}.log", "w", encoding="utf-8")
-                sys.stdout = stdout_file
-                _crash_files.append(stdout_file)
-            # 仅冻结(onefile 无控制台)时重定向 stderr；源码运行保留终端输出，便于调试期直接看 traceback
-            if IS_PYINSTALLER:
-                stderr_file = open(log_dir / f"crash_{ts}.log", "a", encoding="utf-8")
-                sys.stderr = stderr_file
-                _crash_files.append(stderr_file)
+            import faulthandler
+
+            faulthandler.enable()
         except Exception:
             pass
 
-        # 2) Python 未捕获异常写文件
-        crash_path = log_dir / f"crash_{ts}_py.log"
-        try:
-            crash_path.write_text("", encoding="utf-8")
-        except Exception:
-            crash_path = None  # type: ignore[assignment]
-
+        # Python 未捕获异常：崩溃时才懒创建目录和文件
         def _hook(etype, evalue, etb):
             try:
                 text = "".join(_tb.format_exception(etype, evalue, etb))
-                print("UNCAUGHT EXCEPTION:\n" + text)
-                if crash_path is not None:
-                    with open(crash_path, "a", encoding="utf-8") as f:
-                        f.write(text)
+                crash_dir = MAIN_PATH / "crash"
+                crash_dir.mkdir(parents=True, exist_ok=True)
+                with open(crash_dir / f"crash_{ts}_py.log", "a", encoding="utf-8") as f:
+                    f.write(text)
             except Exception:
                 pass
             sys.__excepthook__(etype, evalue, etb)
 
         sys.excepthook = _hook
-
-        # 3) C 层崩溃 (segfault) 堆栈写文件
-        try:
-            faulthandler_file = open(log_dir / f"crash_{ts}_faulthandler.log", "w", encoding="utf-8")
-            faulthandler.enable(file=faulthandler_file)
-            _crash_files.append(faulthandler_file)
-        except Exception:
-            pass
-
-        # 4) 进程退出时 flush/close，避免 SIGINT 等正常退出路径下缓冲日志丢失
-        def _flush_and_close():
-            for f in _crash_files:
-                try:
-                    f.flush()
-                    f.close()
-                except (AttributeError, OSError):
-                    pass
-
-        atexit.register(_flush_and_close)
     except Exception:
         pass
 
