@@ -1734,7 +1734,7 @@
                   </rect>
                 </property>
                 <property name="styleSheet">
-                  <string notr="true">font:"Courier";</string>
+                  <string notr="true">font:"Courier New";</string>
                 </property>
                 <property name="title">
                   <string>裁剪图片（将某个图片裁剪为封面图大小，支持加水印）</string>
@@ -3098,7 +3098,7 @@
                                   </size>
                                 </property>
                                 <property name="styleSheet">
-                                  <string notr="true"> font: "Courier";
+                                  <string notr="true"> font: "Courier New";
                                     border: 1px solid rgba(0,0,0, 50);
                                     border-radius: 15px;
 </string>
@@ -3184,7 +3184,7 @@
                                   </size>
                                 </property>
                                 <property name="styleSheet">
-                                  <string notr="true"> font: "Courier";
+                                  <string notr="true"> font: "Courier New";
                                     border: 1px solid rgba(0,0,0, 50);
                                     border-radius: 15px;
 </string>
@@ -3408,7 +3408,7 @@
                                   </size>
                                 </property>
                                 <property name="styleSheet">
-                                  <string notr="true"> font: "Courier";
+                                  <string notr="true"> font: "Courier New";
                                     border: 1px solid rgba(0,0,0, 50);
                                     border-radius: 15px;
 </string>
@@ -3503,7 +3503,7 @@
                                   </size>
                                 </property>
                                 <property name="styleSheet">
-                                  <string notr="true"> font: "Courier";
+                                  <string notr="true"> font: "Courier New";
                                     border: 1px solid rgba(0,0,0, 50);
                                     border-radius: 15px;
 </string>
@@ -3717,7 +3717,7 @@
                                   </size>
                                 </property>
                                 <property name="styleSheet">
-                                  <string notr="true"> font: "Courier";
+                                  <string notr="true"> font: "Courier New";
                                     border: 1px solid rgba(0,0,0, 50);
                                     border-radius: 15px;
 </string>
@@ -3794,7 +3794,7 @@
                               </size>
                             </property>
                             <property name="styleSheet">
-                              <string notr="true"> font: "Courier";
+                              <string notr="true"> font: "Courier New";
                                 border: 1px solid rgba(0,0,0, 50);
                                 border-radius: 15px;
 </string>
@@ -3982,7 +3982,7 @@
                                   </size>
                                 </property>
                                 <property name="styleSheet">
-                                  <string notr="true"> font: "Courier";
+                                  <string notr="true"> font: "Courier New";
                                     border: 1px solid rgba(0,0,0, 50);
                                     border-radius: 15px;
 </string>
@@ -4089,7 +4089,7 @@
                                   </size>
                                 </property>
                                 <property name="styleSheet">
-                                  <string notr="true"> font: "Courier";
+                                  <string notr="true"> font: "Courier New";
                                     border: 1px solid rgba(0,0,0, 50);
                                     border-radius: 15px;
 </string>
@@ -4199,7 +4199,7 @@
                                   </size>
                                 </property>
                                 <property name="styleSheet">
-                                  <string notr="true"> font: "Courier";
+                                  <string notr="true"> font: "Courier New";
                                     border: 1px solid rgba(0,0,0, 50);
                                     border-radius: 15px;
 </string>
@@ -4328,7 +4328,7 @@
                                   </size>
                                 </property>
                                 <property name="styleSheet">
-                                  <string notr="true"> font: "Courier";
+                                  <string notr="true"> font: "Courier New";
                                     border: 1px solid rgba(0,0,0, 50);
                                     border-radius: 15px;
 </string>
@@ -4451,7 +4451,7 @@
                                   </size>
                                 </property>
                                 <property name="styleSheet">
-                                  <string notr="true"> font: "Courier";
+                                  <string notr="true"> font: "Courier New";
                                     border: 1px solid rgba(0,0,0, 50);
                                     border-radius: 15px;
 </string>
@@ -4502,7 +4502,7 @@
                                   </size>
                                 </property>
                                 <property name="styleSheet">
-                                  <string notr="true"> font: "Courier";
+                                  <string notr="true"> font: "Courier New";
                                     border: 1px solid rgba(0,0,0, 50);
                                     border-radius: 15px;
 </string>
@@ -4713,7 +4713,7 @@
                               </size>
                             </property>
                             <property name="styleSheet">
-                              <string notr="true"> font: "Courier";
+                              <string notr="true"> font: "Courier New";
                                 border: 1px solid rgba(0,0,0, 50);
                                 border-radius: 15px;
 </string>
@@ -4760,7 +4760,7 @@
                               </size>
                             </property>
                             <property name="styleSheet">
-                              <string notr="true"> font: "Courier";
+                              <string notr="true"> font: "Courier New";
                                 border: 1px solid rgba(0,0,0, 50);
                                 border-radius: 15px;
 </string>
@@ -5978,7 +5978,7 @@
                                   </size>
                                 </property>
                                 <property name="styleSheet">
-                                  <string notr="true"> font: "Courier";
+                                  <string notr="true"> font: "Courier New";
                                     border: 1px solid rgba(0,0,0, 50);
                                     border-radius: 15px;
 </string>
@@ -6064,7 +6064,7 @@
                                   </size>
                                 </property>
                                 <property name="styleSheet">
-                                  <string notr="true"> font: "Courier";
+                                  <string notr="true"> font: "Courier New";
                                     border: 1px solid rgba(0,0,0, 50);
                                     border-radius: 15px;
 </string>
@@ -6146,7 +6146,7 @@
                                   </size>
                                 </property>
                                 <property name="styleSheet">
-                                  <string notr="true"> font: "Courier";
+                                  <string notr="true"> font: "Courier New";
                                     border: 1px solid rgba(0,0,0, 50);
                                     border-radius: 15px;
 </string>
@@ -6298,7 +6298,7 @@
                                   </size>
                                 </property>
                                 <property name="styleSheet">
-                                  <string notr="true"> font: "Courier";
+                                  <string notr="true"> font: "Courier New";
                                     border: 1px solid rgba(0,0,0, 50);
                                     border-radius: 15px;
                                   </string>
@@ -6352,7 +6352,7 @@
                                   </size>
                                 </property>
                                 <property name="styleSheet">
-                                  <string notr="true"> font: "Courier";
+                                  <string notr="true"> font: "Courier New";
                                     border: 1px solid rgba(0,0,0, 50);
                                     border-radius: 15px;
 </string>
@@ -6557,7 +6557,7 @@
                       </rect>
                     </property>
                     <property name="styleSheet">
-                      <string notr="true">font:"Courier";</string>
+                      <string notr="true">font:"Courier New";</string>
                     </property>
                     <property name="title">
                       <string>多线程刮削</string>
@@ -7341,7 +7341,7 @@
                               </size>
                             </property>
                             <property name="styleSheet">
-                              <string notr="true"> font: "Courier";
+                              <string notr="true"> font: "Courier New";
                                 border: 1px solid rgba(0,0,0, 50);
                                 border-radius: 15px;
 </string>
@@ -7419,7 +7419,7 @@
                               </size>
                             </property>
                             <property name="styleSheet">
-                              <string notr="true"> font: "Courier";
+                              <string notr="true"> font: "Courier New";
                                 border: 1px solid rgba(0,0,0, 50);
                                 border-radius: 15px;
 </string>
@@ -7545,7 +7545,7 @@
                               </size>
                             </property>
                             <property name="styleSheet">
-                              <string notr="true"> font: "Courier";
+                              <string notr="true"> font: "Courier New";
                                 border: 1px solid rgba(0,0,0, 50);
                                 border-radius: 15px;
 </string>
@@ -7567,7 +7567,7 @@
                               </size>
                             </property>
                             <property name="styleSheet">
-                              <string notr="true"> font: "Courier";
+                              <string notr="true"> font: "Courier New";
                                 border: 1px solid rgba(0,0,0, 50);
                                 border-radius: 15px;
 </string>
@@ -7727,7 +7727,7 @@
                               </size>
                             </property>
                             <property name="styleSheet">
-                              <string notr="true"> font: "Courier";
+                              <string notr="true"> font: "Courier New";
                                 border: 1px solid rgba(0,0,0, 50);
                                 border-radius: 15px;
 </string>
@@ -7802,7 +7802,7 @@
                               </size>
                             </property>
                             <property name="styleSheet">
-                              <string notr="true"> font: "Courier";
+                              <string notr="true"> font: "Courier New";
                                 border: 1px solid rgba(0,0,0, 50);
                                 border-radius: 15px;
 </string>
@@ -7993,7 +7993,7 @@
                               </size>
                             </property>
                             <property name="styleSheet">
-                              <string notr="true"> font: "Courier";
+                              <string notr="true"> font: "Courier New";
                                 border: 1px solid rgba(0,0,0, 50);
                                 border-radius: 15px;
 </string>
@@ -8043,7 +8043,7 @@
                               </size>
                             </property>
                             <property name="styleSheet">
-                              <string notr="true"> font: "Courier";
+                              <string notr="true"> font: "Courier New";
                                 border: 1px solid rgba(0,0,0, 50);
                                 border-radius: 15px;
 </string>
@@ -8065,7 +8065,7 @@
                               </size>
                             </property>
                             <property name="styleSheet">
-                              <string notr="true"> font: "Courier";
+                              <string notr="true"> font: "Courier New";
                                 border: 1px solid rgba(0,0,0, 50);
                                 border-radius: 15px;
 </string>
@@ -8087,7 +8087,7 @@
                               </size>
                             </property>
                             <property name="styleSheet">
-                              <string notr="true"> font: "Courier";
+                              <string notr="true"> font: "Courier New";
                                 border: 1px solid rgba(0,0,0, 50);
                                 border-radius: 15px;
 </string>
@@ -8165,7 +8165,7 @@
                               </size>
                             </property>
                             <property name="styleSheet">
-                              <string notr="true"> font: "Courier";
+                              <string notr="true"> font: "Courier New";
                                 border: 1px solid rgba(0,0,0, 50);
                                 border-radius: 15px;
 </string>
@@ -8187,7 +8187,7 @@
                               </size>
                             </property>
                             <property name="styleSheet">
-                              <string notr="true"> font: "Courier";
+                              <string notr="true"> font: "Courier New";
                                 border: 1px solid rgba(0,0,0, 50);
                                 border-radius: 15px;
 </string>
@@ -8265,7 +8265,7 @@
                               </size>
                             </property>
                             <property name="styleSheet">
-                              <string notr="true"> font: "Courier";
+                              <string notr="true"> font: "Courier New";
                                 border: 1px solid rgba(0,0,0, 50);
                                 border-radius: 15px;
 </string>
@@ -8371,7 +8371,7 @@
                               </size>
                             </property>
                             <property name="styleSheet">
-                              <string notr="true"> font: "Courier";
+                              <string notr="true"> font: "Courier New";
                                 border: 1px solid rgba(0,0,0, 50);
                                 border-radius: 15px;
 </string>
@@ -8393,7 +8393,7 @@
                               </size>
                             </property>
                             <property name="styleSheet">
-                              <string notr="true"> font: "Courier";
+                              <string notr="true"> font: "Courier New";
                                 border: 1px solid rgba(0,0,0, 50);
                                 border-radius: 15px;
 </string>
@@ -8415,7 +8415,7 @@
                               </size>
                             </property>
                             <property name="styleSheet">
-                              <string notr="true"> font: "Courier";
+                              <string notr="true"> font: "Courier New";
                                 border: 1px solid rgba(0,0,0, 50);
                                 border-radius: 15px;
 </string>
@@ -8465,7 +8465,7 @@
                               </size>
                             </property>
                             <property name="styleSheet">
-                              <string notr="true"> font: "Courier";
+                              <string notr="true"> font: "Courier New";
                                 border: 1px solid rgba(0,0,0, 50);
                                 border-radius: 15px;
 </string>
@@ -8571,7 +8571,7 @@
                               </size>
                             </property>
                             <property name="styleSheet">
-                              <string notr="true"> font: "Courier";
+                              <string notr="true"> font: "Courier New";
                                 border: 1px solid rgba(0,0,0, 50);
                                 border-radius: 15px;
 </string>
@@ -8621,7 +8621,7 @@
                               </size>
                             </property>
                             <property name="styleSheet">
-                              <string notr="true"> font: "Courier";
+                              <string notr="true"> font: "Courier New";
                                 border: 1px solid rgba(0,0,0, 50);
                                 border-radius: 15px;
 </string>
@@ -8643,7 +8643,7 @@
                               </size>
                             </property>
                             <property name="styleSheet">
-                              <string notr="true"> font: "Courier";
+                              <string notr="true"> font: "Courier New";
                                 border: 1px solid rgba(0,0,0, 50);
                                 border-radius: 15px;
 </string>
@@ -8693,7 +8693,7 @@
                               </size>
                             </property>
                             <property name="styleSheet">
-                              <string notr="true"> font: "Courier";
+                              <string notr="true"> font: "Courier New";
                                 border: 1px solid rgba(0,0,0, 50);
                                 border-radius: 15px;
 </string>
@@ -8743,7 +8743,7 @@
                               </size>
                             </property>
                             <property name="styleSheet">
-                              <string notr="true"> font: "Courier";
+                              <string notr="true"> font: "Courier New";
                                 border: 1px solid rgba(0,0,0, 50);
                                 border-radius: 15px;
 </string>
@@ -8849,7 +8849,7 @@
                               </size>
                             </property>
                             <property name="styleSheet">
-                              <string notr="true"> font: "Courier";
+                              <string notr="true"> font: "Courier New";
                                 border: 1px solid rgba(0,0,0, 50);
                                 border-radius: 15px;
 </string>
@@ -8871,7 +8871,7 @@
                               </size>
                             </property>
                             <property name="styleSheet">
-                              <string notr="true"> font: "Courier";
+                              <string notr="true"> font: "Courier New";
                                 border: 1px solid rgba(0,0,0, 50);
                                 border-radius: 15px;
 </string>
@@ -8893,7 +8893,7 @@
                               </size>
                             </property>
                             <property name="styleSheet">
-                              <string notr="true"> font: "Courier";
+                              <string notr="true"> font: "Courier New";
                                 border: 1px solid rgba(0,0,0, 50);
                                 border-radius: 15px;
 </string>
@@ -10050,7 +10050,7 @@
                       </rect>
                     </property>
                     <property name="styleSheet">
-                      <string notr="true">font:"Courier";</string>
+                      <string notr="true">font:"Courier New";</string>
                     </property>
                     <property name="title">
                       <string>创建主题视频</string>
@@ -10199,7 +10199,7 @@
                               </size>
                             </property>
                             <property name="styleSheet">
-                              <string notr="true"> font: "Courier";
+                              <string notr="true"> font: "Courier New";
                                 border: 1px solid rgba(0,0,0, 50);
                                 border-radius: 15px;
 </string>
@@ -10468,7 +10468,7 @@
                       </rect>
                     </property>
                     <property name="styleSheet">
-                      <string notr="true">font:"Courier";</string>
+                      <string notr="true">font:"Courier New";</string>
                     </property>
                     <property name="title">
                       <string>显示剧照</string>
@@ -10610,7 +10610,7 @@
                       </rect>
                     </property>
                     <property name="styleSheet">
-                      <string notr="true">font:"Courier";</string>
+                      <string notr="true">font:"Courier New";</string>
                     </property>
                     <property name="title">
                       <string>视频命名规则</string>
@@ -10634,7 +10634,7 @@
                               </size>
                             </property>
                             <property name="styleSheet">
-                              <string notr="true"> font: "Courier";
+                              <string notr="true"> font: "Courier New";
                                 border: 1px solid rgba(0,0,0, 50);
                                 border-radius: 15px;
 </string>
@@ -10650,7 +10650,7 @@
                               </size>
                             </property>
                             <property name="styleSheet">
-                              <string notr="true"> font: "Courier";
+                              <string notr="true"> font: "Courier New";
                                 border: 1px solid rgba(0,0,0, 50);
                                 border-radius: 15px;
 </string>
@@ -10729,7 +10729,7 @@
                               <string>测试</string>
                             </property>
                             <property name="styleSheet">
-                              <string notr="true"> font: "Courier";
+                              <string notr="true"> font: "Courier New";
                                 border: 1px solid rgba(0,0,0, 50);
                                 border-radius: 15px;
 </string>
@@ -10877,7 +10877,7 @@
                               </size>
                             </property>
                             <property name="styleSheet">
-                              <string notr="true"> font: "Courier";
+                              <string notr="true"> font: "Courier New";
                                 border: 1px solid rgba(0,0,0, 50);
                                 border-radius: 15px;
 </string>
@@ -10943,7 +10943,7 @@
                               </size>
                             </property>
                             <property name="styleSheet">
-                              <string notr="true"> font: "Courier";
+                              <string notr="true"> font: "Courier New";
                                 border: 1px solid rgba(0,0,0, 50);
                                 border-radius: 8px;
 </string>
@@ -11442,7 +11442,7 @@
                       </rect>
                     </property>
                     <property name="styleSheet">
-                      <string notr="true">font:"Courier";</string>
+                      <string notr="true">font:"Courier New";</string>
                     </property>
                     <property name="title">
                       <string>长度命名规则</string>
@@ -11463,7 +11463,7 @@
                         </size>
                       </property>
                       <property name="styleSheet">
-                        <string notr="true"> font: "Courier";
+                        <string notr="true"> font: "Courier New";
                           border: 1px solid rgba(0,0,0, 50);
                           border-radius: 15px;
 </string>
@@ -11663,7 +11663,7 @@
                         <string>测试</string>
                       </property>
                       <property name="styleSheet">
-                        <string notr="true"> font: "Courier";
+                        <string notr="true"> font: "Courier New";
                           border: 1px solid rgba(0,0,0, 50);
                           border-radius: 15px;
 </string>
@@ -11685,7 +11685,7 @@
                         </size>
                       </property>
                       <property name="styleSheet">
-                        <string notr="true"> font: "Courier";
+                        <string notr="true"> font: "Courier New";
                           border: 1px solid rgba(0,0,0, 50);
                           border-radius: 15px;
 </string>
@@ -11707,7 +11707,7 @@
                         </size>
                       </property>
                       <property name="styleSheet">
-                        <string notr="true"> font: "Courier";
+                        <string notr="true"> font: "Courier New";
                           border: 1px solid rgba(0,0,0, 50);
                           border-radius: 15px;
 </string>
@@ -11906,7 +11906,7 @@
                         </size>
                       </property>
                       <property name="styleSheet">
-                        <string notr="true"> font: "Courier";
+                        <string notr="true"> font: "Courier New";
                           border: 1px solid rgba(0,0,0, 50);
                           border-radius: 15px;
 </string>
@@ -12054,7 +12054,7 @@
                         </size>
                       </property>
                       <property name="styleSheet">
-                        <string notr="true"> font: "Courier";
+                        <string notr="true"> font: "Courier New";
                           border: 1px solid rgba(0,0,0, 50);
                           border-radius: 15px;
 </string>
@@ -12107,7 +12107,7 @@
                         </size>
                       </property>
                       <property name="styleSheet">
-                        <string notr="true"> font: "Courier";
+                        <string notr="true"> font: "Courier New";
                           border: 1px solid rgba(0,0,0, 50);
                           border-radius: 15px;
 </string>
@@ -12319,7 +12319,7 @@
                         </size>
                       </property>
                       <property name="styleSheet">
-                        <string notr="true"> font: "Courier";
+                        <string notr="true"> font: "Courier New";
                           border: 1px solid rgba(0,0,0, 50);
                           border-radius: 15px;
 </string>
@@ -12748,7 +12748,7 @@
                               </size>
                             </property>
                             <property name="styleSheet">
-                              <string notr="true"> font: "Courier";
+                              <string notr="true"> font: "Courier New";
                                 border: 1px solid rgba(0,0,0, 50);
                                 border-radius: 15px;
 </string>
@@ -12840,7 +12840,7 @@
                               </size>
                             </property>
                             <property name="styleSheet">
-                              <string notr="true"> font: "Courier";
+                              <string notr="true"> font: "Courier New";
                                 border: 1px solid rgba(0,0,0, 50);
                                 border-radius: 15px;
 </string>
@@ -12897,7 +12897,7 @@
                               </size>
                             </property>
                             <property name="styleSheet">
-                              <string notr="true"> font: "Courier";
+                              <string notr="true"> font: "Courier New";
                                 border: 1px solid rgba(0,0,0, 50);
                                 border-radius: 15px;
 </string>
@@ -13679,7 +13679,7 @@
                               </size>
                             </property>
                             <property name="styleSheet">
-                              <string notr="true"> font: "Courier";
+                              <string notr="true"> font: "Courier New";
                                 border: 1px solid rgba(0,0,0, 50);
                                 border-radius: 15px;
 </string>
@@ -13729,7 +13729,7 @@
                               </size>
                             </property>
                             <property name="styleSheet">
-                              <string notr="true"> font: "Courier";
+                              <string notr="true"> font: "Courier New";
                                 border: 1px solid rgba(0,0,0, 50);
                                 border-radius: 15px;
 </string>
@@ -13839,7 +13839,7 @@
                               </size>
                             </property>
                             <property name="styleSheet">
-                              <string notr="true"> font: "Courier";
+                              <string notr="true"> font: "Courier New";
                                 border: 1px solid rgba(0,0,0, 50);
                                 border-radius: 15px;
 </string>
@@ -13903,7 +13903,7 @@
                               </size>
                             </property>
                             <property name="styleSheet">
-                              <string notr="true"> font: "Courier";
+                              <string notr="true"> font: "Courier New";
                                 border: 1px solid rgba(0,0,0, 50);
                                 border-radius: 15px;
 </string>
@@ -13935,7 +13935,7 @@
                               </size>
                             </property>
                             <property name="styleSheet">
-                              <string notr="true"> font: "Courier";
+                              <string notr="true"> font: "Courier New";
                                 border: 1px solid rgba(0,0,0, 50);
                                 border-radius: 15px;
 </string>
@@ -13969,7 +13969,7 @@
                             <property name="styleSheet">
                               <string notr="true"> border: 1px solid rgba(0,0,0, 50);
                                 border-radius: 1px;
-                                font: "Courier";</string>
+                                font: "Courier New";</string>
                             </property>
                           </widget>
                         </item>
@@ -14000,7 +14000,7 @@
                             <property name="styleSheet">
                               <string notr="true"> border: 1px solid rgba(0,0,0, 50);
                                 border-radius: 1px;
-                                font: "Courier";</string>
+                                font: "Courier New";</string>
                             </property>
                           </widget>
                         </item>
@@ -15475,7 +15475,7 @@
                       </rect>
                     </property>
                     <property name="styleSheet">
-                      <string notr="true">font:"Courier";</string>
+                      <string notr="true">font:"Courier New";</string>
                     </property>
                     <property name="title">
                       <string>中文字幕字符规则</string>
@@ -15499,7 +15499,7 @@
                               </size>
                             </property>
                             <property name="styleSheet">
-                              <string notr="true"> font: "Courier";
+                              <string notr="true"> font: "Courier New";
                                 border: 1px solid rgba(0,0,0, 50);
                                 border-radius: 15px;
 </string>
@@ -15540,7 +15540,7 @@
                               </size>
                             </property>
                             <property name="styleSheet">
-                              <string notr="true"> font: "Courier";
+                              <string notr="true"> font: "Courier New";
                                 border: 1px solid rgba(0,0,0, 50);
                                 border-radius: 15px;
 </string>
@@ -15705,7 +15705,7 @@
                       </rect>
                     </property>
                     <property name="styleSheet">
-                      <string notr="true">font:"Courier";</string>
+                      <string notr="true">font:"Courier New";</string>
                     </property>
                     <property name="title">
                       <string>添加外挂字幕</string>
@@ -15903,7 +15903,7 @@
                                   </size>
                                 </property>
                                 <property name="styleSheet">
-                                  <string notr="true"> font: "Courier";
+                                  <string notr="true"> font: "Courier New";
                                     border: 1px solid rgba(0,0,0, 50);
                                     border-radius: 15px;
 </string>
@@ -16080,7 +16080,7 @@
                       </rect>
                     </property>
                     <property name="styleSheet">
-                      <string notr="true">font:"Courier";</string>
+                      <string notr="true">font:"Courier New";</string>
                     </property>
                     <property name="title">
                       <string>自定义水印样式</string>
@@ -16188,7 +16188,7 @@
                       </rect>
                     </property>
                     <property name="styleSheet">
-                      <string notr="true">font:"Courier";</string>
+                      <string notr="true">font:"Courier New";</string>
                     </property>
                     <property name="title">
                       <string>水印设置</string>
@@ -16727,7 +16727,7 @@
                       </rect>
                     </property>
                     <property name="styleSheet">
-                      <string notr="true">font:"Courier";</string>
+                      <string notr="true">font:"Courier New";</string>
                     </property>
                     <property name="title">
                       <string>不固定位置</string>
@@ -16860,7 +16860,7 @@
                       </rect>
                     </property>
                     <property name="styleSheet">
-                      <string notr="true">font:"Courier";</string>
+                      <string notr="true">font:"Courier New";</string>
                     </property>
                     <property name="title">
                       <string>固定不同位置</string>
@@ -17227,7 +17227,7 @@
                       </rect>
                     </property>
                     <property name="styleSheet">
-                      <string notr="true">font:"Courier";</string>
+                      <string notr="true">font:"Courier New";</string>
                     </property>
                     <property name="title">
                       <string>固定一个位置</string>
@@ -17577,7 +17577,7 @@
                               </size>
                             </property>
                             <property name="styleSheet">
-                              <string notr="true"> font: "Courier";
+                              <string notr="true"> font: "Courier New";
                                 border: 1px solid rgba(0,0,0, 50);
                                 border-radius: 15px;
 </string>
@@ -17951,7 +17951,7 @@
                                   </size>
                                 </property>
                                 <property name="styleSheet">
-                                  <string notr="true"> font: "Courier";
+                                  <string notr="true"> font: "Courier New";
                                     border: 1px solid rgba(0,0,0, 50);
                                     border-radius: 15px;
 </string>
@@ -18008,7 +18008,7 @@
                                   </size>
                                 </property>
                                 <property name="styleSheet">
-                                  <string notr="true"> font: "Courier";
+                                  <string notr="true"> font: "Courier New";
                                     border: 1px solid rgba(0,0,0, 50);
                                     border-radius: 15px;
 </string>
@@ -18441,7 +18441,7 @@
                                   </size>
                                 </property>
                                 <property name="styleSheet">
-                                  <string notr="true"> font: "Courier";
+                                  <string notr="true"> font: "Courier New";
                                     border: 1px solid rgba(0,0,0, 50);
                                     border-radius: 15px;
 </string>
@@ -18920,7 +18920,7 @@
                                   </size>
                                 </property>
                                 <property name="styleSheet">
-                                  <string notr="true"> font: "Courier";
+                                  <string notr="true"> font: "Courier New";
                                     border: 1px solid rgba(0,0,0, 50);
                                     border-radius: 15px;
 </string>
@@ -19002,7 +19002,7 @@
                                   </size>
                                 </property>
                                 <property name="styleSheet">
-                                  <string notr="true"> font: "Courier";
+                                  <string notr="true"> font: "Courier New";
                                     border: 1px solid rgba(0,0,0, 50);
                                     border-radius: 15px;
 </string>
@@ -19220,7 +19220,7 @@
                       </rect>
                     </property>
                     <property name="styleSheet">
-                      <string notr="true">font:"Courier";</string>
+                      <string notr="true">font:"Courier New";</string>
                     </property>
                     <property name="title">
                       <string>Emby/Jellyfin 设置</string>
@@ -19250,7 +19250,7 @@
                               </size>
                             </property>
                             <property name="styleSheet">
-                              <string notr="true"> font: "Courier";
+                              <string notr="true"> font: "Courier New";
                                 border: 1px solid rgba(0,0,0, 50);
                                 border-radius: 15px;
 </string>
@@ -19430,7 +19430,7 @@
                               </size>
                             </property>
                             <property name="styleSheet">
-                              <string notr="true"> font: "Courier";
+                              <string notr="true"> font: "Courier New";
                                 border: 1px solid rgba(0,0,0, 50);
                                 border-radius: 15px;
 </string>
@@ -19583,7 +19583,7 @@
                               </size>
                             </property>
                             <property name="styleSheet">
-                              <string notr="true"> font: "Courier";
+                              <string notr="true"> font: "Courier New";
                                 border: 1px solid rgba(0,0,0, 50);
                                 border-radius: 15px;
 </string>
@@ -19945,7 +19945,7 @@
                               </size>
                             </property>
                             <property name="styleSheet">
-                              <string notr="true"> font: "Courier";
+                              <string notr="true"> font: "Courier New";
                                 border: 1px solid rgba(0,0,0, 50);
                                 border-radius: 15px;
 </string>
@@ -20040,7 +20040,7 @@
                                   </size>
                                 </property>
                                 <property name="styleSheet">
-                                  <string notr="true"> font: "Courier";
+                                  <string notr="true"> font: "Courier New";
                                      border: 1px solid rgba(0,0,0, 50);
                                      border-radius: 15px;
 </string>
@@ -20157,7 +20157,7 @@
                                   </size>
                                 </property>
                                 <property name="styleSheet">
-                                  <string notr="true"> font: "Courier";
+                                  <string notr="true"> font: "Courier New";
                                     border: 1px solid rgba(0,0,0, 50);
                                     border-radius: 15px;
 </string>
@@ -20347,7 +20347,7 @@
                                   </size>
                                 </property>
                                 <property name="styleSheet">
-                                  <string notr="true">font: "Courier";
+                                  <string notr="true">font: "Courier New";
                                     border: 1px solid rgba(0,0,0, 50);
                                     border-radius: 15px;
                                   </string>
@@ -20938,7 +20938,7 @@
                       </rect>
                     </property>
                     <property name="styleSheet">
-                      <string notr="true">font:"Courier";</string>
+                      <string notr="true">font:"Courier New";</string>
                     </property>
                     <property name="title">
                       <string>Cookie设置</string>
@@ -21002,7 +21002,7 @@
                             <property name="styleSheet">
                               <string notr="true"> border: 1px solid rgba(0,0,0, 50);
                                 border-radius: 1px;
-                                font: "Courier";</string>
+                                font: "Courier New";</string>
                             </property>
                             <property name="placeholderText">
                               <string>刮削FC2需要填写</string>
@@ -21103,7 +21103,7 @@
                             <property name="styleSheet">
                               <string notr="true"> border: 1px solid rgba(0,0,0, 50);
                                 border-radius: 1px;
-                                font: "Courier";</string>
+                                font: "Courier New";</string>
                             </property>
                             <property name="placeholderText">
                               <string>美国节点需要填写，其他节点一般不需要填写，除非提示需要填写。</string>
@@ -21255,7 +21255,7 @@
                       </rect>
                     </property>
                     <property name="styleSheet">
-                      <string notr="true">font:"Courier";</string>
+                      <string notr="true">font:"Courier New";</string>
                     </property>
                     <property name="title">
                       <string>网络设置</string>
@@ -21502,7 +21502,7 @@
                               </size>
                             </property>
                             <property name="styleSheet">
-                              <string notr="true"> font: "Courier";
+                              <string notr="true"> font: "Courier New";
                                 border: 1px solid rgba(0,0,0, 50);
                                 border-radius: 15px;
 </string>
@@ -21582,7 +21582,7 @@
                                   </size>
                                 </property>
                                 <property name="styleSheet">
-                                  <string notr="true"> font: "Courier";
+                                  <string notr="true"> font: "Courier New";
                                     border: 1px solid rgba(0,0,0, 50);
                                     border-radius: 15px;
 </string>
@@ -21634,7 +21634,7 @@
                               </size>
                             </property>
                             <property name="styleSheet">
-                              <string notr="true"> font: "Courier";
+                              <string notr="true"> font: "Courier New";
                                 border: 1px solid rgba(0,0,0, 50);
                                 border-radius: 15px;
 </string>
@@ -21684,7 +21684,7 @@
                               </size>
                             </property>
                             <property name="styleSheet">
-                              <string notr="true"> font: "Courier";
+                              <string notr="true"> font: "Courier New";
                                 border: 1px solid rgba(0,0,0, 50);
                                 border-radius: 15px;
 </string>
@@ -21750,7 +21750,7 @@
                               </size>
                             </property>
                             <property name="styleSheet">
-                              <string notr="true"> font: "Courier";
+                              <string notr="true"> font: "Courier New";
                                 border: 1px solid rgba(0,0,0, 50);
                                 border-radius: 15px;
 </string>
@@ -21870,7 +21870,7 @@
                       </rect>
                     </property>
                     <property name="styleSheet">
-                      <string notr="true">font:"Courier";</string>
+                      <string notr="true">font:"Courier New";</string>
                     </property>
                     <property name="title">
                       <string>网站设置</string>
@@ -21959,7 +21959,7 @@
                               </size>
                             </property>
                             <property name="styleSheet">
-                              <string notr="true"> font: "Courier";
+                              <string notr="true"> font: "Courier New";
                                 border: 1px solid rgba(0,0,0, 50);
                                 border-radius: 15px;
 </string>
@@ -22061,7 +22061,7 @@
                       </rect>
                     </property>
                     <property name="styleSheet">
-                      <string notr="true">font:"Courier";</string>
+                      <string notr="true">font:"Courier New";</string>
                     </property>
                     <property name="title">
                       <string>API Token</string>
@@ -22116,7 +22116,7 @@
                               </size>
                             </property>
                             <property name="styleSheet">
-                              <string notr="true"> font: "Courier";
+                              <string notr="true"> font: "Courier New";
                                 border: 1px solid rgba(0,0,0, 50);
                                 border-radius: 15px;
 </string>
@@ -22163,7 +22163,7 @@
                               </size>
                             </property>
                             <property name="styleSheet">
-                              <string notr="true"> font: "Courier";
+                              <string notr="true"> font: "Courier New";
                                 border: 1px solid rgba(0,0,0, 50);
                                 border-radius: 15px;
 </string>
@@ -22213,7 +22213,7 @@
                               </size>
                             </property>
                             <property name="styleSheet">
-                              <string notr="true"> font: "Courier";
+                              <string notr="true"> font: "Courier New";
                                 border: 1px solid rgba(0,0,0, 50);
                                 border-radius: 15px;
 </string>
@@ -22838,7 +22838,7 @@
                                   </size>
                                 </property>
                                 <property name="styleSheet">
-                                  <string notr="true"> font: "Courier";
+                                  <string notr="true"> font: "Courier New";
                                     border: 1px solid rgba(0,0,0, 50);
                                     border-radius: 15px;
 </string>
@@ -22964,7 +22964,7 @@
                                   </size>
                                 </property>
                                 <property name="styleSheet">
-                                  <string notr="true"> font: "Courier";
+                                  <string notr="true"> font: "Courier New";
                                     border: 1px solid rgba(0,0,0, 50);
                                     border-radius: 15px;
 </string>
@@ -23233,7 +23233,7 @@
                                   </size>
                                 </property>
                                 <property name="styleSheet">
-                                  <string notr="true"> font: "Courier";
+                                  <string notr="true"> font: "Courier New";
                                     border: 1px solid rgba(0,0,0, 50);
                                     border-radius: 15px;
 </string>
@@ -23280,7 +23280,7 @@
                                   </size>
                                 </property>
                                 <property name="styleSheet">
-                                  <string notr="true"> font: "Courier";
+                                  <string notr="true"> font: "Courier New";
                                     border: 1px solid rgba(0,0,0, 50);
                                     border-radius: 15px;
 </string>

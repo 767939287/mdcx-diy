@@ -614,7 +614,7 @@ class Ui_MDCx(object):
         self.pushButton_select_file_clear_info.setObjectName("pushButton_select_file_clear_info")
         self.groupBox_13 = QtWidgets.QGroupBox(parent=self.scrollAreaWidgetContents_gongju)
         self.groupBox_13.setGeometry(QtCore.QRect(30, 911, 701, 141))
-        self.groupBox_13.setStyleSheet('font:"Courier";')
+        self.groupBox_13.setStyleSheet('font:"Courier New";')
         self.groupBox_13.setObjectName("groupBox_13")
         self.pushButton_select_thumb = QtWidgets.QPushButton(parent=self.groupBox_13)
         self.pushButton_select_thumb.setGeometry(QtCore.QRect(140, 80, 351, 40))
@@ -1099,7 +1099,7 @@ class Ui_MDCx(object):
         self.lineEdit_movie_softlink_path.setSizePolicy(sizePolicy)
         self.lineEdit_movie_softlink_path.setMinimumSize(QtCore.QSize(0, 30))
         self.lineEdit_movie_softlink_path.setStyleSheet(
-            ' font: "Courier";\n'
+            ' font: "Courier New";\n'
             "                                    border: 1px solid rgba(0,0,0, 50);\n"
             "                                    border-radius: 15px;\n"
             ""
@@ -1150,7 +1150,7 @@ class Ui_MDCx(object):
         self.lineEdit_escape_dir.setSizePolicy(sizePolicy)
         self.lineEdit_escape_dir.setMinimumSize(QtCore.QSize(0, 30))
         self.lineEdit_escape_dir.setStyleSheet(
-            ' font: "Courier";\n'
+            ' font: "Courier New";\n'
             "                                    border: 1px solid rgba(0,0,0, 50);\n"
             "                                    border-radius: 15px;\n"
             ""
@@ -1271,7 +1271,7 @@ class Ui_MDCx(object):
         self.lineEdit_fail.setSizePolicy(sizePolicy)
         self.lineEdit_fail.setMinimumSize(QtCore.QSize(0, 30))
         self.lineEdit_fail.setStyleSheet(
-            ' font: "Courier";\n'
+            ' font: "Courier New";\n'
             "                                    border: 1px solid rgba(0,0,0, 50);\n"
             "                                    border-radius: 15px;\n"
             ""
@@ -1329,7 +1329,7 @@ class Ui_MDCx(object):
         self.lineEdit_success.setSizePolicy(sizePolicy)
         self.lineEdit_success.setMinimumSize(QtCore.QSize(0, 30))
         self.lineEdit_success.setStyleSheet(
-            ' font: "Courier";\n'
+            ' font: "Courier New";\n'
             "                                    border: 1px solid rgba(0,0,0, 50);\n"
             "                                    border-radius: 15px;\n"
             ""
@@ -1438,7 +1438,7 @@ class Ui_MDCx(object):
         self.lineEdit_escape_size.setMinimumSize(QtCore.QSize(0, 30))
         self.lineEdit_escape_size.setMaximumSize(QtCore.QSize(16777215, 16777215))
         self.lineEdit_escape_size.setStyleSheet(
-            ' font: "Courier";\n'
+            ' font: "Courier New";\n'
             "                                    border: 1px solid rgba(0,0,0, 50);\n"
             "                                    border-radius: 15px;\n"
             ""
@@ -1480,7 +1480,7 @@ class Ui_MDCx(object):
         self.lineEdit_escape_string.setMinimumSize(QtCore.QSize(0, 30))
         self.lineEdit_escape_string.setMaximumSize(QtCore.QSize(16777215, 16777215))
         self.lineEdit_escape_string.setStyleSheet(
-            ' font: "Courier";\n'
+            ' font: "Courier New";\n'
             "                                border: 1px solid rgba(0,0,0, 50);\n"
             "                                border-radius: 15px;\n"
             ""
@@ -1579,7 +1579,7 @@ class Ui_MDCx(object):
         self.lineEdit_clean_file_ext.setMinimumSize(QtCore.QSize(0, 30))
         self.lineEdit_clean_file_ext.setMaximumSize(QtCore.QSize(16777215, 16777215))
         self.lineEdit_clean_file_ext.setStyleSheet(
-            ' font: "Courier";\n'
+            ' font: "Courier New";\n'
             "                                    border: 1px solid rgba(0,0,0, 50);\n"
             "                                    border-radius: 15px;\n"
             ""
@@ -1639,7 +1639,7 @@ class Ui_MDCx(object):
         self.lineEdit_clean_excluded_file_ext.setMinimumSize(QtCore.QSize(0, 30))
         self.lineEdit_clean_excluded_file_ext.setMaximumSize(QtCore.QSize(16777215, 16777215))
         self.lineEdit_clean_excluded_file_ext.setStyleSheet(
-            ' font: "Courier";\n'
+            ' font: "Courier New";\n'
             "                                    border: 1px solid rgba(0,0,0, 50);\n"
             "                                    border-radius: 15px;\n"
             ""
@@ -1696,7 +1696,7 @@ class Ui_MDCx(object):
         self.lineEdit_clean_file_contains.setMinimumSize(QtCore.QSize(0, 30))
         self.lineEdit_clean_file_contains.setMaximumSize(QtCore.QSize(16777215, 16777215))
         self.lineEdit_clean_file_contains.setStyleSheet(
-            ' font: "Courier";\n'
+            ' font: "Courier New";\n'
             "                                    border: 1px solid rgba(0,0,0, 50);\n"
             "                                    border-radius: 15px;\n"
             ""
@@ -1763,7 +1763,7 @@ class Ui_MDCx(object):
         self.lineEdit_clean_excluded_file_contains.setMinimumSize(QtCore.QSize(0, 30))
         self.lineEdit_clean_excluded_file_contains.setMaximumSize(QtCore.QSize(16777215, 16777215))
         self.lineEdit_clean_excluded_file_contains.setStyleSheet(
-            ' font: "Courier";\n'
+            ' font: "Courier New";\n'
             "                                    border: 1px solid rgba(0,0,0, 50);\n"
             "                                    border-radius: 15px;\n"
             ""
@@ -1832,7 +1832,7 @@ class Ui_MDCx(object):
         self.lineEdit_clean_file_size.setMinimumSize(QtCore.QSize(0, 30))
         self.lineEdit_clean_file_size.setMaximumSize(QtCore.QSize(16777215, 16777215))
         self.lineEdit_clean_file_size.setStyleSheet(
-            ' font: "Courier";\n'
+            ' font: "Courier New";\n'
             "                                    border: 1px solid rgba(0,0,0, 50);\n"
             "                                    border-radius: 15px;\n"
             ""
@@ -1860,7 +1860,7 @@ class Ui_MDCx(object):
         self.lineEdit_clean_file_name.setMinimumSize(QtCore.QSize(0, 30))
         self.lineEdit_clean_file_name.setMaximumSize(QtCore.QSize(16777215, 16777215))
         self.lineEdit_clean_file_name.setStyleSheet(
-            ' font: "Courier";\n'
+            ' font: "Courier New";\n'
             "                                    border: 1px solid rgba(0,0,0, 50);\n"
             "                                    border-radius: 15px;\n"
             ""
@@ -1943,7 +1943,7 @@ class Ui_MDCx(object):
         self.lineEdit_movie_type.setSizePolicy(sizePolicy)
         self.lineEdit_movie_type.setMinimumSize(QtCore.QSize(0, 30))
         self.lineEdit_movie_type.setStyleSheet(
-            ' font: "Courier";\n'
+            ' font: "Courier New";\n'
             "                                border: 1px solid rgba(0,0,0, 50);\n"
             "                                border-radius: 15px;\n"
             ""
@@ -1973,7 +1973,7 @@ class Ui_MDCx(object):
         self.lineEdit_sub_type.setSizePolicy(sizePolicy)
         self.lineEdit_sub_type.setMinimumSize(QtCore.QSize(0, 30))
         self.lineEdit_sub_type.setStyleSheet(
-            ' font: "Courier";\n'
+            ' font: "Courier New";\n'
             "                                border: 1px solid rgba(0,0,0, 50);\n"
             "                                border-radius: 15px;\n"
             ""
@@ -2567,7 +2567,7 @@ class Ui_MDCx(object):
         self.lineEdit_update_d_folder.setSizePolicy(sizePolicy)
         self.lineEdit_update_d_folder.setMinimumSize(QtCore.QSize(0, 30))
         self.lineEdit_update_d_folder.setStyleSheet(
-            ' font: "Courier";\n'
+            ' font: "Courier New";\n'
             "                                    border: 1px solid rgba(0,0,0, 50);\n"
             "                                    border-radius: 15px;\n"
             ""
@@ -2619,7 +2619,7 @@ class Ui_MDCx(object):
         self.lineEdit_update_c_filetemplate.setSizePolicy(sizePolicy)
         self.lineEdit_update_c_filetemplate.setMinimumSize(QtCore.QSize(0, 30))
         self.lineEdit_update_c_filetemplate.setStyleSheet(
-            ' font: "Courier";\n'
+            ' font: "Courier New";\n'
             "                                    border: 1px solid rgba(0,0,0, 50);\n"
             "                                    border-radius: 15px;\n"
             ""
@@ -2670,7 +2670,7 @@ class Ui_MDCx(object):
         self.lineEdit_update_b_folder.setSizePolicy(sizePolicy)
         self.lineEdit_update_b_folder.setMinimumSize(QtCore.QSize(0, 30))
         self.lineEdit_update_b_folder.setStyleSheet(
-            ' font: "Courier";\n'
+            ' font: "Courier New";\n'
             "                                    border: 1px solid rgba(0,0,0, 50);\n"
             "                                    border-radius: 15px;\n"
             ""
@@ -2752,7 +2752,7 @@ class Ui_MDCx(object):
         self.lineEdit_update_a_folder.setSizePolicy(sizePolicy)
         self.lineEdit_update_a_folder.setMinimumSize(QtCore.QSize(0, 30))
         self.lineEdit_update_a_folder.setStyleSheet(
-            ' font: "Courier";\n'
+            ' font: "Courier New";\n'
             "                                    border: 1px solid rgba(0,0,0, 50);\n"
             "                                    border-radius: 15px;\n"
             "                                  "
@@ -2786,7 +2786,7 @@ class Ui_MDCx(object):
         self.lineEdit_update_titletemplate.setSizePolicy(sizePolicy)
         self.lineEdit_update_titletemplate.setMinimumSize(QtCore.QSize(0, 30))
         self.lineEdit_update_titletemplate.setStyleSheet(
-            ' font: "Courier";\n'
+            ' font: "Courier New";\n'
             "                                    border: 1px solid rgba(0,0,0, 50);\n"
             "                                    border-radius: 15px;\n"
             ""
@@ -2876,7 +2876,7 @@ class Ui_MDCx(object):
         self.gridLayout_13.addWidget(self.radioButton_succ_rename_off, 1, 0, 1, 1)
         self.groupBox_53 = QtWidgets.QGroupBox(parent=self.scrollAreaWidgetContents_guaxiaomoshi)
         self.groupBox_53.setGeometry(QtCore.QRect(30, 20, 701, 221))
-        self.groupBox_53.setStyleSheet('font:"Courier";')
+        self.groupBox_53.setStyleSheet('font:"Courier New";')
         self.groupBox_53.setObjectName("groupBox_53")
         self.gridLayoutWidget_15 = QtWidgets.QWidget(parent=self.groupBox_53)
         self.gridLayoutWidget_15.setGeometry(QtCore.QRect(50, 30, 631, 181))
@@ -3213,7 +3213,7 @@ class Ui_MDCx(object):
         self.lineEdit_website_oumei.setSizePolicy(sizePolicy)
         self.lineEdit_website_oumei.setMinimumSize(QtCore.QSize(300, 30))
         self.lineEdit_website_oumei.setStyleSheet(
-            ' font: "Courier";\n'
+            ' font: "Courier New";\n'
             "                                border: 1px solid rgba(0,0,0, 50);\n"
             "                                border-radius: 15px;\n"
             ""
@@ -3260,7 +3260,7 @@ class Ui_MDCx(object):
         self.lineEdit_website_fc2.setSizePolicy(sizePolicy)
         self.lineEdit_website_fc2.setMinimumSize(QtCore.QSize(300, 30))
         self.lineEdit_website_fc2.setStyleSheet(
-            ' font: "Courier";\n'
+            ' font: "Courier New";\n'
             "                                border: 1px solid rgba(0,0,0, 50);\n"
             "                                border-radius: 15px;\n"
             ""
@@ -3332,7 +3332,7 @@ class Ui_MDCx(object):
         self.lineEdit_website_wuma.setSizePolicy(sizePolicy)
         self.lineEdit_website_wuma.setMinimumSize(QtCore.QSize(300, 30))
         self.lineEdit_website_wuma.setStyleSheet(
-            ' font: "Courier";\n'
+            ' font: "Courier New";\n'
             "                                border: 1px solid rgba(0,0,0, 50);\n"
             "                                border-radius: 15px;\n"
             ""
@@ -3347,7 +3347,7 @@ class Ui_MDCx(object):
         self.lineEdit_website_suren.setSizePolicy(sizePolicy)
         self.lineEdit_website_suren.setMinimumSize(QtCore.QSize(300, 30))
         self.lineEdit_website_suren.setStyleSheet(
-            ' font: "Courier";\n'
+            ' font: "Courier New";\n'
             "                                border: 1px solid rgba(0,0,0, 50);\n"
             "                                border-radius: 15px;\n"
             ""
@@ -3434,7 +3434,7 @@ class Ui_MDCx(object):
         self.lineEdit_website_youma.setSizePolicy(sizePolicy)
         self.lineEdit_website_youma.setMinimumSize(QtCore.QSize(300, 30))
         self.lineEdit_website_youma.setStyleSheet(
-            ' font: "Courier";\n'
+            ' font: "Courier New";\n'
             "                                border: 1px solid rgba(0,0,0, 50);\n"
             "                                border-radius: 15px;\n"
             ""
@@ -3480,7 +3480,7 @@ class Ui_MDCx(object):
         self.lineEdit_website_guochan.setSizePolicy(sizePolicy)
         self.lineEdit_website_guochan.setMinimumSize(QtCore.QSize(300, 30))
         self.lineEdit_website_guochan.setStyleSheet(
-            ' font: "Courier";\n'
+            ' font: "Courier New";\n'
             "                                border: 1px solid rgba(0,0,0, 50);\n"
             "                                border-radius: 15px;\n"
             ""
@@ -3565,7 +3565,7 @@ class Ui_MDCx(object):
         self.lineEdit_actors_website.setSizePolicy(sizePolicy)
         self.lineEdit_actors_website.setMinimumSize(QtCore.QSize(300, 30))
         self.lineEdit_actors_website.setStyleSheet(
-            ' font: "Courier";\n'
+            ' font: "Courier New";\n'
             "                                border: 1px solid rgba(0,0,0, 50);\n"
             "                                border-radius: 15px;\n"
             ""
@@ -3596,7 +3596,7 @@ class Ui_MDCx(object):
         self.lineEdit_title_website.setSizePolicy(sizePolicy)
         self.lineEdit_title_website.setMinimumSize(QtCore.QSize(300, 30))
         self.lineEdit_title_website.setStyleSheet(
-            ' font: "Courier";\n'
+            ' font: "Courier New";\n'
             "                                border: 1px solid rgba(0,0,0, 50);\n"
             "                                border-radius: 15px;\n"
             ""
@@ -3611,7 +3611,7 @@ class Ui_MDCx(object):
         self.lineEdit_outline_website.setSizePolicy(sizePolicy)
         self.lineEdit_outline_website.setMinimumSize(QtCore.QSize(300, 30))
         self.lineEdit_outline_website.setStyleSheet(
-            ' font: "Courier";\n'
+            ' font: "Courier New";\n'
             "                                border: 1px solid rgba(0,0,0, 50);\n"
             "                                border-radius: 15px;\n"
             ""
@@ -3626,7 +3626,7 @@ class Ui_MDCx(object):
         self.lineEdit_poster_website.setSizePolicy(sizePolicy)
         self.lineEdit_poster_website.setMinimumSize(QtCore.QSize(300, 30))
         self.lineEdit_poster_website.setStyleSheet(
-            ' font: "Courier";\n'
+            ' font: "Courier New";\n'
             "                                border: 1px solid rgba(0,0,0, 50);\n"
             "                                border-radius: 15px;\n"
             ""
@@ -3673,7 +3673,7 @@ class Ui_MDCx(object):
         self.lineEdit_extrafanart_website.setSizePolicy(sizePolicy)
         self.lineEdit_extrafanart_website.setMinimumSize(QtCore.QSize(300, 30))
         self.lineEdit_extrafanart_website.setStyleSheet(
-            ' font: "Courier";\n'
+            ' font: "Courier New";\n'
             "                                border: 1px solid rgba(0,0,0, 50);\n"
             "                                border-radius: 15px;\n"
             ""
@@ -3688,7 +3688,7 @@ class Ui_MDCx(object):
         self.lineEdit_score_website.setSizePolicy(sizePolicy)
         self.lineEdit_score_website.setMinimumSize(QtCore.QSize(300, 30))
         self.lineEdit_score_website.setStyleSheet(
-            ' font: "Courier";\n'
+            ' font: "Courier New";\n'
             "                                border: 1px solid rgba(0,0,0, 50);\n"
             "                                border-radius: 15px;\n"
             ""
@@ -3735,7 +3735,7 @@ class Ui_MDCx(object):
         self.lineEdit_originaltitle_website.setSizePolicy(sizePolicy)
         self.lineEdit_originaltitle_website.setMinimumSize(QtCore.QSize(300, 30))
         self.lineEdit_originaltitle_website.setStyleSheet(
-            ' font: "Courier";\n'
+            ' font: "Courier New";\n'
             "                                border: 1px solid rgba(0,0,0, 50);\n"
             "                                border-radius: 15px;\n"
             ""
@@ -3798,7 +3798,7 @@ class Ui_MDCx(object):
         self.lineEdit_runtime_website.setSizePolicy(sizePolicy)
         self.lineEdit_runtime_website.setMinimumSize(QtCore.QSize(300, 30))
         self.lineEdit_runtime_website.setStyleSheet(
-            ' font: "Courier";\n'
+            ' font: "Courier New";\n'
             "                                border: 1px solid rgba(0,0,0, 50);\n"
             "                                border-radius: 15px;\n"
             ""
@@ -3813,7 +3813,7 @@ class Ui_MDCx(object):
         self.lineEdit_wanted_website.setSizePolicy(sizePolicy)
         self.lineEdit_wanted_website.setMinimumSize(QtCore.QSize(300, 30))
         self.lineEdit_wanted_website.setStyleSheet(
-            ' font: "Courier";\n'
+            ' font: "Courier New";\n'
             "                                border: 1px solid rgba(0,0,0, 50);\n"
             "                                border-radius: 15px;\n"
             ""
@@ -3828,7 +3828,7 @@ class Ui_MDCx(object):
         self.lineEdit_studio_website.setSizePolicy(sizePolicy)
         self.lineEdit_studio_website.setMinimumSize(QtCore.QSize(300, 30))
         self.lineEdit_studio_website.setStyleSheet(
-            ' font: "Courier";\n'
+            ' font: "Courier New";\n'
             "                                border: 1px solid rgba(0,0,0, 50);\n"
             "                                border-radius: 15px;\n"
             ""
@@ -3859,7 +3859,7 @@ class Ui_MDCx(object):
         self.lineEdit_tags_website.setSizePolicy(sizePolicy)
         self.lineEdit_tags_website.setMinimumSize(QtCore.QSize(300, 30))
         self.lineEdit_tags_website.setStyleSheet(
-            ' font: "Courier";\n'
+            ' font: "Courier New";\n'
             "                                border: 1px solid rgba(0,0,0, 50);\n"
             "                                border-radius: 15px;\n"
             ""
@@ -3922,7 +3922,7 @@ class Ui_MDCx(object):
         self.lineEdit_originalplot_website.setSizePolicy(sizePolicy)
         self.lineEdit_originalplot_website.setMinimumSize(QtCore.QSize(300, 30))
         self.lineEdit_originalplot_website.setStyleSheet(
-            ' font: "Courier";\n'
+            ' font: "Courier New";\n'
             "                                border: 1px solid rgba(0,0,0, 50);\n"
             "                                border-radius: 15px;\n"
             ""
@@ -3953,7 +3953,7 @@ class Ui_MDCx(object):
         self.lineEdit_publisher_website.setSizePolicy(sizePolicy)
         self.lineEdit_publisher_website.setMinimumSize(QtCore.QSize(300, 30))
         self.lineEdit_publisher_website.setStyleSheet(
-            ' font: "Courier";\n'
+            ' font: "Courier New";\n'
             "                                border: 1px solid rgba(0,0,0, 50);\n"
             "                                border-radius: 15px;\n"
             ""
@@ -3968,7 +3968,7 @@ class Ui_MDCx(object):
         self.lineEdit_directors_website.setSizePolicy(sizePolicy)
         self.lineEdit_directors_website.setMinimumSize(QtCore.QSize(300, 30))
         self.lineEdit_directors_website.setStyleSheet(
-            ' font: "Courier";\n'
+            ' font: "Courier New";\n'
             "                                border: 1px solid rgba(0,0,0, 50);\n"
             "                                border-radius: 15px;\n"
             ""
@@ -3999,7 +3999,7 @@ class Ui_MDCx(object):
         self.lineEdit_thumb_website.setSizePolicy(sizePolicy)
         self.lineEdit_thumb_website.setMinimumSize(QtCore.QSize(300, 30))
         self.lineEdit_thumb_website.setStyleSheet(
-            ' font: "Courier";\n'
+            ' font: "Courier New";\n'
             "                                border: 1px solid rgba(0,0,0, 50);\n"
             "                                border-radius: 15px;\n"
             ""
@@ -4030,7 +4030,7 @@ class Ui_MDCx(object):
         self.lineEdit_release_website.setSizePolicy(sizePolicy)
         self.lineEdit_release_website.setMinimumSize(QtCore.QSize(300, 30))
         self.lineEdit_release_website.setStyleSheet(
-            ' font: "Courier";\n'
+            ' font: "Courier New";\n'
             "                                border: 1px solid rgba(0,0,0, 50);\n"
             "                                border-radius: 15px;\n"
             ""
@@ -4093,7 +4093,7 @@ class Ui_MDCx(object):
         self.lineEdit_series_website.setSizePolicy(sizePolicy)
         self.lineEdit_series_website.setMinimumSize(QtCore.QSize(300, 30))
         self.lineEdit_series_website.setStyleSheet(
-            ' font: "Courier";\n'
+            ' font: "Courier New";\n'
             "                                border: 1px solid rgba(0,0,0, 50);\n"
             "                                border-radius: 15px;\n"
             ""
@@ -4108,7 +4108,7 @@ class Ui_MDCx(object):
         self.lineEdit_trailer_website.setSizePolicy(sizePolicy)
         self.lineEdit_trailer_website.setMinimumSize(QtCore.QSize(300, 30))
         self.lineEdit_trailer_website.setStyleSheet(
-            ' font: "Courier";\n'
+            ' font: "Courier New";\n'
             "                                border: 1px solid rgba(0,0,0, 50);\n"
             "                                border-radius: 15px;\n"
             ""
@@ -4123,7 +4123,7 @@ class Ui_MDCx(object):
         self.lineEdit_all_actors_website.setSizePolicy(sizePolicy)
         self.lineEdit_all_actors_website.setMinimumSize(QtCore.QSize(300, 30))
         self.lineEdit_all_actors_website.setStyleSheet(
-            ' font: "Courier";\n'
+            ' font: "Courier New";\n'
             "                                border: 1px solid rgba(0,0,0, 50);\n"
             "                                border-radius: 15px;\n"
             ""
@@ -4659,7 +4659,7 @@ class Ui_MDCx(object):
         self.label_79.setObjectName("label_79")
         self.groupBox_51 = QtWidgets.QGroupBox(parent=self.scrollAreaWidgetContents_xiazai)
         self.groupBox_51.setGeometry(QtCore.QRect(30, 1370, 701, 211))
-        self.groupBox_51.setStyleSheet('font:"Courier";')
+        self.groupBox_51.setStyleSheet('font:"Courier New";')
         self.groupBox_51.setObjectName("groupBox_51")
         self.label_87 = QtWidgets.QLabel(parent=self.groupBox_51)
         self.label_87.setGeometry(QtCore.QRect(60, 70, 641, 71))
@@ -4718,7 +4718,7 @@ class Ui_MDCx(object):
         self.lineEdit_extrafanart_dir.setSizePolicy(sizePolicy)
         self.lineEdit_extrafanart_dir.setMinimumSize(QtCore.QSize(300, 30))
         self.lineEdit_extrafanart_dir.setStyleSheet(
-            ' font: "Courier";\n'
+            ' font: "Courier New";\n'
             "                                border: 1px solid rgba(0,0,0, 50);\n"
             "                                border-radius: 15px;\n"
             ""
@@ -4835,7 +4835,7 @@ class Ui_MDCx(object):
         self.horizontalLayout_158.addWidget(self.label_amazon_skip_poster_size_precheck)
         self.groupBox_66 = QtWidgets.QGroupBox(parent=self.scrollAreaWidgetContents_xiazai)
         self.groupBox_66.setGeometry(QtCore.QRect(30, 870, 701, 201))
-        self.groupBox_66.setStyleSheet('font:"Courier";')
+        self.groupBox_66.setStyleSheet('font:"Courier New";')
         self.groupBox_66.setObjectName("groupBox_66")
         self.label_333 = QtWidgets.QLabel(parent=self.groupBox_66)
         self.label_333.setGeometry(QtCore.QRect(60, 70, 641, 41))
@@ -4891,7 +4891,7 @@ class Ui_MDCx(object):
         self.scrollAreaWidgetContents_mingming.setObjectName("scrollAreaWidgetContents_mingming")
         self.groupBox_8 = QtWidgets.QGroupBox(parent=self.scrollAreaWidgetContents_mingming)
         self.groupBox_8.setGeometry(QtCore.QRect(30, 20, 701, 1051))
-        self.groupBox_8.setStyleSheet('font:"Courier";')
+        self.groupBox_8.setStyleSheet('font:"Courier New";')
         self.groupBox_8.setObjectName("groupBox_8")
         self.gridLayoutWidget_8 = QtWidgets.QWidget(parent=self.groupBox_8)
         self.gridLayoutWidget_8.setGeometry(QtCore.QRect(20, 30, 661, 1001))
@@ -4902,7 +4902,7 @@ class Ui_MDCx(object):
         self.lineEdit_prevent_char = QtWidgets.QLineEdit(parent=self.gridLayoutWidget_8)
         self.lineEdit_prevent_char.setMinimumSize(QtCore.QSize(450, 30))
         self.lineEdit_prevent_char.setStyleSheet(
-            ' font: "Courier";\n'
+            ' font: "Courier New";\n'
             "                                border: 1px solid rgba(0,0,0, 50);\n"
             "                                border-radius: 15px;\n"
             ""
@@ -4912,7 +4912,7 @@ class Ui_MDCx(object):
         self.lineEdit_media_name = QtWidgets.QLineEdit(parent=self.gridLayoutWidget_8)
         self.lineEdit_media_name.setMinimumSize(QtCore.QSize(450, 30))
         self.lineEdit_media_name.setStyleSheet(
-            ' font: "Courier";\n'
+            ' font: "Courier New";\n'
             "                                border: 1px solid rgba(0,0,0, 50);\n"
             "                                border-radius: 15px;\n"
             ""
@@ -4953,7 +4953,7 @@ class Ui_MDCx(object):
         self.lineEdit_dir_name = QtWidgets.QLineEdit(parent=self.gridLayoutWidget_8)
         self.lineEdit_dir_name.setMinimumSize(QtCore.QSize(450, 30))
         self.lineEdit_dir_name.setStyleSheet(
-            ' font: "Courier";\n'
+            ' font: "Courier New";\n'
             "                                border: 1px solid rgba(0,0,0, 50);\n"
             "                                border-radius: 15px;\n"
             ""
@@ -5037,7 +5037,7 @@ class Ui_MDCx(object):
         self.lineEdit_local_name = QtWidgets.QLineEdit(parent=self.gridLayoutWidget_8)
         self.lineEdit_local_name.setMinimumSize(QtCore.QSize(450, 30))
         self.lineEdit_local_name.setStyleSheet(
-            ' font: "Courier";\n'
+            ' font: "Courier New";\n'
             "                                border: 1px solid rgba(0,0,0, 50);\n"
             "                                border-radius: 15px;\n"
             ""
@@ -5078,7 +5078,7 @@ class Ui_MDCx(object):
         self.plainTextEdit_name_template_preview = QtWidgets.QPlainTextEdit(parent=self.gridLayoutWidget_8)
         self.plainTextEdit_name_template_preview.setMinimumSize(QtCore.QSize(450, 72))
         self.plainTextEdit_name_template_preview.setStyleSheet(
-            ' font: "Courier";\n'
+            ' font: "Courier New";\n'
             "                                border: 1px solid rgba(0,0,0, 50);\n"
             "                                border-radius: 8px;\n"
             ""
@@ -5283,13 +5283,13 @@ class Ui_MDCx(object):
         self.label_430.setObjectName("label_430")
         self.groupBox_77 = QtWidgets.QGroupBox(parent=self.scrollAreaWidgetContents_mingming)
         self.groupBox_77.setGeometry(QtCore.QRect(30, 1520, 701, 351))
-        self.groupBox_77.setStyleSheet('font:"Courier";')
+        self.groupBox_77.setStyleSheet('font:"Courier New";')
         self.groupBox_77.setObjectName("groupBox_77")
         self.lineEdit_file_name_max = QtWidgets.QLineEdit(parent=self.groupBox_77)
         self.lineEdit_file_name_max.setGeometry(QtCore.QRect(157, 128, 521, 30))
         self.lineEdit_file_name_max.setMinimumSize(QtCore.QSize(450, 30))
         self.lineEdit_file_name_max.setStyleSheet(
-            ' font: "Courier";\n'
+            ' font: "Courier New";\n'
             "                          border: 1px solid rgba(0,0,0, 50);\n"
             "                          border-radius: 15px;\n"
             ""
@@ -5375,7 +5375,7 @@ class Ui_MDCx(object):
         self.lineEdit_folder_name_max.setGeometry(QtCore.QRect(157, 36, 521, 30))
         self.lineEdit_folder_name_max.setMinimumSize(QtCore.QSize(450, 30))
         self.lineEdit_folder_name_max.setStyleSheet(
-            ' font: "Courier";\n'
+            ' font: "Courier New";\n'
             "                          border: 1px solid rgba(0,0,0, 50);\n"
             "                          border-radius: 15px;\n"
             ""
@@ -5385,7 +5385,7 @@ class Ui_MDCx(object):
         self.lineEdit_actor_name_max.setGeometry(QtCore.QRect(157, 220, 521, 30))
         self.lineEdit_actor_name_max.setMinimumSize(QtCore.QSize(450, 30))
         self.lineEdit_actor_name_max.setStyleSheet(
-            ' font: "Courier";\n'
+            ' font: "Courier New";\n'
             "                          border: 1px solid rgba(0,0,0, 50);\n"
             "                          border-radius: 15px;\n"
             ""
@@ -5395,7 +5395,7 @@ class Ui_MDCx(object):
         self.lineEdit_actor_name_more.setGeometry(QtCore.QRect(157, 302, 211, 30))
         self.lineEdit_actor_name_more.setMinimumSize(QtCore.QSize(0, 30))
         self.lineEdit_actor_name_more.setStyleSheet(
-            ' font: "Courier";\n'
+            ' font: "Courier New";\n'
             "                          border: 1px solid rgba(0,0,0, 50);\n"
             "                          border-radius: 15px;\n"
             ""
@@ -5484,7 +5484,7 @@ class Ui_MDCx(object):
         self.lineEdit_youma_style.setGeometry(QtCore.QRect(157, 352, 450, 30))
         self.lineEdit_youma_style.setMinimumSize(QtCore.QSize(450, 30))
         self.lineEdit_youma_style.setStyleSheet(
-            ' font: "Courier";\n'
+            ' font: "Courier New";\n'
             "                          border: 1px solid rgba(0,0,0, 50);\n"
             "                          border-radius: 15px;\n"
             ""
@@ -5555,7 +5555,7 @@ class Ui_MDCx(object):
         self.lineEdit_wuma_style.setGeometry(QtCore.QRect(157, 240, 450, 30))
         self.lineEdit_wuma_style.setMinimumSize(QtCore.QSize(450, 30))
         self.lineEdit_wuma_style.setStyleSheet(
-            ' font: "Courier";\n'
+            ' font: "Courier New";\n'
             "                          border: 1px solid rgba(0,0,0, 50);\n"
             "                          border-radius: 15px;\n"
             ""
@@ -5580,7 +5580,7 @@ class Ui_MDCx(object):
         self.lineEdit_umr_style.setGeometry(QtCore.QRect(157, 36, 450, 30))
         self.lineEdit_umr_style.setMinimumSize(QtCore.QSize(450, 30))
         self.lineEdit_umr_style.setStyleSheet(
-            ' font: "Courier";\n'
+            ' font: "Courier New";\n'
             "                          border: 1px solid rgba(0,0,0, 50);\n"
             "                          border-radius: 15px;\n"
             ""
@@ -5680,7 +5680,7 @@ class Ui_MDCx(object):
         self.lineEdit_leak_style.setGeometry(QtCore.QRect(157, 148, 450, 30))
         self.lineEdit_leak_style.setMinimumSize(QtCore.QSize(450, 30))
         self.lineEdit_leak_style.setStyleSheet(
-            ' font: "Courier";\n'
+            ' font: "Courier New";\n'
             "                          border: 1px solid rgba(0,0,0, 50);\n"
             "                          border-radius: 15px;\n"
             ""
@@ -5863,7 +5863,7 @@ class Ui_MDCx(object):
         self.lineEdit_actor_no_name = QtWidgets.QLineEdit(parent=self.gridLayoutWidget_26)
         self.lineEdit_actor_no_name.setMinimumSize(QtCore.QSize(450, 30))
         self.lineEdit_actor_no_name.setStyleSheet(
-            ' font: "Courier";\n'
+            ' font: "Courier New";\n'
             "                                border: 1px solid rgba(0,0,0, 50);\n"
             "                                border-radius: 15px;\n"
             ""
@@ -5915,7 +5915,7 @@ class Ui_MDCx(object):
         self.lineEdit_release_rule = QtWidgets.QLineEdit(parent=self.gridLayoutWidget_26)
         self.lineEdit_release_rule.setMinimumSize(QtCore.QSize(450, 30))
         self.lineEdit_release_rule.setStyleSheet(
-            ' font: "Courier";\n'
+            ' font: "Courier New";\n'
             "                                border: 1px solid rgba(0,0,0, 50);\n"
             "                                border-radius: 15px;\n"
             ""
@@ -5949,7 +5949,7 @@ class Ui_MDCx(object):
         self.lineEdit_suffix_sort = QtWidgets.QLineEdit(parent=self.gridLayoutWidget_26)
         self.lineEdit_suffix_sort.setMinimumSize(QtCore.QSize(450, 30))
         self.lineEdit_suffix_sort.setStyleSheet(
-            ' font: "Courier";\n'
+            ' font: "Courier New";\n'
             "                                border: 1px solid rgba(0,0,0, 50);\n"
             "                                border-radius: 15px;\n"
             ""
@@ -6289,7 +6289,7 @@ class Ui_MDCx(object):
         self.lineEdit_deepl_key.setSizePolicy(sizePolicy)
         self.lineEdit_deepl_key.setMinimumSize(QtCore.QSize(300, 30))
         self.lineEdit_deepl_key.setStyleSheet(
-            ' font: "Courier";\n'
+            ' font: "Courier New";\n'
             "                                border: 1px solid rgba(0,0,0, 50);\n"
             "                                border-radius: 15px;\n"
             ""
@@ -6320,7 +6320,7 @@ class Ui_MDCx(object):
         self.lineEdit_deeplx_url.setSizePolicy(sizePolicy)
         self.lineEdit_deeplx_url.setMinimumSize(QtCore.QSize(300, 30))
         self.lineEdit_deeplx_url.setStyleSheet(
-            ' font: "Courier";\n'
+            ' font: "Courier New";\n'
             "                                border: 1px solid rgba(0,0,0, 50);\n"
             "                                border-radius: 15px;\n"
             ""
@@ -6379,7 +6379,7 @@ class Ui_MDCx(object):
         self.lineEdit_llm_url = QtWidgets.QLineEdit(parent=self.gridLayoutWidget_llm)
         self.lineEdit_llm_url.setMinimumSize(QtCore.QSize(300, 30))
         self.lineEdit_llm_url.setStyleSheet(
-            ' font: "Courier";\n'
+            ' font: "Courier New";\n'
             "                                border: 1px solid rgba(0,0,0, 50);\n"
             "                                border-radius: 15px;\n"
             ""
@@ -6416,7 +6416,7 @@ class Ui_MDCx(object):
         self.lineEdit_llm_model = QtWidgets.QLineEdit(parent=self.gridLayoutWidget_llm)
         self.lineEdit_llm_model.setMinimumSize(QtCore.QSize(300, 30))
         self.lineEdit_llm_model.setStyleSheet(
-            ' font: "Courier";\n'
+            ' font: "Courier New";\n'
             "                                border: 1px solid rgba(0,0,0, 50);\n"
             "                                border-radius: 15px;\n"
             ""
@@ -6435,7 +6435,7 @@ class Ui_MDCx(object):
         self.lineEdit_llm_key = QtWidgets.QLineEdit(parent=self.gridLayoutWidget_llm)
         self.lineEdit_llm_key.setMinimumSize(QtCore.QSize(300, 30))
         self.lineEdit_llm_key.setStyleSheet(
-            ' font: "Courier";\n'
+            ' font: "Courier New";\n'
             "                                border: 1px solid rgba(0,0,0, 50);\n"
             "                                border-radius: 15px;\n"
             ""
@@ -6456,7 +6456,7 @@ class Ui_MDCx(object):
         self.textEdit_llm_prompt_title.setStyleSheet(
             " border: 1px solid rgba(0,0,0, 50);\n"
             "                                border-radius: 1px;\n"
-            '                                font: "Courier";'
+            '                                font: "Courier New";'
         )
         self.textEdit_llm_prompt_title.setObjectName("textEdit_llm_prompt_title")
         self.gridLayout_llm.addWidget(self.textEdit_llm_prompt_title, 5, 1, 1, 1)
@@ -6474,7 +6474,7 @@ class Ui_MDCx(object):
         self.textEdit_llm_prompt_outline.setStyleSheet(
             " border: 1px solid rgba(0,0,0, 50);\n"
             "                                border-radius: 1px;\n"
-            '                                font: "Courier";'
+            '                                font: "Courier New";'
         )
         self.textEdit_llm_prompt_outline.setObjectName("textEdit_llm_prompt_outline")
         self.gridLayout_llm.addWidget(self.textEdit_llm_prompt_outline, 6, 1, 1, 1)
@@ -7166,7 +7166,7 @@ class Ui_MDCx(object):
         self.scrollAreaWidgetContents_zimu.setObjectName("scrollAreaWidgetContents_zimu")
         self.groupBox_20 = QtWidgets.QGroupBox(parent=self.scrollAreaWidgetContents_zimu)
         self.groupBox_20.setGeometry(QtCore.QRect(30, 20, 701, 271))
-        self.groupBox_20.setStyleSheet('font:"Courier";')
+        self.groupBox_20.setStyleSheet('font:"Courier New";')
         self.groupBox_20.setObjectName("groupBox_20")
         self.gridLayoutWidget_17 = QtWidgets.QWidget(parent=self.groupBox_20)
         self.gridLayoutWidget_17.setGeometry(QtCore.QRect(20, 30, 661, 221))
@@ -7177,7 +7177,7 @@ class Ui_MDCx(object):
         self.lineEdit_cnword_style = QtWidgets.QLineEdit(parent=self.gridLayoutWidget_17)
         self.lineEdit_cnword_style.setMinimumSize(QtCore.QSize(450, 30))
         self.lineEdit_cnword_style.setStyleSheet(
-            ' font: "Courier";\n'
+            ' font: "Courier New";\n'
             "                                border: 1px solid rgba(0,0,0, 50);\n"
             "                                border-radius: 15px;\n"
             ""
@@ -7202,7 +7202,7 @@ class Ui_MDCx(object):
         self.lineEdit_cnword_char = QtWidgets.QLineEdit(parent=self.gridLayoutWidget_17)
         self.lineEdit_cnword_char.setMinimumSize(QtCore.QSize(450, 30))
         self.lineEdit_cnword_char.setStyleSheet(
-            ' font: "Courier";\n'
+            ' font: "Courier New";\n'
             "                                border: 1px solid rgba(0,0,0, 50);\n"
             "                                border-radius: 15px;\n"
             ""
@@ -7290,7 +7290,7 @@ class Ui_MDCx(object):
         self.gridLayout_17.addWidget(self.label_120, 4, 0, 1, 1)
         self.groupBox_45 = QtWidgets.QGroupBox(parent=self.scrollAreaWidgetContents_zimu)
         self.groupBox_45.setGeometry(QtCore.QRect(30, 310, 701, 451))
-        self.groupBox_45.setStyleSheet('font:"Courier";')
+        self.groupBox_45.setStyleSheet('font:"Courier New";')
         self.groupBox_45.setObjectName("groupBox_45")
         self.gridLayoutWidget_27 = QtWidgets.QWidget(parent=self.groupBox_45)
         self.gridLayoutWidget_27.setGeometry(QtCore.QRect(20, 30, 661, 186))
@@ -7398,7 +7398,7 @@ class Ui_MDCx(object):
         self.lineEdit_sub_folder.setSizePolicy(sizePolicy)
         self.lineEdit_sub_folder.setMinimumSize(QtCore.QSize(300, 30))
         self.lineEdit_sub_folder.setStyleSheet(
-            ' font: "Courier";\n'
+            ' font: "Courier New";\n'
             "                                    border: 1px solid rgba(0,0,0, 50);\n"
             "                                    border-radius: 15px;\n"
             ""
@@ -7466,7 +7466,7 @@ class Ui_MDCx(object):
         self.scrollAreaWidgetContents_shuiyin.setObjectName("scrollAreaWidgetContents_shuiyin")
         self.groupBox_26 = QtWidgets.QGroupBox(parent=self.scrollAreaWidgetContents_shuiyin)
         self.groupBox_26.setGeometry(QtCore.QRect(30, 1010, 701, 561))
-        self.groupBox_26.setStyleSheet('font:"Courier";')
+        self.groupBox_26.setStyleSheet('font:"Courier New";')
         self.groupBox_26.setObjectName("groupBox_26")
         self.label_118 = QtWidgets.QLabel(parent=self.groupBox_26)
         self.label_118.setGeometry(QtCore.QRect(50, 70, 631, 461))
@@ -7501,7 +7501,7 @@ class Ui_MDCx(object):
         self.label_download_mark_zip.setObjectName("label_download_mark_zip")
         self.groupBox_31 = QtWidgets.QGroupBox(parent=self.scrollAreaWidgetContents_shuiyin)
         self.groupBox_31.setGeometry(QtCore.QRect(30, 20, 701, 511))
-        self.groupBox_31.setStyleSheet('font:"Courier";')
+        self.groupBox_31.setStyleSheet('font:"Courier New";')
         self.groupBox_31.setObjectName("groupBox_31")
         self.gridLayoutWidget_24 = QtWidgets.QWidget(parent=self.groupBox_31)
         self.gridLayoutWidget_24.setGeometry(QtCore.QRect(20, 30, 661, 461))
@@ -7767,7 +7767,7 @@ class Ui_MDCx(object):
         self.gridLayout_24.addWidget(self.label_130, 1, 1, 1, 1)
         self.groupBox_36 = QtWidgets.QGroupBox(parent=self.scrollAreaWidgetContents_shuiyin)
         self.groupBox_36.setGeometry(QtCore.QRect(30, 550, 701, 101))
-        self.groupBox_36.setStyleSheet('font:"Courier";')
+        self.groupBox_36.setStyleSheet('font:"Courier New";')
         self.groupBox_36.setObjectName("groupBox_36")
         self.gridLayoutWidget_30 = QtWidgets.QWidget(parent=self.groupBox_36)
         self.gridLayoutWidget_30.setGeometry(QtCore.QRect(20, 30, 664, 51))
@@ -7831,7 +7831,7 @@ class Ui_MDCx(object):
         self.gridLayout_30.addWidget(self.label_126, 0, 0, 1, 1)
         self.groupBox_42 = QtWidgets.QGroupBox(parent=self.scrollAreaWidgetContents_shuiyin)
         self.groupBox_42.setGeometry(QtCore.QRect(30, 790, 701, 201))
-        self.groupBox_42.setStyleSheet('font:"Courier";')
+        self.groupBox_42.setStyleSheet('font:"Courier New";')
         self.groupBox_42.setObjectName("groupBox_42")
         self.gridLayoutWidget_31 = QtWidgets.QWidget(parent=self.groupBox_42)
         self.gridLayoutWidget_31.setGeometry(QtCore.QRect(20, 30, 664, 59))
@@ -8015,7 +8015,7 @@ class Ui_MDCx(object):
         self.gridLayout_39.addWidget(self.label_216, 0, 0, 1, 1)
         self.groupBox_39 = QtWidgets.QGroupBox(parent=self.scrollAreaWidgetContents_shuiyin)
         self.groupBox_39.setGeometry(QtCore.QRect(30, 670, 701, 101))
-        self.groupBox_39.setStyleSheet('font:"Courier";')
+        self.groupBox_39.setStyleSheet('font:"Courier New";')
         self.groupBox_39.setObjectName("groupBox_39")
         self.gridLayoutWidget_33 = QtWidgets.QWidget(parent=self.groupBox_39)
         self.gridLayoutWidget_33.setGeometry(QtCore.QRect(20, 30, 664, 51))
@@ -8190,7 +8190,7 @@ class Ui_MDCx(object):
         self.lineEdit_nfo_tagline.setSizePolicy(sizePolicy)
         self.lineEdit_nfo_tagline.setMinimumSize(QtCore.QSize(0, 30))
         self.lineEdit_nfo_tagline.setStyleSheet(
-            ' font: "Courier";\n'
+            ' font: "Courier New";\n'
             "                                border: 1px solid rgba(0,0,0, 50);\n"
             "                                border-radius: 15px;\n"
             ""
@@ -8401,7 +8401,7 @@ class Ui_MDCx(object):
         self.lineEdit_nfo_tag_series.setSizePolicy(sizePolicy)
         self.lineEdit_nfo_tag_series.setMinimumSize(QtCore.QSize(0, 30))
         self.lineEdit_nfo_tag_series.setStyleSheet(
-            ' font: "Courier";\n'
+            ' font: "Courier New";\n'
             "                                    border: 1px solid rgba(0,0,0, 50);\n"
             "                                    border-radius: 15px;\n"
             ""
@@ -8435,7 +8435,7 @@ class Ui_MDCx(object):
         self.lineEdit_nfo_tag_studio.setSizePolicy(sizePolicy)
         self.lineEdit_nfo_tag_studio.setMinimumSize(QtCore.QSize(0, 30))
         self.lineEdit_nfo_tag_studio.setStyleSheet(
-            ' font: "Courier";\n'
+            ' font: "Courier New";\n'
             "                                    border: 1px solid rgba(0,0,0, 50);\n"
             "                                    border-radius: 15px;\n"
             ""
@@ -8679,7 +8679,7 @@ class Ui_MDCx(object):
         self.lineEdit_nfo_tag_publisher.setSizePolicy(sizePolicy)
         self.lineEdit_nfo_tag_publisher.setMinimumSize(QtCore.QSize(0, 30))
         self.lineEdit_nfo_tag_publisher.setStyleSheet(
-            ' font: "Courier";\n'
+            ' font: "Courier New";\n'
             "                                    border: 1px solid rgba(0,0,0, 50);\n"
             "                                    border-radius: 15px;\n"
             ""
@@ -8945,7 +8945,7 @@ class Ui_MDCx(object):
         self.lineEdit_nfo_tag_actor.setSizePolicy(sizePolicy)
         self.lineEdit_nfo_tag_actor.setMinimumSize(QtCore.QSize(0, 30))
         self.lineEdit_nfo_tag_actor.setStyleSheet(
-            ' font: "Courier";\n'
+            ' font: "Courier New";\n'
             "                                    border: 1px solid rgba(0,0,0, 50);\n"
             "                                    border-radius: 15px;\n"
             ""
@@ -8995,7 +8995,7 @@ class Ui_MDCx(object):
         self.lineEdit_nfo_tag_actor_contains.setSizePolicy(sizePolicy)
         self.lineEdit_nfo_tag_actor_contains.setMinimumSize(QtCore.QSize(0, 30))
         self.lineEdit_nfo_tag_actor_contains.setStyleSheet(
-            ' font: "Courier";\n'
+            ' font: "Courier New";\n'
             "                                    border: 1px solid rgba(0,0,0, 50);\n"
             "                                    border-radius: 15px;\n"
             ""
@@ -9103,7 +9103,7 @@ class Ui_MDCx(object):
         self.scrollAreaWidgetContents_yanyuan.setObjectName("scrollAreaWidgetContents_yanyuan")
         self.groupBox_43 = QtWidgets.QGroupBox(parent=self.scrollAreaWidgetContents_yanyuan)
         self.groupBox_43.setGeometry(QtCore.QRect(30, 20, 701, 321))
-        self.groupBox_43.setStyleSheet('font:"Courier";')
+        self.groupBox_43.setStyleSheet('font:"Courier New";')
         self.groupBox_43.setObjectName("groupBox_43")
         self.gridLayoutWidget_25 = QtWidgets.QWidget(parent=self.groupBox_43)
         self.gridLayoutWidget_25.setGeometry(QtCore.QRect(20, 30, 661, 292))
@@ -9119,7 +9119,7 @@ class Ui_MDCx(object):
         self.lineEdit_user_id.setSizePolicy(sizePolicy)
         self.lineEdit_user_id.setMinimumSize(QtCore.QSize(300, 30))
         self.lineEdit_user_id.setStyleSheet(
-            ' font: "Courier";\n'
+            ' font: "Courier New";\n'
             "                                border: 1px solid rgba(0,0,0, 50);\n"
             "                                border-radius: 15px;\n"
             ""
@@ -9197,7 +9197,7 @@ class Ui_MDCx(object):
         self.lineEdit_emby_url.setSizePolicy(sizePolicy)
         self.lineEdit_emby_url.setMinimumSize(QtCore.QSize(300, 30))
         self.lineEdit_emby_url.setStyleSheet(
-            ' font: "Courier";\n'
+            ' font: "Courier New";\n'
             "                                border: 1px solid rgba(0,0,0, 50);\n"
             "                                border-radius: 15px;\n"
             ""
@@ -9285,7 +9285,7 @@ class Ui_MDCx(object):
         self.lineEdit_api_key.setSizePolicy(sizePolicy)
         self.lineEdit_api_key.setMinimumSize(QtCore.QSize(300, 30))
         self.lineEdit_api_key.setStyleSheet(
-            ' font: "Courier";\n'
+            ' font: "Courier New";\n'
             "                                border: 1px solid rgba(0,0,0, 50);\n"
             "                                border-radius: 15px;\n"
             ""
@@ -9447,7 +9447,7 @@ class Ui_MDCx(object):
         self.lineEdit_net_actor_photo.setSizePolicy(sizePolicy)
         self.lineEdit_net_actor_photo.setMinimumSize(QtCore.QSize(300, 30))
         self.lineEdit_net_actor_photo.setStyleSheet(
-            ' font: "Courier";\n'
+            ' font: "Courier New";\n'
             "                                border: 1px solid rgba(0,0,0, 50);\n"
             "                                border-radius: 15px;\n"
             ""
@@ -9504,7 +9504,7 @@ class Ui_MDCx(object):
         self.lineEdit_actor_photo_folder.setSizePolicy(sizePolicy)
         self.lineEdit_actor_photo_folder.setMinimumSize(QtCore.QSize(300, 30))
         self.lineEdit_actor_photo_folder.setStyleSheet(
-            ' font: "Courier";\n'
+            ' font: "Courier New";\n'
             "                                     border: 1px solid rgba(0,0,0, 50);\n"
             "                                     border-radius: 15px;\n"
             ""
@@ -9571,7 +9571,7 @@ class Ui_MDCx(object):
         self.lineEdit_gfriends_local_path.setSizePolicy(sizePolicy)
         self.lineEdit_gfriends_local_path.setMinimumSize(QtCore.QSize(300, 30))
         self.lineEdit_gfriends_local_path.setStyleSheet(
-            ' font: "Courier";\n'
+            ' font: "Courier New";\n'
             "                                    border: 1px solid rgba(0,0,0, 50);\n"
             "                                    border-radius: 15px;\n"
             ""
@@ -9658,7 +9658,7 @@ class Ui_MDCx(object):
         self.lineEdit_actor_db_path.setSizePolicy(sizePolicy)
         self.lineEdit_actor_db_path.setMinimumSize(QtCore.QSize(300, 30))
         self.lineEdit_actor_db_path.setStyleSheet(
-            'font: "Courier";\n'
+            'font: "Courier New";\n'
             "                                    border: 1px solid rgba(0,0,0, 50);\n"
             "                                    border-radius: 15px;\n"
             "                                  "
@@ -9908,7 +9908,7 @@ class Ui_MDCx(object):
         self.scrollAreaWidgetContents_wangluo.setObjectName("scrollAreaWidgetContents_wangluo")
         self.groupBox_10 = QtWidgets.QGroupBox(parent=self.scrollAreaWidgetContents_wangluo)
         self.groupBox_10.setGeometry(QtCore.QRect(30, 515, 701, 531))
-        self.groupBox_10.setStyleSheet('font:"Courier";')
+        self.groupBox_10.setStyleSheet('font:"Courier New";')
         self.groupBox_10.setObjectName("groupBox_10")
         self.gridLayoutWidget_10 = QtWidgets.QWidget(parent=self.groupBox_10)
         self.gridLayoutWidget_10.setGeometry(QtCore.QRect(20, 30, 661, 280))
@@ -9944,7 +9944,7 @@ class Ui_MDCx(object):
         self.plainTextEdit_cookie_javdb.setStyleSheet(
             " border: 1px solid rgba(0,0,0, 50);\n"
             "                                border-radius: 1px;\n"
-            '                                font: "Courier";'
+            '                                font: "Courier New";'
         )
         self.plainTextEdit_cookie_javdb.setObjectName("plainTextEdit_cookie_javdb")
         self.gridLayout_10.addWidget(self.plainTextEdit_cookie_javdb, 0, 1, 1, 1)
@@ -10004,7 +10004,7 @@ class Ui_MDCx(object):
         self.plainTextEdit_cookie_javbus.setStyleSheet(
             " border: 1px solid rgba(0,0,0, 50);\n"
             "                                border-radius: 1px;\n"
-            '                                font: "Courier";'
+            '                                font: "Courier New";'
         )
         self.plainTextEdit_cookie_javbus.setObjectName("plainTextEdit_cookie_javbus")
         self.gridLayout_10.addWidget(self.plainTextEdit_cookie_javbus, 2, 1, 1, 1)
@@ -10070,7 +10070,7 @@ class Ui_MDCx(object):
         self.label_7.setObjectName("label_7")
         self.groupBox_28 = QtWidgets.QGroupBox(parent=self.scrollAreaWidgetContents_wangluo)
         self.groupBox_28.setGeometry(QtCore.QRect(30, 20, 701, 480))
-        self.groupBox_28.setStyleSheet('font:"Courier";')
+        self.groupBox_28.setStyleSheet('font:"Courier New";')
         self.groupBox_28.setObjectName("groupBox_28")
         self.gridLayoutWidget_9 = QtWidgets.QWidget(parent=self.groupBox_28)
         self.gridLayoutWidget_9.setGeometry(QtCore.QRect(20, 30, 661, 370))
@@ -10184,7 +10184,7 @@ class Ui_MDCx(object):
         self.lineEdit_proxy.setSizePolicy(sizePolicy)
         self.lineEdit_proxy.setMinimumSize(QtCore.QSize(300, 30))
         self.lineEdit_proxy.setStyleSheet(
-            ' font: "Courier";\n'
+            ' font: "Courier New";\n'
             "                                border: 1px solid rgba(0,0,0, 50);\n"
             "                                border-radius: 15px;\n"
             ""
@@ -10230,7 +10230,7 @@ class Ui_MDCx(object):
         self.lineEdit_no_proxy_sites.setSizePolicy(sizePolicy)
         self.lineEdit_no_proxy_sites.setMinimumSize(QtCore.QSize(200, 30))
         self.lineEdit_no_proxy_sites.setStyleSheet(
-            ' font: "Courier";\n'
+            ' font: "Courier New";\n'
             "                                    border: 1px solid rgba(0,0,0, 50);\n"
             "                                    border-radius: 15px;\n"
             ""
@@ -10261,7 +10261,7 @@ class Ui_MDCx(object):
         self.lineEdit_cf_bypass_url.setSizePolicy(sizePolicy)
         self.lineEdit_cf_bypass_url.setMinimumSize(QtCore.QSize(300, 30))
         self.lineEdit_cf_bypass_url.setStyleSheet(
-            ' font: "Courier";\n'
+            ' font: "Courier New";\n'
             "                                border: 1px solid rgba(0,0,0, 50);\n"
             "                                border-radius: 15px;\n"
             ""
@@ -10291,7 +10291,7 @@ class Ui_MDCx(object):
         self.lineEdit_cf_bypass_proxy.setSizePolicy(sizePolicy)
         self.lineEdit_cf_bypass_proxy.setMinimumSize(QtCore.QSize(300, 30))
         self.lineEdit_cf_bypass_proxy.setStyleSheet(
-            ' font: "Courier";\n'
+            ' font: "Courier New";\n'
             "                                border: 1px solid rgba(0,0,0, 50);\n"
             "                                border-radius: 15px;\n"
             ""
@@ -10329,7 +10329,7 @@ class Ui_MDCx(object):
         self.lineEdit_cf_bypass_trusted_hosts.setSizePolicy(sizePolicy)
         self.lineEdit_cf_bypass_trusted_hosts.setMinimumSize(QtCore.QSize(300, 30))
         self.lineEdit_cf_bypass_trusted_hosts.setStyleSheet(
-            ' font: "Courier";\n'
+            ' font: "Courier New";\n'
             "                                border: 1px solid rgba(0,0,0, 50);\n"
             "                                border-radius: 15px;\n"
             ""
@@ -10393,7 +10393,7 @@ class Ui_MDCx(object):
         self.gridLayout_9.addWidget(self.checkBox_verify_ssl, 9, 1, 1, 1)
         self.groupBox_44 = QtWidgets.QGroupBox(parent=self.scrollAreaWidgetContents_wangluo)
         self.groupBox_44.setGeometry(QtCore.QRect(30, 1306, 701, 301))
-        self.groupBox_44.setStyleSheet('font:"Courier";')
+        self.groupBox_44.setStyleSheet('font:"Courier New";')
         self.groupBox_44.setObjectName("groupBox_44")
         self.gridLayoutWidget = QtWidgets.QWidget(parent=self.groupBox_44)
         self.gridLayoutWidget.setGeometry(QtCore.QRect(20, 30, 661, 241))
@@ -10437,7 +10437,7 @@ class Ui_MDCx(object):
         self.lineEdit_site_custom_url.setMinimumSize(QtCore.QSize(300, 30))
         self.lineEdit_site_custom_url.setMaximumSize(QtCore.QSize(16777215, 16777215))
         self.lineEdit_site_custom_url.setStyleSheet(
-            ' font: "Courier";\n'
+            ' font: "Courier New";\n'
             "                                border: 1px solid rgba(0,0,0, 50);\n"
             "                                border-radius: 15px;\n"
             ""
@@ -10492,7 +10492,7 @@ class Ui_MDCx(object):
         self.gridLayout_12.setColumnStretch(0, 2)
         self.groupBox_14 = QtWidgets.QGroupBox(parent=self.scrollAreaWidgetContents_wangluo)
         self.groupBox_14.setGeometry(QtCore.QRect(30, 1061, 701, 230))
-        self.groupBox_14.setStyleSheet('font:"Courier";')
+        self.groupBox_14.setStyleSheet('font:"Courier New";')
         self.groupBox_14.setObjectName("groupBox_14")
         self.gridLayoutWidget_11 = QtWidgets.QWidget(parent=self.groupBox_14)
         self.gridLayoutWidget_11.setGeometry(QtCore.QRect(20, 30, 661, 180))
@@ -10523,7 +10523,7 @@ class Ui_MDCx(object):
         self.lineEdit_api_token_theporndb.setSizePolicy(sizePolicy)
         self.lineEdit_api_token_theporndb.setMinimumSize(QtCore.QSize(300, 30))
         self.lineEdit_api_token_theporndb.setStyleSheet(
-            ' font: "Courier";\n'
+            ' font: "Courier New";\n'
             "                                border: 1px solid rgba(0,0,0, 50);\n"
             "                                border-radius: 15px;\n"
             ""
@@ -10553,7 +10553,7 @@ class Ui_MDCx(object):
         self.lineEdit_tmdb_api_base.setSizePolicy(sizePolicy)
         self.lineEdit_tmdb_api_base.setMinimumSize(QtCore.QSize(300, 30))
         self.lineEdit_tmdb_api_base.setStyleSheet(
-            ' font: "Courier";\n'
+            ' font: "Courier New";\n'
             "                                border: 1px solid rgba(0,0,0, 50);\n"
             "                                border-radius: 15px;\n"
             ""
@@ -10583,7 +10583,7 @@ class Ui_MDCx(object):
         self.lineEdit_tmdb_api_key.setSizePolicy(sizePolicy)
         self.lineEdit_tmdb_api_key.setMinimumSize(QtCore.QSize(300, 30))
         self.lineEdit_tmdb_api_key.setStyleSheet(
-            ' font: "Courier";\n'
+            ' font: "Courier New";\n'
             "                                border: 1px solid rgba(0,0,0, 50);\n"
             "                                border-radius: 15px;\n"
             ""
@@ -10871,7 +10871,7 @@ class Ui_MDCx(object):
         self.lineEdit_timed_interval.setSizePolicy(sizePolicy)
         self.lineEdit_timed_interval.setMinimumSize(QtCore.QSize(0, 30))
         self.lineEdit_timed_interval.setStyleSheet(
-            ' font: "Courier";\n'
+            ' font: "Courier New";\n'
             "                                    border: 1px solid rgba(0,0,0, 50);\n"
             "                                    border-radius: 15px;\n"
             ""
@@ -10949,7 +10949,7 @@ class Ui_MDCx(object):
         self.lineEdit_config_folder.setSizePolicy(sizePolicy)
         self.lineEdit_config_folder.setMinimumSize(QtCore.QSize(0, 30))
         self.lineEdit_config_folder.setStyleSheet(
-            ' font: "Courier";\n'
+            ' font: "Courier New";\n'
             "                                    border: 1px solid rgba(0,0,0, 50);\n"
             "                                    border-radius: 15px;\n"
             ""
@@ -11098,7 +11098,7 @@ class Ui_MDCx(object):
         self.lineEdit_rest_count.setSizePolicy(sizePolicy)
         self.lineEdit_rest_count.setMinimumSize(QtCore.QSize(0, 30))
         self.lineEdit_rest_count.setStyleSheet(
-            ' font: "Courier";\n'
+            ' font: "Courier New";\n'
             "                                    border: 1px solid rgba(0,0,0, 50);\n"
             "                                    border-radius: 15px;\n"
             ""
@@ -11128,7 +11128,7 @@ class Ui_MDCx(object):
         self.lineEdit_rest_time.setSizePolicy(sizePolicy)
         self.lineEdit_rest_time.setMinimumSize(QtCore.QSize(0, 30))
         self.lineEdit_rest_time.setStyleSheet(
-            ' font: "Courier";\n'
+            ' font: "Courier New";\n'
             "                                    border: 1px solid rgba(0,0,0, 50);\n"
             "                                    border-radius: 15px;\n"
             ""
