@@ -1021,7 +1021,7 @@ class ActorSourceTestThread(QThread):
 
 async def _actor_source_test_execute(
     name: str, need_image: bool, need_info: bool
-) -> tuple[list[str], str | None, dict | None]:
+) -> tuple[list[str], str | None, object]:
     """纯数据版本：不操作 UI，返回 (logs, avatar_path, info)。"""
 
     logs: list[str] = []
