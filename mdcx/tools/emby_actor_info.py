@@ -24,7 +24,6 @@ from ..models.flags import Flags
 from ..signals import signal
 from ..utils import get_used_time
 from ..utils.file import copy_file_async
-from .actress_db import ActressDB
 from .emby_actor_image import (
     _build_jellyfin_headers,
     _generate_server_url,
@@ -34,29 +33,11 @@ from .emby_actor_image import (
     _is_jellyfin_server,
     update_emby_actor_photo,
 )
-from .minnano_crawler import get_minnano_info, load_cache
-from .wiki import get_detail, search_wiki
+from .emby_actor_manager import fill_actor_info_from_sources
+from .minnano_crawler import load_cache
 
 
 class ActorTaskStopped(Exception): ...
-
-
-_BIO_TAG_PATTERNS = (
-    (r"身高:\s*([0-9.]+)\s*cm", "身高: {0}cm"),
-    (r"罩杯:\s*([^\s/|]+)", "罩杯: {0}"),
-    (r"三围:\s*([0-9]+/[0-9]+/[0-9]+)", "三围: {0}"),
-    (r"生涯:\s*([0-9~\-]+)", "生涯: {0}"),
-    (r"出身:\s*([^\s|]+)", "出身: {0}"),
-    (r"血型:\s*([A-O]+型)", "血型: {0}"),
-)
-
-
-def _extract_bio_tags(bio: str) -> list[str]:
-    """从 actor_db 简介文本中抽剥结构化字段为 Emby 标签。
-
-    格式与 actor_db_tool._build_bio_line 保持一致（`键: 值 | ...`）。
-    """
-    return [fmt.format(m.group(1)) for pat, fmt in _BIO_TAG_PATTERNS if (m := re.search(pat, bio))]
 
 
 def _is_stop_requested() -> bool:
@@ -180,79 +161,23 @@ async def _process_actor_async(actor: dict, emby_on: list[EmbyAction]) -> tuple[
             return 0, f"✅ {actor_name}: Emby/Jellyfin 已有演员信息！跳过！"
 
         actor_info = EMbyActressInfo(name=actor_name, server_id=server_id, id=actor_id)
-        db_exist = 0
-        wiki_found = 0
-        minnano_found = 0
-        local_found = 0
-        local_overview = ""
-        local_birth_set = False
-        # minnano-av (优先) + wiki (补充)；本地演员库优先
-        logs = []
         _raise_if_stop_requested()
 
-        # 0) 本地演员库命中回填（最优先，离线可用）
-        try:
-            local_data = resources.get_actor_data(actor_name)
-            if local_data.get("has_name"):
-                bd = (local_data.get("birth_date") or "").strip()
-                bio = (local_data.get("bio") or "").strip()
-                if bd:
-                    actor_info.birthday = bd
-                    actor_info.year = bd[:4]
-                    local_birth_set = True
-                if bio:
-                    local_overview = bio.replace("\n", "<br/>")
-                    actor_info.overview = local_overview
-                    for tag in _extract_bio_tags(bio):
-                        if tag not in actor_info.tags:
-                            actor_info.tags.append(tag)
-                if not actor_info.locations:
-                    actor_info.locations = ["日本"]
-                local_found = 1
-                msg_local = f"本地库命中: {actor_name}"
-                if bd:
-                    msg_local += f", 出生日期 {bd}"
-                if bio:
-                    msg_local += f", 简介 {len(bio)} 字"
-                logs.append(msg_local)
-        except Exception:
-            local_found = 0
-
+        # 共用数据源链路：本地→wiki→minnano→db
+        sources, logs = await fill_actor_info_from_sources(
+            actor_info,
+            existing_overview=overview,
+            skip_db_if_marker=EmbyAction.ACTOR_INFO_MISS in emby_on,
+        )
         _raise_if_stop_requested()
 
-        # 本地命中且简介非空：完全采用本地数据，跳过外部网络来源
-        if not (local_found and local_overview):
-            # 先尝试 wiki 获取简介
-            wiki_intro = ""
-            res_wiki, msg_wiki = await search_wiki(actor_info)
-            logs.append(msg_wiki)
-            if res_wiki is not None:
-                result_wiki, error_wiki = await get_detail(res_wiki, msg_wiki, actor_info)
-                _raise_if_stop_requested()
-                if result_wiki:
-                    wiki_intro = actor_info.overview or ""
-                    wiki_found = 1
-
-            # 再用 minnano-av 获取详细信息
-            _raise_if_stop_requested()
-            minnano_ok, msg = await get_minnano_info(actor_info, wiki_intro)
-            logs.append(msg)
-            if minnano_ok:
-                minnano_found = 1
-
-            # db
-            if manager.config.use_database and not minnano_ok and wiki_found == 0:
-                if "数据库补全" in overview and EmbyAction.ACTOR_INFO_MISS in emby_on:
-                    db_exist = 0
-                    logs.append(f"{actor_name}: 已有数据库信息")
-                else:
-                    _raise_if_stop_requested()
-                    db_exist, msg = ActressDB.update_actor_info_from_db(actor_info)
-                    logs.append(msg)
+        wiki_found = int(sources["wiki"])
+        db_exist = sources["db"]
+        minnano_found = int(sources["minnano"])
+        local_applied = sources["local_applied"]
 
         # summary
         summary = "\n    " + "\n".join(logs) if logs else ""
-        local_applied = local_found and (local_overview or local_birth_set)
         if minnano_found or db_exist or wiki_found or local_applied:
             headers = _build_jellyfin_headers() if _is_jellyfin_server() else None
             async with manager.acquire_computed() as computed:

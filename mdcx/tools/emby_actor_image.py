@@ -1,6 +1,5 @@
 import asyncio
 import base64
-import json
 import os
 import re
 import time
@@ -11,7 +10,6 @@ from urllib.parse import quote, urlencode
 
 import aiofiles
 import aiofiles.os
-from parsel import Selector
 
 from ..base.web import download_file_with_filepath
 from ..config.enums import EmbyAction
@@ -21,7 +19,7 @@ from ..image import cut_pic, fix_pic_async
 from ..models.flags import Flags
 from ..signals import signal
 from ..utils import get_used_time
-from ..utils.file import write_file_atomic_async
+from .emby_actor_manager import _parse_graphis_html, get_gfriends_index
 
 JELLYFIN_PERSON_FIELDS = ("Overview", "ProviderIds", "ProductionLocations", "Taglines", "Genres", "Tags")
 
@@ -177,133 +175,13 @@ def _generate_server_url(actor_js: dict) -> tuple[str, str, str, str, str, str]:
     return actor_homepage, actor_person, pic_url, backdrop_url, backdrop_url_0, update_url
 
 
-async def _get_gfriends_actor_data() -> dict[str, str] | Literal[False] | None:
+async def _get_gfriends_actor_data() -> dict[str, str] | Literal[False]:
     _raise_if_stop_requested()
     emby_on = manager.config.emby_on
-    gfriends_github = manager.config.gfriends_github
-    gfriends_local_path = manager.config.gfriends_local_path
-    raw_url = f"{gfriends_github}".replace("github.com/", "raw.githubusercontent.com/").replace("://www.", "://")
-
-    # 优先使用本地仓库
-    if gfriends_local_path and os.path.isdir(gfriends_local_path):
-        local_filetree = os.path.join(gfriends_local_path, "Filetree.json")
-        if os.path.isfile(local_filetree):
-            signal.show_log_text("⏳ 使用本地 Gfriends 仓库...")
-            try:
-                async with aiofiles.open(local_filetree, encoding="utf-8") as f:
-                    content = await f.read()
-                    gfriends_actor_data = json.loads(content)
-                content = gfriends_actor_data.get("Content")
-                new_gfriends_actor_data = {}
-                content_list = list(content.keys())
-                content_list.sort()
-                for each_key in content_list:
-                    for key, value in content.get(each_key).items():
-                        if key not in new_gfriends_actor_data:
-                            actor_url = f"{raw_url}/master/Content/{each_key}/{value}"
-                            new_gfriends_actor_data[key] = actor_url
-                return new_gfriends_actor_data
-            except Exception as e:
-                signal.show_log_text(f"🔴 本地仓库解析失败: {e}，回退到网络")
-    # 'https://raw.githubusercontent.com/gfriends/gfriends'
-
-    if EmbyAction.ACTOR_PHOTO_NET in emby_on:
-        update_data = False
-        signal.show_log_text("⏳ 连接 Gfriends 网络头像库...")
-        net_url = f"{gfriends_github}/commits/master/Filetree.json"
-        async with manager.acquire_computed() as computed:
-            response, error = await computed.async_client.get_text(net_url)
-        _raise_if_stop_requested()
-        if response is None:
-            signal.show_log_text("🔴 Gfriends 查询最新数据更新时间失败！")
-            net_float = 0.0
-            update_data = True
-        else:
-            try:
-                date_time = re.findall(r'committedDate":"(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})', response)
-                from datetime import UTC, datetime
-
-                lastest_time = datetime.strptime(date_time[0], "%Y-%m-%dT%H:%M:%S").replace(tzinfo=UTC)
-                net_float = lastest_time.timestamp()
-                net_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(net_float))
-            except Exception:
-                # 解析失败时降级为"需要更新"，不要终止整个头像补全功能
-                signal.show_log_text("🔶 Gfriends 历史页面解析失败，将强制重新下载数据表")
-                net_float = 0.0
-                update_data = True
-                net_time = ""
-            if net_time:
-                signal.show_log_text(f"✅ Gfriends 连接成功！最新数据更新时间: {net_time}")
-
-        # 更新：本地无文件时；更新时间过期；本地文件读取失败时，重新更新
-        gfriends_json_path = resources.u("gfriends.json")
-        if (
-            not await aiofiles.os.path.exists(gfriends_json_path)
-            or await aiofiles.os.path.getmtime(gfriends_json_path) < 1657285200
-        ):
-            update_data = True
-        else:
-            try:
-                async with aiofiles.open(gfriends_json_path, encoding="utf-8") as f:
-                    content = await f.read()
-                    gfriends_actor_data = json.loads(content)
-            except Exception:
-                signal.show_log_text("🔴 本地缓存数据读取失败！需重新缓存！")
-                update_data = True
-            else:
-                local_float = await aiofiles.os.path.getmtime(gfriends_json_path)
-                local_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(local_float))
-                if not net_float or net_float > local_float:
-                    signal.show_log_text(f"🍉 本地缓存数据需要更新！本地数据更新时间: {local_time}")
-                    update_data = True
-                else:
-                    signal.show_log_text(f"✅ 本地缓存数据无需更新！本地数据更新时间: {local_time}")
-                    return gfriends_actor_data
-
-        # 更新数据
-        if update_data:
-            signal.show_log_text("⏳ 开始缓存 Gfriends 最新数据表...")
-            filetree_url = f"{raw_url}/master/Filetree.json"
-            async with manager.acquire_computed() as computed:
-                filetree_response, error = await computed.async_client.get_content(filetree_url)
-            _raise_if_stop_requested()
-            if filetree_response is None:
-                signal.show_log_text("🔴 Gfriends 数据表获取失败！补全已停止！")
-                return False
-            async with aiofiles.open(gfriends_json_path, "wb") as f:
-                await f.write(filetree_response)
-            signal.show_log_text("✅ Gfriends 数据表已缓存！")
-            try:
-                async with aiofiles.open(gfriends_json_path, encoding="utf-8") as f:
-                    content = await f.read()
-                    gfriends_actor_data = json.loads(content)
-            except Exception:
-                signal.show_log_text("🔴 本地缓存数据读取失败！补全已停止！")
-                return False
-            else:
-                content = gfriends_actor_data.get("Content")
-                new_gfriends_actor_data = {}
-                content_list = list(content.keys())
-                content_list.sort()
-                for each_key in content_list:
-                    for key, value in content.get(each_key).items():
-                        if key not in new_gfriends_actor_data:
-                            # https://raw.githubusercontent.com/gfriends/gfriends/master/Content/z-Derekhsu/%E5%A4%A2%E4%B9%83%E3%81%82%E3%81%84%E3%81%8B.jpg
-                            actor_url = f"{raw_url}/master/Content/{each_key}/{value}"
-                            new_gfriends_actor_data[key] = actor_url
-                await write_file_atomic_async(
-                    gfriends_json_path,
-                    json.dumps(
-                        new_gfriends_actor_data,
-                        ensure_ascii=False,
-                        sort_keys=True,
-                        indent=4,
-                        separators=(",", ": "),
-                    ),
-                )
-                return new_gfriends_actor_data
-    else:
+    if EmbyAction.ACTOR_PHOTO_NET not in emby_on:
         return await asyncio.to_thread(_get_local_actor_photo)
+    result = await get_gfriends_index()
+    return result if result is not None else False
 
 
 async def _get_graphis_pic(actor_name: str) -> tuple[Path | None, Path | None, str]:
@@ -347,12 +225,9 @@ async def _get_graphis_pic(actor_name: str) -> tuple[Path | None, Path | None, s
             res, error = await computed.async_client.get_text(url_primary)
         _raise_if_stop_requested()
         if res is not None:
-            html = Selector(res)
-            src = html.xpath("//div[@class='gp-model-box']/ul/li/a/img/@src").getall()
-            jp_name = html.xpath("//li[@class='name-jp']/span/text()").getall()
-            if jp_name and actor_name in jp_name and jp_name.index(actor_name) < len(src):
-                small_pic = src[jp_name.index(actor_name)]
-                big_pic = small_pic.replace("/prof.jpg", "/model.jpg")
+            parsed = _parse_graphis_html(res, actor_name)
+            if parsed:
+                small_pic, big_pic = parsed
                 result = await _do_download_and_return(
                     pic_primary, backdrop_primary, small_pic, big_pic, emby_on, actor_folder
                 )
@@ -365,12 +240,9 @@ async def _get_graphis_pic(actor_name: str) -> tuple[Path | None, Path | None, s
             res, error = await computed.async_client.get_text(url_secondary)
         _raise_if_stop_requested()
         if res is not None:
-            html = Selector(res)
-            src = html.xpath("//div[@class='gp-model-box']/ul/li/a/img/@src").getall()
-            jp_name = html.xpath("//li[@class='name-jp']/span/text()").getall()
-            if jp_name and actor_name in jp_name and jp_name.index(actor_name) < len(src):
-                small_pic = src[jp_name.index(actor_name)]
-                big_pic = small_pic.replace("/prof.jpg", "/model.jpg")
+            parsed = _parse_graphis_html(res, actor_name)
+            if parsed:
+                small_pic, big_pic = parsed
                 result = await _do_download_and_return(
                     pic_secondary, backdrop_secondary, small_pic, big_pic, emby_on, actor_folder
                 )
