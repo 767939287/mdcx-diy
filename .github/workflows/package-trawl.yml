@@ -58,9 +58,9 @@ jobs:
         shell: powershell
         run: |
           Write-Host "下载 Camoufox Firefox (~663MB)，请稍候..."
-          # 直接使用 trawl 的 camoufox-js
           $env:CAMOFOX_SKIP_GEOIP = "1"
-          & bun run packages/browser/fetch.mjs
+          # 用 trawl 的 camoufox-js 包
+          bunx -p camoufox-js@0.12.0 camoufox-js fetch
           Write-Host "下载完成"
 
       - name: Create Portable Package
