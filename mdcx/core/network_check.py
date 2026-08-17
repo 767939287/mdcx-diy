@@ -71,6 +71,8 @@ SPECIAL_CHECK_PATHS: dict[Website, str] = {
     Website.JAVBUS: "/FSDSS-660",
     Website.JAVLIBRARY: "/cn/?v=javme2j2tu",
     Website.KIN8: "/moviepages/3681/index.html",
+    Website.JAVDB_APP: "/api/v2/search?q=SSNI-647&page=1",
+    Website.MISSAV_API: "/search/SSNI-647?uitype=frontpage",
 }
 
 DEFAULT_SITE_URLS: dict[Website, str] = {
@@ -489,6 +491,21 @@ async def _build_site_specs() -> list[NetworkCheckSpec]:
                 )
             )
             continue
+        elif site == Website.JAVDB_APP:
+            # javdb_app API 需要 jdsignature header
+            from ..crawlers.javdb_app import make_signature
+
+            headers["jdsignature"] = make_signature()
+            headers["accept-language"] = "zh"
+            headers["User-Agent"] = "Dart/3.5 (dart:io)"
+        elif site == Website.MISSAV_API:
+            # missav_api 用 Recombee API，需 HMAC 签名且不走 missav.ws
+            from ..crawlers.missav_api import MissavApiCrawler
+
+            base_url = f"https://{MissavApiCrawler.RECOMBEE_HOST}"
+            url = _join_url(base_url, path)
+            signed_path = MissavApiCrawler._sign_path(path.split("?")[0])
+            url = f"{base_url}{signed_path}"
 
         specs.append(
             NetworkCheckSpec(
