@@ -1,0 +1,89 @@
+# TRAWL Windows 便携版
+
+基于 [germondai/trawl](https://github.com/germondai/trawl) 的 Windows 便携打包。
+
+## 功能
+
+- 绕过 Cloudflare Bot Management
+- 支持 Akamai Bot Manager、Imperva/Incapsula
+- 自动解决 CF Turnstile、reCAPTCHA、hCaptcha
+- FlareSolverr 兼容 API (`/v1`)
+- 原生 API (`/scrape`)
+
+## 快速开始
+
+### 1. 下载便携版
+
+从 [Releases](../../releases) 下载 `trawl-portable-*.zip`
+
+### 2. 解压并运行
+
+```
+解压到任意目录（如 C:\Tools\trawl）
+双击 start-trawl.bat
+```
+
+首次运行会：
+- 自动克隆 trawl 源码（~50MB）
+- 安装依赖
+- 下载 Camoufox 浏览器（~300MB，约 2-5 分钟）
+
+### 3. 配置 MDCx
+
+打开 MDCx → 设置 → 网络：
+
+```
+启用内置 CF Bypass: [ ] 取消勾选
+CF Bypass 地址: http://localhost:8191/v1
+```
+
+## API 端点
+
+| 端点 | 说明 |
+|------|------|
+| `http://localhost:8191/` | 首页 |
+| `http://localhost:8191/health` | 健康检查 |
+| `http://localhost:8191/v1` | FlareSolverr 兼容 |
+| `http://localhost:8191/scrape` | 原生 API |
+
+## 测试示例
+
+```bash
+# 测试首页
+curl http://localhost:8191/health
+
+# 测试 CF 绕过
+curl -X POST http://localhost:8191/v1 \
+  -H 'Content-Type: application/json' \
+  -d '{"cmd":"request.get","url":"https://lulubar.co","maxTimeout":60000}'
+```
+
+## 故障排查
+
+| 问题 | 解决方案 |
+|------|----------|
+| 启动失败 | 运行 `download-bun.bat` 重新下载 Bun |
+| 浏览器启动慢 | 首次需下载 Camoufox，等待 2-5 分钟 |
+| 端口冲突 | 编辑 `.env`，修改 `PORT=8191` |
+| 内存不足 | 减少 `POOL_SIZE=1`（默认 2） |
+
+## 系统要求
+
+- Windows 10/11 (x64 或 ARM64)
+- 2GB RAM 可用内存
+- 500MB 磁盘空间
+- 稳定的网络连接
+
+## 与原版的区别
+
+| 特性 | 原版 Docker | 本便携版 |
+|------|------------|---------|
+| 部署方式 | Docker | 直接运行 |
+| Redis | 必需 | 可选（内存替代） |
+| 浏览器缓存 | Redis 持久化 | 内存（重启丢失） |
+| 适用场景 | 服务器 | 个人桌面 |
+
+## 许可
+
+- TRAWL: AGPL-3.0
+- 本打包脚本: MIT
