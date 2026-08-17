@@ -15,6 +15,7 @@ from ..signals import signal
 
 # 失败自动重试的最大次数（设计决策：默认 3 次，达到后不再自动重试，仅手动强制）
 MAX_RETRY_COUNT = 3
+_BATCH_COMMIT_SIZE = 32
 
 
 @dataclass
@@ -37,6 +38,7 @@ class ScrapeStateCache:
         self._db_path = Path(db_path)
         self._conn: sqlite3.Connection | None = None
         self._lock = threading.Lock()  # 刮削为多协程并发写，SQLite 单写者需串行化
+        self._pending_writes = 0
         self._log = log_fn or (lambda msg: signal.add_log(f" [刮削缓存] {msg}"))
 
     # ------------------------------------------------------------------
@@ -52,6 +54,7 @@ class ScrapeStateCache:
             conn = sqlite3.connect(str(self._db_path), timeout=10.0)
             conn.row_factory = sqlite3.Row  # 按列名访问行
             conn.execute("PRAGMA journal_mode=WAL")
+            conn.execute("PRAGMA synchronous=NORMAL")
             conn.execute(
                 """
                 CREATE TABLE IF NOT EXISTS scrape_state (
@@ -71,6 +74,7 @@ class ScrapeStateCache:
                 conn.execute("ALTER TABLE scrape_state ADD COLUMN summary_json TEXT NOT NULL DEFAULT ''")
             conn.commit()
             self._conn = conn
+            self._pending_writes = 0
             return True
         except Exception as e:
             self._log(f"数据库打开失败，回退内存模式: {e}")
@@ -85,10 +89,12 @@ class ScrapeStateCache:
     def close(self) -> None:
         if self._conn is not None:
             try:
+                self.flush()
                 self._conn.close()
             except Exception as e:
                 self._log(f"数据库关闭失败: {e}")
             self._conn = None
+            self._pending_writes = 0
 
     def is_usable(self) -> bool:
         return self._conn is not None
@@ -97,17 +103,34 @@ class ScrapeStateCache:
     # 状态读写
     # ------------------------------------------------------------------
 
-    def _execute(self, sql: str, params: tuple = ()) -> bool:
+    def _execute(self, sql: str, params: tuple = (), commit: bool = True) -> bool:
         """执行写 SQL，失败记日志返回 False（尽力而为，不中断主流程）。"""
         if self._conn is None:
             return False
         try:
             with self._lock:
                 self._conn.execute(sql, params)
-                self._conn.commit()
+                self._pending_writes += 1
+                if commit or self._pending_writes >= _BATCH_COMMIT_SIZE:
+                    self._conn.commit()
+                    self._pending_writes = 0
             return True
         except Exception as e:
             self._log(f"数据库写入失败: {e}")
+            return False
+
+    def flush(self) -> bool:
+        """提交刮削期间积累的状态写入。"""
+        if self._conn is None:
+            return False
+        try:
+            with self._lock:
+                if self._pending_writes:
+                    self._conn.commit()
+                    self._pending_writes = 0
+            return True
+        except Exception as e:
+            self._log(f"数据库提交失败: {e}")
             return False
 
     def _fetch(self, sql: str, params: tuple = ()) -> list[sqlite3.Row]:
@@ -140,7 +163,14 @@ class ScrapeStateCache:
             error=row["error"],
         )
 
-    def set_done(self, file_path: Path, mtime: float, number: str = "", summary: dict | None = None) -> None:
+    def set_done(
+        self,
+        file_path: Path,
+        mtime: float,
+        number: str = "",
+        summary: dict | None = None,
+        commit: bool = True,
+    ) -> None:
         import time
 
         summary_json = json.dumps(summary, ensure_ascii=False) if summary else ""
@@ -158,9 +188,10 @@ class ScrapeStateCache:
                 summary_json=excluded.summary_json
             """,
             (str(file_path), mtime, number, time.time(), summary_json),
+            commit=commit,
         )
 
-    def set_failed(self, file_path: Path, mtime: float, error: str = "") -> None:
+    def set_failed(self, file_path: Path, mtime: float, error: str = "", commit: bool = True) -> None:
         import time
 
         self._execute(
@@ -175,6 +206,7 @@ class ScrapeStateCache:
                 error=excluded.error
             """,
             (str(file_path), mtime, time.time(), error),
+            commit=commit,
         )
 
     # ------------------------------------------------------------------

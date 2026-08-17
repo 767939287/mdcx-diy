@@ -18,6 +18,9 @@ from ..utils import get_used_time
 from ..utils.file import check_pic_async, copy_file_async, move_file_async
 from .file import movie_lists
 
+_MARK_IMAGE_CACHE: dict[Path, Image.Image] = {}
+_MARK_IMAGE_CACHE_MAX = 16
+
 
 async def extrafanart_copy2(folder_path: Path):
     start_time = time.time()
@@ -38,7 +41,6 @@ async def extrafanart_copy2(folder_path: Path):
         if await aiofiles.os.path.exists(extrafanart_copy_path):
             await asyncio.to_thread(shutil.rmtree, extrafanart_copy_path, ignore_errors=True)
         return
-
     # 如果保留，并且存在，返回
     if extrafanart_copy_policy.should_keep and await aiofiles.os.path.exists(extrafanart_copy_path):
         LogBuffer.log().write(f"\n 🍀 Extrafanart_copy done! (old)({get_used_time(start_time)}s) ")
@@ -50,11 +52,9 @@ async def extrafanart_copy2(folder_path: Path):
 
     if not await aiofiles.os.path.exists(extrafanart_path):
         return
-
     if await aiofiles.os.path.exists(extrafanart_copy_path):
         await asyncio.to_thread(shutil.rmtree, extrafanart_copy_path, ignore_errors=True)
     await asyncio.to_thread(shutil.copytree, extrafanart_path, extrafanart_copy_path)
-
     filelist = await aiofiles.os.listdir(extrafanart_copy_path)
     for each in filelist:
         file_new_name = each.replace("fanart", "")
@@ -91,6 +91,27 @@ async def extrafanart_extras_copy(folder_path: Path):
     return True
 
 
+def _get_mark_image(mark_pic_path: Path) -> Image.Image | None:
+    """Cache opened+converted RGBA watermark images to avoid repeated disk IO.
+
+    Watermark PNGs are few (4K/8K/subtitle/youma/umr/leak/wuma) and reused
+    across every file. Only the open+convert step is cached; per-file resize
+    still happens each call since it depends on the target image height.
+    """
+    img = _MARK_IMAGE_CACHE.get(mark_pic_path)
+    if img is not None:
+        return img
+    try:
+        img = Image.open(mark_pic_path).convert("RGBA")
+    except Exception:
+        signal.show_log_text(f"{traceback.format_exc()}\n Open Pic: {mark_pic_path}")
+        return None
+    if len(_MARK_IMAGE_CACHE) >= _MARK_IMAGE_CACHE_MAX:
+        _MARK_IMAGE_CACHE.clear()
+    _MARK_IMAGE_CACHE[mark_pic_path] = img
+    return img
+
+
 async def _add_to_pic(pic_path: Path, img_pic: Image.Image, mark_size: int, count: int, mark_name: str):
     # 获取水印图片，生成水印
     mark_fixed = manager.config.mark_fixed
@@ -112,16 +133,12 @@ async def _add_to_pic(pic_path: Path, img_pic: Image.Image, mark_size: int, coun
         mark_pic_path = resources.icon_wuma_path
 
     if mark_pic_path:
-        try:
-            img_subt: Image.Image = Image.open(mark_pic_path)
-            img_subt = img_subt.convert("RGBA")
-            scroll_high = int(img_pic.height * mark_size / 40)
-            scroll_width = int(scroll_high * img_subt.width / img_subt.height)
-            img_subt = img_subt.resize((scroll_width, scroll_high), resample=Image.Resampling.LANCZOS)
-        except Exception:
-            signal.show_log_text(f"{traceback.format_exc()}\n Open Pic: {mark_pic_path}")
-            print(traceback.format_exc())
+        img_subt = _get_mark_image(Path(mark_pic_path))
+        if img_subt is None:
             return
+        scroll_high = int(img_pic.height * mark_size / 40)
+        scroll_width = int(scroll_high * img_subt.width / img_subt.height)
+        img_subt = img_subt.resize((scroll_width, scroll_high), resample=Image.Resampling.LANCZOS)
         r, g, b, a = img_subt.split()  # 获取颜色通道, 保持png的透明性
 
         # 固定一个位置

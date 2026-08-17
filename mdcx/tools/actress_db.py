@@ -31,19 +31,26 @@ class ActressDB:
 
         keyword = actor_info.name
         cur = cls.DB.cursor()
-        if s := cur.execute(f"select Name, Alias from Names where Alias='{keyword}'").fetchone():
-            name, alias = s
-        else:
-            s = cur.execute(f"select Name, Alias from Names where Alias like '{keyword}%'").fetchone()
-            if not s:
-                return 0, f"🔴 数据库中未找到姓名: {keyword}"
-            name, alias = s
+        try:
+            if s := cur.execute("select Name, Alias from Names where Alias = ?", (keyword,)).fetchone():
+                name, alias = s
+            else:
+                s = cur.execute("select Name, Alias from Names where Alias like ?", (f"{keyword}%",)).fetchone()
+                if not s:
+                    return 0, f"🔴 数据库中未找到姓名: {keyword}"
+                name, alias = s
 
-        res = cur.execute(
-            f"select Href,Cup,Height,Bust,Waist,Hip,Birthday,Birthplace,Account,CareerPeriod from Info where Name = '{name}'"
-        )
-        href, cup, height, bust, waist, hip, birthday, birthplace, account, career_period = res.fetchone()
-        cur.close()
+            res = cur.execute(
+                "select Href,Cup,Height,Bust,Waist,Hip,Birthday,Birthplace,Account,CareerPeriod "
+                "from Info where Name = ?",
+                (name,),
+            )
+            row = res.fetchone()
+            if row is None:
+                return 0, f"🔴 数据库中未找到信息: {name}"
+            href, cup, height, bust, waist, hip, birthday, birthplace, account, career_period = row
+        finally:
+            cur.close()
 
         # 收集处理结果信息
         messages = []

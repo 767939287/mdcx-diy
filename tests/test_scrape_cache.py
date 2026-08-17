@@ -241,3 +241,27 @@ def test_delete_state_forces_rescrape(cache: ScrapeStateCache, tmp_path: Path):
     assert cache.get_state(p) is None
     assert cache.should_skip(p, mtime=100.0) is False
     assert cache.should_retry(p) is False
+
+
+def test_deferred_write_flushes_and_remains_readable(cache: ScrapeStateCache, tmp_path: Path):
+    p = tmp_path / "deferred.mp4"
+    cache.set_done(p, mtime=1.0, number="ABC-1", commit=False)
+    assert cache.get_state(p) is not None
+    assert cache._pending_writes == 1
+    assert cache.flush() is True
+    assert cache._pending_writes == 0
+    assert cache.get_state(p).number == "ABC-1"
+
+
+def test_close_flushes_deferred_write(tmp_path: Path):
+    db = tmp_path / "scrape_state.db"
+    p = tmp_path / "deferred.mp4"
+    cache = ScrapeStateCache(db)
+    assert cache.open() is True
+    cache.set_done(p, mtime=1.0, commit=False)
+    cache.close()
+
+    reopened = ScrapeStateCache(db)
+    assert reopened.open() is True
+    assert reopened.get_state(p) is not None
+    reopened.close()

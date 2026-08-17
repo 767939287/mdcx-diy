@@ -1,5 +1,6 @@
 import asyncio
 from asyncio import Event
+from collections import OrderedDict
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, TypedDict
@@ -21,6 +22,9 @@ class FileDoneDict(TypedDict):
 
 def _new_lock():
     return asyncio.Lock()
+
+
+JSON_DATA_CACHE_MAX_ENTRIES = 2000
 
 
 @dataclass
@@ -80,7 +84,8 @@ class _Flags:
     trailer_deal_set: set[Path] = field(default_factory=set)
     json_get_set: set[str] = field(default_factory=set)
     json_get_status: dict[str, bool | None] = field(default_factory=dict)
-    json_data_dic: dict[str, ScrapeResult] = field(default_factory=dict)
+    json_get_events: dict[str, asyncio.Event] = field(default_factory=dict)
+    json_data_dic: OrderedDict[str, ScrapeResult] = field(default_factory=OrderedDict)
     img_path: str = ""
     failed_list: list[tuple[Path, str]] = field(default_factory=list)
     scrape_start_time: float = 0.0
@@ -127,7 +132,8 @@ class _Flags:
         self.trailer_deal_set = set()
         self.json_get_set = set()
         self.json_get_status = {}
-        self.json_data_dic = {}
+        self.json_get_events = {}
+        self.json_data_dic = OrderedDict()
         self.img_path = ""
         self.stop_requested = False
         self.stop_other = True

@@ -38,7 +38,7 @@ from ..core.scrape_cache import ScrapeStateCache
 from ..core.tmdb_actor import _normalize_translation
 from ..crawler import CrawlerProvider
 from ..models.enums import FileMode
-from ..models.flags import FileDoneDict, Flags
+from ..models.flags import JSON_DATA_CACHE_MAX_ENTRIES, FileDoneDict, Flags
 from ..models.log_buffer import LogBuffer
 from ..models.types import CrawlersResult, FileInfo, OtherInfo, ScrapeResult, ShowData
 from ..signals import signal
@@ -449,18 +449,30 @@ class Scraper:
                 if manager.config.main_mode == 4:
                     number = json_data.number
                 async with Flags._json_get_lock:
-                    Flags.json_data_dic.update({number: ScrapeResult(file_info, json_data, other)})
+                    Flags.json_data_dic[number] = ScrapeResult(file_info, json_data, other)
+                    Flags.json_data_dic.move_to_end(number)
+                    while len(Flags.json_data_dic) > JSON_DATA_CACHE_MAX_ENTRIES:
+                        Flags.json_data_dic.popitem(last=False)
                     for status_number in (origin_number, number):
                         if status_number in Flags.json_get_status and Flags.json_get_status[status_number] is None:
                             Flags.json_get_status[status_number] = True
+                            event = Flags.json_get_events.get(status_number)
+                            if event is not None:
+                                event.set()
             elif origin_number in Flags.json_get_status and Flags.json_get_status[origin_number] is None:
                 async with Flags._json_get_lock:
                     Flags.json_get_status[origin_number] = False
+                    event = Flags.json_get_events.get(origin_number)
+                    if event is not None:
+                        event.set()
         except Exception as e:
             scrape_error = str(e)
             if origin_number in Flags.json_get_status and Flags.json_get_status[origin_number] is None:
                 async with Flags._json_get_lock:
                     Flags.json_get_status[origin_number] = False
+                    event = Flags.json_get_events.get(origin_number)
+                    if event is not None:
+                        event.set()
             self._check_stop(show_name)
             signal.show_traceback_log(traceback.format_exc())
             signal.show_log_text(traceback.format_exc())
@@ -502,7 +514,11 @@ class Scraper:
                             "score": json_data.score,
                         }
                         self._state_cache.set_done(
-                            file_path, await _safe_mtime(file_path), number=number, summary=summary
+                            file_path,
+                            await _safe_mtime(file_path),
+                            number=number,
+                            summary=summary,
+                            commit=False,
                         )
                     except Exception:
                         pass
@@ -531,7 +547,12 @@ class Scraper:
                 signal.view_failed_list_settext.emit(f"失败 {Flags.fail_count}")
                 if self._state_cache and self._state_cache.is_usable():
                     try:
-                        self._state_cache.set_failed(file_path, await _safe_mtime(file_path), error=error_msg)
+                        self._state_cache.set_failed(
+                            file_path,
+                            await _safe_mtime(file_path),
+                            error=error_msg,
+                            commit=False,
+                        )
                     except Exception:
                         pass
         except Exception as e:
@@ -875,11 +896,13 @@ class Scraper:
                 if movie_number not in Flags.json_get_status:
                     Flags.json_get_set.add(movie_number)
                     Flags.json_get_status[movie_number] = None
+                    Flags.json_get_events[movie_number] = asyncio.Event()
                     # 读模式下 movie_number 可能被 nfo_data.number 覆盖，与原 file_info.number 不同。
                     # 释放方 _process_one_file_impl 的异常路径用 origin_number 释放，若二者不同需同时注册。
                     if movie_number != file_info.number:
                         Flags.json_get_set.add(file_info.number)
                         Flags.json_get_status[file_info.number] = None
+                        Flags.json_get_events[file_info.number] = asyncio.Event()
                     LogBuffer.log().write(f"\n 🟡 [Same Number] 首次刮削，开始共享番号数据：{movie_number}")
                     is_first = True
                 else:
@@ -888,6 +911,7 @@ class Scraper:
                 # 同番号任务等待首个任务完成；若首个任务失败，直接结束等待，避免线程卡死
                 wait_timeout = 300
                 waited = 0
+                event = Flags.json_get_events.get(movie_number)
                 while Flags.json_get_status.get(movie_number) is None:
                     if Flags.stop_requested or signal.stop:
                         LogBuffer.log().write(f"\n 🟡 [Same Number] 检测到停止请求，取消等待：{movie_number}")
@@ -896,8 +920,17 @@ class Scraper:
                         LogBuffer.error().write(f"同番号等待超时（{wait_timeout}秒），取消等待：{movie_number}")
                         async with Flags._json_get_lock:
                             Flags.json_get_status[movie_number] = False
+                            event = Flags.json_get_events.get(movie_number)
+                            if event is not None:
+                                event.set()
                         return None, None
-                    await asyncio.sleep(1)
+                    if event is None:
+                        await asyncio.sleep(1)
+                    else:
+                        try:
+                            await asyncio.wait_for(event.wait(), timeout=1)
+                        except TimeoutError:
+                            pass
                     waited += 1
                 if Flags.json_get_status.get(movie_number) is False:
                     LogBuffer.error().write(f"同番号任务失败，取消等待：{movie_number}")

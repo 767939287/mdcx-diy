@@ -46,6 +46,27 @@ def _tmdb_person_url(tmdbid: int | str) -> str:
 ACTOR_DB_SHEET = "演员数据库"
 
 
+def _normalize_info_key(value: str) -> str:
+    key = value.upper()
+    for source, target in ManualConfig.FULL_HALF_CHAR:
+        key = key.replace(source, target)
+    return key
+
+
+def _build_info_db_index(rows: list[dict]) -> dict[str, dict]:
+    index: dict[str, dict] = {}
+    for item in rows:
+        for keyword in (item.get("keyword") or "").split(","):
+            keyword = keyword.strip()
+            if keyword:
+                index.setdefault(_normalize_info_key(keyword), item)
+        for attr in ("zh_cn", "zh_tw", "jp"):
+            value = item.get(attr) or ""
+            if value:
+                index.setdefault(_normalize_info_key(value), item)
+    return index
+
+
 def get_actor_db_sheet(wb) -> "Worksheet":
     """显式取「演员数据库」sheet，不依赖 sheet 顺序（防止男优备份等辅助 sheet 被误读）。
 
@@ -152,6 +173,7 @@ class Resources:
         self.actor_db: dict[str, dict] | None = None  # 演员数据库（xlsx 格式）
         self.actor_db_reverse_index: dict[str, str] | None = None  # 规范名/别名 -> jp 名索引
         self.info_db: list[dict] | None = None  # 信息映射数据库（xlsx 格式，有序列表以保持行顺序）
+        self.info_db_index: dict[str, dict] | None = None
 
         self._get_or_generate_local_data()
         self._get_mark_icon()
@@ -208,50 +230,23 @@ class Resources:
             "has_name": False,
         }
 
-        # 查询信息映射数据库 xlsx
-        info_db = self.info_db
-        if info_db is not None:
-            info_key = info.upper()
-            for each in ManualConfig.FULL_HALF_CHAR:
-                info_key = info_key.replace(each[0], each[1])
-            info_name = f",{info_key},"
-
-            for row in info_db:
-                # 在 keyword 中搜索（逗号包裹匹配）
-                matched = False
-                if row.get("keyword"):
-                    for kw in row["keyword"].split(","):
-                        kw = kw.strip()
-                        if not kw:
-                            continue
-                        test_name = f",{kw.upper()},"
-                        for each in ManualConfig.FULL_HALF_CHAR:
-                            test_name = test_name.replace(each[0], each[1])
-                        if test_name == info_name:
-                            matched = True
-                            break
-
-                # 在 zh_cn/zh_tw/jp 中搜索
-                if not matched:
-                    for attr in ("zh_cn", "zh_tw", "jp"):
-                        val = row.get(attr) or ""
-                        test_key = val.upper()
-                        for each in ManualConfig.FULL_HALF_CHAR:
-                            test_key = test_key.replace(each[0], each[1])
-                        if test_key == info_key:
-                            matched = True
-                            break
-
-                if matched:
-                    info_data["zh_cn"] = (row.get("zh_cn") or info).replace("删除", "")
-                    info_data["zh_tw"] = (row.get("zh_tw") or info).replace("删除", "")
-                    info_data["jp"] = (row.get("jp") or info).replace("删除", "")
-                    kw = row.get("keyword") or ""
-                    info_data["keyword"] = (
-                        [k.strip() for k in kw.split(",") if k.strip()] if kw else [row.get("jp") or info]
-                    )
-                    info_data["has_name"] = True
-                    return info_data
+        # 查询信息映射数据库 xlsx，索引在加载时建立，查询保持 O(1)。
+        info_db_index = self.info_db_index
+        if info_db_index is None and self.info_db is not None:
+            info_db_index = _build_info_db_index(self.info_db)
+            self.info_db_index = info_db_index
+        if info_db_index is not None:
+            row = info_db_index.get(_normalize_info_key(info))
+            if row is not None:
+                info_data["zh_cn"] = (row.get("zh_cn") or info).replace("删除", "")
+                info_data["zh_tw"] = (row.get("zh_tw") or info).replace("删除", "")
+                info_data["jp"] = (row.get("jp") or info).replace("删除", "")
+                kw = row.get("keyword") or ""
+                info_data["keyword"] = (
+                    [k.strip() for k in kw.split(",") if k.strip()] if kw else [row.get("jp") or info]
+                )
+                info_data["has_name"] = True
+                return info_data
         return info_data
 
     def get_fonts(self):
@@ -352,10 +347,12 @@ class Resources:
         """加载信息映射数据库 xlsx"""
         if openpyxl is None:
             self.info_db = None
+            self.info_db_index = None
             return
         db_path = self.u("info_database.xlsx")
         if not db_path.exists():
             self.info_db = None
+            self.info_db_index = None
             return
         try:
             wb = openpyxl.load_workbook(db_path, read_only=True, data_only=True)
@@ -369,18 +366,19 @@ class Resources:
                 jp = str(row[0] or "").strip()
                 if not jp:
                     continue
-                db.append(
-                    {
-                        "jp": jp,
-                        "zh_cn": str(row[1] or "").strip() if len(row) > 1 else "",
-                        "zh_tw": str(row[2] or "").strip() if len(row) > 2 else "",
-                        "keyword": str(row[3] or "").strip() if len(row) > 3 else "",
-                    }
-                )
+                item = {
+                    "jp": jp,
+                    "zh_cn": str(row[1] or "").strip() if len(row) > 1 else "",
+                    "zh_tw": str(row[2] or "").strip() if len(row) > 2 else "",
+                    "keyword": str(row[3] or "").strip() if len(row) > 3 else "",
+                }
+                db.append(item)
             wb.close()
             self.info_db = db
+            self.info_db_index = _build_info_db_index(db)
         except Exception:
             self.info_db = None
+            self.info_db_index = None
 
     def _get_mark_icon(self):
         mark_folder = self.u("watermark")

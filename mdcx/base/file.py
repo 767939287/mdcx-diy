@@ -3,6 +3,7 @@ import os
 import re
 import shutil
 import stat
+import threading
 import time
 import traceback
 from pathlib import Path
@@ -29,6 +30,7 @@ _large_list_warned: set[str] = set()
 _success_list_save_lock = asyncio.Lock()
 _SUCCESS_REPLACE_RETRY_MAX = 8
 _SUCCESS_REPLACE_RETRY_BASE_SLEEP = 0.15
+_remain_save_lock = threading.Lock()
 
 
 def _path_lines_for_write(paths: list[Path] | set[Path], list_name: str):
@@ -228,14 +230,29 @@ async def save_success_list(old_path: Path | None = None, new_path: Path | None 
 
 
 def save_remain_list() -> None:
-    """This function is intended to be sync."""
-    if Flags.can_save_remain and Switch.REMAIN_TASK in manager.config.switch_on:
-        try:
-            with open(resources.u("remain.txt"), "w", encoding="utf-8", errors="ignore") as f:
-                f.writelines(_path_lines_for_write(Flags.remain_list, "剩余任务列表"))
-                Flags.can_save_remain = False
-        except Exception as e:
-            signal.show_log_text(f"save remain list error: {e!s}\n {traceback.format_exc()}")
+    """Save remain list to disk in a background thread to avoid blocking the UI.
+
+    Called by a 1.5s QTimer in the main thread. Snapshot ``Flags.remain_list``
+    here (main thread) so the background thread iterates a stable list. A lock
+    prevents duplicate writes while preserving retry-on-error behavior.
+    """
+    if not (Flags.can_save_remain and Switch.REMAIN_TASK in manager.config.switch_on):
+        return
+    if not _remain_save_lock.acquire(blocking=False):
+        return
+    remain_snapshot = list(Flags.remain_list)
+    threading.Thread(target=_save_remain_list_sync, args=(remain_snapshot,), daemon=True).start()
+
+
+def _save_remain_list_sync(paths: list[Path]) -> None:
+    try:
+        with open(resources.u("remain.txt"), "w", encoding="utf-8", errors="ignore") as f:
+            f.writelines(_path_lines_for_write(paths, "剩余任务列表"))
+        Flags.can_save_remain = False
+    except Exception as e:
+        signal.show_log_text(f"save remain list error: {e!s}\n {traceback.format_exc()}")
+    finally:
+        _remain_save_lock.release()
 
 
 async def _clean_empty_folders(path: Path, file_mode: FileMode) -> None:
