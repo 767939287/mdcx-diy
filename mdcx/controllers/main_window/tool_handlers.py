@@ -49,7 +49,7 @@ def pushButton_emby_actor_manager_clicked(self):
         from mdcx.tools.emby_actor_manager_ui import EmbyActorManagerDialog
 
         self._emby_dialog = EmbyActorManagerDialog(self)
-        self._emby_dialog.exec()
+        self._emby_dialog.show()
     except Exception as e:
         signal_qt.show_log_text(f"❌ Emby 演员管理器打开失败: {e}\n{traceback.format_exc()}")
 

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import threading
 from pathlib import Path
 
 from PyQt6.QtCore import Qt, QThread, QTimer
@@ -274,11 +275,24 @@ class SyncThread(QThread):
             self.error.emit(str(e))
 
 
+def _future_result_or(future, default):
+    """取 Future 结果；协程异常时返回 default，避免异常传播到后台 loop 线程。"""
+    try:
+        return future.result()
+    except Exception:
+        return default
+
+
 class EmbyActorManagerDialog(QDialog):
+    _connect_result = Signal(object)
+    _media_folders_result = Signal(object)
+    _gfriends_result = Signal(object)
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setWindowTitle("Emby 演员管理器")
         self.setMinimumSize(1100, 700)
+        self.setWindowFlags(self.windowFlags() | Qt.WindowType.Window | Qt.WindowType.WindowMinimizeButtonHint)
         self.setStyleSheet(self._load_stylesheet())
         self.cache_dir = resources.u("emby_actor_cache")
         self.cache_dir.mkdir(parents=True, exist_ok=True)
@@ -480,6 +494,9 @@ class EmbyActorManagerDialog(QDialog):
         self.btn_settings.clicked.connect(self._on_open_settings)
         self.btn_test_source.clicked.connect(self._on_open_test_source)
         self.btn_clear_cache.clicked.connect(self._on_clear_cache)
+        self._connect_result.connect(self._on_connect_result)
+        self._media_folders_result.connect(self._on_media_folders_result)
+        self._gfriends_result.connect(self._on_gfriends_result)
 
     def _on_open_settings(self):
         dialog = EmbyActorSettingsDialog(self)
@@ -543,6 +560,8 @@ class EmbyActorManagerDialog(QDialog):
             QMessageBox.warning(self, "提示", "请输入 Emby 地址和 API 密钥")
             return
         headers = {"Authorization": f'MediaBrowser Token="{key}"'}
+        self._emby_url = url
+        self._emby_key = key
 
         async def test():
             async with manager.acquire_computed() as computed:
@@ -558,19 +577,31 @@ class EmbyActorManagerDialog(QDialog):
                     return True, f"连接成功！{name} v{version}"
                 return False, f"连接失败: {err}"
 
+        self.btn_connect.setEnabled(False)
+        self.btn_connect.setText("连接中...")
+        self._set_status("连接中...")
         try:
-            ok, msg = executor.run(test())
+            future = executor.submit(test())
         except Exception as e:
-            ok, msg = False, f"连接失败: {e}"
+            future = None
+            self.btn_connect.setEnabled(True)
+            self.btn_connect.setText("连接 Emby")
+            self._set_status("连接失败")
+            self.log(f"❌ 连接失败: {e}")
+            return
+        future.add_done_callback(lambda fut: self._connect_result.emit(_future_result_or(fut, (False, "连接失败"))))
+
+    def _on_connect_result(self, result: tuple[bool, str]):
+        ok, msg = result
+        self.btn_connect.setEnabled(True)
+        self.btn_connect.setText("已连接" if ok else "连接 Emby")
         if ok:
             self._connected = True
-            self.btn_connect.setText("已连接")
             self.btn_fetch.setEnabled(True)
-            manager.config.emby_url = url
-            manager.config.api_key = key
             self._set_status("连接成功")
             self.log(f"✅ {msg}")
         else:
+            self._set_status("连接失败")
             self.log(f"❌ {msg}")
             QMessageBox.critical(self, "连接失败", msg)
 
@@ -578,12 +609,21 @@ class EmbyActorManagerDialog(QDialog):
         if not hasattr(self, "_connected") or not self._connected:
             QMessageBox.warning(self, "提示", "请先连接 Emby 服务器")
             return
+        self.btn_fetch.setEnabled(False)
+        self._set_status("获取媒体库列表...")
         try:
-            libraries = executor.run(get_media_folders())
+            future = executor.submit(get_media_folders())
         except Exception as e:
+            self.btn_fetch.setEnabled(True)
+            self._set_status("获取媒体库列表失败")
             self.log(f"❌ 获取媒体库列表失败: {e}")
             return
+        future.add_done_callback(lambda fut: self._media_folders_result.emit(_future_result_or(fut, [])))
+
+    def _on_media_folders_result(self, libraries: list[dict]):
+        self.btn_fetch.setEnabled(True)
         if not libraries:
+            self._set_status("获取媒体库列表失败")
             self.log("❌ 无法获取媒体库列表")
             return
         dlg = LibrarySelectDialog(libraries, self)
@@ -623,13 +663,16 @@ class EmbyActorManagerDialog(QDialog):
         self.progress_bar.setVisible(False)
         self._set_buttons_enabled(True)
         try:
-            self._gfriends_index = executor.run(get_gfriends_index())
-            if self._gfriends_index:
-                self.log(f"✅ Gfriends 头像库加载完成，共 {len(self._gfriends_index)} 个头像")
-        except Exception:
-            import traceback
+            future = executor.submit(get_gfriends_index())
+        except Exception as e:
+            self.log(f"🔶 Gfriends 索引加载失败: {e}")
+            return
+        future.add_done_callback(lambda fut: self._gfriends_result.emit(_future_result_or(fut, None)))
 
-            self.log(f"🔶 Gfriends 索引加载失败: {traceback.format_exc()}")
+    def _on_gfriends_result(self, index):
+        self._gfriends_index = index
+        if index:
+            self.log(f"✅ Gfriends 头像库加载完成，共 {len(index)} 个头像")
 
     def _on_prepare_preview(self):
         if self._preview_thread and self._preview_thread.isRunning():
@@ -1252,6 +1295,8 @@ class ActorSourceTestDialog(QDialog):
 class ActorDetailDialog(QDialog):
     """演员详情编辑对话框：左栏现有数据，右栏新数据（可编辑），右侧快速设置面板。"""
 
+    _detail_done = Signal(str, object)
+
     def __init__(self, actor: ActorInfo, parent=None, on_synced=None):
         super().__init__(parent)
         self.actor = actor
@@ -1365,6 +1410,7 @@ class ActorDetailDialog(QDialog):
             info_model.rowsMoved.connect(self._save_quick_settings)
         self.panel_folder_edit.textChanged.connect(self._save_quick_settings)
 
+        self._detail_done.connect(self._on_detail_done)
         self._load_existing_avatar()
         if actor.new_image_path:
             self._show_new_avatar(actor.new_image_path)
@@ -1422,14 +1468,16 @@ class ActorDetailDialog(QDialog):
         if not self.actor.has_image:
             self.existing_avatar_label.setText("无头像")
             return
+        self.existing_avatar_label.setText("加载中...")
         try:
-            executor.run(self._download_existing_avatar())
-        except Exception:
-            import traceback
+            future = executor.submit(self._download_existing_avatar())
+        except Exception as e:
+            self.existing_avatar_label.setText("头像加载失败")
+            self.log(f"🔶 加载现有头像失败: {e}")
+            return
+        future.add_done_callback(lambda fut: self._detail_done.emit("existing_avatar", _future_result_or(fut, None)))
 
-            self.log(f"🔶 加载现有头像失败: {traceback.format_exc()}")
-
-    async def _download_existing_avatar(self):
+    async def _download_existing_avatar(self) -> str | None:
         from .emby_shared import _build_jellyfin_headers, _generate_server_url
 
         _, _, pic_url, _, _, _ = _generate_server_url(
@@ -1438,20 +1486,23 @@ class ActorDetailDialog(QDialog):
         headers = _build_jellyfin_headers()
         async with manager.acquire_computed() as computed:
             body, err = await computed.async_client.get_content(pic_url, headers=headers, use_proxy=False)
-        if body:
-            tmp = resources.u("emby_actor_cache") / f"emby_existing_{self.actor.actor_id}.jpg"
-            tmp.write_bytes(body)
-            self._show_pixmap(self.existing_avatar_label, str(tmp))
+        if not body:
+            return None
+        tmp = resources.u("emby_actor_cache") / f"emby_existing_{self.actor.actor_id}.jpg"
+        tmp.write_bytes(body)
+        return str(tmp)
 
     def _run_fetch_image(self):
         try:
-            executor.run(self._fetch_image())
-        except Exception:
-            import traceback
+            future = executor.submit(self._fetch_image())
+        except Exception as e:
+            self.log(f"🔶 获取头像失败: {e}")
+            return
+        future.add_done_callback(
+            lambda fut: self._detail_done.emit("fetch_image", _future_result_or(fut, (False, None)))
+        )
 
-            self.log(f"🔶 获取头像失败: {traceback.format_exc()}")
-
-    async def _fetch_image(self):
+    async def _fetch_image(self) -> tuple[bool, str | None]:
         from .emby_actor_manager import from_gfriends, from_graphis, from_local_avatar, from_minnano_image
 
         gfriends_index = None
@@ -1477,30 +1528,60 @@ class ActorDetailDialog(QDialog):
                 if isinstance(path, (str, Path)) and Path(path).exists():
                     self.actor.new_image_path = str(path)
                     self.actor.need_update_image = True
-                    self._show_new_avatar(str(path))
-                    return
-        self.new_avatar_label.setText("未获取到新头像")
+                    return True, str(path)
+        return False, None
 
     def _run_fetch_info(self):
         try:
-            ok = executor.run(search_actor_info(self.actor))
-        except Exception:
-            import traceback
+            future = executor.submit(search_actor_info(self.actor))
+        except Exception as e:
+            self.log(f"🔶 获取简介失败: {e}")
+            return
+        future.add_done_callback(lambda fut: self._detail_done.emit("fetch_info", _future_result_or(fut, False)))
 
-            self.log(f"🔶 获取简介失败: {traceback.format_exc()}")
-            ok = False
-        if ok:
-            self.overview_edit.setPlainText(self.actor.new_overview)
-            self._populate_info_table()
+    def _on_detail_done(self, action: str, result: object):
+        if action == "existing_avatar":
+            if result:
+                self._show_pixmap(self.existing_avatar_label, str(result))
+            else:
+                self.existing_avatar_label.setText("无头像")
+        elif action == "fetch_image":
+            ok, path = result if isinstance(result, tuple) and len(result) == 2 else (False, None)
+            if ok and path:
+                self._show_new_avatar(path)
+            else:
+                self.new_avatar_label.setText("未获取到新头像")
+        elif action == "fetch_info":
+            if result:
+                self.overview_edit.setPlainText(self.actor.new_overview)
+                self._populate_info_table()
+        elif action == "sync":
+            ok, msg = result if isinstance(result, tuple) and len(result) == 2 else (False, str(result))
+            self.btn_sync_both.setEnabled(True)
+            self.btn_sync_image.setEnabled(True)
+            self.btn_sync_info.setEnabled(True)
+            QMessageBox.information(self, "同步结果", msg)
+            if ok and self.on_synced:
+                self.on_synced(self.actor)
 
     def _run_sync(self, sync_type: str):
         from .emby_actor_manager import sync_actor
 
         self._apply_edits()
-        ok, msg = sync_actor(self.actor, sync_type)
-        QMessageBox.information(self, "同步结果", msg)
-        if ok and self.on_synced:
-            self.on_synced(self.actor)
+        self.btn_sync_both.setEnabled(False)
+        self.btn_sync_image.setEnabled(False)
+        self.btn_sync_info.setEnabled(False)
+
+        def _worker():
+            try:
+                result = sync_actor(self.actor, sync_type)
+            except Exception:
+                import traceback
+
+                result = (False, f"同步异常: {traceback.format_exc()}")
+            self._detail_done.emit("sync", result)
+
+        threading.Thread(target=_worker, daemon=True).start()
 
     def _apply_edits(self):
         actor = self.actor
@@ -1541,4 +1622,4 @@ class ActorDetailDialog(QDialog):
 
 def open_emby_actor_manager(parent=None):
     dialog = EmbyActorManagerDialog(parent)
-    dialog.exec()
+    dialog.show()
