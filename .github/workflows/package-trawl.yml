@@ -17,15 +17,8 @@ permissions:
 
 jobs:
   package:
-    name: Package for ${{ matrix.os }}
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [windows-latest]  # 暂只支持 Windows
-        include:
-          - os: windows-latest
-            artifact_name: trawl-portable
-            output_name: trawl-portable-${{ inputs.version }}-windows
+    name: Package for Windows
+    runs-on: windows-latest
 
     steps:
       - name: Checkout
@@ -39,53 +32,64 @@ jobs:
           bun-version: latest
 
       - name: Clone TRAWL
+        shell: bash
         run: |
           git clone --depth 1 --branch v${{ inputs.version }} https://github.com/germondai/trawl.git trawl-src
-          echo "TRAWL version: ${{ inputs.version }}"
+          cd trawl-src
+          bun --version
 
       - name: Install Dependencies
         working-directory: trawl-src
+        shell: bash
         run: bun install --frozen-lockfile
 
-      - name: Download Camoufox
+      - name: Download Camoufox Browser
         working-directory: trawl-src
-        run: bunx camoufox-js fetch
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          echo "下载 Camoufox 浏览器 (~663MB)，请稍候..."
+          bunx camoufox-js fetch
+          echo "下载完成"
 
       - name: Create Portable Package
+        shell: bash
         run: |
-          mkdir -p ${{ matrix.artifact_name }}
+          PACKAGE="trawl-portable-${{ inputs.version }}-windows"
+          mkdir -p "$PACKAGE"
           
-          # 复制 trawl 源码
-          cp -r trawl-src/* ${{ matrix.artifact_name }}/
-          cp trawl-src/.env.example ${{ matrix.artifact_name }}/.env
+          # 复制 trawl 源码和配置
+          cp -r trawl-src/* "$PACKAGE/"
+          cp trawl-src/.env.example "$PACKAGE/.env"
           
           # 复制启动脚本
-          cp scripts/windows/start-trawl.bat ${{ matrix.artifact_name }}/
-          cp scripts/windows/download-bun.bat ${{ matrix.artifact_name }}/
-          cp scripts/windows/README.md ${{ matrix.artifact_name }}/
+          cp scripts/windows/start-trawl.bat "$PACKAGE/"
+          cp scripts/windows/download-bun.bat "$PACKAGE/"
+          cp scripts/windows/README.md "$PACKAGE/"
           
-          # 打包 Bun
-          cd trawl-src
-          bun build --compile src/index.ts --outfile ../${{ matrix.artifact_name }}/trawl.exe
-          cd ..
+          # 打包 Bun 运行时 (约 50MB)
+          BUN_VERSION=$(bun --version)
+          echo "下载 Bun $BUN_VERSION ..."
+          Bun_url="https://github.com/oven-sh/bun/releases/download/bun-v${BUN_VERSION}/bun-windows-x64.zip"
+          curl -sL "$Bun_url" -o bun.zip
+          mkdir -p "$PACKAGE/bun"
+          Expand-Archive -Path bun.zip -DestinationPath "$PACKAGE/bun" -Force
+          rm bun.zip
           
-          # 创建 bun 目录并复制可执行文件
-          mkdir -p ${{ matrix.artifact_name }}/bun
-          # Bun 编译后的二进制已包含运行时，直接复制
-          # 注：实际需要 bun build 打包成独立 exe
+          echo "打包完成，大小:"
+          du -sh "$PACKAGE"
 
-      - name: Create ZIP Archive
+      - name: Create ZIP
+        shell: bash
         run: |
-          7z a -tzip ${{ matrix.output_name }}.zip ${{ matrix.artifact_name }}/*
-          ls -lh ${{ matrix.output_name }}.zip
+          PACKAGE="trawl-portable-${{ inputs.version }}-windows"
+          Compress-Archive -Path "$PACKAGE/*" -DestinationPath "${PACKAGE}.zip" -Force
+          ls -lh "${PACKAGE}.zip"
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.output_name }}
-          path: ${{ matrix.output_name }}.zip
+          name: trawl-portable-${{ inputs.version }}-windows
+          path: trawl-portable-${{ inputs.version }}-windows.zip
           retention-days: 7
 
       - name: Create GitHub Release
@@ -94,7 +98,7 @@ jobs:
         with:
           tag_name: trawl-${{ inputs.version }}
           name: TRAWL ${{ inputs.version }} Windows Portable
-          files: ${{ matrix.output_name }}.zip
+          files: trawl-portable-${{ inputs.version }}-windows.zip
           draft: false
           prerelease: false
           body: |
@@ -104,19 +108,25 @@ jobs:
             
             ### 功能
             - 绕过 Cloudflare Bot Management
-            - 支持 Akamai、Imperva WAF
-            - FlareSolverr 兼容 API
+            - 支持 Akamai、Imperva WAF  
+            - FlareSolverr 兼容 API (`/v1`)
             - Camoufox 浏览器集成
             
             ### 使用方法
             1. 解压到任意目录（如 `C:\Tools\trawl`）
             2. 双击 `start-trawl.bat` 启动
-            3. 配置 MDCx: 设置 → 网络 → CF Bypass 地址填 `http://localhost:8191/v1`
+            3. 等待浏览器预热 (约 1-2 分钟)
+            4. 配置 MDCx: 设置 → 网络 → CF Bypass 地址填 `http://localhost:8191/v1`
             
             ### 系统要求
             - Windows 10/11 (x64)
-            - 2GB RAM
-            - 500MB 磁盘空间
+            - 2GB RAM 可用内存
+            - 1GB 磁盘空间
+            
+            ### 故障排查
+            - 启动失败：运行 `download-bun.bat` 重新下载 Bun
+            - 端口冲突：编辑 `.env`，修改 `PORT=8191`
+            - 浏览器慢：首次需下载 Camoufox (~663MB)
             
             ---
             原版项目: https://github.com/germondai/trawl
