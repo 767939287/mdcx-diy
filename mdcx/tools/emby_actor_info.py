@@ -95,10 +95,6 @@ async def update_emby_actor_info() -> None:
             actor_name = actor.get("Name")
             if not isinstance(actor_name, str):
                 continue
-            # 名字含有空格时跳过
-            if re.search(r"[ .·・-]", actor_name):
-                signal.show_log_text(f"🔍 {actor_name}: 名字含有空格等分隔符，识别为非女优，跳过！")
-                continue
             task = asyncio.create_task(_process_actor_async(actor, emby_on))
             tasks.append(task)
 

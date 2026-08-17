@@ -247,15 +247,11 @@ async def fetch_all_actors(
 
     # 第一遍: 过滤+构建 stub (不发起网络请求)
     stubs: list[tuple[int, ActorInfo]] = []  # (原索引, actor_stub)
-    skipped_special_char: list[str] = []  # 含空格/分隔符被跳过 (日站匹配困难)
     skipped_not_in_lib: list[str] = []  # 指定媒体库过滤但不在影片 People 里
     for i, p in enumerate(persons):
         _raise_if_stop_requested()
         name = p.get("Name", "")
         if not name:
-            continue
-        if any(ch in name for ch in " .·・-"):
-            skipped_special_char.append(name)
             continue
         if parent_ids and name not in lib_person_names:
             skipped_not_in_lib.append(name)
@@ -280,10 +276,6 @@ async def fetch_all_actors(
         stubs.append((i, info))
 
     # 透明化跳过原因——小白至少看得见"为什么 XX 没在列表里"
-    if skipped_special_char:
-        preview = ", ".join(skipped_special_char[:5])
-        more = f" 等共 {len(skipped_special_char)} 人" if len(skipped_special_char) > 5 else ""
-        signal.show_log_text(f"⚠️ 跳过 {len(skipped_special_char)} 个含空格/分隔符的演员（日站难匹配）: {preview}{more}")
     if skipped_not_in_lib:
         preview = ", ".join(skipped_not_in_lib[:5])
         more = f" 等共 {len(skipped_not_in_lib)} 人" if len(skipped_not_in_lib) > 5 else ""
