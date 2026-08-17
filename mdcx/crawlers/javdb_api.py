@@ -13,6 +13,11 @@ from ..models.types import CrawlerResult
 from .base import BaseCrawler, CrawlerData, CrawlerException, DetailPageParser, extract_all_texts, extract_text
 
 _DEFAULT_BASE = "https://javdb573.com"
+_MIRRORS = [
+    "https://javdb573.com",
+    "https://javdb574.com",
+    "https://javdb575.com",
+]
 
 _SELECTOR_LIST_ITEM = "//a[@class='box']"
 _SELECTOR_LIST_CODE = "div[@class='video-title']/strong/text()"
@@ -228,6 +233,19 @@ class JavdbApiCrawler(BaseCrawler):
         super().__init__(client=client, base_url=base_url, browser=browser)
         self._page_request_lock = asyncio.Lock()
         self._last_page_request_at = 0.0
+        self._mirror_index = 0  # 当前使用的 mirror 索引
+        self._successful_mirror = ""  # 记录成功使用的 mirror
+
+    @property
+    def base_url(self) -> str:
+        """获取当前 base_url，如有成功记录的 mirror 则优先使用"""
+        if self._successful_mirror:
+            return self._successful_mirror
+        return self._base_url or _DEFAULT_BASE
+
+    @base_url.setter
+    def base_url(self, value: str):
+        self._base_url = value
 
     @staticmethod
     def _number_key(value: str) -> str:
@@ -271,17 +289,48 @@ class JavdbApiCrawler(BaseCrawler):
                 await asyncio.sleep(wait_seconds)
         self._last_page_request_at = time.monotonic()
 
+    def _next_mirror(self) -> str:
+        """切换到下一个 mirror"""
+        self._mirror_index = (self._mirror_index + 1) % len(_MIRRORS)
+        return _MIRRORS[self._mirror_index]
+
+    async def _try_mirrors(self, ctx, path: str, request_type: str) -> tuple[str | None, str]:
+        """尝试所有 mirror，返回 (html, error)"""
+        last_error = ""
+        for _ in range(len(_MIRRORS)):
+            current_url = f"{self.base_url}{path}"
+            ctx.debug(f"JavdbApi {request_type} 尝试: {current_url}")
+            html, error = await self.async_client.get_text(current_url, headers=self._get_headers(ctx), use_proxy=False)
+            if html:
+                # 成功后记录 mirror
+                self._successful_mirror = self.base_url
+                return html, ""
+            last_error = error
+            # 切换到下一个 mirror
+            old_url = self.base_url
+            self.base_url = self._next_mirror()
+            ctx.debug(f"JavdbApi {request_type} 失败: {old_url} -> 切换到 {self.base_url}")
+        return None, last_error
+        self._last_page_request_at = time.monotonic()
+
     @override
     async def _fetch_search(self, ctx, url: str, use_browser: bool | None = False) -> tuple[str | None, str]:
         async with self._page_request_lock:
             await self._throttle_page_request(ctx, "搜索", url)
-            return await self.async_client.get_text(url, headers=self._get_headers(ctx), use_proxy=False)
+            return await self._try_mirrors(ctx, "/search?all=1&page=1", "搜索")
 
     @override
     async def _fetch_detail(self, ctx, url: str, use_browser: bool | None = False) -> tuple[str | None, str]:
         async with self._page_request_lock:
             await self._throttle_page_request(ctx, "详情", url)
-            return await self.async_client.get_text(url, headers=self._get_headers(ctx), use_proxy=False)
+            # 从 url 提取 path
+            from urllib.parse import urlparse
+
+            parsed = urlparse(url)
+            path = parsed.path
+            if parsed.query:
+                path += "?" + parsed.query
+            return await self._try_mirrors(ctx, path, "详情")
 
     @override
     async def _generate_search_url(self, ctx) -> list[str]:
