@@ -87,21 +87,24 @@ jobs:
           Remove-Item "bun.zip" -Force
           
           # 复制缓存的 Camoufox
-          if (Test-Path "$HOME\.cache\camoufox") {
+          $CamoufoxCache = "$HOME\.cache\camoufox"
+          if (Test-Path $CamoufoxCache) {
             New-Item -ItemType Directory -Force -Path "$PACKAGE\.cache" | Out-Null
-            Copy-Item -Path "$HOME\.cache\camoufox\*" -Destination "$PACKAGE\.cache\" -Recurse -Force
+            Copy-Item -Path "$CamoufoxCache\*" -Destination "$PACKAGE\.cache\" -Recurse -Force
             Write-Host "已包含 Camoufox 缓存"
           }
           
-          Write-Host "打包完成，大小:"
-          Get-ChildItem $PACKAGE -Recurse | Measure-Object -Property Length -Sum | ForEach-Object { "{0:N2} MB" -f ($_.Sum / 1MB) }
+          Write-Host "打包完成"
+          $Size = (Get-ChildItem $PACKAGE -Recurse | Measure-Object -Property Length -Sum).Sum
+          Write-Host ("{0:N2} MB" -f ($Size / 1MB))
 
       - name: Create ZIP
         shell: powershell
         run: |
           $PACKAGE = "trawl-portable-${{ inputs.version }}-windows"
           Compress-Archive -Path "$PACKAGE\*" -DestinationPath "${PACKAGE}.zip" -Force
-          Get-ChildItem "${PACKAGE}.zip" | Select-Object Name, @{N='Size(MB)';E={[math]::Round($_.Length/1MB,2)}}
+          $File = Get-Item "${PACKAGE}.zip"
+          Write-Host ("{0} - {1:N2} MB" -f $File.Name, ($File.Length / 1MB))
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
