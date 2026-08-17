@@ -8,6 +8,7 @@ from mdcx.config.enums import Website
 from mdcx.core.network_check import (
     NetworkCheckSpec,
     NetworkCheckStatus,
+    _is_cloudflare_challenge,
     build_network_check_specs,
     format_result_line,
     run_network_check,
@@ -218,6 +219,27 @@ async def test_run_network_check_item_uses_default_retry_instead_of_single_attem
 
     assert len(client.calls) == 1
     assert "retry_count" not in client.calls[0], "检测不应强制单次请求，偶发连接错误应走默认重试"
+
+
+def test_is_cloudflare_challenge_does_not_misjudge_passive_script_injection():
+    normal_page = (
+        "<html>LibreFanza</html>"
+        "<script src='/cdn-cgi/challenge-platform/scripts/jsd/main.js'></script>"
+        "<script src='https://static.cloudflareinsights.com/beacon.min.js'></script>"
+    )
+
+    assert _is_cloudflare_challenge(normal_page) is False
+
+
+def test_is_cloudflare_challenge_detects_orchestrate_challenge_page():
+    challenge_page = (
+        "<html><title>Just a moment...</title>"
+        "<script src='/cdn-cgi/challenge-platform/h/b/orchestrate/jsd/v1/x.js'></script>"
+        "<span>Checking your browser before accessing libredmm.com</span>"
+        "</html>"
+    )
+
+    assert _is_cloudflare_challenge(challenge_page) is True
 
 
 @pytest.mark.anyio

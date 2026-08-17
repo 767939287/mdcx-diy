@@ -1150,7 +1150,7 @@ class AsyncWebClient:
         challenge_markers = (
             "just a moment",
             "cf-chl",
-            "cdn-cgi/challenge-platform",
+            "cdn-cgi/challenge-platform/h/b/",
             "attention required",
             "enable javascript and cookies",
             "checking your browser before accessing",
@@ -1161,7 +1161,7 @@ class AsyncWebClient:
         if status in (403, 429, 503) and ("cloudflare" in server or bool(cf_ray)) and has_marker:
             return True
         # 规则2: 挑战文案足够明确时，允许无 header 命中
-        if has_marker and ("cf-chl" in body_text or "cdn-cgi/challenge-platform" in body_text):
+        if has_marker and ("cf-chl" in body_text or "cdn-cgi/challenge-platform/h/b/" in body_text):
             return True
         return False
 

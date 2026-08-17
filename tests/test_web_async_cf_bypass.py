@@ -962,3 +962,32 @@ async def test_call_bypass_mirror_rejects_untrusted_redirect_target():
 
     assert response is None
     assert "不在白名单" in error
+
+
+def test_is_cf_challenge_response_does_not_misjudge_passive_script_injection():
+    client = AsyncWebClient(timeout=1)
+    response = _fake_response(
+        status_code=200,
+        content=(
+            b"<html>LibreFanza</html>"
+            b"<script src='/cdn-cgi/challenge-platform/scripts/jsd/main.js'></script>"
+            b"<script src='https://static.cloudflareinsights.com/beacon.min.js'></script>"
+        ),
+    )
+
+    assert client._is_cf_challenge_response(response) is False
+
+
+def test_is_cf_challenge_response_detects_orchestrate_challenge_page():
+    client = AsyncWebClient(timeout=1)
+    response = _fake_response(
+        status_code=403,
+        headers={"server": "cloudflare"},
+        content=(
+            b"<html><title>Attention Required!</title>"
+            b"<script src='/cdn-cgi/challenge-platform/h/b/orchestrate/jsd/v1/x.js'></script>"
+            b"<span>Enable JavaScript and cookies to continue</span></html>"
+        ),
+    )
+
+    assert client._is_cf_challenge_response(response) is True

@@ -122,19 +122,21 @@ def _diagnostic_timeout() -> float:
 
 def _is_cloudflare_challenge(text: str) -> bool:
     lowered = text.lower()
-    challenge_markers = (
-        "challenge",
-        "ray id",
-        "ray-id",
+    strong_markers = (
+        "cdn-cgi/challenge-platform/h/b/",
+        "cf-chl",
+        "challenges.cloudflare.com",
+    )
+    if any(marker in lowered for marker in strong_markers):
+        return True
+    weak_markers = (
         "cf-browser-verification",
         "just a moment",
-        "cf-chl",
-        "cdn-cgi/challenge-platform",
         "attention required",
         "enable javascript and cookies",
         "checking your browser before accessing",
     )
-    return "cloudflare" in lowered and any(marker in lowered for marker in challenge_markers)
+    return "cloudflare" in lowered and any(marker in lowered for marker in weak_markers)
 
 
 def _is_proxy_error(error: str) -> bool:
