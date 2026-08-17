@@ -11,14 +11,51 @@ on:
         description: '上传到 GitHub Releases'
         type: boolean
         default: true
+      warm_cache_first:
+        description: '先运行缓存预热（首次打包建议勾选）'
+        type: boolean
+        default: true
 
 permissions:
   contents: write
 
 jobs:
+  warmup:
+    name: Warm Cache (Optional)
+    runs-on: windows-latest
+    if: inputs.warm_cache_first
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Clone TRAWL
+        shell: bash
+        run: git clone --depth 1 --branch v${{ inputs.version }} https://github.com/germondai/trawl.git trawl-src
+
+      - name: Warm Cache
+        working-directory: trawl-src
+        shell: bash
+        run: bun run scripts/warm_cache.py
+
+      - name: Upload Cache Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: chromium-cache
+          path: trawl-src/chromium
+          retention-days: 1
+
   package:
     name: Package for Windows
     runs-on: windows-latest
+    needs: warmup
+    if: always() && (needs.warmup.result == 'success' || needs.warmup.result == 'skipped')
 
     steps:
       - name: Checkout
@@ -38,28 +75,21 @@ jobs:
           cd trawl-src
           bun --version
 
-      - name: Install Dependencies
+      - name: Download Dependencies
         working-directory: trawl-src
         shell: bash
         run: bun install --frozen-lockfile
 
-      - name: Cache cloakbrowser stealth Chromium
-        uses: actions/cache@v4
-        with:
-          path: chromium
-          key: ${{ runner.os }}-cloakbrowser-chromium-v1
-          restore-keys: |
-            ${{ runner.os }}-cloakbrowser-chromium-
-
       - name: Download Camoufox (if not cached)
         working-directory: trawl-src
-        if: steps.cache.outputs.cache-hit != 'true'
         shell: bash
         run: |
-          echo "下载 Camoufox 浏览器 (~663MB)..."
-          # 使用 warm_cache.py 下载并缓存
-          bun run scripts/warm_cache.py
-          echo "下载完成"
+          if [ ! -d "chromium" ]; then
+            echo "缓存未命中，正在下载 Camoufox..."
+            bun run scripts/warm_cache.py
+          else
+            echo "使用缓存的浏览器"
+          fi
 
       - name: Create Portable Package
         shell: bash
@@ -75,12 +105,6 @@ jobs:
           cp scripts/windows/start-trawl.bat "$PACKAGE/"
           cp scripts/windows/download-bun.bat "$PACKAGE/"
           cp scripts/windows/README.md "$PACKAGE/"
-          
-          # 复制缓存的浏览器
-          if [ -d "chromium" ]; then
-            cp -r chromium "$PACKAGE/"
-            echo "已复制缓存的浏览器"
-          fi
           
           # 打包 Bun 运行时
           BUN_VERSION=$(bun --version)
