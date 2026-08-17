@@ -477,7 +477,6 @@ async def run_network_check_item(
             cookies=spec.cookies or None,
             use_proxy=spec.use_proxy,
             timeout=_diagnostic_timeout(),
-            retry_count=1,
             enable_cf_bypass=spec.enable_cf_bypass and bool(_manager().config.cf_bypass_url.strip()),
         )
         elapsed_ms = int((time.perf_counter() - start_time) * 1000)

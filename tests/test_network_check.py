@@ -210,6 +210,17 @@ def test_format_result_line_does_not_duplicate_error():
 
 
 @pytest.mark.anyio
+async def test_run_network_check_item_uses_default_retry_instead_of_single_attempt():
+    spec = NetworkCheckSpec(name="avbase", group="刮削站点", url="https://www.avbase.net")
+    client = FakeClient()
+
+    await run_network_check_item(spec, client=client)
+
+    assert len(client.calls) == 1
+    assert "retry_count" not in client.calls[0], "检测不应强制单次请求，偶发连接错误应走默认重试"
+
+
+@pytest.mark.anyio
 async def test_run_network_check_item_actively_uses_cf_bypass_on_challenge(monkeypatch: pytest.MonkeyPatch):
     class BypassConfig(FakeConfig):
         cf_bypass_url = "http://0.0.0.0:8000"
