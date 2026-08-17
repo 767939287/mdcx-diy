@@ -43,12 +43,22 @@ jobs:
         shell: bash
         run: bun install --frozen-lockfile
 
-      - name: Download Camoufox Browser
+      - name: Cache cloakbrowser stealth Chromium
+        uses: actions/cache@v4
+        with:
+          path: chromium
+          key: ${{ runner.os }}-cloakbrowser-chromium-v1
+          restore-keys: |
+            ${{ runner.os }}-cloakbrowser-chromium-
+
+      - name: Download Camoufox (if not cached)
         working-directory: trawl-src
+        if: steps.cache.outputs.cache-hit != 'true'
         shell: bash
         run: |
-          echo "下载 Camoufox 浏览器 (~663MB)，请稍候..."
-          bunx camoufox-js fetch
+          echo "下载 Camoufox 浏览器 (~663MB)..."
+          # 使用 warm_cache.py 下载并缓存
+          bun run scripts/warm_cache.py
           echo "下载完成"
 
       - name: Create Portable Package
@@ -66,7 +76,13 @@ jobs:
           cp scripts/windows/download-bun.bat "$PACKAGE/"
           cp scripts/windows/README.md "$PACKAGE/"
           
-          # 打包 Bun 运行时 (约 50MB)
+          # 复制缓存的浏览器
+          if [ -d "chromium" ]; then
+            cp -r chromium "$PACKAGE/"
+            echo "已复制缓存的浏览器"
+          fi
+          
+          # 打包 Bun 运行时
           BUN_VERSION=$(bun --version)
           echo "下载 Bun $BUN_VERSION ..."
           Bun_url="https://github.com/oven-sh/bun/releases/download/bun-v${BUN_VERSION}/bun-windows-x64.zip"
