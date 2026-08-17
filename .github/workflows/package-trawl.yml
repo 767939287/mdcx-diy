@@ -54,14 +54,17 @@ jobs:
 
       - name: Download Camoufox (if not cached)
         if: steps.cache-camoufox.outputs.cache-hit != 'true'
-        working-directory: trawl-src
         shell: powershell
         run: |
-          Write-Host "下载 Camoufox Firefox (~663MB)，请稍候..."
-          $env:CAMOFOX_SKIP_GEOIP = "1"
-          # 用 trawl 的 camoufox-js 包
-          bunx -p camoufox-js@0.12.0 camoufox-js fetch
-          Write-Host "下载完成"
+          Write-Host "下载 Camoufox Firefox (~663MB)..."
+          $CamoufoxVersion = "152.0.4-beta.28"
+          $CamoufoxUrl = "https://github.com/daijro/camoufox/releases/download/v${CamoufoxVersion}/camoufox-${CamoufoxVersion}-win.x86_64.zip"
+          $CacheDir = "$HOME\.cache\camoufox"
+          New-Item -ItemType Directory -Force -Path $CacheDir | Out-Null
+          Invoke-WebRequest -Uri $CamoufoxUrl -OutFile "camoufox.zip"
+          Expand-Archive -Path "camoufox.zip" -DestinationPath $CacheDir -Force
+          Remove-Item "camoufox.zip" -Force
+          Write-Host "下载完成，已缓存到 $CacheDir"
 
       - name: Create Portable Package
         shell: powershell
