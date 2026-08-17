@@ -60,3 +60,6 @@ jobs:
 
       - name: Run check_info_db
         run: uv run python -m scripts.check_info_db
+
+      - name: Run check_thread_safety
+        run: uv run python -m scripts.check_thread_safety

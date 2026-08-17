@@ -301,6 +301,9 @@ class BuildManager:
             "mdcx.tools.sync_gfriends",
             "--hidden-import",
             "scripts.cover_backfill",
+            # 跨线程后台任务模板(函数内延迟导入, 静态分析收集不到, 需显式打包)
+            "--hidden-import",
+            "mdcx.utils.qt_thread",
             # DMM 高清直链构造器(libredmm/r18dev/javbus 与 cover_backfill 均函数内延迟导入)
             "--hidden-import",
             "mdcx.crawlers.dmm_direct",

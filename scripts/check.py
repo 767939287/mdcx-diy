@@ -22,6 +22,7 @@ COMMANDS = [
     ],
     [sys.executable, "-m", "scripts.check_actor_db"],
     [sys.executable, "-m", "scripts.check_info_db"],
+    [sys.executable, "-m", "scripts.check_thread_safety"],
 ]
 
 
