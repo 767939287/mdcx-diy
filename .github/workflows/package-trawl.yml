@@ -32,7 +32,7 @@ jobs:
           bun-version: latest
 
       - name: Clone TRAWL
-        shell: powershell
+        shell: pwsh
         run: |
           git clone --depth 1 --branch v${{ inputs.version }} https://github.com/germondai/trawl.git trawl-src
           cd trawl-src
@@ -40,7 +40,7 @@ jobs:
 
       - name: Install Dependencies
         working-directory: trawl-src
-        shell: powershell
+        shell: pwsh
         run: bun install --frozen-lockfile
 
       - name: Cache Camoufox Browser
@@ -54,7 +54,7 @@ jobs:
 
       - name: Download Camoufox (if not cached)
         if: steps.cache-camoufox.outputs.cache-hit != 'true'
-        shell: powershell
+        shell: pwsh
         run: |
           Write-Host "下载 Camoufox Firefox (~663MB)..."
           $CamoufoxVersion = "152.0.4-beta.28"
@@ -74,7 +74,7 @@ jobs:
           Write-Host "下载完成，已缓存到 $CacheDir"
 
       - name: Create Portable Package
-        shell: powershell
+        shell: pwsh
         run: |
           $PACKAGE = "trawl-portable-${{ inputs.version }}-windows"
           New-Item -ItemType Directory -Force -Path $PACKAGE | Out-Null
@@ -118,7 +118,7 @@ jobs:
           Write-Host ("{0:N2} MB" -f ($Size / 1MB))
 
       - name: Create ZIP
-        shell: powershell
+        shell: pwsh
         run: |
           $PACKAGE = "trawl-portable-${{ inputs.version }}-windows"
           # -Force 显式列出全部顶层项（含 .cache 等点开头目录），确保 Camoufox 被打进 zip
