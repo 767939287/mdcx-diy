@@ -58,6 +58,8 @@ jobs:
         shell: powershell
         run: |
           Write-Host "下载 Camoufox Firefox (~663MB)，请稍候..."
+          # 跳过 GeoLite 下载，避免网络问题
+          $env:CAMOFOX_SKIP_GEOIP = "1"
           bunx camoufox-js fetch
           Write-Host "下载完成"
 
