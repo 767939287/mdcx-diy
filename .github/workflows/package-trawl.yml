@@ -64,6 +64,13 @@ jobs:
           Invoke-WebRequest -Uri $CamoufoxUrl -OutFile "camoufox.zip"
           Expand-Archive -Path "camoufox.zip" -DestinationPath $CacheDir -Force
           Remove-Item "camoufox.zip" -Force
+          # camoufox-js 校验 version.json 存在且版本受支持才直接使用本地浏览器
+          # 写成无 BOM UTF-8，避免 JSON.parse 被 BOM 字符打断
+          [IO.File]::WriteAllText(
+            (Join-Path $CacheDir "version.json"),
+            '{"version":"0.1.0","release":"0.1.0"}',
+            (New-Object System.Text.UTF8Encoding($false))
+          )
           Write-Host "下载完成，已缓存到 $CacheDir"
 
       - name: Create Portable Package
@@ -91,12 +98,19 @@ jobs:
           Expand-Archive -Path "bun.zip" -DestinationPath "$PACKAGE\bun" -Force
           Remove-Item "bun.zip" -Force
           
-          # 复制缓存的 Camoufox
+          # 复制缓存的 Camoufox 到包内，并由 start-trawl.bat 的 CAMOUFOX_INSTALL_DIR 指向
           $CamoufoxCache = "$HOME\.cache\camoufox"
           if (Test-Path $CamoufoxCache) {
-            New-Item -ItemType Directory -Force -Path "$PACKAGE\.cache" | Out-Null
-            Copy-Item -Path "$CamoufoxCache\*" -Destination "$PACKAGE\.cache\" -Recurse -Force
+            New-Item -ItemType Directory -Force -Path "$PACKAGE\.cache\camoufox" | Out-Null
+            Copy-Item -Path "$CamoufoxCache\*" -Destination "$PACKAGE\.cache\camoufox\" -Recurse -Force
+            [IO.File]::WriteAllText(
+              (Join-Path "$PACKAGE\.cache\camoufox" "version.json"),
+              '{"version":"0.1.0","release":"0.1.0"}',
+              (New-Object System.Text.UTF8Encoding($false))
+            )
             Write-Host "已包含 Camoufox 缓存"
+          } else {
+            Write-Host "[WARN] 未找到 Camoufox 缓存，便携包将不含浏览器"
           }
           
           Write-Host "打包完成"
@@ -107,7 +121,9 @@ jobs:
         shell: powershell
         run: |
           $PACKAGE = "trawl-portable-${{ inputs.version }}-windows"
-          Compress-Archive -Path "$PACKAGE\*" -DestinationPath "${PACKAGE}.zip" -Force
+          # -Force 显式列出全部顶层项（含 .cache 等点开头目录），确保 Camoufox 被打进 zip
+          $Items = Get-ChildItem -Path $PACKAGE -Force | ForEach-Object { $_.FullName }
+          Compress-Archive -Path $Items -DestinationPath "${PACKAGE}.zip" -Force
           $File = Get-Item "${PACKAGE}.zip"
           Write-Host ("{0} - {1:N2} MB" -f $File.Name, ($File.Length / 1MB))
 

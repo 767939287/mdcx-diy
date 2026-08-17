@@ -42,6 +42,8 @@ if not exist "src\node_modules" (
 set REDIS_URL=
 set MITM_PROXY_ENABLED=false
 set PORT=8191
+:: 让 camoufox-js 直接使用便携包内自带的 Camoufox 浏览器，避免在线下载
+set CAMOUFOX_INSTALL_DIR=%~dp0.cache\camoufox
 
 echo.
 echo [INFO] 服务启动中...
