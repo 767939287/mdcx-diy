@@ -219,6 +219,7 @@ class MyMAinWindow(QMainWindow):
 
         # region 初始化 UI
         resources.get_fonts()
+        resources.start_data_loading()
         self.Ui = Ui_MDCx()  # 实例化 Ui
         self.Ui.setupUi(self)  # 初始化 Ui
         self._bind_system_theme_refresh()

@@ -42,6 +42,9 @@ def _should_query_avwiki_actor(res: CrawlersResult) -> bool:
 
 
 def translate_info(json_data: CrawlersResult, has_sub: bool):
+    ensure_data_ready = getattr(resources, "ensure_data_ready", None)
+    if ensure_data_ready:
+        ensure_data_ready()
     xml_info = resources.info_db
     if xml_info is not None and len(xml_info) == 0:
         return json_data
@@ -251,6 +254,9 @@ async def translate_actor(res: CrawlersResult):
 
 
 def map_actor_names(res: CrawlersResult, all_actors=False):
+    ensure_data_ready = getattr(resources, "ensure_data_ready", None)
+    if ensure_data_ready:
+        ensure_data_ready()
     actors = res.all_actors if all_actors else res.actors
     field_name = CrawlerResultFields.ALL_ACTORS if all_actors else CrawlerResultFields.ACTORS
     lang = manager.config.get_field_config(field_name).language

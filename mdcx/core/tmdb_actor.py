@@ -869,6 +869,9 @@ def search_actor_db_reverse(query_name: str) -> dict | None:
     """
     反向搜索演员数据库：用任意语言的演员名搜索。返回匹配的整行数据，或 None。
     """
+    ensure_data_ready = getattr(resources, "ensure_data_ready", None)
+    if ensure_data_ready:
+        ensure_data_ready()
     actor_db = resources.actor_db
     if not actor_db:
         return None
@@ -1017,6 +1020,9 @@ async def fetch_actor_tmdb_ids(actors: list[str], client: Any) -> dict[str, int]
     if not tmdb_api_key:
         return {}
 
+    ensure_data_ready = getattr(resources, "ensure_data_ready", None)
+    if ensure_data_ready:
+        ensure_data_ready()
     result: dict[str, int] = {}
     need_query: list[tuple[str, str]] = []
     actor_db = resources.actor_db or {}
@@ -1159,6 +1165,9 @@ async def fetch_actor_tmdb_ids(actors: list[str], client: Any) -> dict[str, int]
     tasks = [asyncio.create_task(_limited_query(actor_name, query_name)) for actor_name, query_name in need_query]
     await asyncio.gather(*tasks)
 
+    ensure_data_ready = getattr(resources, "ensure_data_ready", None)
+    if ensure_data_ready:
+        ensure_data_ready()
     old_db = dict(resources.actor_db) if resources.actor_db else {}
 
     cached_before = len([a for a in actors if a.strip() in old_db and old_db[a.strip()].get("tmdbid")])

@@ -75,6 +75,9 @@ def _normalize_tag(value: str) -> str:
 
 
 def _get_mapping_nodes():
+    ensure_data_ready = getattr(resources, "ensure_data_ready", None)
+    if ensure_data_ready:
+        ensure_data_ready()
     info_db = resources.info_db
     if info_db:
         return id(info_db), info_db

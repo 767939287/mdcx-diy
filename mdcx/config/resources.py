@@ -1,6 +1,7 @@
 import asyncio
 import os
 import sys
+import threading
 import traceback
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -174,10 +175,38 @@ class Resources:
         self.actor_db_reverse_index: dict[str, str] | None = None  # 规范名/别名 -> jp 名索引
         self.info_db: list[dict] | None = None  # 信息映射数据库（xlsx 格式，有序列表以保持行顺序）
         self.info_db_index: dict[str, dict] | None = None
+        self._data_ready = threading.Event()
+        self._data_load_lock = threading.Lock()
+        self._data_loading = False
+        self._data_load_error: Exception | None = None
 
-        self._get_or_generate_local_data()
         self._get_mark_icon()
         zhconv.loaddict(str(self.r("zhconv/zhcdict.json")))  # 加载繁简转换字典
+
+    def start_data_loading(self) -> None:
+        """后台准备本地 XLSX 数据，避免构造 Resources 阻塞首屏。"""
+        with self._data_load_lock:
+            if self._data_loading or self._data_ready.is_set():
+                return
+            self._data_loading = True
+        threading.Thread(target=self._load_local_data, name="ResourcesDataLoader", daemon=True).start()
+
+    def _load_local_data(self) -> None:
+        try:
+            self._get_or_generate_local_data()
+        except Exception as e:
+            self._data_load_error = e
+            signal.show_traceback_log(f"本地数据库后台加载失败: {e}\n{traceback.format_exc()}")
+        finally:
+            self._data_ready.set()
+
+    def ensure_data_ready(self) -> None:
+        """等待本地 XLSX 数据就绪，供后台业务首次访问时调用。"""
+        if not self._data_ready.is_set():
+            self.start_data_loading()
+            self._data_ready.wait()
+        if self._data_load_error is not None:
+            raise RuntimeError("本地数据库加载失败") from self._data_load_error
 
     def r(self, relative_path: str | Path):
         return self._resources_base / relative_path
@@ -190,6 +219,7 @@ class Resources:
         return self._userdata_base / relative_path
 
     def get_actor_data(self, actor):
+        self.ensure_data_ready()
         # 初始化数据
         actor_data = {
             "zh_cn": actor,
@@ -221,6 +251,7 @@ class Resources:
         return actor_data
 
     def get_info_data(self, info):
+        self.ensure_data_ready()
         # 初始化数据
         info_data = {
             "zh_cn": info,
