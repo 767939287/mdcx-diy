@@ -58,9 +58,20 @@ jobs:
         shell: powershell
         run: |
           Write-Host "下载 Camoufox Firefox (~663MB)，请稍候..."
-          # 跳过 GeoLite 下载，避免网络问题
-          $env:CAMOFOX_SKIP_GEOIP = "1"
-          bunx camoufox-js fetch
+          # 使用 trawl 自带的 camoufox-js 版本
+          $CamoufoxBin = Get-ChildItem -Path "node_modules\.bun" -Directory | Where-Object { $_.Name -like "camoufox-js*" } | Select-Object -First 1
+          if ($CamoufoxBin) {
+            $BinPath = Join-Path $CamoufoxBin.FullName "node_modules\.bin\camoufox-js"
+            if (Test-Path "$BinPath.cmd") {
+              & "$BinPath.cmd" fetch
+            } else {
+              node "$BinPath.js" fetch
+            }
+          } else {
+            # 回退到 bunx
+            $env:CAMOFOX_SKIP_GEOIP = "1"
+            bunx camoufox-js fetch
+          }
           Write-Host "下载完成"
 
       - name: Create Portable Package
