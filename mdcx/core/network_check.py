@@ -48,6 +48,12 @@ class NetworkCheckResult:
     elapsed_ms: int | None = None
     final_url: str = ""
     error: str = ""
+    used_proxy: bool | None = None
+
+
+# 连通性检测通过后，用该番号实际探测爬虫搜索能力，避免"能连≠能刮"误导用户
+SCRAPE_PROBE_NUMBER = "SSNI-647"
+SCRAPE_PROBE_TIMEOUT = 8.0
 
 
 ProgressCallback = Callable[[str], None]
@@ -210,6 +216,113 @@ def _classify_http_result(spec: NetworkCheckSpec, status_code: int, text: str) -
     return NetworkCheckStatus.FAILED, f"HTTP {status_code}"
 
 
+def _compute_used_proxy(spec: NetworkCheckSpec) -> bool:
+    """计算该检测项实际是否走代理.
+
+    与 AsyncWebClient.request 的真实路由判定保持一致：
+    走代理需同时满足 全局代理启用、spec 允许代理、host 命中 proxy_sites。
+    """
+    if not spec.use_proxy or not spec.url:
+        return False
+    manager = _manager()
+    if not (manager.config.use_proxy and manager.config.proxy):
+        return False
+    try:
+        from httpx import URL
+
+        host = URL(spec.url).host or ""
+    except Exception:
+        host = ""
+    if not host:
+        return False
+    try:
+        from mdcx.web_async import is_proxy_host
+
+        return is_proxy_host(host, manager.config.proxy_sites.split(",") if manager.config.proxy_sites else None)
+    except Exception:
+        return False
+
+
+async def _probe_crawler_capability(
+    client: Any,
+    spec: NetworkCheckSpec,
+) -> tuple[NetworkCheckStatus | None, str]:
+    """连通性检测通过后，用真实爬虫搜索路径探测刮削能力.
+
+    返回 (None, "") 表示该站点无需/无法探测；否则返回探测状态与说明。
+    """
+    site = spec.site
+    if site is None:
+        return None, ""
+    try:
+        from parsel import Selector
+
+        from mdcx.config.enums import Language
+        from mdcx.crawlers import get_crawler
+        from mdcx.crawlers.base.types import CrawlerException
+        from mdcx.models.types import CrawlerInput
+    except Exception:
+        return None, ""
+
+    try:
+        crawler_cls = get_crawler(site)
+        if crawler_cls is None:
+            return None, ""
+        crawler = crawler_cls(client=client, base_url=spec.url.rstrip("/"), browser=None)
+        input_data = CrawlerInput(
+            appoint_number="",
+            appoint_url="",
+            file_path=None,
+            mosaic="",
+            number=SCRAPE_PROBE_NUMBER,
+            short_number="",
+            language=Language.UNDEFINED,
+            org_language=Language.UNDEFINED,
+        )
+        ctx: Any = crawler.new_context(input_data)
+        search_urls = await crawler._generate_search_url(ctx)
+        if not search_urls:
+            return NetworkCheckStatus.WARNING, "站点可达但无法自动探测刮削，可用设置页指定网址实测"
+        if isinstance(search_urls, str):
+            search_urls = [search_urls]
+
+        headers = crawler._get_headers(ctx) or None
+        cookies = crawler._get_cookies(ctx) or None
+
+        for search_url in search_urls:
+            response, error = await client.request(
+                "GET",
+                search_url,
+                headers=headers,
+                cookies=cookies,
+                use_proxy=spec.use_proxy,
+                timeout=SCRAPE_PROBE_TIMEOUT,
+                retry_count=1,
+            )
+            if response is None:
+                return NetworkCheckStatus.WARNING, f"站点可达但搜索页请求失败: {error}"
+            search_text = ""
+            try:
+                response.encoding = spec.encoding
+                search_text = response.text or ""
+            except Exception:
+                search_text = ""
+            if _is_cloudflare_challenge(search_text):
+                return NetworkCheckStatus.WARNING, "站点可达但搜索页被 Cloudflare 拦截"
+            selector = Selector(text=search_text)
+            detail_urls = await crawler._parse_search_page(ctx, selector, search_url)
+            if detail_urls:
+                return NetworkCheckStatus.OK, "连接正常，刮削正常"
+            return NetworkCheckStatus.WARNING, "站点可达但搜索无结果，可能该测试番号未收录"
+        return NetworkCheckStatus.WARNING, "站点可达但搜索无结果"
+    except NotImplementedError:
+        return NetworkCheckStatus.WARNING, "站点可达但无法自动探测刮削，可用设置页指定网址实测"
+    except CrawlerException as exc:
+        return NetworkCheckStatus.WARNING, f"站点可达但刮削探测失败: {exc}"
+    except Exception as exc:
+        return NetworkCheckStatus.WARNING, f"站点可达但刮削探测异常: {exc}"
+
+
 def _is_bypass_capable_client(client: Any) -> bool:
     return callable(getattr(client, "_try_bypass_cloudflare", None))
 
@@ -278,7 +391,8 @@ def format_result_line(result: NetworkCheckResult) -> str:
     name = result.spec.name[:18]
     status_code = _status_code_text(result.status_code)
     elapsed = _elapsed_text(result.elapsed_ms)
-    proxy = "代理" if result.spec.use_proxy else "直连"
+    used_proxy = result.used_proxy if result.used_proxy is not None else result.spec.use_proxy
+    proxy = "代理" if used_proxy else "直连"
     proxy = f"{proxy:<4}"
     message = result.message
     if result.error and result.status == NetworkCheckStatus.FAILED:
@@ -469,6 +583,7 @@ async def run_network_check_item(
     if not spec.url:
         return NetworkCheckResult(spec=spec, status=NetworkCheckStatus.SKIPPED, message=spec.note or "无固定检测入口")
 
+    used_proxy = _compute_used_proxy(spec)
     start_time = time.perf_counter()
     try:
         request_client = client or _manager().computed.async_client
@@ -493,6 +608,7 @@ async def run_network_check_item(
                 message=message,
                 elapsed_ms=elapsed_ms,
                 error=clean_error,
+                used_proxy=used_proxy,
             )
 
         text = ""
@@ -507,6 +623,7 @@ async def run_network_check_item(
                 status_code=response.status_code,
                 elapsed_ms=elapsed_ms,
                 final_url=str(getattr(response, "url", "") or ""),
+                used_proxy=used_proxy,
             )
 
         if _is_cloudflare_challenge(text) and spec.enable_cf_bypass and _manager().config.cf_bypass_url.strip():
@@ -522,6 +639,7 @@ async def run_network_check_item(
                     elapsed_ms=elapsed_ms,
                     final_url=str(getattr(response, "url", "") or ""),
                     error=clean_error,
+                    used_proxy=used_proxy,
                 )
             response = bypass_response
             try:
@@ -535,6 +653,7 @@ async def run_network_check_item(
                     status_code=response.status_code,
                     elapsed_ms=elapsed_ms,
                     final_url=str(getattr(response, "url", "") or ""),
+                    used_proxy=used_proxy,
                 )
             if not _is_cloudflare_challenge(text):
                 bypass_mode = ""
@@ -553,6 +672,7 @@ async def run_network_check_item(
                     status_code=int(response.status_code),
                     elapsed_ms=elapsed_ms,
                     final_url=str(getattr(response, "url", "") or ""),
+                    used_proxy=used_proxy,
                 )
 
         status, message = _classify_http_result(spec, int(response.status_code), text)
@@ -563,6 +683,16 @@ async def run_network_check_item(
         elif spec.name == "CF Bypass" and status == NetworkCheckStatus.OK:
             message = "服务可用"
 
+        if (
+            status == NetworkCheckStatus.OK
+            and spec.site is not None
+            and not spec.validator
+            and spec.name != "CF Bypass"
+        ):
+            probe_status, probe_message = await _probe_crawler_capability(request_client, spec)
+            if probe_status is not None:
+                status, message = probe_status, probe_message
+
         return NetworkCheckResult(
             spec=spec,
             status=status,
@@ -570,6 +700,7 @@ async def run_network_check_item(
             status_code=int(response.status_code),
             elapsed_ms=elapsed_ms,
             final_url=str(getattr(response, "url", "") or ""),
+            used_proxy=used_proxy,
         )
     except asyncio.CancelledError:
         raise

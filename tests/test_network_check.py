@@ -8,7 +8,9 @@ from mdcx.config.enums import Website
 from mdcx.core.network_check import (
     NetworkCheckSpec,
     NetworkCheckStatus,
+    _compute_used_proxy,
     _is_cloudflare_challenge,
+    _probe_crawler_capability,
     build_network_check_specs,
     format_result_line,
     run_network_check,
@@ -68,6 +70,7 @@ class FakeConfig:
     javdb = ""
     javbus = ""
     theporndb_api_token = ""
+    proxy_sites = ""
 
     def get_site_url(self, site, default=""):
         return default
@@ -292,3 +295,193 @@ async def test_run_network_check_item_reports_cf_bypass_failure(monkeypatch: pyt
     assert result.status == NetworkCheckStatus.FAILED
     assert result.message == "Cloudflare Bypass 失败"
     assert result.error == "bypass failed"
+
+
+class ProbeCrawler:
+    def __init__(self, client, base_url="", browser=None):
+        self.client = client
+        self.base_url = base_url
+        self.detail_urls: list[str] | None = ["https://example.test/works/1"]
+        self.raise_not_implemented = False
+
+    def new_context(self, input_data):
+        return SimpleNamespace(input=input_data, debug=lambda msg: None)
+
+    async def _generate_search_url(self, ctx):
+        if self.raise_not_implemented:
+            raise NotImplementedError
+        return [f"{self.base_url}/works?q={ctx.input.number}"]
+
+    def _get_headers(self, ctx):
+        return None
+
+    def _get_cookies(self, ctx):
+        return None
+
+    async def _parse_search_page(self, ctx, html, search_url):
+        return self.detail_urls
+
+
+class ProbeFakeClient:
+    def __init__(self, text: str = "ok"):
+        self.text = text
+        self.calls: list[dict] = []
+
+    async def request(self, method, url, **kwargs):
+        self.calls.append({"method": method, "url": url, **kwargs})
+        response = SimpleNamespace(status_code=200, text=self.text, url=url, headers={})
+        response.encoding = "utf-8"
+        return response, ""
+
+
+@pytest.mark.anyio
+async def test_probe_crawler_capability_ok_when_search_finds_detail(monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setattr("mdcx.crawlers.get_crawler", lambda site: ProbeCrawler)
+    spec = NetworkCheckSpec(name="avbase", group="刮削站点", url="https://www.avbase.net", site=Website.AVBASE)
+
+    status, message = await _probe_crawler_capability(ProbeFakeClient(), spec)
+
+    assert status == NetworkCheckStatus.OK
+    assert "刮削正常" in message
+
+
+@pytest.mark.anyio
+async def test_probe_crawler_capability_warns_on_cloudflare_challenge(monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setattr("mdcx.crawlers.get_crawler", lambda site: ProbeCrawler)
+    spec = NetworkCheckSpec(name="avbase", group="刮削站点", url="https://www.avbase.net", site=Website.AVBASE)
+
+    status, message = await _probe_crawler_capability(
+        ProbeFakeClient(
+            text="<html><script src='/cdn-cgi/challenge-platform/h/b/orchestrate/jsd/v1/x.js'></script>Cloudflare</html>"
+        ),
+        spec,
+    )
+
+    assert status == NetworkCheckStatus.WARNING
+    assert "Cloudflare" in message
+
+
+@pytest.mark.anyio
+async def test_probe_crawler_capability_warns_when_no_search_result(monkeypatch: pytest.MonkeyPatch):
+    class NoResultCrawler(ProbeCrawler):
+        def __init__(self, client, base_url="", browser=None):
+            super().__init__(client, base_url, browser)
+            self.detail_urls = None
+
+    monkeypatch.setattr("mdcx.crawlers.get_crawler", lambda site: NoResultCrawler)
+    spec = NetworkCheckSpec(name="avbase", group="刮削站点", url="https://www.avbase.net", site=Website.AVBASE)
+
+    status, message = await _probe_crawler_capability(ProbeFakeClient(), spec)
+
+    assert status == NetworkCheckStatus.WARNING
+    assert "搜索无结果" in message
+
+
+@pytest.mark.anyio
+async def test_probe_crawler_capability_warns_when_search_url_unavailable(monkeypatch: pytest.MonkeyPatch):
+    class NoUrlCrawler(ProbeCrawler):
+        async def _generate_search_url(self, ctx):
+            return None
+
+    monkeypatch.setattr("mdcx.crawlers.get_crawler", lambda site: NoUrlCrawler)
+    spec = NetworkCheckSpec(name="fc2ppvdb", group="刮削站点", url="https://fc2cmadb.com", site=Website.FC2PPVDB)
+
+    status, message = await _probe_crawler_capability(ProbeFakeClient(), spec)
+
+    assert status == NetworkCheckStatus.WARNING
+    assert "无法自动探测" in message
+
+
+@pytest.mark.anyio
+async def test_probe_crawler_capability_warns_when_run_rewritten(monkeypatch: pytest.MonkeyPatch):
+    class RewrittenCrawler(ProbeCrawler):
+        def __init__(self, client, base_url="", browser=None):
+            super().__init__(client, base_url, browser)
+            self.raise_not_implemented = True
+
+    monkeypatch.setattr("mdcx.crawlers.get_crawler", lambda site: RewrittenCrawler)
+    spec = NetworkCheckSpec(name="fc2ppvdb", group="刮削站点", url="https://fc2cmadb.com", site=Website.FC2PPVDB)
+
+    status, message = await _probe_crawler_capability(ProbeFakeClient(), spec)
+
+    assert status == NetworkCheckStatus.WARNING
+    assert "无法自动探测" in message
+
+
+@pytest.mark.anyio
+async def test_probe_crawler_capability_skipped_without_site():
+    spec = NetworkCheckSpec(name="GitHub Raw", group="基础连通性", url="https://raw.githubusercontent.com")
+
+    status, message = await _probe_crawler_capability(None, spec)
+
+    assert status is None
+    assert message == ""
+
+
+def test_compute_used_proxy_false_when_proxy_disabled():
+    spec = NetworkCheckSpec(name="site", group="刮削站点", url="https://libredmm.com", use_proxy=True)
+
+    assert _compute_used_proxy(spec) is False
+
+
+def test_compute_used_proxy_true_when_host_in_proxy_sites(monkeypatch: pytest.MonkeyPatch):
+    class ProxyConfig(FakeConfig):
+        use_proxy = True
+        proxy = "http://127.0.0.1:7890"
+        proxy_sites = "libredmm.com,javdb.com"
+
+    class ProxyManager:
+        config = ProxyConfig()
+        computed = None
+
+    monkeypatch.setattr("mdcx.core.network_check._manager", lambda: ProxyManager())
+    spec = NetworkCheckSpec(name="site", group="刮削站点", url="https://libredmm.com", use_proxy=True)
+
+    assert _compute_used_proxy(spec) is True
+
+
+def test_compute_used_proxy_false_when_host_not_in_proxy_sites(monkeypatch: pytest.MonkeyPatch):
+    class ProxyConfig(FakeConfig):
+        use_proxy = True
+        proxy = "http://127.0.0.1:7890"
+        proxy_sites = "javdb.com"
+
+    class ProxyManager:
+        config = ProxyConfig()
+        computed = None
+
+    monkeypatch.setattr("mdcx.core.network_check._manager", lambda: ProxyManager())
+    spec = NetworkCheckSpec(name="site", group="刮削站点", url="https://libredmm.com", use_proxy=True)
+
+    assert _compute_used_proxy(spec) is False
+
+
+def test_compute_used_proxy_false_when_spec_forbids_proxy(monkeypatch: pytest.MonkeyPatch):
+    class ProxyConfig(FakeConfig):
+        use_proxy = True
+        proxy = "http://127.0.0.1:7890"
+        proxy_sites = "libredmm.com"
+
+    class ProxyManager:
+        config = ProxyConfig()
+        computed = None
+
+    monkeypatch.setattr("mdcx.core.network_check._manager", lambda: ProxyManager())
+    spec = NetworkCheckSpec(name="site", group="刮削站点", url="https://libredmm.com", use_proxy=False)
+
+    assert _compute_used_proxy(spec) is False
+
+
+def test_format_result_line_shows_direct_when_not_using_proxy(monkeypatch: pytest.MonkeyPatch):
+    from mdcx.core.network_check import NetworkCheckResult
+
+    result = NetworkCheckResult(
+        spec=NetworkCheckSpec(name="site", group="刮削站点", url="https://libredmm.com", use_proxy=True),
+        status=NetworkCheckStatus.OK,
+        message="连接正常，刮削正常",
+        used_proxy=False,
+    )
+
+    line = format_result_line(result)
+
+    assert "直连" in line
