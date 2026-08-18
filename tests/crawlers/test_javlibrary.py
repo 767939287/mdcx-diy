@@ -89,3 +89,57 @@ async def test_javlibrary_crawler_keeps_jp_original_title_for_zh_cn():
 
 def test_javlibrary_crawler_is_registered():
     assert get_crawler(Website.JAVLIBRARY) is JavlibraryCrawler
+
+
+def test_parse_javlibcom_domain():
+    from mdcx.base.web import _parse_javlibcom_domain
+
+    html = '<a rel="nofollow me" href="https://www.f101w.com">https://www.f101w.com</a>'
+    assert _parse_javlibcom_domain(html) == "https://www.f101w.com"
+    # 属性顺序不同也能解析
+    html2 = '<a href="https://www.c97k.com" rel="nofollow me">c97k</a>'
+    assert _parse_javlibcom_domain(html2) == "https://www.c97k.com"
+    # 非 me 链接忽略
+    html3 = '<a rel="nofollow" href="https://www.javlibrary.com">x</a>'
+    assert _parse_javlibcom_domain(html3) == ""
+    # github 链接忽略
+    html4 = '<a rel="nofollow me" href="https://github.com/user">x</a>'
+    assert _parse_javlibcom_domain(html4) == ""
+
+
+@pytest.mark.asyncio
+async def test_get_javlibrary_domain_uses_cache(monkeypatch):
+    import mdcx.base.web as web
+    from mdcx.base.web import get_javlibrary_domain
+
+    web._JAVLIBRARY_DOMAIN_CACHE.clear()
+
+    async def fake_get_text(url, **kwargs):
+        assert url == "https://github.com/javlibcom"
+        return '<a rel="nofollow me" href="https://www.f101w.com">f101w</a>', ""
+
+    class FakeComputed:
+        async_client = None
+
+    class FakeManager:
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *a):
+            return False
+
+        class Computed:
+            async_client = type("C", (), {"get_text": staticmethod(fake_get_text)})()
+
+        @property
+        def computed(self):
+            return self.Computed()
+
+    monkeypatch.setattr(web.manager, "acquire_computed", lambda: FakeManager())
+
+    domain = await get_javlibrary_domain()
+    assert domain == "https://www.f101w.com"
+    # 缓存命中，第二次不重新请求
+    domain2 = await get_javlibrary_domain()
+    assert domain2 == "https://www.f101w.com"
+    web._JAVLIBRARY_DOMAIN_CACHE.clear()

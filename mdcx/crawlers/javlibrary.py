@@ -4,6 +4,7 @@ from typing import override
 
 from lxml import etree
 
+from ..base.web import get_javlibrary_domain
 from ..config.enums import Language, Website
 from ..config.manager import manager
 from ..gen.field_enums import CrawlerResultFields
@@ -149,7 +150,23 @@ class JavlibraryCrawler(BaseCrawler):
         return None
 
     @override
+    def __init__(self, client, base_url: str = "", browser=None):
+        super().__init__(client, base_url=base_url, browser=browser)
+        self._explicit_base_url = bool(base_url)
+
+    @override
     async def _run(self, ctx: Context):
+        # 未显式指定 base_url 且未配置自定义 URL 时，动态获取 javlibrary 最新直连地址
+        # （github.com/javlibcom），避免 javlibrary.com 主站被墙时刮削失败。
+        if not self._explicit_base_url and not manager.config.get_site_config(Website.JAVLIBRARY).custom_url:
+            try:
+                latest_domain = await get_javlibrary_domain()
+                if latest_domain and latest_domain != self.base_url:
+                    ctx.debug(f"使用 javlibrary 直连地址: {latest_domain}")
+                    self.base_url = latest_domain
+            except Exception as e:
+                ctx.debug(f"获取 javlibrary 直连地址失败，使用默认: {e}")
+
         requested_language = normalize_language(ctx.input.language)
         jp_url = ctx.input.appoint_url.replace("/cn/", "/ja/").replace("/tw/", "/ja/")
         jp_data = await self._scrape_language(ctx, Language.JP, jp_url)

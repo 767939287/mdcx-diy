@@ -424,6 +424,84 @@ async def get_avsox_domain() -> str:
     return domain
 
 
+# javlibrary 最新直连地址的内存缓存（避免每次刮削都抓 GitHub）
+_JAVLIBRARY_DOMAIN_CACHE: dict[str, tuple[str, float]] = {}
+_JAVLIBRARY_DOMAIN_CACHE_LOCK = threading.Lock()
+_JAVLIBRARY_DOMAIN_CACHE_TTL = 24 * 3600.0  # 1 天
+
+# javlibrary 已知镜像域名（动态获取失败时的回退列表）
+_JAVLIBRARY_DOMAINS = [
+    "https://www.f101w.com",
+    "https://www.c97k.com",
+]
+
+
+def _get_cached_javlibrary_domain() -> str:
+    now = time.time()
+    with _JAVLIBRARY_DOMAIN_CACHE_LOCK:
+        entry = _JAVLIBRARY_DOMAIN_CACHE.get("domain")
+        if entry and now - entry[1] < _JAVLIBRARY_DOMAIN_CACHE_TTL:
+            return entry[0]
+    return ""
+
+
+def _cache_javlibrary_domain(domain: str) -> None:
+    with _JAVLIBRARY_DOMAIN_CACHE_LOCK:
+        _JAVLIBRARY_DOMAIN_CACHE["domain"] = (domain, time.time())
+
+
+def _parse_javlibcom_domain(response: str) -> str:
+    """从 github.com/javlibcom 主页提取 `rel="nofollow me"` 链接作为最新直连地址。"""
+    if not response:
+        return ""
+    matched = re.findall(r'rel="nofollow me"[^>]*href="(https?://[^"]+)"', response)
+    if not matched:
+        matched = re.findall(r'href="(https?://[^"]+)"[^>]*rel="nofollow me"', response)
+    for url in matched:
+        if "github.com" in url or "githubusercontent" in url:
+            continue
+        return url.rstrip("/")
+    return ""
+
+
+async def get_javlibrary_domain() -> str:
+    """获取 javlibrary 最新直连地址。
+
+    优先从 github.com/javlibcom 用户主页的 `rel="nofollow me"` 链接动态获取，
+    带 1 天内存缓存；获取失败时回退到已知镜像域名列表的第一个可用项。
+    """
+    cached = _get_cached_javlibrary_domain()
+    if cached:
+        return cached
+
+    domain = ""
+    try:
+        async with manager.acquire_computed() as computed:
+            response, error = await computed.async_client.get_text(
+                "https://github.com/javlibcom", headers={"Accept": "text/html"}
+            )
+        if response is not None:
+            domain = _parse_javlibcom_domain(response)
+    except Exception:
+        domain = ""
+
+    if domain:
+        _cache_javlibrary_domain(domain)
+        return domain
+
+    # 回退：依次尝试已知镜像域名，返回首个可用的
+    for candidate in _JAVLIBRARY_DOMAINS:
+        try:
+            async with manager.acquire_computed() as computed:
+                probe, probe_error = await computed.async_client.request("GET", candidate, timeout=8)
+            if probe is not None:
+                _cache_javlibrary_domain(candidate)
+                return candidate
+        except Exception:
+            continue
+    return _JAVLIBRARY_DOMAINS[0]
+
+
 async def get_amazon_data(req_url: str) -> tuple[bool, str]:
     """
     获取 Amazon 数据
