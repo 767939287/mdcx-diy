@@ -7,7 +7,7 @@ from mdcx.core.file import get_file_info_v2
 from mdcx.core.utils import get_video_size
 from mdcx.models.enums import FileMode
 from mdcx.models.flags import Flags
-from mdcx.number import get_file_number, is_uncensored
+from mdcx.number import get_file_number, is_uncensored, match_number
 
 
 def test_get_file_number_prefers_longer_escape_strings():
@@ -232,3 +232,23 @@ async def test_get_file_info_does_not_extract_short_number_for_non_suren_prefixe
 
     assert file_info.number == expected_number
     assert file_info.short_number == ""
+
+
+@pytest.mark.parametrize(
+    ("text", "number", "expected"),
+    [
+        ("BF-002 中文字幕", "BF-002", True),
+        ("ABF-002 中文字幕", "BF-002", False),
+        ("ABS-002 中文字幕", "BS-002", False),
+        ("BS-002 中文字幕", "BS-002", True),
+        ("ABF-002 中文字幕", "ABF-002", True),
+        ("252MY-001 素人", "252MY-001", True),
+        ("252MY001 素人", "252MY001", True),
+        ("ZZZ-999", "ZZZ-999", True),
+        ("BF002无码", "BF002", True),
+        ("ABF002无码", "BF002", False),
+        ("  IPX-535  Title", "IPX-535", True),
+    ],
+)
+def test_match_number(text: str, number: str, expected: bool):
+    assert match_number(text, number) is expected

@@ -7,6 +7,7 @@ from lxml import etree
 
 from ..config.models import Website
 from ..models.types import CrawlerResult
+from ..number import match_number
 from .base import BaseCrawler, CrawlerData, CrawlerException
 from .guochan import get_number_list
 
@@ -34,7 +35,7 @@ def get_search_info(html, number_list):
         title = each.xpath("h3/a/text()")
         if title:
             for n in number_list:
-                if n.upper() in title[0].upper():
+                if match_number(title[0], n):
                     number = n
                     real_url = each.xpath("h3/a/@href")
                     real_url = real_url[0] if real_url else ""
@@ -57,7 +58,7 @@ def get_actor_title(title, number, studio):
     new_title = ""
     series = ""
     for i in range(len(temp_list)):
-        if number.upper() in temp_list[i].upper():
+        if match_number(temp_list[i], number):
             number = temp_list[i]
             continue
         if "系列" in temp_list[i]:

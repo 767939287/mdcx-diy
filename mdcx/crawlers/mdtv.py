@@ -9,6 +9,7 @@ from parsel import Selector
 from ..config.manager import manager
 from ..config.models import Website
 from ..models.types import CrawlerInput
+from ..number import match_number
 from .base import BaseCrawler, Context, CrawlerData, CrawlerException, get_year
 from .guochan import get_actor_list, get_lable_list, get_number_list
 
@@ -71,7 +72,7 @@ def get_real_url(html, number, mdtv_url, file_path):
         href = hrefs[0]
         title_1 = title.replace(".", "").replace("-", "").replace(" ", "")
         number_1 = number.replace(".", "").replace("-", "").replace(" ", "")
-        if number in title or real_number in title or number_1 in title_1:
+        if match_number(title, number) or match_number(title, real_number) or match_number(title_1, number_1):
             real_url = mdtv_url + href
             if cd:
                 if cd[0][0] in title_1.upper():

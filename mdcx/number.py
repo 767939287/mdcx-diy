@@ -107,6 +107,17 @@ def _matches_suren_prefix(number: str, key: str) -> bool:
     return key_upper == "CUTE-" and number_upper.startswith("SCUTE-")
 
 
+def match_number(text: str, number: str) -> bool:
+    """搜索结果番号匹配。
+
+    字母前缀番号（BF、BS 等）严格匹配，避免 BF-002 被 ABF-002 误匹配；
+    数字前缀素人番号（252MY-001 等）保持宽松包含匹配。
+    """
+    if re.match(r"^\d", number):
+        return number.upper() in text.upper()
+    return re.search(rf"(?<![A-Z0-9]){re.escape(number)}(?![A-Z0-9])", text, re.IGNORECASE) is not None
+
+
 def get_number_letters(number: str) -> str:
     number_upper = number.upper()
     if r := re.search(r"([A-Za-z0-9-.]{3,})[-_. ]\d{2}\.\d{2}\.\d{2}", number):

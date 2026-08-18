@@ -94,3 +94,67 @@ async def test_run_maps_cover_to_thumb_and_thumb_to_poster():
     assert response.data.trailer == "https://video.example.com/trailer.mp4"
     assert response.data.release == "2024-01-02"
     assert response.data.year == "2024"
+
+
+@pytest.mark.asyncio
+async def test_run_bf_does_not_match_abf():
+    class FakeClient:
+        async def get_json(self, url: str, **kwargs):
+            if "/api/v2/search" in url:
+                return (
+                    {"data": {"movies": [{"id": "movie-abf", "number": "ABF-002", "title": "Title"}]}},
+                    "",
+                )
+            raise AssertionError(f"unexpected url: {url}")
+
+    crawler = JavdbAPICrawler(client=FakeClient())
+    input_data = CrawlerInput.empty()
+    input_data.number = "BF-002"
+
+    response = await crawler.run(input_data)
+
+    assert response.data is None
+
+
+@pytest.mark.asyncio
+async def test_run_bf_matches_bf_result_when_present():
+    class FakeClient:
+        async def get_json(self, url: str, **kwargs):
+            if "/api/v2/search" in url:
+                return (
+                    {
+                        "data": {
+                            "movies": [
+                                {"id": "movie-abf", "number": "ABF-002", "title": "ABF Title"},
+                                {"id": "movie-bf", "number": "BF-002", "title": "BF Title"},
+                            ]
+                        }
+                    },
+                    "",
+                )
+            if "/api/v4/movies/movie-bf" in url:
+                return (
+                    {
+                        "data": {
+                            "movie": {
+                                "id": "movie-bf",
+                                "number": "BF-002",
+                                "title": "BF Title",
+                                "cover_url": "https://c0.jdbstatic.com/covers/bf/bf002.jpg",
+                                "thumb_url": "https://c0.jdbstatic.com/thumbs/bf/bf002.jpg",
+                            }
+                        }
+                    },
+                    "",
+                )
+            raise AssertionError(f"unexpected url: {url}")
+
+    crawler = JavdbAPICrawler(client=FakeClient())
+    input_data = CrawlerInput.empty()
+    input_data.number = "BF-002"
+
+    response = await crawler.run(input_data)
+
+    assert response.data is not None
+    assert response.data.number == "BF-002"
+    assert response.data.title == "BF Title"

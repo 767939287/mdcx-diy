@@ -1,7 +1,8 @@
 import pytest
+from lxml import etree
 
 from mdcx.config.enums import Language
-from mdcx.crawlers.iqqtv import IqqtvCrawler
+from mdcx.crawlers.iqqtv import IqqtvCrawler, get_real_url
 from mdcx.models.types import CrawlerInput
 
 
@@ -69,3 +70,28 @@ async def test_iqqtv_crawler_keeps_jp_original_fields_for_zh_cn():
     assert res.data.tags == ["剧情"]
     assert res.data.release == "2026-04-03"
     assert res.data.source == "iqqtv"
+
+
+def test_get_real_url_bf_not_matched_by_abf():
+    html = etree.fromstring(
+        """
+        <html><body>
+          <span class="title"><a href="/jp/player/ABF-002" title="ABF-002 别的标题"></a></span>
+          <span class="title"><a href="/jp/player/BF-002" title="BF-002 中文标题"></a></span>
+        </body></html>
+        """,
+        etree.HTMLParser(),
+    )
+    assert get_real_url(html, "BF-002") == "/jp/player/BF-002"
+
+
+def test_get_real_url_abf_matches_itself():
+    html = etree.fromstring(
+        """
+        <html><body>
+          <span class="title"><a href="/jp/player/ABF-002" title="ABF-002 别的标题"></a></span>
+        </body></html>
+        """,
+        etree.HTMLParser(),
+    )
+    assert get_real_url(html, "ABF-002") == "/jp/player/ABF-002"

@@ -10,6 +10,7 @@ from parsel import Selector
 from ..config.manager import manager
 from ..config.models import Website
 from ..models.types import CrawlerResult
+from ..number import match_number
 from .base import BaseCrawler, CrawlerData, CrawlerException, DetailPageParser, extract_all_texts, extract_text
 
 
@@ -237,14 +238,14 @@ class JavdbCrawler(BaseCrawler):
         # 精确匹配
         number = ctx.input.number
         for href, title, meta in info_list:
-            if number.upper() in title.upper():
+            if title and match_number(title, number):
                 return [self._with_locale_zh(urljoin(self.base_url, href))]
 
         # 模糊匹配
         clean_number = number.upper().replace(".", "").replace("-", "").replace(" ", "")
         for href, title, meta in info_list:
-            clean_content = (title + meta).upper().replace("-", "").replace(".", "").replace(" ", "")
-            if clean_number in clean_content:
+            clean_content = ((title or "") + (meta or "")).upper().replace("-", "").replace(".", "").replace(" ", "")
+            if match_number(clean_content, clean_number):
                 return [self._with_locale_zh(urljoin(self.base_url, href))]
 
         return None

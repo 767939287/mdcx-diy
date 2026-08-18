@@ -7,6 +7,7 @@ import zhconv
 
 from ..config.enums import Website
 from ..config.manager import manager
+from ..number import match_number
 from .base import BaseCrawler, Context, CrawlerData, CrawlerException, get_year
 
 
@@ -210,7 +211,8 @@ class HdoubanCrawler(BaseCrawler):
                     each_number = each["number"].upper().replace("-", "").strip()
                     each_id = each["id"]
                     name = each["name"]
-                    if temp_number == each_number or temp_number in name.upper().replace("-", "").strip():
+                    clean_name = name.upper().replace("-", "").replace(".", "").replace(" ", "").strip()
+                    if temp_number == each_number or match_number(clean_name, temp_number):
                         real_url = f"{self.base_url}/moviedetail/{each_id}"
                         break
                 if real_url:

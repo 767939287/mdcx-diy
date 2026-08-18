@@ -1,7 +1,8 @@
 import pytest
+from lxml import etree
 
 from mdcx.config.enums import Language, Website
-from mdcx.crawlers.airav_cc import AiravCcCrawler
+from mdcx.crawlers.airav_cc import AiravCcCrawler, get_real_url
 from mdcx.crawlers.base import get_crawler
 from mdcx.models.types import CrawlerInput
 
@@ -84,3 +85,28 @@ async def test_airav_cc_crawler_uses_airav_io_and_language_path():
 def test_airav_is_no_longer_registered():
     assert get_crawler(Website.AIRAV_CC) is AiravCcCrawler
     assert get_crawler(Website.AIRAV) is None
+
+
+def test_get_real_url_bf_not_matched_by_abf():
+    html = etree.fromstring(
+        """
+        <html><body>
+          <div class="col oneVideo"><a href="/cn/video?hid=abf002"></a><h5>ABF-002 别的标题</h5></div>
+          <div class="col oneVideo"><a href="/cn/video?hid=bf002"></a><h5>BF-002 中文标题</h5></div>
+        </body></html>
+        """,
+        etree.HTMLParser(),
+    )
+    assert get_real_url(html, "BF-002") == "/cn/video?hid=bf002"
+
+
+def test_get_real_url_abf_matches_itself():
+    html = etree.fromstring(
+        """
+        <html><body>
+          <div class="col oneVideo"><a href="/cn/video?hid=abf002"></a><h5>ABF-002 别的标题</h5></div>
+        </body></html>
+        """,
+        etree.HTMLParser(),
+    )
+    assert get_real_url(html, "ABF-002") == "/cn/video?hid=abf002"

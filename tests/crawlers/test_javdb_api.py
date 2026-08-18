@@ -103,6 +103,31 @@ async def test_parse_search_page_no_match():
 
 
 @pytest.mark.asyncio
+async def test_parse_search_page_bf_not_matched_by_abf():
+    crawler = JavdbApiCrawler(client=None)
+    html = _load_html("search_list.html")
+    from mdcx.crawlers.base.types import Context
+
+    ctx = Context(input=CrawlerInput.empty())
+    ctx.input.number = "BF-030"
+    result = await crawler._parse_search_page(ctx, html, "http://test/search")
+    assert result is None
+
+
+@pytest.mark.asyncio
+async def test_parse_search_page_abf_still_matches():
+    crawler = JavdbApiCrawler(client=None)
+    html = _load_html("search_list.html")
+    from mdcx.crawlers.base.types import Context
+
+    ctx = Context(input=CrawlerInput.empty())
+    ctx.input.number = "ABF-030"
+    result = await crawler._parse_search_page(ctx, html, "http://test/search")
+    assert result is not None
+    assert any("ghi789" in url for url in result)
+
+
+@pytest.mark.asyncio
 async def test_generate_search_url():
     crawler = JavdbApiCrawler(client=None)
     from mdcx.crawlers.base.types import Context

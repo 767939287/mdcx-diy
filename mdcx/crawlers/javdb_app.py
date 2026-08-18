@@ -12,6 +12,7 @@ from pydantic import BaseModel, ConfigDict
 from ..config.manager import manager
 from ..config.models import Website
 from ..models.types import CrawlerResult
+from ..number import match_number
 from .base import BaseCrawler, Context, CrawlerData, CrawlerException
 
 # ============================================================
@@ -257,13 +258,16 @@ class JavdbAPICrawler(BaseCrawler):
                     break
 
             if not movie_id:
-                # Use first result if no exact match
-                movie_id = movies[0].id
+                # 无精确匹配时按严格前缀规则匹配，避免 BF-002 误用 ABF-002 等更长前缀的结果
+                for summary_movie in movies:
+                    if summary_movie.number and match_number(summary_movie.number, number):
+                        movie_id = summary_movie.id
+                        break
 
             if movie_id:
                 ctx.debug(f"候选番号 {candidate} 命中影片 ID: {movie_id}")
                 break
-            last_error = f"{candidate}: 无法确定影片 ID"
+            last_error = f"{candidate}: 未找到严格匹配的影片"
 
         if not movie_id:
             raise CrawlerException(f"搜索失败: {last_error}")

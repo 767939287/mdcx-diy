@@ -8,6 +8,7 @@ from lxml import etree
 
 from ..config.enums import Website
 from ..config.manager import manager
+from ..number import match_number
 from ..signals import signal
 from .base import BaseCrawler, Context, CrawlerData, CrawlerException, get_year
 from .base.types import split_csv
@@ -125,7 +126,7 @@ def get_real_url(html, number):
         detail_url = hrefs[0]
         title = titles[0]
         # 注意去除马赛克破坏版这种几乎没有有效字段的条目
-        if number.upper() in title and all(keyword not in title for keyword in ["克破", "无码破解", "無碼破解"]):
+        if match_number(title, number) and all(keyword not in title for keyword in ["克破", "无码破解", "無碼破解"]):
             return detail_url
     return ""
 

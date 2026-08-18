@@ -10,6 +10,7 @@ from parsel import Selector
 from ..config.manager import manager
 from ..config.models import Website
 from ..models.types import CrawlerResult
+from ..number import match_number
 from .base import BaseCrawler, CrawlerData, CrawlerException, DetailPageParser, extract_all_texts, extract_text
 
 _DEFAULT_BASE = "https://javdb573.com"
@@ -377,14 +378,14 @@ class JavdbApiCrawler(BaseCrawler):
         norm_target = number.upper().replace("-", "").replace(".", "").replace(" ", "")
 
         for href, code, title, meta in info_list:
-            if number.upper() in (code or "").upper() or number.upper() in (title or "").upper():
+            if match_number(code or "", number) or match_number(title or "", number):
                 return [urljoin(self.base_url, href)]
 
         for href, code, title, meta in info_list:
             combined = (
                 ((code or "") + (title or "") + (meta or "")).upper().replace("-", "").replace(".", "").replace(" ", "")
             )
-            if norm_target in combined:
+            if match_number(combined, norm_target):
                 return [urljoin(self.base_url, href)]
 
         return None
