@@ -28,6 +28,20 @@ if not exist "src" (
     )
 )
 
+:: 应用 MDCx 兼容补丁（提升 Tier3/4 页面加载超时上限，改善挑战页稳定性）
+if exist "trawl-goto-timeout.patch" (
+    cd /d "%~dp0src"
+    git apply --check ..\trawl-goto-timeout.patch >nul 2>&1
+    if not errorlevel 1 (
+        echo [INFO] 应用 TRAWL goto 超时补丁...
+        git apply ..\trawl-goto-timeout.patch
+        if errorlevel 1 (
+            echo [WARN] 补丁应用失败，继续以原版运行
+        )
+    )
+    cd /d "%~dp0"
+)
+
 :: 安装依赖（仅首次）
 if not exist "src\node_modules" (
     echo [INFO] 正在安装依赖，请稍候...

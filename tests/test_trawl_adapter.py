@@ -117,14 +117,15 @@ async def test_html_endpoint_returns_html_and_final_url_header(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_html_forwards_proxy_and_bypass_cache(monkeypatch):
+async def test_html_forwards_proxy_and_ignores_bypass_cache(monkeypatch):
     trawl_requests: list[dict] = []
     app = _make_app(monkeypatch, trawl_requests, lambda p: _scrape_response(p))
     async with _client(app) as client:
         resp = await client.get("/html?url=https://example.com/p&proxy=http://127.0.0.1:7890&bypassCookieCache=true")
     assert resp.status_code == 200
     assert trawl_requests[0]["proxy"] == "http://127.0.0.1:7890"
-    assert trawl_requests[0]["skipHttp"] is True
+    # bypassCookieCache 不再映射为 skipHttp：让 TRAWL 走 Tier1 直连缓存路径
+    assert "skipHttp" not in trawl_requests[0]
 
 
 @pytest.mark.asyncio
@@ -160,7 +161,8 @@ async def test_mirror_strips_control_headers(monkeypatch):
         )
     payload = trawl_requests[0]
     assert payload["proxy"] == "http://127.0.0.1:7890"
-    assert payload["skipHttp"] is True
+    # x-bypass-cache 不再映射为 skipHttp：让 TRAWL 走 Tier1 直连缓存路径
+    assert "skipHttp" not in payload
     assert payload["headers"]["user-agent"] == "MyUA"
     assert "x-hostname" not in payload["headers"]
     assert "x-proxy" not in payload["headers"]

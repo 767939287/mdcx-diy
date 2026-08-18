@@ -335,7 +335,6 @@ async def _handle_html(client, trawl_url, backend, qs, headers, send) -> None:
         base_url=trawl_url,
         url=target,
         proxy=qs.get("proxy", [""])[0],
-        skip_http=bool(qs.get("bypassCookieCache")),
     )
     if "error" in data:
         await _send_json(send, 502, {"error": data["error"]})
@@ -386,7 +385,6 @@ async def _handle_mirror(client, trawl_url, backend, scope, path, query_string, 
         headers=upstream_headers or None,
         proxy=(headers.get(b"x-proxy") or b"").decode("latin-1").strip(),
         body=body_text,
-        skip_http=(headers.get(b"x-bypass-cache") or b"").decode("latin-1").strip().lower() == "true",
     )
     if "error" in data:
         await _send_json(send, 502, {"error": data["error"]})
