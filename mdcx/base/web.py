@@ -411,17 +411,87 @@ async def check_url(url: str, length: bool = False, real_url: bool = False):
                     return None
 
 
+# tellme.pw AIO 导航页: 同时提供 avmoo(jav)/avsox(javu)/avheat(wav) 三个站点的最新直连地址。
+# 页面含 `window.__AIO_SITE_URLS__ = {"jav": "...", "javu": "...", "wav": "..."}`,
+# 任一站点路径返回的导航页都包含三站地址, 可互相兜底。
+_AIO_SITE_KEYS = {
+    "avmoo": ("jav", "https://avmoo.shop"),
+    "avsox": ("javu", "https://avsox.click"),
+    "avheat": ("wav", "https://avheat.shop"),
+}
+
+_AIO_DOMAIN_CACHE: dict[str, tuple[str, float]] = {}
+_AIO_DOMAIN_CACHE_LOCK = threading.Lock()
+_AIO_DOMAIN_CACHE_TTL = 24 * 3600.0  # 1 天
+
+
+def _get_cached_aio_domain(site: str) -> str:
+    now = time.time()
+    with _AIO_DOMAIN_CACHE_LOCK:
+        entry = _AIO_DOMAIN_CACHE.get(site)
+        if entry and now - entry[1] < _AIO_DOMAIN_CACHE_TTL:
+            return entry[0]
+    return ""
+
+
+def _cache_aio_domain(site: str, domain: str) -> None:
+    with _AIO_DOMAIN_CACHE_LOCK:
+        _AIO_DOMAIN_CACHE[site] = (domain, time.time())
+
+
+def _parse_aio_site_urls(response: str) -> dict[str, str]:
+    """从 tellme.pw 导航页解析 __AIO_SITE_URLS__ 中的站点直连地址。"""
+    if not response:
+        return {}
+    matched = re.findall(r"window\.__AIO_SITE_URLS__\s*=\s*\{([^}]+)\}", response)
+    if not matched:
+        return {}
+    result: dict[str, str] = {}
+    for key, value in re.findall(r'"(\w+)"\s*:\s*"((?:\\"|[^"])*)"', matched[0]):
+        url = value.replace("\\/", "/").strip()
+        if url.startswith("https://"):
+            result[key] = url.rstrip("/")
+    return result
+
+
+async def get_aio_domain(site: str) -> str:
+    """获取 tellme.pw AIO 系列站点（avmoo/avsox/avheat）的最新直连地址。
+
+    通过 `tellme.pw/{site}` 导航页解析 `__AIO_SITE_URLS__`，失败时依次尝试
+    其它两个站点的导航页兜底；最终回退到已知默认域名。结果带 1 天内存缓存。
+    """
+    key, fallback = _AIO_SITE_KEYS[site]
+    cached = _get_cached_aio_domain(site)
+    if cached:
+        return cached
+
+    other_sites = [s for s in _AIO_SITE_KEYS if s != site]
+    for attempt in (site, *other_sites):
+        issue_url = f"https://tellme.pw/{attempt}"
+        try:
+            async with manager.acquire_computed() as computed:
+                response, _ = await computed.async_client.get_text(issue_url)
+        except Exception:
+            response = None
+        if response:
+            sites = _parse_aio_site_urls(response)
+            domain = sites.get(key)
+            if domain:
+                _cache_aio_domain(site, domain)
+                return domain
+    return fallback
+
+
 async def get_avsox_domain() -> str:
-    issue_url = "https://tellme.pw/avsox"
-    async with manager.acquire_computed() as computed:
-        response, error = await computed.async_client.get_text(issue_url)
-    domain = "https://avsox.click"
-    if response is not None:
-        res = re.findall(r'(https://[^"]+)', response)
-        for s in res:
-            if s and "https://avsox.com" not in s and "api.qrserver.com" not in s:
-                return s
-    return domain
+    return await get_aio_domain("avsox")
+
+
+async def get_avmoo_domain() -> str:
+    return await get_aio_domain("avmoo")
+
+
+async def get_avheat_domain() -> str:
+    return await get_aio_domain("avheat")
 
 
 # javlibrary 最新直连地址的内存缓存（避免每次刮削都抓 GitHub）

@@ -23,6 +23,8 @@ from . import (
 )
 from .airav_cc import AiravCcCrawler
 from .avbase_new import AvbaseCrawler
+from .avheat import AvheatCrawler
+from .avmoo import AvmooCrawler
 from .avsex import AvsexCrawler
 from .avsox import AvsoxCrawler
 from .base import get_crawler, get_registered_crawler_sites, register_crawler
@@ -83,6 +85,8 @@ register_crawler(MmtvCrawler)
 register_crawler(DahliaCrawler)
 register_crawler(FantasticaCrawler)
 register_crawler(AvsoxCrawler)
+register_crawler(AvmooCrawler)
+register_crawler(AvheatCrawler)
 register_crawler(CnmdbCrawler)
 register_crawler(HscangkuCrawler)
 register_crawler(Kin8Crawler)

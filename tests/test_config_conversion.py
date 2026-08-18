@@ -174,6 +174,7 @@ def test_config_default_site_priorities_follow_current_frontend_defaults():
         Website.MMTV,
         Website.AIRAV_CC,
         Website.AVSEX,
+        Website.AVMOO,
         Website.OFFICIAL,
         Website.IQQTV,
     ]
@@ -220,7 +221,7 @@ def test_config_default_site_priorities_follow_current_frontend_defaults():
         Website.JAVDB_API,
         Website.JAVDB_APP,
     ]
-    assert config.website_oumei == [Website.THEPORNDB]
+    assert config.website_oumei == [Website.THEPORNDB, Website.AVHEAT]
     assert config.website_guochan == [
         Website.HDOUBAN,
         Website.CNMDB,
@@ -245,6 +246,7 @@ def test_config_default_site_priorities_follow_current_frontend_defaults():
         Website.IQQTV,
         Website.FREEJAVBT,
         Website.MISSAV,
+        Website.AVMOO,
     ]
     assert config.get_type_field_config(FixedScrapingType.FC2, CrawlerResultFields.TITLE).site_prority == [
         Website.JAVDB,

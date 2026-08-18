@@ -78,6 +78,8 @@ SPECIAL_CHECK_PATHS: dict[Website, str] = {
 DEFAULT_SITE_URLS: dict[Website, str] = {
     Website.DMM: "https://www.dmm.co.jp",
     Website.AVSOX: "https://avsox.click",
+    Website.AVMOO: "https://avmoo.shop",
+    Website.AVHEAT: "https://avheat.shop",
     Website.OFFICIAL: "",
 }
 

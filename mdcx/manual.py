@@ -478,6 +478,8 @@ class ManualConfig:
         "9sex": Website.AVSEX,
         "avsex": Website.AVSEX,
         "avsox": Website.AVSOX,
+        "avmoo": Website.AVMOO,
+        "avheat": Website.AVHEAT,
         "dmm.co": Website.DMM,
         "fc2.com": Website.FC2,
         "fc2club": Website.FC2CLUB,

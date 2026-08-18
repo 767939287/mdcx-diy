@@ -129,6 +129,7 @@ SCRAPING_TYPE_SITE_FIELDS = {
 
 DEFAULT_FIELD_SITE_PRIORITY = [
     Website.THEPORNDB,
+    Website.AVHEAT,
     Website.DMM,
     Website.OFFICIAL,
     Website.LIBREDMM,
@@ -143,6 +144,7 @@ DEFAULT_FIELD_SITE_PRIORITY = [
     Website.FREEJAVBT,
     Website.MISSAV,
     Website.AVSOX,
+    Website.AVMOO,
     Website.FC2HUB,
     Website.FC2,
     Website.FC2PPVDB,
@@ -394,6 +396,7 @@ class Config(BaseModel):
             Website.MMTV,
             Website.AIRAV_CC,
             Website.AVSEX,
+            Website.AVMOO,
             Website.OFFICIAL,
             Website.IQQTV,
         ],
@@ -454,7 +457,7 @@ class Config(BaseModel):
         title="FC2网站源",
     )
     website_oumei: list[Website] = Field(
-        default_factory=lambda: [Website.THEPORNDB],
+        default_factory=lambda: [Website.THEPORNDB, Website.AVHEAT],
         title="欧美网站源",
     )
     website_guochan: list[Website] = Field(

@@ -120,13 +120,13 @@ class ConfigV1:
     scrape_like: str = r"info"
     website_single: str = r"airav_cc"
     website_youma: str = (
-        r"airav_cc,iqqtv,javbus,freejavbt,jav321,dmm,javlibrary,7mmtv,hdouban,javdb,avsex,lulubar,xcity,avsox"
+        r"airav_cc,iqqtv,javbus,freejavbt,jav321,dmm,javlibrary,7mmtv,hdouban,javdb,avsex,avmoo,lulubar,xcity,avsox"
     )
 
     website_wuma: str = r"iqqtv,javbus,freejavbt,jav321,avsox,7mmtv,hdouban,javdb"
     website_suren: str = r"mgstage,avsex,jav321,freejavbt,7mmtv,javbus,javdb"
     website_fc2: str = r"fc2,fc2club,fc2hub,freejavbt,7mmtv,hdouban,javdb,avsox"
-    website_oumei: str = r"theporndb,javdb,javbus,hdouban"
+    website_oumei: str = r"theporndb,avheat,javdb,javbus,hdouban"
     website_guochan: str = r"madouqu,mdtv,hdouban,cnmdb,javday"
     whole_fields: str = r"outline,actor,thumb,release,tag,"
     none_fields: str = r"wanted,"

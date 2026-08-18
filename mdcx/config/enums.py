@@ -490,6 +490,8 @@ class Website(Enum):
     AVBASE = "avbase"
     AIRAV = "airav"
     AIRAV_CC = "airav_cc"
+    AVHEAT = "avheat"
+    AVMOO = "avmoo"
     AVSEX = "avsex"
     AVSOX = "avsox"
     CABLEAV = "cableav"
