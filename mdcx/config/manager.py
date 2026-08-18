@@ -16,6 +16,43 @@ from .v1 import ConfigV1, load_v1
 logger = logging.getLogger(__name__)
 
 
+def _write_windows(path: Path, text: str) -> None:
+    """Windows 直写配置，保留文件 inode 与 ACL/安全描述符。
+
+    不用 tmp + os.replace：替换会用新文件顶替旧文件，新文件继承父目录 ACL，
+    用户在原文件上配置的显式权限条目会整体丢失（issue #42）。
+    不做 icacls 收权：/inheritance:r 清空继承的 ACE，/grant:r 只替换式授予
+    当前运行用户读写，在管理员运行或非 ASCII 用户名下会产生孤儿 SID，
+    程序自身都会读取失败。写失败时重试 → 去只读 → 兜底报错。
+    """
+    import stat
+    import time
+
+    last_err: OSError | None = None
+    for attempt in range(5):
+        try:
+            path.write_text(text, encoding="UTF-8")
+            return
+        except PermissionError as e:
+            last_err = e
+            if attempt == 0:
+                time.sleep(0.05)  # 杀软实时扫描瞬时占用
+            elif attempt == 1:
+                time.sleep(0.1)
+            elif attempt == 2:
+                try:
+                    os.chmod(str(path), stat.S_IWRITE)  # 打包资源文件可能带只读位
+                except Exception:
+                    pass
+            elif attempt == 3:
+                time.sleep(0.3)
+    raise PermissionError(
+        f"配置文件写入被拒绝访问（可能被其它程序占用或目录无写权限）：{path}\n"
+        "请关闭打开该文件的程序（编辑器/资源管理器预览/杀毒软件实时扫描）后重试；"
+        "若目录需管理员权限，请以管理员身份运行或更换保存目录。"
+    ) from last_err
+
+
 class ConfigManager:
     def __init__(self):
         self._computed_lock = threading.RLock()
@@ -115,14 +152,19 @@ class ConfigManager:
 
     @staticmethod
     def _write_config_text(path: Path, text: str) -> None:
-        """写入配置文件并尽量收紧权限, 降低敏感字段(如 API Token)被同机其它用户/进程读取的风险。
+        """写入配置文件。
 
-        - 原子写入：先写同目录 .tmp 再 os.replace，避免写入中断损坏整个配置
-        - Windows 下 os.replace 偶发 PermissionError (杀软瞬时扫描/只读属性/占用)：
-          重试 → 去只读 → 删目标改名 → 直接覆盖写，逐级回退保成功率
-        - POSIX: chmod 0o600 (仅属主读写)
-        - Windows: best-effort 用 icacls 去除继承并仅授予当前用户读写; 任何失败均吞掉, 不影响主流程
+        - Windows: 直写原文件（`_write_windows`），保留 ACL/安全描述符，
+          不做原子替换与 icacls 收权（两者都会破坏用户配置的显式权限条目）。
+        - POSIX: 先写同目录 .tmp 再 os.replace 原子写，避免写入中断损坏整个配置；
+          os.replace 偶发 PermissionError (杀软瞬时扫描/只读属性/占用) 时
+          重试 → 去只读 → 删目标改名 → 直接覆盖写，逐级回退保成功率；
+          完成后 chmod 0o600（仅属主读写，降低敏感字段被同机其它用户读取的风险）。
         """
+        if os.name == "nt":
+            _write_windows(path, text)
+            return
+
         tmp = path.with_name(f"{path.name}.tmp")
         tmp.write_text(text, encoding="UTF-8")
         try:
@@ -174,22 +216,7 @@ class ConfigManager:
                     "请关闭打开该文件的程序（编辑器/资源管理器预览/杀毒软件实时扫描）后重试；"
                     "若目录需管理员权限，请以管理员身份运行或更换保存目录。"
                 ) from None
-        try:
-            if os.name == "posix":
-                os.chmod(path, 0o600)
-            elif os.name == "nt":
-                import subprocess
-
-                username = os.environ.get("USERNAME", "")
-                if username:
-                    subprocess.run(
-                        ["icacls", str(path), "/inheritance:r", "/grant:r", f"{username}:(R,W)"],
-                        check=False,
-                        capture_output=True,
-                        timeout=10,
-                    )
-        except Exception:
-            pass
+        os.chmod(path, 0o600)
 
     def save(self):
         self._write_config_text(self._path, self.config.model_dump_json(indent=2))
