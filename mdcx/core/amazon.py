@@ -6,7 +6,6 @@ Amazon 相关封面搜索与条码识别逻辑
 import re
 import urllib.parse
 from asyncio import to_thread
-from difflib import SequenceMatcher
 from functools import lru_cache
 from io import BytesIO
 from pathlib import Path
@@ -20,6 +19,17 @@ from ..models.log_buffer import LogBuffer
 from ..models.types import CrawlersResult
 from ..utils import convert_half
 from . import amazon_database
+from .amazon_match import (
+    build_expected_titles,
+    build_number_regex,
+    clean_amazon_title_for_compare,
+    count_actor_group_matches,
+    get_best_title_confidence,
+    get_media_priority,
+    is_supported_pic_ver,
+    strip_trailing_media_noise,
+    text_has_target_number,
+)
 from .media_resource import MediaResourceContext
 
 
@@ -805,49 +815,7 @@ async def get_big_pic_by_amazon(
     if not has_valid_actor:
         LogBuffer.log().write("\n 🔎 Amazon搜索：未找到有效演员，切换为标题/番号模式")
 
-    def build_number_regex(number_text: str) -> re.Pattern[str] | None:
-        normalized_number = convert_half(number_text or "").upper().strip()
-        if not normalized_number:
-            return None
-        token_list = re.findall(r"[A-Z0-9]+", normalized_number)
-        if not token_list:
-            return None
-        pattern = r"(?<![A-Z0-9])" + r"[^A-Z0-9]*".join(re.escape(token) for token in token_list) + r"(?![A-Z0-9])"
-        return re.compile(pattern, flags=re.IGNORECASE)
-
     number_regex = build_number_regex(result.number)
-
-    def text_has_target_number(text: str) -> bool:
-        if not number_regex or not text:
-            return False
-        return bool(number_regex.search(convert_half(text).upper()))
-
-    def count_actor_group_matches(text: str) -> int:
-        if not actor_groups_normalized or not text:
-            return 0
-        normalized_text = convert_half(re.sub(r"\s+", " ", text or "")).upper()
-        return sum(1 for group in actor_groups_normalized if any(alias in normalized_text for alias in group))
-
-    def strip_trailing_media_noise(base_title: str) -> str:
-        title = re.sub(r"\s+", " ", base_title).strip()
-        if not title:
-            return ""
-        trim_chars = " 　-—｜|/／・,，、：:()（）[]【】"
-        trailing_media_noise = re.compile(
-            r"(?:[\s　\-\—\｜\|/／・,，、：:\(\)（）\[\]［］]+)?"
-            r"(?:dod|dvd|blu[- ]?ray|software\s+download|ブルーレイ(?:ディスク)?|ソフトウェアダウンロード)"
-            r"(?:[\s　\-\—\｜\|/／・,，、：:\(\)（）\[\]［］]+)?$",
-            flags=re.I,
-        )
-        while True:
-            updated, count = trailing_media_noise.subn("", title)
-            if count == 0:
-                break
-            updated = updated.strip(trim_chars)
-            if not updated or updated == title:
-                break
-            title = updated
-        return title
 
     def strip_actor_suffix(base_title: str) -> str:
         title = base_title.strip()
@@ -917,7 +885,7 @@ async def get_big_pic_by_amazon(
         keyword = re.sub(r"\s+", " ", keyword).strip()
         if not keyword:
             return
-        if result.number and not text_has_target_number(keyword):
+        if result.number and not text_has_target_number(keyword, number_regex):
             numbered_keyword = f"{keyword} {result.number}"
             if prefer_plain_first:
                 append_search_keyword(keyword, fallback_series=fallback_series, is_initial_query=is_initial_query)
@@ -1051,150 +1019,12 @@ async def get_big_pic_by_amazon(
         reverse=True,
     )
 
-    def clean_amazon_title_for_compare(title: str) -> str:
-        cleaned = re.sub(r"【.*?】", " ", title)
-        cleaned = re.sub(r"[［\[]\s*(?:dvd|blu[- ]?ray|software\s+download)\s*[］\]]", " ", cleaned, flags=re.I)
-        trim_chars = " 　-—｜|/／・,，、：:()（）[]【】!?！？…."
-        while True:
-            changed = False
-            for keyword in suffix_cleanup_keywords:
-                escaped_keyword = re.escape(keyword)
-                for pattern in (
-                    rf"(?:\s|　)+{escaped_keyword}$",
-                    rf"(?:-|—|｜|/|／|・|,|，|、|：|:)\s*{escaped_keyword}$",
-                    rf"{escaped_keyword}$",
-                ):
-                    updated = re.sub(pattern, "", cleaned, flags=re.I).strip(trim_chars)
-                    if updated and updated != cleaned:
-                        cleaned = updated
-                        changed = True
-                        break
-                if changed:
-                    break
-            if not changed:
-                break
-        return re.sub(r"\s+", " ", cleaned).strip(trim_chars)
-
-    def normalize_title_for_compare(title: str) -> str:
-        wildcard_placeholder = "\u2606"
-        wildcard_token = "MDCXWILDCARDTOKEN"
-        title = re.sub(r"[●○◯〇◎◉◆◇■□△▲▽▼※＊*]", wildcard_token, title)
-        normalized = convert_half(title).lower()
-        if number_regex:
-            normalized = number_regex.sub(" ", normalized.upper()).lower()
-        normalized = re.sub(r"【.*?】", "", normalized)
-        normalized = re.sub(r"[［\[]\s*(?:dvd|blu[- ]?ray|software\s+download)\s*[］\]]", "", normalized, flags=re.I)
-        normalized = normalized.replace(wildcard_token.lower(), wildcard_placeholder)
-        normalized = re.sub(r"[\s　\-\—\｜\|/／・,，、：:()（）\[\]【】!?！？…\.]", "", normalized)
-        return normalized
-
-    def calculate_title_confidence(expected_title: str, candidate_title: str) -> float:
-        expected = normalize_title_for_compare(clean_amazon_title_for_compare(expected_title))
-        candidate = normalize_title_for_compare(clean_amazon_title_for_compare(candidate_title))
-        if not expected or not candidate:
-            return 0.0
-        if expected == candidate:
-            return 1.0
-
-        wildcard_placeholder = "\u2606"
-
-        def _strip_wildcard(text: str) -> str:
-            return text.replace(wildcard_placeholder, "")
-
-        def _chars_match(ch_a: str, ch_b: str) -> bool:
-            return ch_a == ch_b or ch_a == wildcard_placeholder or ch_b == wildcard_placeholder
-
-        def _wildcard_contains(pattern_text: str, target_text: str) -> bool:
-            if not pattern_text or not target_text or len(pattern_text) > len(target_text):
-                return False
-            window = len(pattern_text)
-            max_start = len(target_text) - window
-            for start in range(max_start + 1):
-                if all(_chars_match(pattern_text[index], target_text[start + index]) for index in range(window)):
-                    return True
-            return False
-
-        def _wildcard_full_match(text_a: str, text_b: str) -> bool:
-            if len(text_a) != len(text_b):
-                return False
-            return all(_chars_match(ch_a, ch_b) for ch_a, ch_b in zip(text_a, text_b, strict=False))
-
-        contain_ratio = 0.0
-        expected_plain_len = max(len(_strip_wildcard(expected)), 1)
-        candidate_plain_len = max(len(_strip_wildcard(candidate)), 1)
-        if _wildcard_contains(expected, candidate):
-            contain_ratio = max(
-                contain_ratio,
-                1.0 if expected_plain_len >= 12 else min(1.0, expected_plain_len / candidate_plain_len),
-            )
-        if _wildcard_contains(candidate, expected):
-            contain_ratio = max(
-                contain_ratio,
-                1.0 if candidate_plain_len >= 12 else min(1.0, candidate_plain_len / expected_plain_len),
-            )
-
-        sequence_ratio = SequenceMatcher(None, expected, candidate).ratio()
-        expected_no_wildcard = _strip_wildcard(expected)
-        candidate_no_wildcard = _strip_wildcard(candidate)
-        if expected_no_wildcard and candidate_no_wildcard:
-            sequence_ratio = max(
-                sequence_ratio, SequenceMatcher(None, expected_no_wildcard, candidate_no_wildcard).ratio()
-            )
-
-        def _bigrams(text: str) -> set[str]:
-            if len(text) < 2:
-                return {text}
-            return {text[i : i + 2] for i in range(len(text) - 1)}
-
-        bigrams_expected = _bigrams(expected_no_wildcard or expected)
-        bigrams_candidate = _bigrams(candidate_no_wildcard or candidate)
-        jaccard = (
-            len(bigrams_expected & bigrams_candidate) / len(bigrams_expected | bigrams_candidate)
-            if bigrams_expected and bigrams_candidate
-            else 0.0
-        )
-
-        score = 0.6 * sequence_ratio + 0.25 * contain_ratio + 0.15 * jaccard
-        if _wildcard_full_match(expected, candidate) or _wildcard_full_match(candidate, expected):
-            score = max(score, 0.95)
-        if contain_ratio >= 0.95 and min(len(expected), len(candidate)) >= 12:
-            score = max(score, 0.92)
-        return score
-
-    expected_titles: list[str] = []
-    expected_title_set: set[str] = set()
-    for title_text, fallback_series in [(originaltitle_amazon_raw, series_raw), (originaltitle_amazon, series)]:
-        title_text = re.sub(r"\s+", " ", title_text).strip()
-        if title_text and title_text not in expected_title_set:
-            expected_titles.append(title_text)
-            expected_title_set.add(title_text)
-        if fallback_series and fallback_series in title_text:
-            stripped_title = re.sub(re.escape(fallback_series), " ", title_text, count=1)
-            stripped_title = re.sub(r"\s+", " ", stripped_title).strip()
-            if stripped_title and stripped_title not in expected_title_set:
-                expected_titles.append(stripped_title)
-                expected_title_set.add(stripped_title)
-
-    def get_best_title_confidence(candidate_title: str, *extra_titles: str) -> float:
-        title_candidates = [each for each in [*expected_titles, *extra_titles] if each]
-        if not title_candidates or not candidate_title:
-            return 0.0
-        return max(calculate_title_confidence(each_title, candidate_title) for each_title in title_candidates)
-
-    def get_media_priority(pic_ver: str) -> int:
-        if not pic_ver:
-            return 2
-        version_text = pic_ver.strip().lower()
-        if "dvd" in version_text:
-            return 3
-        if "software download" in version_text:
-            return 2
-        if any(each in version_text for each in ["blu-ray", "blu ray", "ブルーレイ", "ブルーレイディスク"]):
-            return 1
-        return 0
-
-    def is_supported_pic_ver(pic_ver: str) -> bool:
-        return get_media_priority(pic_ver) > 0 or not pic_ver
+    expected_titles = build_expected_titles(
+        originaltitle_amazon_raw,
+        series_raw,
+        originaltitle_amazon,
+        series,
+    )
 
     async def search_amazon(title: str) -> tuple[bool, str]:
         url_search = (
@@ -1239,8 +1069,10 @@ async def get_big_pic_by_amazon(
                 if ".jpg" not in pic_url:
                     update_best_rejected(0.0, actor_name, pic_title, "图片地址不是JPG")
                     continue
-                cleaned_title = clean_amazon_title_for_compare(pic_title)
-                confidence = get_best_title_confidence(cleaned_title)
+                cleaned_title = clean_amazon_title_for_compare(pic_title, suffix_cleanup_keywords)
+                confidence = get_best_title_confidence(
+                    cleaned_title, expected_titles, number_regex, suffix_cleanup_keywords
+                )
                 if confidence < confidence_threshold:
                     update_best_rejected(
                         confidence,
@@ -1256,7 +1088,11 @@ async def get_big_pic_by_amazon(
                 fallback_candidate_keys.add(candidate_key)
                 fallback_candidates.append(
                     (
-                        (1 if text_has_target_number(pic_title) else 0, confidence, get_media_priority(pic_ver)),
+                        (
+                            1 if text_has_target_number(pic_title, number_regex) else 0,
+                            confidence,
+                            get_media_priority(pic_ver),
+                        ),
                         url,
                         pic_title,
                         actor_name,
@@ -1393,7 +1229,7 @@ async def get_big_pic_by_amazon(
         if detail_title:
             candidate["title_confidence"] = max(
                 float(candidate["title_confidence"]),
-                get_best_title_confidence(detail_title),
+                get_best_title_confidence(detail_title, expected_titles, number_regex, suffix_cleanup_keywords),
             )
         detail_blob = " ".join(detail_actor_names + detail_texts)
         detail_barcodes = tuple(sorted(_extract_labeled_amazon_barcodes(detail_blob)))
@@ -1401,9 +1237,9 @@ async def get_big_pic_by_amazon(
         candidate["detail_actor_matches"] = max(
             int(candidate["detail_actor_matches"]),
             int(candidate["quick_actor_matches"]),
-            count_actor_group_matches(detail_blob),
+            count_actor_group_matches(detail_blob, actor_groups_normalized),
         )
-        candidate["detail_number_match"] = text_has_target_number(detail_blob)
+        candidate["detail_number_match"] = text_has_target_number(detail_blob, number_regex)
         candidate["detail_barcodes"] = detail_barcodes
         target_barcode = _normalize_amazon_barcode(str(candidate.get("target_barcode", "")))
         candidate["detail_barcode_match"] = bool(target_barcode and target_barcode in detail_barcodes)
@@ -1593,9 +1429,11 @@ async def get_big_pic_by_amazon(
                 detail_url = detail_url_list[0]
                 if not (is_supported_pic_ver(pic_ver) and ".jpg" in pic_url):
                     continue
-                title_confidence = get_best_title_confidence(pic_title)
-                quick_number_match = text_has_target_number(pic_title)
-                quick_actor_matches = count_actor_group_matches(pic_title)
+                title_confidence = get_best_title_confidence(
+                    pic_title, expected_titles, number_regex, suffix_cleanup_keywords
+                )
+                quick_number_match = text_has_target_number(pic_title, number_regex)
+                quick_actor_matches = count_actor_group_matches(pic_title, actor_groups_normalized)
                 normalized_detail_url = normalize_detail_url(detail_url)
                 url = _convert_to_target_size(pic_url)
                 each_key = build_candidate_key(detail_url, url)
@@ -1796,10 +1634,12 @@ async def get_big_pic_by_amazon(
                 detail_url = detail_url_list[0]
                 if not (is_supported_pic_ver(pic_ver) and ".jpg" in pic_url):
                     continue
-                title_confidence = get_best_title_confidence(pic_title, current_title)
-                collect_threshold = 0.45 if text_has_target_number(current_title) else 0.58
-                quick_number_match = text_has_target_number(pic_title)
-                quick_actor_matches = count_actor_group_matches(pic_title)
+                title_confidence = get_best_title_confidence(
+                    pic_title, expected_titles, number_regex, suffix_cleanup_keywords, current_title
+                )
+                collect_threshold = 0.45 if text_has_target_number(current_title, number_regex) else 0.58
+                quick_number_match = text_has_target_number(pic_title, number_regex)
+                quick_actor_matches = count_actor_group_matches(pic_title, actor_groups_normalized)
                 if title_confidence < collect_threshold and not quick_number_match:
                     continue
                 if title_confidence >= 0.8 or quick_number_match:
