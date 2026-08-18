@@ -23,12 +23,17 @@ def sync_gfriends(local_path: str) -> tuple[bool, str]:
         return False, f"目录 {local_path} 不是有效的 Git 仓库（缺少 .git 文件夹）"
 
     try:
+        # Windows 打包(windowed)下抑制 git 弹出的黑色控制台窗口
+        kwargs = {}
+        if os.name == "nt":
+            kwargs["creationflags"] = subprocess.CREATE_NO_WINDOW  # type: ignore[attr-defined]
         result = subprocess.run(
             ["git", "pull", "origin", "master"],
             cwd=local_path,
             capture_output=True,
             text=True,
             timeout=300,
+            **kwargs,
         )
         if result.returncode == 0:
             output = result.stdout.strip()

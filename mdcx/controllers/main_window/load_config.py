@@ -1,5 +1,4 @@
 import os
-import platform
 import traceback
 from typing import TYPE_CHECKING
 
@@ -28,7 +27,7 @@ from mdcx.config.enums import (
 from mdcx.config.extend import get_movie_path_setting
 from mdcx.config.manager import manager
 from mdcx.config.resources import resources
-from mdcx.consts import GITHUB_ISSUES_URL, IS_WINDOWS, LOCAL_VERSION, VERSION_NAME
+from mdcx.consts import GITHUB_ISSUES_URL, IS_WINDOWS, LOCAL_VERSION, SYSTEM_INFO, VERSION_NAME
 from mdcx.gen.field_enums import CrawlerResultFields
 from mdcx.models.flags import Flags
 from mdcx.signals import signal_qt
@@ -1135,7 +1134,7 @@ def load_config(self: "MyMAinWindow"):
                 f"📂 程序目录：{manager.data_folder} \n "
                 f"📂 刮削目录：{movie_path_text} \n "
                 f"💠 刮削模式：{Flags.main_mode_text} · {scrape_like_text} \n "
-                f"🖥️ 系统信息：{platform.platform()} \n "
+                f"🖥️ 系统信息：{SYSTEM_INFO} \n "
                 f"🐰 软件版本：{VERSION_NAME} ({LOCAL_VERSION}) \n"
             )
         except Exception:

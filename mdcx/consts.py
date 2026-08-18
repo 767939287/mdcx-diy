@@ -6,6 +6,11 @@ from pathlib import Path
 LOCAL_VERSION = 20260817  # 数值版本号(纯数字 YYYYMMDD): 用于版本比较/更新检查/bump构建脚本; 注意 GitHub release 的 Tag 也必须是纯数字(因 check_version 对 tag_name 做 int()), 切勿用 vX.Y.Z 格式
 VERSION_NAME = "v2.0.6"  # 展示用版本名
 
+# 系统信息（进程启动时计算一次）。
+# 不用 platform.platform()：它在旧版 Python 上会执行 `cmd /c ver` 启动子进程，
+# Windows 打包(windowed)下每次调用会闪黑色控制台窗口。platform.uname() 无此问题。
+SYSTEM_INFO = platform.uname().system or "Unknown"
+
 GITHUB_REPO = "cdlongbow/mdcx-diy"
 GITHUB_RELEASES_URL = f"https://github.com/{GITHUB_REPO}/releases"
 GITHUB_RELEASES_API_LATEST = f"https://api.github.com/repos/{GITHUB_REPO}/releases/latest"

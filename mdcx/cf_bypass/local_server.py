@@ -280,6 +280,12 @@ class LocalBypassServer:
 
     async def _start_subprocess(self) -> tuple[bool, str]:
         try:
+            kwargs: dict = {}
+            if os.name == "nt":
+                # Windows: 抑制子进程弹出黑色控制台窗口
+                import subprocess as _subprocess
+
+                kwargs["creationflags"] = _subprocess.CREATE_NO_WINDOW  # type: ignore[attr-defined]
             # start_new_session: 让子进程自成进程组, 便于异常退出(崩溃/SIGKILL)时由 atexit 彻底清理
             self._process = await asyncio.create_subprocess_exec(
                 sys.executable,
@@ -297,6 +303,7 @@ class LocalBypassServer:
                 stdout=asyncio.subprocess.DEVNULL,
                 stderr=asyncio.subprocess.DEVNULL,
                 start_new_session=True,
+                **kwargs,
             )
         except FileNotFoundError:
             return False, "未找到 uvicorn，请安装: pip install uvicorn fastapi"

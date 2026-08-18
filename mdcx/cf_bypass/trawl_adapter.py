@@ -505,6 +505,12 @@ class TrawlAdapterServer:
     async def _start_subprocess(self) -> tuple[bool, str]:
         import asyncio as _asyncio
 
+        kwargs: dict = {}
+        if os.name == "nt":
+            # Windows: 抑制子进程弹出黑色控制台窗口
+            import subprocess as _subprocess
+
+            kwargs["creationflags"] = _subprocess.CREATE_NO_WINDOW  # type: ignore[attr-defined]
         self._process = await _asyncio.create_subprocess_exec(
             __import__("sys").executable,
             "-m",
@@ -521,6 +527,7 @@ class TrawlAdapterServer:
             stderr=_asyncio.subprocess.DEVNULL,
             start_new_session=True,
             env={**os.environ, "MDCX_TRAWL_URL": self._trawl_url, "MDCX_BACKEND_TYPE": self._backend},
+            **kwargs,
         )
         self._register_atexit()
         ready, error = await self._wait_ready()
