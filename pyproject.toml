@@ -35,12 +35,9 @@ dependencies = [
     "jinja2>=3.1.6",
     "openpyxl>=3.1.0",
     "defusedxml>=0.7.1",
-    # --- CF Bypass 服务依赖 (release 打包时必须随包装入) ---
-    # cf_bypasser 不在 PyPI, 用上游 git 依赖并固定 commit 以保证 CI 可复现。
-    "cloakbrowser",
+    # --- 外部 CF 服务适配层依赖 (TRAWL/FlareSolverr 协议翻译) ---
+    # 内置 CF Bypass (cloakbrowser + cf_bypasser) 已移除, 过 CF 统一走外部服务。
     "uvicorn>=0.15.0",
-    "fastapi>=0.68.0",
-    "CloudflareBypassForScraping @ git+https://github.com/Hazard804/CloudflareBypassForScraping.git@2f440849d9cf79fbf4b549fac5bbebd42adb17ea",
 ]
 
 [project.scripts]

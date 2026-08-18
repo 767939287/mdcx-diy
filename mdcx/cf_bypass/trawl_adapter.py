@@ -428,7 +428,7 @@ async def _read_body(scope, receive) -> bytes:
 class TrawlAdapterServer:
     """本地外部 CF 服务适配层：把 cf_bypasser 协议翻译成 TRAWL /scrape 或 FlareSolverr /v1。
 
-    与 LocalBypassServer 同模式：随机空闲端口 + uvicorn 子进程/进程内线程。
+    随机空闲端口 + uvicorn 子进程/进程内线程。
     """
 
     def __init__(

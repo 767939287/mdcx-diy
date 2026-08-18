@@ -10558,14 +10558,6 @@ class Ui_MDCx(object):
         )
         self.lineEdit_cf_bypass_proxy.setObjectName("lineEdit_cf_bypass_proxy")
         self.gridLayout_9.addWidget(self.lineEdit_cf_bypass_proxy, 5, 1, 1, 1)
-        self.checkBox_cf_bypass_auto = QtWidgets.QCheckBox(parent=self.gridLayoutWidget_9)
-        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Policy.Minimum, QtWidgets.QSizePolicy.Policy.Fixed)
-        sizePolicy.setHorizontalStretch(0)
-        sizePolicy.setVerticalStretch(0)
-        sizePolicy.setHeightForWidth(self.checkBox_cf_bypass_auto.sizePolicy().hasHeightForWidth())
-        self.checkBox_cf_bypass_auto.setSizePolicy(sizePolicy)
-        self.checkBox_cf_bypass_auto.setObjectName("checkBox_cf_bypass_auto")
-        self.gridLayout_9.addWidget(self.checkBox_cf_bypass_auto, 4, 1, 1, 1)
         self.label_cf_bypass_trawl = QtWidgets.QLabel(parent=self.gridLayoutWidget_9)
         sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Policy.Fixed, QtWidgets.QSizePolicy.Policy.Fixed)
         sizePolicy.setHorizontalStretch(0)
@@ -13648,13 +13640,6 @@ class Ui_MDCx(object):
         self.lineEdit_cf_bypass_url.setPlaceholderText(_translate("MDCx", "例如: http://127.0.0.1:8000"))
         self.label_cf_bypass_proxy.setText(_translate("MDCx", "CF Bypass代理："))
         self.lineEdit_cf_bypass_proxy.setPlaceholderText(_translate("MDCx", "例如: http://127.0.0.1:7890（可选）"))
-        self.checkBox_cf_bypass_auto.setText(_translate("MDCx", "启用内置 Bypass（自动启动本地服务，无需外部地址）"))
-        self.checkBox_cf_bypass_auto.setToolTip(
-            _translate(
-                "MDCx",
-                "勾选后无需配置上方外部地址，MDCx 自动在后台启动内置 Bypass 服务（需安装 cloakbrowser + cf_bypasser）；修改后保存并重启软件生效",
-            )
-        )
         self.label_cf_bypass_trawl.setText(_translate("MDCx", "外部 CF 服务："))
         self.lineEdit_cf_bypass_trawl_url.setPlaceholderText(_translate("MDCx", "例如: http://127.0.0.1:8191"))
         self.comboBox_cf_bypass_backend.setToolTip(
@@ -13878,9 +13863,8 @@ class Ui_MDCx(object):
                 " </ul>\n"
                 "\n"
                 "<h4>五、Cloudflare 绕过（CF Bypass）</h4>\n"
-                '<p>MDCx 内置 Cloudflare 绕过能力：遇到受 Cloudflare 保护的站点会自动尝试绕过，<b>无需额外配置或密钥</b>。也可在"设置 → 网络"中配置独立的 CF Bypass 代理。部分站点已提供免 CF 的数据接口（如 MissAV-API），优先选用可获得更稳定的抓取。</p>\n'
+                '<p>MDCx 提供 Cloudflare 绕过能力：遇到受 Cloudflare 保护的站点，配置外部 CF 服务后会自动尝试绕过，<b>无需额外配置或密钥</b>。也可在"设置 → 网络"中配置独立的 CF Bypass 代理。部分站点已提供免 CF 的数据接口（如 MissAV-API），优先选用可获得更稳定的抓取。</p>\n'
                 "<ul>\n"
-                ' <li><b>内置 Bypass</b>：勾选"启用内置 Bypass"后自动启动本地服务，无需外部地址（需安装 cloakbrowser + cf_bypasser）。</li>\n'
                 " <li><b>外部 CF 服务</b>：填写 TRAWL / FlareSolverr 风格外部 CF 服务地址（如 http://127.0.0.1:8191），并在右侧选择后端类型：TRAWL（走 /scrape 原生 API）或 FlareSolverr（走 /v1 兼容 API）。MDCx 自动在本地拉起协议适配层把请求翻译给外部服务，无需自行填 /v1 地址。</li>\n"
                 "<li><b>Bypass 落地白名单</b>：可填写可信落地域名白名单（逗号分隔，支持 *.example.com 子域通配），用于校验 Bypass 服务落地/重定向后的最终域名，防止第三方服务被劫持时把恶意页面当数据；留空表示不校验（默认）。</li>\n"
                 "</ul>\n"

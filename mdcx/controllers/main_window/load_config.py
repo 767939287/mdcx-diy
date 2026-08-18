@@ -892,8 +892,6 @@ def load_config(self: "MyMAinWindow"):
         self.Ui.lineEdit_cf_bypass_url.setText(manager.config.cf_bypass_url)
         # Cloudflare bypass 独立代理地址
         self.Ui.lineEdit_cf_bypass_proxy.setText(manager.config.cf_bypass_proxy)
-        # 内置 CF Bypass
-        self.Ui.checkBox_cf_bypass_auto.setChecked(manager.config.cf_bypass_auto)
         # TRAWL/FlareSolverr 外部 CF 服务地址
         self.Ui.lineEdit_cf_bypass_trawl_url.setText(manager.config.cf_bypass_trawl_url)
         # 外部 CF 服务后端类型

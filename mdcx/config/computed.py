@@ -33,7 +33,6 @@ class Computed:
             timeout=config.timeout,
             cf_bypass_url=config.cf_bypass_url,
             cf_bypass_proxy=config.cf_bypass_proxy,
-            cf_bypass_auto=config.cf_bypass_auto,
             cf_bypass_trawl_url=config.cf_bypass_trawl_url,
             cf_bypass_trawl_backend=config.cf_bypass_trawl_backend,
             cf_bypass_trusted_hosts=config.cf_bypass_trusted_hosts,

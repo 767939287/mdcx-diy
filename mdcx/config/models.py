@@ -706,7 +706,6 @@ class Config(BaseModel):
     )
     cf_bypass_url: str = Field(default="", title="Cloudflare Bypass地址")
     cf_bypass_proxy: str = Field(default="", title="Cloudflare Bypass代理地址")
-    cf_bypass_auto: bool = Field(default=False, title="启用内置CF Bypass")
     cf_bypass_trawl_url: str = Field(
         default="",
         title="TRAWL/FlareSolverr 服务地址",

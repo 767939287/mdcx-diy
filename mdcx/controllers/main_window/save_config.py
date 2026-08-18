@@ -627,7 +627,6 @@ def save_config(self: "MyMAinWindow"):
     manager.config.proxy = proxy
     manager.config.cf_bypass_url = self.Ui.lineEdit_cf_bypass_url.text().strip()  # Cloudflare bypass 地址
     manager.config.cf_bypass_proxy = self.Ui.lineEdit_cf_bypass_proxy.text().strip()  # Cloudflare bypass 独立代理
-    manager.config.cf_bypass_auto = self.Ui.checkBox_cf_bypass_auto.isChecked()  # 内置 CF Bypass
     manager.config.cf_bypass_trawl_url = self.Ui.lineEdit_cf_bypass_trawl_url.text().strip()  # 外部 CF 服务地址
     manager.config.cf_bypass_trawl_backend = (
         self.Ui.comboBox_cf_bypass_backend.currentText().strip() or "trawl"
