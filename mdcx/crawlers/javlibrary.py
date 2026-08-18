@@ -4,7 +4,7 @@ from typing import override
 
 from lxml import etree
 
-from ..base.web import get_javlibrary_domain
+from ..base.web import _JAVLIBRARY_DOMAINS, get_javlibrary_domain
 from ..config.enums import Language, Website
 from ..config.manager import manager
 from ..gen.field_enums import CrawlerResultFields
@@ -126,6 +126,22 @@ class JavlibraryCrawler(BaseCrawler):
     @override
     def base_url_(cls) -> str:
         return manager.config.get_site_url(Website.JAVLIBRARY, "https://www.javlibrary.com")
+
+    @classmethod
+    @override
+    async def check_urls(cls) -> list[str]:
+        """网络检测用最新直连地址 + 已知镜像回退."""
+        urls: list[str] = []
+        try:
+            latest = await get_javlibrary_domain()
+            if latest and latest not in urls:
+                urls.append(latest)
+        except Exception:
+            pass
+        for candidate in _JAVLIBRARY_DOMAINS:
+            if candidate not in urls:
+                urls.append(candidate)
+        return urls or [cls.base_url_()]
 
     @property
     def use_proxy(self) -> bool:

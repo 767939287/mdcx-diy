@@ -247,6 +247,25 @@ def _compute_used_proxy(spec: NetworkCheckSpec) -> bool:
         return False
 
 
+async def _probe_crawler_by_run(
+    crawler: Any,
+    input_data: Any,
+) -> tuple[NetworkCheckStatus | None, str]:
+    """对重写 `_run` 的 API 类爬虫，用真实刮削路径探测能力."""
+    try:
+        response = await asyncio.wait_for(crawler.run(input_data), timeout=SCRAPE_PROBE_TIMEOUT)
+    except TimeoutError:
+        return NetworkCheckStatus.WARNING, "站点可达但刮削探测超时"
+    except Exception as exc:
+        return NetworkCheckStatus.WARNING, f"站点可达但刮削探测异常: {exc}"
+
+    if response is None or response.data is None:
+        error = getattr(getattr(response, "debug_info", None), "error", None) if response else None
+        message = f"刮削探测失败: {error}" if error else "站点可达但搜索无结果，可能该测试番号未收录"
+        return NetworkCheckStatus.WARNING, message
+    return NetworkCheckStatus.OK, "连接正常，刮削正常"
+
+
 async def _probe_crawler_capability(
     client: Any,
     spec: NetworkCheckSpec,
@@ -273,18 +292,24 @@ async def _probe_crawler_capability(
         if crawler_cls is None:
             return None, ""
         crawler = crawler_cls(client=client, base_url=spec.url.rstrip("/"), browser=None)
+        probe_number = getattr(crawler_cls, "probe_number", "") or SCRAPE_PROBE_NUMBER
         input_data = CrawlerInput(
             appoint_number="",
             appoint_url="",
             file_path=None,
             mosaic="",
-            number=SCRAPE_PROBE_NUMBER,
+            number=probe_number,
             short_number="",
             language=Language.UNDEFINED,
             org_language=Language.UNDEFINED,
         )
         ctx: Any = crawler.new_context(input_data)
-        search_urls = await crawler._generate_search_url(ctx)
+        try:
+            search_urls = await crawler._generate_search_url(ctx)
+        except NotImplementedError:
+            # 重写 _run 的 API 类爬虫（如 avmoo/avheat/avsox/missav_api），
+            # _generate_search_url/_parse_search_page 无实现，改用真实刮削路径探测。
+            return await _probe_crawler_by_run(crawler, input_data)
         if not search_urls:
             return NetworkCheckStatus.WARNING, "站点可达但无法自动探测刮削，可用设置页指定网址实测"
         if isinstance(search_urls, str):
@@ -455,6 +480,15 @@ async def _build_site_specs() -> list[NetworkCheckSpec]:
             )
             continue
 
+        # 动态域名/镜像站点可返回多个检测地址；其余站点默认单地址。
+        try:
+            check_urls = await crawler_cls.check_urls()
+        except Exception:
+            check_urls = []
+        # 用户未自定义 URL 时，动态域名站优先用动态解析出的地址作为主检测地址
+        if not customized and check_urls:
+            base_url = check_urls[0].rstrip("/")
+
         path = SPECIAL_CHECK_PATHS.get(site, "")
         url = _join_url(base_url, path)
         headers: dict[str, str] = {}
@@ -523,6 +557,27 @@ async def _build_site_specs() -> list[NetworkCheckSpec]:
                 enable_cf_bypass=True,
             )
         )
+
+        # 动态域名/镜像站点的额外检测地址（主地址已用上面的特化逻辑生成 spec）
+        if len(check_urls) > 1:
+            main_host = url.split("://")[-1].split("/")[0]
+            for extra_url in check_urls:
+                extra_url = extra_url.rstrip("/")
+                extra_host = extra_url.split("://")[-1].split("/")[0]
+                if extra_host == main_host:
+                    continue
+                specs.append(
+                    NetworkCheckSpec(
+                        name=f"{site.value}·镜像",
+                        group="刮削站点",
+                        url=extra_url,
+                        site=site,
+                        use_proxy=use_proxy,
+                        headers=dict(headers),
+                        cookies=dict(cookies),
+                        enable_cf_bypass=True,
+                    )
+                )
     return specs
 
 

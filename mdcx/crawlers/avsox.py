@@ -18,6 +18,7 @@ class AvsoxCrawler(AioSiteCrawler):
     fallback_domain = "https://avsox.click"
     mosaic = "无码"
     with_outline = True
+    probe_number = "081826_100"
 
     @classmethod
     @override

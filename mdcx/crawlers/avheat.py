@@ -11,6 +11,7 @@ class AvheatCrawler(AioSiteCrawler):
     fallback_domain = "https://avheat.shop"
     mosaic = "欧美"
     with_outline = True
+    probe_number = "Men.26.08.17"
 
     @classmethod
     @override

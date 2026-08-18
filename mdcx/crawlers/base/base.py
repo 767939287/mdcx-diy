@@ -33,6 +33,10 @@ class GenericBaseCrawler[T: Context = Context](ABC):
     # 留空表示不轮询。子类可调用 _init_rotator() 用 custom_url 初始化。
     _domains: list[str] = []
 
+    # 网络检测用的探针番号。默认用全局 SCRAPE_PROBE_NUMBER；
+    # 站点有收录类型限制时（如欧美/无码站搜不到有码探针番号），子类可覆盖为适用的番号。
+    probe_number: str = ""
+
     def __init_subclass__(cls, **kwargs: Any) -> None:
         super().__init_subclass__(**kwargs)
         try:
@@ -114,6 +118,18 @@ class GenericBaseCrawler[T: Context = Context](ABC):
     def hidden_in_ui(cls) -> bool:
         """是否在前端站点枚举中隐藏."""
         return False
+
+    @classmethod
+    async def check_urls(cls) -> list[str]:
+        """返回网络检测用的 URL 列表.
+
+        默认返回声明了镜像域名（_domains）时的全部镜像地址，否则返回 base_url_() 单个地址；
+        动态域名站点可覆写此方法返回动态解析地址（如 avmoo/avheat/avsox/javlibrary）。
+        """
+        domains = list(getattr(cls, "_domains", None) or [])
+        if domains:
+            return domains
+        return [cls.base_url_()]
 
     @classmethod
     def supports_custom_url(cls) -> bool:

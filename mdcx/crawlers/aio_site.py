@@ -44,6 +44,16 @@ class AioSiteCrawler(BaseCrawler):
     def base_url_(cls) -> str:
         return cls._default_url()
 
+    @classmethod
+    @override
+    async def check_urls(cls) -> list[str]:
+        """网络检测用动态地址（含默认 fallback）."""
+        try:
+            domain = await get_aio_domain(cls.domain_site)
+            return [domain, cls._default_url()]
+        except Exception:
+            return [cls._default_url()]
+
     async def _resolve_domain(self, ctx: Context) -> str:
         """解析站点入口域名：优先用户自定义 URL，其次动态获取，最后回退默认域名。"""
         if self.base_url:

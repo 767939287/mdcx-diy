@@ -395,11 +395,37 @@ async def test_probe_crawler_capability_warns_when_search_url_unavailable(monkey
 
 
 @pytest.mark.anyio
-async def test_probe_crawler_capability_warns_when_run_rewritten(monkeypatch: pytest.MonkeyPatch):
+async def test_probe_crawler_capability_ok_when_run_rewritten_and_succeeds(monkeypatch: pytest.MonkeyPatch):
+    """重写 _run 的 API 类爬虫走真实刮削探测, run() 成功时返回 OK."""
+
     class RewrittenCrawler(ProbeCrawler):
         def __init__(self, client, base_url="", browser=None):
             super().__init__(client, base_url, browser)
             self.raise_not_implemented = True
+
+        async def run(self, input_data):
+            return SimpleNamespace(data=SimpleNamespace(), debug_info=SimpleNamespace(error=None))
+
+    monkeypatch.setattr("mdcx.crawlers.get_crawler", lambda site: RewrittenCrawler)
+    spec = NetworkCheckSpec(name="avmoo", group="刮削站点", url="https://avmoo.shop", site=Website.AVMOO)
+
+    status, message = await _probe_crawler_capability(ProbeFakeClient(), spec)
+
+    assert status == NetworkCheckStatus.OK
+    assert "刮削正常" in message
+
+
+@pytest.mark.anyio
+async def test_probe_crawler_capability_warns_when_run_rewritten_and_fails(monkeypatch: pytest.MonkeyPatch):
+    """重写 _run 的爬虫 run() 失败时返回 WARNING."""
+
+    class RewrittenCrawler(ProbeCrawler):
+        def __init__(self, client, base_url="", browser=None):
+            super().__init__(client, base_url, browser)
+            self.raise_not_implemented = True
+
+        async def run(self, input_data):
+            return SimpleNamespace(data=None, debug_info=SimpleNamespace(error="未找到匹配"))
 
     monkeypatch.setattr("mdcx.crawlers.get_crawler", lambda site: RewrittenCrawler)
     spec = NetworkCheckSpec(name="fc2ppvdb", group="刮削站点", url="https://fc2cmadb.com", site=Website.FC2PPVDB)
@@ -407,7 +433,7 @@ async def test_probe_crawler_capability_warns_when_run_rewritten(monkeypatch: py
     status, message = await _probe_crawler_capability(ProbeFakeClient(), spec)
 
     assert status == NetworkCheckStatus.WARNING
-    assert "无法自动探测" in message
+    assert "刮削探测失败" in message
 
 
 @pytest.mark.anyio
