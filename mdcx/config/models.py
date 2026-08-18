@@ -704,6 +704,12 @@ class Config(BaseModel):
     cf_bypass_url: str = Field(default="", title="Cloudflare Bypass地址")
     cf_bypass_proxy: str = Field(default="", title="Cloudflare Bypass代理地址")
     cf_bypass_auto: bool = Field(default=False, title="启用内置CF Bypass")
+    cf_bypass_trawl_url: str = Field(
+        default="",
+        title="TRAWL 服务地址",
+        description="TRAWL (FlareSolverr 风格) 外部 CF 服务地址，如 http://127.0.0.1:8191。"
+        "配置后 MDCx 自动在本地拉起协议适配层，把 cf_bypasser 协议翻译成 TRAWL /scrape。",
+    )
     cf_bypass_trusted_hosts: str = Field(
         default="",
         title="Bypass落地域名白名单",

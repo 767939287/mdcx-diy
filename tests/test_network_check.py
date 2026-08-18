@@ -66,6 +66,7 @@ class FakeConfig:
     proxy = ""
     cf_bypass_url = ""
     cf_bypass_proxy = ""
+    cf_bypass_trawl_url = ""
     timeout = 5
     javdb = ""
     javbus = ""

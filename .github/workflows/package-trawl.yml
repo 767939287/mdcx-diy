@@ -158,7 +158,7 @@ jobs:
             1. 解压到任意目录（如 `C:\Tools\trawl`）
             2. 双击 `start-trawl.bat` 启动
             3. 等待浏览器预热 (约 1-2 分钟)
-            4. 配置 MDCx: 设置 → 网络 → CF Bypass 地址填 `http://localhost:8191/v1`
+            4. 配置 MDCx: 设置 → 网络 → TRAWL 服务填 `http://localhost:8191`（不要填 `/v1`，MDCx 自动协议适配）
             
             ### 系统要求
             - Windows 10/11 (x64)

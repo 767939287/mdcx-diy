@@ -34,8 +34,12 @@
 
 ```
 启用内置 CF Bypass: [ ] 取消勾选
-CF Bypass 地址: http://localhost:8191/v1
+TRAWL 服务: http://localhost:8191
 ```
+
+> **注意**：填写 TRAWL 的**根地址**（如 `http://localhost:8191`），不要填 `/v1` 路径。
+> MDCx 会自动在本地拉起协议适配层，把内部请求翻译成 TRAWL 的 `/scrape` 接口；
+> 填 `/v1` 会导致健康检查失败（MDCx 检测的是 `/cookies`/`/html`/`/mirror` 端点）。
 
 ## API 端点
 

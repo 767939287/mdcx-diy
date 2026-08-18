@@ -41,9 +41,10 @@ from .network_fingerprint import (
 from .utils import collapse_inline_script_splits
 
 try:
-    from .cf_bypass import LocalBypassServer
+    from .cf_bypass import LocalBypassServer, TrawlAdapterServer
 except ImportError:
     LocalBypassServer = None  # type: ignore[assignment, misc]
+    TrawlAdapterServer = None  # type: ignore[assignment, misc]
 
 
 def is_proxy_host(host: str, proxy_sites: list[str] | tuple[str, ...] | None) -> bool:
@@ -380,6 +381,7 @@ class AsyncWebClient:
         cf_bypass_url: str = "",
         cf_bypass_proxy: str | None = None,
         cf_bypass_auto: bool = False,
+        cf_bypass_trawl_url: str = "",
         cf_bypass_trusted_hosts: str = "",
         verify_ssl: bool = True,
         proxy_sites: list[str] | None = None,
@@ -423,6 +425,10 @@ class AsyncWebClient:
                 self._cf_bypass_trusted_hosts.add(entry)
         self._local_bypass_enabled = cf_bypass_auto and not self.cf_bypass_url
         self._local_bypass_server: LocalBypassServer | None = None
+        self._trawl_url = (cf_bypass_trawl_url or "").strip().rstrip("/")
+        # TRAWL 适配层：配置了 TRAWL 地址且未配置 cf_bypasser 外部地址/内置 bypass 时启用
+        self._trawl_adapter_enabled = bool(self._trawl_url) and not self.cf_bypass_url and not cf_bypass_auto
+        self._trawl_adapter_server: TrawlAdapterServer | None = None
         self._bypass_token = ""  # 仅本地内置 bypass 服务鉴权用, 远程用户配置的服务不鉴权
         # 本地内置 bypass 服务的健康状态机: "idle" -> "starting" -> "ready" / "dead"
         # dead 表示服务已确认不可用(连续健康失败), 不再尝试重启/转发, 避免每片刮削空等超时
@@ -455,12 +461,12 @@ class AsyncWebClient:
         self._fingerprint_amazon_request_range = (60, 140)
 
     def _maybe_prewarm_local_bypass(self, host: str) -> None:
-        """#9: 非阻塞后台预热内置 Bypass 服务。
+        """#9: 非阻塞后台预热内置 Bypass 服务或 TRAWL 适配层。
 
         在请求一开始就触发(而非等到首个挑战页), 避免首个命中 Cloudflare 的请求
         因等待服务启动 + 可能下载 Chromium 而被长时间阻塞。
         """
-        if not self._local_bypass_enabled or self._cf_bypass_enabled:
+        if not (self._local_bypass_enabled or self._trawl_adapter_enabled) or self._cf_bypass_enabled:
             return
         task = self._local_bypass_prewarm_task
         if task is not None and not task.done():
@@ -470,7 +476,7 @@ class AsyncWebClient:
 
     def _record_local_bypass_success(self) -> None:
         """本地内置 bypass 请求成功：清空失败计数，恢复 ready 状态。"""
-        if not self._local_bypass_enabled:
+        if not (self._local_bypass_enabled or self._trawl_adapter_enabled):
             return
         was_dead = self._local_bypass_health == "dead"
         self._local_bypass_consecutive_failures = 0
@@ -481,11 +487,14 @@ class AsyncWebClient:
                 self.cf_bypass_url = self._local_bypass_server.url
                 self._bypass_token = self._local_bypass_server.token
                 self._cf_bypass_enabled = True
+            elif self._trawl_adapter_server and self._trawl_adapter_server.is_running:
+                self.cf_bypass_url = self._trawl_adapter_server.url
+                self._cf_bypass_enabled = True
             self._log("本地 Bypass 服务恢复正常 (ready)")
 
     def _record_local_bypass_failure(self) -> None:
         """本地内置 bypass 请求失败（连接/超时）：累计失败，达阈值标记 dead。"""
-        if not self._local_bypass_enabled:
+        if not (self._local_bypass_enabled or self._trawl_adapter_enabled):
             return
         self._local_bypass_consecutive_failures += 1
         if (
@@ -515,7 +524,7 @@ class AsyncWebClient:
         return True
 
     async def _ensure_local_bypass(self) -> bool:
-        if not self._local_bypass_enabled:
+        if not (self._local_bypass_enabled or self._trawl_adapter_enabled):
             return False
         if self._cf_bypass_enabled:
             return True
@@ -527,6 +536,10 @@ class AsyncWebClient:
             self._bypass_token = self._local_bypass_server.token
             self._cf_bypass_enabled = True
             return True
+        if self._trawl_adapter_server and self._trawl_adapter_server.is_running:
+            self.cf_bypass_url = self._trawl_adapter_server.url
+            self._cf_bypass_enabled = True
+            return True
 
         async with self._local_bypass_start_lock:
             if self._cf_bypass_enabled:
@@ -536,18 +549,39 @@ class AsyncWebClient:
                 self._bypass_token = self._local_bypass_server.token
                 self._cf_bypass_enabled = True
                 return True
+            if self._trawl_adapter_server and self._trawl_adapter_server.is_running:
+                self.cf_bypass_url = self._trawl_adapter_server.url
+                self._cf_bypass_enabled = True
+                return True
+
+            if self._trawl_adapter_enabled:
+                if TrawlAdapterServer is None:
+                    self._log("cf_bypass 模块不可用，TRAWL 适配层无法启动")
+                    self._trawl_adapter_enabled = False
+                    return False
+                trawl_server = TrawlAdapterServer(trawl_url=self._trawl_url, log_fn=self._log)
+                ok, result = await trawl_server.start()
+                if ok:
+                    self._trawl_adapter_server = trawl_server
+                    self.cf_bypass_url = result
+                    self._cf_bypass_enabled = True
+                    self._log(f"TRAWL 适配层已集成: {result}")
+                    return True
+                self._log(f"TRAWL 适配层启动失败: {result}")
+                self._trawl_adapter_enabled = False
+                return False
 
             if LocalBypassServer is None:
                 self._log("cf_bypass 模块不可用，内置 Bypass 无法启动")
                 self._local_bypass_enabled = False
                 return False
 
-            server = LocalBypassServer(log_fn=self._log)
-            ok, result = await server.start()
+            local_server = LocalBypassServer(log_fn=self._log)
+            ok, result = await local_server.start()
             if ok:
-                self._local_bypass_server = server
+                self._local_bypass_server = local_server
                 self.cf_bypass_url = result
-                self._bypass_token = server.token
+                self._bypass_token = local_server.token
                 self._cf_bypass_enabled = True
                 self._log(f"本地 Bypass 服务已集成: {result}")
                 return True
@@ -1599,7 +1633,11 @@ class AsyncWebClient:
                                 allow_redirects=allow_redirects,
                             )
 
-                    if enable_cf_bypass and self._local_bypass_enabled and not self._cf_bypass_enabled:
+                    if (
+                        enable_cf_bypass
+                        and (self._local_bypass_enabled or self._trawl_adapter_enabled)
+                        and not self._cf_bypass_enabled
+                    ):
                         self._log_cf("触发内置 Bypass 服务启动", host)
                         started = await self._ensure_local_bypass()
                         if not started:

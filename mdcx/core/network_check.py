@@ -374,6 +374,7 @@ def _format_header() -> list[str]:
     use_proxy = bool(manager.config.use_proxy and manager.config.proxy)
     cf_bypass_url = manager.config.cf_bypass_url.strip()
     cf_bypass_proxy = manager.config.cf_bypass_proxy.strip()
+    trawl_url = manager.config.cf_bypass_trawl_url.strip()
     lines = [time.strftime("%Y-%m-%d %H:%M:%S").center(88, "=")]
     lines.append("基础环境")
     lines.append(f"  {'代理状态':<16}{'已启用' if use_proxy else '未启用'}")
@@ -381,6 +382,7 @@ def _format_header() -> list[str]:
         lines.append(f"  {'代理地址':<16}{manager.config.proxy}")
     lines.append(f"  {'CF Bypass':<16}{'已配置' if cf_bypass_url else '未配置'}")
     lines.append(f"  {'CF Bypass代理':<16}{'已配置' if cf_bypass_proxy else '未配置'}")
+    lines.append(f"  {'TRAWL服务':<16}{'已配置' if trawl_url else '未配置'}")
     lines.append(f"  {'诊断超时':<16}{_diagnostic_timeout():.1f}s")
     lines.append("  " + "-" * 84)
     lines.append(f"  {'状态':<4} {'站点':<18} {'状态码':>4}  {'耗时':>8}  {'路由':<4} 信息")
@@ -553,6 +555,14 @@ def _build_static_specs() -> list[NetworkCheckSpec]:
                 group="辅助服务",
                 url="",
                 note="未配置，仅遇到 Cloudflare 挑战页时需要",
+            )
+        )
+
+    trawl_url = manager.config.cf_bypass_trawl_url.strip()
+    if trawl_url:
+        specs.append(
+            NetworkCheckSpec(
+                name="TRAWL 服务", group="辅助服务", url=trawl_url.rstrip("/") + "/health", use_proxy=False
             )
         )
 

@@ -895,6 +895,8 @@ def load_config(self: "MyMAinWindow"):
         self.Ui.lineEdit_cf_bypass_proxy.setText(manager.config.cf_bypass_proxy)
         # 内置 CF Bypass
         self.Ui.checkBox_cf_bypass_auto.setChecked(manager.config.cf_bypass_auto)
+        # TRAWL 外部 CF 服务地址
+        self.Ui.lineEdit_cf_bypass_trawl_url.setText(manager.config.cf_bypass_trawl_url)
         # Bypass 落地域名白名单
         self.Ui.lineEdit_cf_bypass_trusted_hosts.setText(manager.config.cf_bypass_trusted_hosts)
         # HTTPS 证书校验

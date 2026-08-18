@@ -182,6 +182,11 @@ def migrate_config_data(data: dict[str, Any]) -> list[str]:
         if r and all(schema not in r for schema in ["http://", "https://", "socks4://", "socks5://", "socks5h://"]):
             r = "http://" + r
         data["cf_bypass_proxy"] = r
+    if isinstance(r := data.get("cf_bypass_trawl_url"), str):
+        r = r.strip().rstrip("/")
+        if r and all(schema not in r for schema in ["http://", "https://"]):
+            r = "http://" + r
+        data["cf_bypass_trawl_url"] = r
 
     if isinstance(r := data.get("nfo_tag_actor_contains"), str):
         data["nfo_tag_actor_contains"] = _str_to_list(r, "|")
