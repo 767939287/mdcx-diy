@@ -46,23 +46,26 @@ cd C:\Tools\trawl-portable-1.4.0-windows
 
 ## 稳定性优化
 
+### 内置 Redis（自动生效）
+
+便携包已内置 Redis，`start-trawl.bat` 启动时自动拉起（端口 6380），为 TRAWL 启用
+**Tier 2 会话缓存**：同一域名第二次起的请求复用已解出的 cf_clearance cookie，不再重复
+解挑战，显著提升速度与稳定性。启动日志出现
+`session cache connected (Tier 2 fast-path enabled)` 即生效。
+
 ### 内置补丁（自动生效）
 
 便携包已内置 `trawl-goto-timeout.patch`，`start-trawl.bat` 首次运行 clone 源码后自动应用，
 把 TRAWL Tier3/4 的页面加载超时上限从 30s 提升到 90s，改善 JS 渲染站点（如 lulubar 搜索页）
 的挑战通过率。补丁无法应用时会回退原版并提示。
 
-### 建议：启用 Redis 会话缓存（可选）
+### 浏览器池
 
-默认 `REDIS_URL` 为空，TRAWL 每个域名首次请求都要重新解 Cloudflare 挑战，较慢且可能超时。
-本机安装 Redis 后可显著提升重复请求的速度与稳定性：
+默认 `BROWSER_POOL_SIZE=2`（稳定性/内存折中）。内存充裕可编辑 `src/.env` 提高（如 3），
+内存紧张可降到 1。
 
-1. 安装并启动 Redis（Windows 可用 Memurai / 官方 Redis；Linux/macOS 用 `redis-server`）
-2. 编辑便携包内 `src/.env`（或系统环境变量），设置 `REDIS_URL=redis://localhost:6379`
-3. 重启 `start-trawl.bat`，启动日志出现 `session cache connected (Tier 2 fast-path enabled)` 即生效
-
-> 同一域名第二次起的请求会复用已解出的 cf_clearance cookie，不再重复挑战。
-> 未配置 Redis 不影响功能，只是每个域名首次请求较慢。
+> 若内置 Redis 启动失败（端口被占用等），TRAWL 会以无缓存模式运行，功能不受影响，
+> 只是每个域名首次请求较慢。
 
 ## API 端点
 
@@ -127,6 +130,7 @@ trawl-portable-1.4.0-windows/
 ├── .env                     # 配置文件
 ├── .env.example             # 配置示例
 ├── bun/                     # Bun 运行时 (~50MB)
+├── redis/                   # 内置 Redis（会话缓存，自动启动）
 ├── .cache/
 │   └── camoufox/            # Camoufox 浏览器 (~663MB)
 ├── src/                     # TRAWL 源码

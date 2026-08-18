@@ -53,11 +53,23 @@ if not exist "src\node_modules" (
 )
 
 :: 设置环境变量
-set REDIS_URL=
 set MITM_PROXY_ENABLED=false
 set PORT=8191
+:: 浏览器池默认 2（稳定性/内存折中，用户可改 .env 的 BROWSER_POOL_SIZE）
+set BROWSER_POOL_SIZE=2
 :: 让 camoufox-js 直接使用便携包内自带的 Camoufox 浏览器，避免在线下载
 set CAMOUFOX_INSTALL_DIR=%~dp0.cache\camoufox
+
+:: 内置 Redis：便携包自带，自动启动用于 TRAWL 会话缓存（Tier 2 fast-path）
+set REDIS_URL=
+if exist "%~dp0redis\redis-server.exe" (
+    echo [INFO] 检测到内置 Redis，正在启动...
+    start "TRAWL-Redis" /min "%~dp0redis\redis-server.exe" --port 6380 --save "" --appendonly no
+    if not errorlevel 1 (
+        set REDIS_URL=redis://127.0.0.1:6380
+        echo [INFO] Redis 已启动，TRAWL 会话缓存已启用
+    )
+)
 
 echo.
 echo [INFO] 服务启动中...

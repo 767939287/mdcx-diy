@@ -9,6 +9,8 @@
 - 自动解决 CF Turnstile、reCAPTCHA、hCaptcha
 - FlareSolverr 兼容 API (`/v1`)
 - 原生 API (`/scrape`)
+- 内置 Redis 会话缓存（Tier 2 fast-path，自动启动）
+- 内置 TRAWL 稳定性补丁（Tier3/4 超时 30s → 90s，自动应用）
 
 ## 快速开始
 
@@ -26,7 +28,10 @@
 首次运行会：
 - 自动克隆 trawl 源码（~50MB）
 - 安装依赖
-- 下载 Camoufox 浏览器（~300MB，约 2-5 分钟）
+- 自动启动内置 Redis（会话缓存）
+- 应用稳定性补丁
+
+Camoufox 浏览器已随包附带（~663MB），无需在线下载。
 
 ### 3. 配置 MDCx
 
@@ -69,15 +74,15 @@ curl -X POST http://localhost:8191/v1 \
 | 问题 | 解决方案 |
 |------|----------|
 | 启动失败 | 运行 `download-bun.bat` 重新下载 Bun |
-| 浏览器启动慢 | 首次需下载 Camoufox，等待 2-5 分钟 |
-| 端口冲突 | 编辑 `.env`，修改 `PORT=8191` |
-| 内存不足 | 减少 `POOL_SIZE=1`（默认 2） |
+| 浏览器启动慢 | Camoufox 已随包附带，首次启动预热约 30s-1min |
+| 端口冲突 | 编辑 `src/.env`，修改 `PORT=8191` |
+| 内存不足 | 编辑 `src/.env`，减少 `BROWSER_POOL_SIZE=1`（默认 2） |
 
 ## 系统要求
 
-- Windows 10/11 (x64 或 ARM64)
+- Windows 10/11 (x64)
 - 2GB RAM 可用内存
-- 500MB 磁盘空间
+- 1GB 磁盘空间（含 Camoufox）
 - 稳定的网络连接
 
 ## 与原版的区别
@@ -85,8 +90,8 @@ curl -X POST http://localhost:8191/v1 \
 | 特性 | 原版 Docker | 本便携版 |
 |------|------------|---------|
 | 部署方式 | Docker | 直接运行 |
-| Redis | 必需 | 可选（内存替代） |
-| 浏览器缓存 | Redis 持久化 | 内存（重启丢失） |
+| Redis | 必需 | 内置（自动启动） |
+| 浏览器缓存 | Redis 持久化 | 内置 Redis（会话缓存） |
 | 适用场景 | 服务器 | 个人桌面 |
 
 ## 许可

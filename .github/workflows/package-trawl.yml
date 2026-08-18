@@ -4,9 +4,9 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'TRAWL 版本 (如 1.4.0)'
-        required: true
-        default: '1.4.0'
+        description: 'TRAWL 版本 (留空自动用最新版，如 1.4.0)'
+        required: false
+        default: 'latest'
       upload_to_releases:
         description: '上传到 GitHub Releases'
         type: boolean
@@ -26,6 +26,25 @@ jobs:
         with:
           fetch-depth: 1
 
+      - name: Get TRAWL Version
+        id: version
+        shell: pwsh
+        run: |
+          if ("${{ inputs.version }}" -ne "latest" -and "${{ inputs.version }}" -ne "") {
+            $tag = "v${{ inputs.version }}"
+          } else {
+            $tags = git ls-remote --tags --refs https://github.com/germondai/trawl.git
+            # 取最新 tag（按版本号排序）
+            $ver = $tags | ForEach-Object { ($_ -split 'refs/tags/')[1] } | Where-Object { $_ -match '^v\d+\.\d+\.\d+$' } |
+                   ForEach-Object { [version]($_ -replace '^v','') } | Sort-Object -Descending | Select-Object -First 1
+            if (-not $ver) { $ver = "1.4.0" }
+            $tag = "v$ver"
+          }
+          $tagName = $tag -replace '^v',''
+          echo "tag=$tag" >> $env:GITHUB_OUTPUT
+          echo "version=$tagName" >> $env:GITHUB_OUTPUT
+          Write-Host "TRAWL 版本: $tagName"
+
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
         with:
@@ -34,7 +53,7 @@ jobs:
       - name: Clone TRAWL
         shell: pwsh
         run: |
-          git clone --depth 1 --branch v${{ inputs.version }} https://github.com/germondai/trawl.git trawl-src
+          git clone --depth 1 --branch ${{ steps.version.outputs.tag }} https://github.com/germondai/trawl.git trawl-src
           cd trawl-src
           bun --version
 
@@ -63,7 +82,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.cache/camoufox
-          key: ${{ runner.os }}-camoufox-${{ inputs.version }}
+          key: ${{ runner.os }}-camoufox-${{ steps.version.outputs.version }}
           restore-keys: |
             ${{ runner.os }}-camoufox-
 
@@ -88,10 +107,22 @@ jobs:
           )
           Write-Host "下载完成，已缓存到 $CacheDir"
 
+      - name: Download Redis for Windows
+        shell: pwsh
+        run: |
+          $RedisVersion = "8.10.1"
+          $RedisUrl = "https://github.com/redis-windows/redis-windows/releases/download/${RedisVersion}/Redis-${RedisVersion}-Windows-x64-msys2.zip"
+          Write-Host "下载 Redis $RedisVersion ..."
+          Invoke-WebRequest -Uri $RedisUrl -OutFile "redis.zip"
+          New-Item -ItemType Directory -Force -Path "redis-dist" | Out-Null
+          Expand-Archive -Path "redis.zip" -DestinationPath "redis-dist" -Force
+          Remove-Item "redis.zip" -Force
+          Get-ChildItem "redis-dist" | Select-Object -First 5
+
       - name: Create Portable Package
         shell: pwsh
         run: |
-          $PACKAGE = "trawl-portable-${{ inputs.version }}-windows"
+          $PACKAGE = "trawl-portable-${{ steps.version.outputs.version }}-windows"
           New-Item -ItemType Directory -Force -Path $PACKAGE | Out-Null
           
           # 复制 trawl 源码和配置
@@ -112,6 +143,11 @@ jobs:
           New-Item -ItemType Directory -Force -Path "$PACKAGE\bun" | Out-Null
           Expand-Archive -Path "bun.zip" -DestinationPath "$PACKAGE\bun" -Force
           Remove-Item "bun.zip" -Force
+          
+          # 复制 Redis 到包内，由 start-trawl.bat 自动启动
+          New-Item -ItemType Directory -Force -Path "$PACKAGE\redis" | Out-Null
+          Copy-Item -Path "redis-dist\*" -Destination "$PACKAGE\redis\" -Recurse -Force
+          Write-Host "已包含 Redis"
           
           # 复制缓存的 Camoufox 到包内，并由 start-trawl.bat 的 CAMOUFOX_INSTALL_DIR 指向
           $CamoufoxCache = "$HOME\.cache\camoufox"
@@ -135,7 +171,7 @@ jobs:
       - name: Create ZIP
         shell: pwsh
         run: |
-          $PACKAGE = "trawl-portable-${{ inputs.version }}-windows"
+          $PACKAGE = "trawl-portable-${{ steps.version.outputs.version }}-windows"
           # -Force 显式列出全部顶层项（含 .cache 等点开头目录），确保 Camoufox 被打进 zip
           $Items = Get-ChildItem -Path $PACKAGE -Force | ForEach-Object { $_.FullName }
           Compress-Archive -Path $Items -DestinationPath "${PACKAGE}.zip" -Force
@@ -145,21 +181,21 @@ jobs:
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: trawl-portable-${{ inputs.version }}-windows
-          path: trawl-portable-${{ inputs.version }}-windows.zip
+          name: trawl-portable-${{ steps.version.outputs.version }}-windows
+          path: trawl-portable-${{ steps.version.outputs.version }}-windows.zip
           retention-days: 7
 
       - name: Create GitHub Release
         if: inputs.upload_to_releases
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: trawl-${{ inputs.version }}
-          name: TRAWL ${{ inputs.version }} Windows Portable
-          files: trawl-portable-${{ inputs.version }}-windows.zip
+          tag_name: trawl-${{ steps.version.outputs.version }}
+          name: TRAWL ${{ steps.version.outputs.version }} Windows Portable
+          files: trawl-portable-${{ steps.version.outputs.version }}-windows.zip
           draft: false
           prerelease: false
           body: |
-            ## TRAWL ${{ inputs.version }} Windows 便携版
+            ## TRAWL ${{ steps.version.outputs.version }} Windows 便携版
             
             基于 [germondai/trawl](https://github.com/germondai/trawl) 的 Windows 便携打包。
             
@@ -167,7 +203,9 @@ jobs:
             - 绕过 Cloudflare Bot Management
             - 支持 Akamai、Imperva WAF  
             - FlareSolverr 兼容 API (`/v1`)
-            - Camoufox 浏览器集成（Firefox 内核）
+            - Camoufox 浏览器集成（Firefox 内核，随包附带）
+            - 内置 Redis 会话缓存（自动启动，显著提速）
+            - 内置稳定性补丁（Tier3/4 超时 30s → 90s）
             
             ### 使用方法
             1. 解压到任意目录（如 `C:\Tools\trawl`）
@@ -182,8 +220,8 @@ jobs:
             
             ### 故障排查
             - 启动失败：运行 `download-bun.bat` 重新下载 Bun
-            - 端口冲突：编辑 `.env`，修改 `PORT=8191`
-            - 浏览器慢：首次需下载 Camoufox (~663MB)
+            - 端口冲突：编辑 `src/.env`，修改 `PORT=8191`
+            - 浏览器慢：Camoufox 已随包附带，首次预热约 30s-1min
             
             ---
             原版项目: https://github.com/germondai/trawl
