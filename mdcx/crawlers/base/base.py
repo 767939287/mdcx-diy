@@ -7,6 +7,7 @@ from parsel import Selector
 
 from mdcx.config.models import Website
 from mdcx.models.types import CrawlerInput, CrawlerResponse, CrawlerResult
+from mdcx.utils.domain_rotate import DomainRotator
 
 from .types import Context, CrawlerData, CrawlerException
 
@@ -27,6 +28,10 @@ class GenericBaseCrawler[T: Context = Context](ABC):
 
     子类定义后会自动注册到 crawler_registry, 无需手动调用 register_crawler().
     """
+
+    # 站点镜像域名列表（可选）。声明后请求失败（连接/SSL/超时等）会自动切到下一域名重试。
+    # 留空表示不轮询。子类可调用 _init_rotator() 用 custom_url 初始化。
+    _domains: list[str] = []
 
     def __init_subclass__(cls, **kwargs: Any) -> None:
         super().__init_subclass__(**kwargs)
@@ -49,6 +54,40 @@ class GenericBaseCrawler[T: Context = Context](ABC):
         self.async_client = client
         self.base_url: str = base_url or self.base_url_()
         self.browser = browser
+
+    def _init_rotator(self, domains: list[str], custom_url: str) -> None:
+        """初始化镜像域名轮询器（含用户自定义 URL 优先）。"""
+        self._rotator = DomainRotator(domains, custom_url=custom_url)
+
+    async def _get_text_with_rotate(
+        self,
+        ctx: T,
+        url: str,
+        headers: dict[str, str] | None = None,
+        cookies: dict[str, str] | None = None,
+        *,
+        max_rotations: int | None = None,
+    ) -> tuple[str | None, str]:
+        """请求文本；连接失败/SSL/超时等可重试错误时自动轮询镜像域名重试。
+
+        未声明 _domains 或已用自定义 URL 时，行为与普通 get_text 一致（单次请求）。
+        """
+        rotator = getattr(self, "_rotator", None)
+        if rotator is None or not rotator.domains:
+            return await self.async_client.get_text(url, headers=headers, cookies=cookies)
+        max_rotations = max_rotations or len(rotator.domains)
+        for _ in range(max_rotations):
+            htmlcode, error = await self.async_client.get_text(url, headers=headers, cookies=cookies)
+            if htmlcode is not None:
+                return htmlcode, ""
+            if "404" in str(error):
+                return None, error
+            if rotator.current_is_custom():
+                return None, error
+            self.base_url = rotator.rotate()
+            url = rotator.rebuild_url(url)
+            ctx.debug(f"{type(self).__name__} 请求失败，切换镜像域名重试: {url} ({error})")
+        return None, "所有镜像域名均失败"
 
     async def close(self):
         """释放资源."""
@@ -217,7 +256,7 @@ class GenericBaseCrawler[T: Context = Context](ABC):
     async def _fetch(self, ctx: T, url: str, use_browser: bool | None) -> tuple[str | None, str]:
         if use_browser is True:
             return None, "当前版本已移除浏览器请求模式"
-        return await self.async_client.get_text(url, headers=self._get_headers(ctx), cookies=self._get_cookies(ctx))
+        return await self._get_text_with_rotate(ctx, url, self._get_headers(ctx), self._get_cookies(ctx))
 
     def _get_cookies(self, ctx: T) -> dict[str, str] | None:
         return None

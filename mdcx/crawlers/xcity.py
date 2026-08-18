@@ -31,6 +31,17 @@ class XcityContext(Context):
 
 
 class XcityCrawler(BaseCrawler[XcityContext]):
+    # xcity 镜像域名（主站 + 备用；用户配置 custom_url 时优先使用）
+    _domains: list[str] = [
+        "https://tc.xcity.jp",
+        "https://xcity.jp",
+    ]
+
+    @override
+    def __init__(self, client, base_url: str = "", browser=None):
+        super().__init__(client, base_url=base_url, browser=browser)
+        self._init_rotator(self._domains, custom_url=manager.config.get_site_url(Website.XCITY, ""))
+
     @override
     def new_context(self, input: CrawlerInput) -> XcityContext:
         return XcityContext(input=input)

@@ -7,7 +7,7 @@ from mdcx.models.types import CrawlerInput
 
 class FakeFreejavbtClient:
     async def get_text(self, url, **kwargs):
-        assert url == "https://freejavbt.com/SSNI-531"
+        assert url == "https://freejavbt22.cc/SSNI-531"
         return (
             """
             <html>
@@ -65,3 +65,50 @@ async def test_freejavbt_crawler_maps_detail_page():
     assert res.data.thumb == "https://example.test/cover.jpg"
     assert res.data.extrafanart == ["https://example.test/extra.jpg"]
     assert res.data.source == "freejavbt"
+
+
+class RotatingFreejavbtClient:
+    """freejavbt22.cc 失败，freejavbt.com 成功，验证轮询切换。"""
+
+    def __init__(self):
+        self.requested: list[str] = []
+
+    async def get_text(self, url, **kwargs):
+        self.requested.append(url)
+        if url.startswith("https://freejavbt22.cc"):
+            return None, "连接错误: Failed to perform, curl: (35) BoringSSL"
+        return (
+            """
+            <html>
+              <head><title>SSNI-531 Sample Title | FREE JAV BT</title></head>
+              <body>
+                <div class="single-video-info col-12"></div>
+              </body>
+            </html>
+            """,
+            "",
+        )
+
+
+@pytest.mark.asyncio
+async def test_freejavbt_crawler_rotates_domain_on_failure():
+    client = RotatingFreejavbtClient()
+    crawler = FreejavbtCrawler(client=client)
+    res = await crawler.run(
+        CrawlerInput(
+            appoint_number="",
+            appoint_url="",
+            file_path=None,
+            mosaic="",
+            number="SSNI-531",
+            short_number="SSNI-531",
+            language=Language.UNDEFINED,
+            org_language=Language.UNDEFINED,
+        )
+    )
+    assert res.debug_info.error is None
+    assert res.data is not None
+    assert res.data.number == "SSNI-531"
+    assert len(client.requested) >= 2
+    assert client.requested[0].startswith("https://freejavbt22.cc")
+    assert any(not u.startswith("https://freejavbt22.cc") for u in client.requested)

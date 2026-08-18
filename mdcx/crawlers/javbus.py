@@ -11,6 +11,22 @@ from ..core.mosaic import is_plain_uncensored_mosaic
 from .base import BaseCrawler, Context, CrawlerData, CrawlerException
 from .base.types import split_csv
 
+# javbus 镜像域名列表（主站 + 备用，按可用性排列；用户配置 custom_url 时优先使用）
+_JAVBUS_DOMAINS = [
+    "https://www.dmmsee.cyou",
+    "https://www.busjav.bond",
+    "https://www.cdnbus.bond",
+    "https://www.seejav.cyou",
+    "https://www.buscdn.bond",
+    "https://www.javsee.cyou",
+    "https://www.fanbus.bond",
+    "https://www.busdmm.bond",
+    "https://www.cdnbus.cyou",
+    "https://www.dmmbus.bond",
+    "https://www.javbus.bond",
+    "https://www.javbus.com",
+]
+
 
 def get_title(html):
     result = html.xpath("//h3/text()")
@@ -404,6 +420,8 @@ async def get_real_url(client, ctx: Context, number, url_type, javbus_url, heade
 
 
 class JavbusCrawler(BaseCrawler):
+    _domains: list[str] = _JAVBUS_DOMAINS
+
     @classmethod
     @override
     def site(cls) -> Website:
@@ -412,7 +430,12 @@ class JavbusCrawler(BaseCrawler):
     @classmethod
     @override
     def base_url_(cls) -> str:
-        return manager.config.get_site_url(Website.JAVBUS, "https://www.javbus.com")
+        return manager.config.get_site_url(Website.JAVBUS, _JAVBUS_DOMAINS[0])
+
+    @override
+    def __init__(self, client, base_url: str = "", browser=None):
+        super().__init__(client, base_url=base_url, browser=browser)
+        self._init_rotator(self._domains, custom_url=manager.config.get_site_url(Website.JAVBUS, ""))
 
     @override
     async def _run(self, ctx: Context):
@@ -438,7 +461,7 @@ class JavbusCrawler(BaseCrawler):
                     real_url = self.base_url + "/" + temp_number
 
         ctx.debug(f"番号地址: {real_url}")
-        htmlcode, error = await self.async_client.get_text(real_url, headers=headers)
+        htmlcode, error = await self._get_text_with_rotate(ctx, real_url, headers)
         if htmlcode is None:
             if "404" not in str(error) or "." in number:
                 raise CrawlerException(f"网络请求错误: {error}")
@@ -446,7 +469,7 @@ class JavbusCrawler(BaseCrawler):
                 real_url = await get_real_url(self.async_client, ctx, number, "uncensored", self.base_url, headers)
             else:
                 real_url = await get_real_url(self.async_client, ctx, number, "censored", self.base_url, headers)
-            htmlcode, error = await self.async_client.get_text(real_url, headers=headers)
+            htmlcode, error = await self._get_text_with_rotate(ctx, real_url, headers)
             if htmlcode is None:
                 raise CrawlerException("未匹配到番号！")
         if "lostpasswd" in htmlcode:

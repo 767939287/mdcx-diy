@@ -12,6 +12,12 @@ from ..config.models import Website
 from .base import BaseCrawler, Context, CrawlerData, CrawlerException, get_year
 from .base.types import split_csv
 
+# freejavbt 镜像域名（主站 + 备用；用户配置 custom_url 时优先使用）
+_FREEJAVBT_DOMAINS = [
+    "https://freejavbt22.cc",
+    "https://freejavbt.com",
+]
+
 
 def get_title(html):
     try:
@@ -333,6 +339,8 @@ def get_mosaic(title, actor):
 
 
 class FreejavbtCrawler(BaseCrawler):
+    _domains: list[str] = _FREEJAVBT_DOMAINS
+
     @classmethod
     @override
     def site(cls) -> Website:
@@ -341,7 +349,12 @@ class FreejavbtCrawler(BaseCrawler):
     @classmethod
     @override
     def base_url_(cls) -> str:
-        return manager.config.get_site_url(Website.FREEJAVBT, "https://freejavbt.com")
+        return manager.config.get_site_url(Website.FREEJAVBT, "https://freejavbt22.cc")
+
+    @override
+    def __init__(self, client, base_url: str = "", browser=None):
+        super().__init__(client, base_url=base_url, browser=browser)
+        self._init_rotator(self._domains, custom_url=manager.config.get_site_url(Website.FREEJAVBT, ""))
 
     @override
     async def _run(self, ctx: Context):
@@ -351,7 +364,7 @@ class FreejavbtCrawler(BaseCrawler):
         ctx.debug(f"番号地址: {real_url}")
         ctx.debug_info.detail_urls = [real_url]
 
-        html_info, error = await self.async_client.get_text(real_url)
+        html_info, error = await self._get_text_with_rotate(ctx, real_url)
         if html_info is None:
             raise CrawlerException(f"请求错误: {error}")
         if not html_info:

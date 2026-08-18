@@ -143,7 +143,7 @@ class JavdayCrawler(BaseCrawler[JavdayContext]):
     @classmethod
     @override
     def base_url_(cls) -> str:
-        return manager.config.get_site_url(Website.JAVDAY, "https://javday.tv")
+        return manager.config.get_site_url(Website.JAVDAY, "https://javday.app")
 
     @override
     def new_context(self, input: CrawlerInput) -> JavdayContext:

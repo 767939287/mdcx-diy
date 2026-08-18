@@ -160,6 +160,12 @@ def get_number(html, number):
 
 
 class MmtvCrawler(BaseCrawler):
+    # mmtv 镜像域名（主站 + 备用；用户配置 custom_url 时优先使用）
+    _domains: list[str] = [
+        "https://www.7mmtv.sx",
+        "https://7mmtv.tv",
+    ]
+
     @classmethod
     @override
     def site(cls) -> Website:
@@ -169,6 +175,11 @@ class MmtvCrawler(BaseCrawler):
     @override
     def base_url_(cls) -> str:
         return manager.config.get_site_url(Website.MMTV, "https://www.7mmtv.sx")
+
+    @override
+    def __init__(self, client, base_url: str = "", browser=None):
+        super().__init__(client, base_url=base_url, browser=browser)
+        self._init_rotator(self._domains, custom_url=manager.config.get_site_url(Website.MMTV, ""))
 
     @override
     async def _generate_search_url(self, ctx) -> list[str] | str | None:
