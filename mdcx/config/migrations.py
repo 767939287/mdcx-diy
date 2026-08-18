@@ -187,6 +187,9 @@ def migrate_config_data(data: dict[str, Any]) -> list[str]:
         if r and all(schema not in r for schema in ["http://", "https://"]):
             r = "http://" + r
         data["cf_bypass_trawl_url"] = r
+    if isinstance(r := data.get("cf_bypass_trawl_backend"), str):
+        r = r.strip().lower()
+        data["cf_bypass_trawl_backend"] = r if r in ("trawl", "flaresolverr") else "trawl"
 
     if isinstance(r := data.get("nfo_tag_actor_contains"), str):
         data["nfo_tag_actor_contains"] = _str_to_list(r, "|")

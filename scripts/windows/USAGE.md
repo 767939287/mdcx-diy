@@ -33,12 +33,16 @@ cd C:\Tools\trawl-portable-1.4.0-windows
 
 1. 打开 MDCx → 设置 → 网络
 2. **取消勾选** "启用内置 CF Bypass"
-3. 在 "TRAWL 服务" 输入框中填写 TRAWL 服务地址：`http://localhost:8191`
-4. 保存设置
+3. 在 "外部 CF 服务" 输入框中填写 TRAWL 服务地址：`http://localhost:8191`
+4. 右侧后端类型保持默认 `trawl`（走 TRAWL 原生 `/scrape` 接口）
+5. 保存设置
 
 > **注意**：请填写 TRAWL 的**根地址**（如 `http://localhost:8191`），**不要**填写 `/v1` 路径。
 > MDCx 会在本地自动拉起协议适配层，把内部请求翻译成 TRAWL 的 `/scrape` 接口，
 > 填 `/v1` 反而会导致健康检查失败（MDCx 检测的是 `/cookies`/`/html`/`/mirror` 端点）。
+
+> 若你用的是原生 **FlareSolverr**，在后端类型下拉框选择 `flaresolverr`，
+> 适配层会改走 FlareSolverr 的 `POST /v1` 兼容接口。
 
 ## API 端点
 

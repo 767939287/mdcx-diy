@@ -35,6 +35,7 @@ class Computed:
             cf_bypass_proxy=config.cf_bypass_proxy,
             cf_bypass_auto=config.cf_bypass_auto,
             cf_bypass_trawl_url=config.cf_bypass_trawl_url,
+            cf_bypass_trawl_backend=config.cf_bypass_trawl_backend,
             cf_bypass_trusted_hosts=config.cf_bypass_trusted_hosts,
             verify_ssl=config.verify_ssl,
             proxy_sites=config.proxy_sites.split(",") if config.proxy_sites else [],

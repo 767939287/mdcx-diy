@@ -10581,6 +10581,8 @@ class Ui_MDCx(object):
         )
         self.label_cf_bypass_trawl.setObjectName("label_cf_bypass_trawl")
         self.gridLayout_9.addWidget(self.label_cf_bypass_trawl, 6, 0, 1, 1)
+        self.horizontalLayout_trawl = QtWidgets.QHBoxLayout()
+        self.horizontalLayout_trawl.setObjectName("horizontalLayout_trawl")
         self.lineEdit_cf_bypass_trawl_url = QtWidgets.QLineEdit(parent=self.gridLayoutWidget_9)
         sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Policy.Minimum, QtWidgets.QSizePolicy.Policy.Fixed)
         sizePolicy.setHorizontalStretch(0)
@@ -10590,12 +10592,24 @@ class Ui_MDCx(object):
         self.lineEdit_cf_bypass_trawl_url.setMinimumSize(QtCore.QSize(300, 30))
         self.lineEdit_cf_bypass_trawl_url.setStyleSheet(
             ' font: "Courier New";\n'
-            "                                border: 1px solid rgba(0,0,0, 50);\n"
-            "                                border-radius: 15px;\n"
+            "                                    border: 1px solid rgba(0,0,0, 50);\n"
+            "                                    border-radius: 15px;\n"
             ""
         )
         self.lineEdit_cf_bypass_trawl_url.setObjectName("lineEdit_cf_bypass_trawl_url")
-        self.gridLayout_9.addWidget(self.lineEdit_cf_bypass_trawl_url, 6, 1, 1, 1)
+        self.horizontalLayout_trawl.addWidget(self.lineEdit_cf_bypass_trawl_url)
+        self.comboBox_cf_bypass_backend = QtWidgets.QComboBox(parent=self.gridLayoutWidget_9)
+        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Policy.Fixed, QtWidgets.QSizePolicy.Policy.Fixed)
+        sizePolicy.setHorizontalStretch(0)
+        sizePolicy.setVerticalStretch(0)
+        sizePolicy.setHeightForWidth(self.comboBox_cf_bypass_backend.sizePolicy().hasHeightForWidth())
+        self.comboBox_cf_bypass_backend.setSizePolicy(sizePolicy)
+        self.comboBox_cf_bypass_backend.setMinimumSize(QtCore.QSize(150, 30))
+        self.comboBox_cf_bypass_backend.setObjectName("comboBox_cf_bypass_backend")
+        self.comboBox_cf_bypass_backend.addItem("")
+        self.comboBox_cf_bypass_backend.addItem("")
+        self.horizontalLayout_trawl.addWidget(self.comboBox_cf_bypass_backend)
+        self.gridLayout_9.addLayout(self.horizontalLayout_trawl, 6, 1, 1, 1)
         self.label_cf_bypass_trusted_hosts = QtWidgets.QLabel(parent=self.gridLayoutWidget_9)
         sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Policy.Fixed, QtWidgets.QSizePolicy.Policy.Fixed)
         sizePolicy.setHorizontalStretch(0)
@@ -13641,10 +13655,13 @@ class Ui_MDCx(object):
                 "勾选后无需配置上方外部地址，MDCx 自动在后台启动内置 Bypass 服务（需安装 cloakbrowser + cf_bypasser）；修改后保存并重启软件生效",
             )
         )
-        self.label_cf_bypass_trawl.setText(_translate("MDCx", "TRAWL 服务："))
-        self.lineEdit_cf_bypass_trawl_url.setPlaceholderText(
-            _translate("MDCx", "例如: http://127.0.0.1:8191（TRAWL 服务，自动协议适配）")
+        self.label_cf_bypass_trawl.setText(_translate("MDCx", "外部 CF 服务："))
+        self.lineEdit_cf_bypass_trawl_url.setPlaceholderText(_translate("MDCx", "例如: http://127.0.0.1:8191"))
+        self.comboBox_cf_bypass_backend.setToolTip(
+            _translate("MDCx", "TRAWL：走 /scrape 原生 API；FlareSolverr：走 /v1 兼容 API")
         )
+        self.comboBox_cf_bypass_backend.setItemText(0, _translate("MDCx", "trawl"))
+        self.comboBox_cf_bypass_backend.setItemText(1, _translate("MDCx", "flaresolverr"))
         self.label_cf_bypass_trusted_hosts.setText(_translate("MDCx", "Bypass落地白名单："))
         self.lineEdit_cf_bypass_trusted_hosts.setPlaceholderText(
             _translate("MDCx", "逗号分隔，如 javbus.com,*.javdb.com（留空不校验）")
@@ -13864,7 +13881,7 @@ class Ui_MDCx(object):
                 '<p>MDCx 内置 Cloudflare 绕过能力：遇到受 Cloudflare 保护的站点会自动尝试绕过，<b>无需额外配置或密钥</b>。也可在"设置 → 网络"中配置独立的 CF Bypass 代理。部分站点已提供免 CF 的数据接口（如 MissAV-API），优先选用可获得更稳定的抓取。</p>\n'
                 "<ul>\n"
                 ' <li><b>内置 Bypass</b>：勾选"启用内置 Bypass"后自动启动本地服务，无需外部地址（需安装 cloakbrowser + cf_bypasser）。</li>\n'
-                " <li><b>TRAWL 服务</b>：填写 TRAWL（FlareSolverr 风格）外部 CF 服务地址（如 http://127.0.0.1:8191），MDCx 自动在本地拉起协议适配层把请求翻译给 TRAWL，无需自行填 /v1 地址。</li>\n"
+                " <li><b>外部 CF 服务</b>：填写 TRAWL / FlareSolverr 风格外部 CF 服务地址（如 http://127.0.0.1:8191），并在右侧选择后端类型：TRAWL（走 /scrape 原生 API）或 FlareSolverr（走 /v1 兼容 API）。MDCx 自动在本地拉起协议适配层把请求翻译给外部服务，无需自行填 /v1 地址。</li>\n"
                 "<li><b>Bypass 落地白名单</b>：可填写可信落地域名白名单（逗号分隔，支持 *.example.com 子域通配），用于校验 Bypass 服务落地/重定向后的最终域名，防止第三方服务被劫持时把恶意页面当数据；留空表示不校验（默认）。</li>\n"
                 "</ul>\n"
                 "\n"

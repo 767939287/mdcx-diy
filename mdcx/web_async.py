@@ -382,6 +382,7 @@ class AsyncWebClient:
         cf_bypass_proxy: str | None = None,
         cf_bypass_auto: bool = False,
         cf_bypass_trawl_url: str = "",
+        cf_bypass_trawl_backend: str = "trawl",
         cf_bypass_trusted_hosts: str = "",
         verify_ssl: bool = True,
         proxy_sites: list[str] | None = None,
@@ -426,6 +427,7 @@ class AsyncWebClient:
         self._local_bypass_enabled = cf_bypass_auto and not self.cf_bypass_url
         self._local_bypass_server: LocalBypassServer | None = None
         self._trawl_url = (cf_bypass_trawl_url or "").strip().rstrip("/")
+        self._trawl_backend = (cf_bypass_trawl_backend or "trawl").strip().lower()
         # TRAWL 适配层：配置了 TRAWL 地址且未配置 cf_bypasser 外部地址/内置 bypass 时启用
         self._trawl_adapter_enabled = bool(self._trawl_url) and not self.cf_bypass_url and not cf_bypass_auto
         self._trawl_adapter_server: TrawlAdapterServer | None = None
@@ -559,7 +561,9 @@ class AsyncWebClient:
                     self._log("cf_bypass 模块不可用，TRAWL 适配层无法启动")
                     self._trawl_adapter_enabled = False
                     return False
-                trawl_server = TrawlAdapterServer(trawl_url=self._trawl_url, log_fn=self._log)
+                trawl_server = TrawlAdapterServer(
+                    trawl_url=self._trawl_url, backend=self._trawl_backend, log_fn=self._log
+                )
                 ok, result = await trawl_server.start()
                 if ok:
                     self._trawl_adapter_server = trawl_server

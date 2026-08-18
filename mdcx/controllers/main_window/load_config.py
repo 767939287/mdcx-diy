@@ -895,8 +895,11 @@ def load_config(self: "MyMAinWindow"):
         self.Ui.lineEdit_cf_bypass_proxy.setText(manager.config.cf_bypass_proxy)
         # 内置 CF Bypass
         self.Ui.checkBox_cf_bypass_auto.setChecked(manager.config.cf_bypass_auto)
-        # TRAWL 外部 CF 服务地址
+        # TRAWL/FlareSolverr 外部 CF 服务地址
         self.Ui.lineEdit_cf_bypass_trawl_url.setText(manager.config.cf_bypass_trawl_url)
+        # 外部 CF 服务后端类型
+        backend_index = self.Ui.comboBox_cf_bypass_backend.findText(manager.config.cf_bypass_trawl_backend)
+        self.Ui.comboBox_cf_bypass_backend.setCurrentIndex(backend_index if backend_index >= 0 else 0)
         # Bypass 落地域名白名单
         self.Ui.lineEdit_cf_bypass_trusted_hosts.setText(manager.config.cf_bypass_trusted_hosts)
         # HTTPS 证书校验

@@ -34,12 +34,14 @@
 
 ```
 启用内置 CF Bypass: [ ] 取消勾选
-TRAWL 服务: http://localhost:8191
+外部 CF 服务: http://localhost:8191
+后端类型: trawl（默认；原生 FlareSolverr 选 flaresolverr）
 ```
 
 > **注意**：填写 TRAWL 的**根地址**（如 `http://localhost:8191`），不要填 `/v1` 路径。
-> MDCx 会自动在本地拉起协议适配层，把内部请求翻译成 TRAWL 的 `/scrape` 接口；
-> 填 `/v1` 会导致健康检查失败（MDCx 检测的是 `/cookies`/`/html`/`/mirror` 端点）。
+> MDCx 会自动在本地拉起协议适配层，把内部请求翻译成 TRAWL 的 `/scrape` 接口
+> （或 FlareSolverr 的 `/v1`）；填 `/v1` 会导致健康检查失败（MDCx 检测的是
+> `/cookies`/`/html`/`/mirror` 端点）。
 
 ## API 端点
 

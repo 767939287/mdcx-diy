@@ -11,6 +11,7 @@ from mdcx.cf_bypass.trawl_adapter import (
 )
 
 TRAWL_BASE = "http://fake-trawl:8191"
+FS_BASE = "http://fake-flaresolverr:8191"
 
 
 def _scrape_response(payload: dict, *, html: str = "<html>ok</html>", status_code: int = 200) -> httpx.Response:
@@ -28,8 +29,29 @@ def _scrape_response(payload: dict, *, html: str = "<html>ok</html>", status_cod
     )
 
 
-def _make_app(monkeypatch, trawl_requests: list[dict], response_fn):
-    """创建适配层 app：适配层内部请求 TRAWL 时走 MockTransport。"""
+def _flaresolverr_response(payload: dict, *, html: str = "<html>ok</html>", status_code: int = 200) -> httpx.Response:
+    return httpx.Response(
+        200,
+        json={
+            "status": "ok",
+            "message": "",
+            "version": "2.0.0",
+            "solution": {
+                "url": payload.get("url", ""),
+                "status": status_code,
+                "headers": {"content-type": "text/html"},
+                "response": html,
+                "cookies": [
+                    {"name": "cf_clearance", "value": "abc", "path": "/", "domain": "example.com", "httpOnly": True}
+                ],
+                "userAgent": "Mozilla/5.0 (FlareSolverr)",
+            },
+        },
+    )
+
+
+def _make_app(monkeypatch, trawl_requests: list[dict], response_fn, backend: str = "trawl"):
+    """创建适配层 app：适配层内部请求外部服务时走 MockTransport。"""
     real_client = httpx.AsyncClient
 
     def factory(*args, **kwargs):
@@ -47,14 +69,21 @@ def _make_app(monkeypatch, trawl_requests: list[dict], response_fn):
                 payload = json.loads(request.read())
                 trawl_requests.append(payload)
                 return response_fn(payload)
+            if request.url.path == "/v1" and request.method == "POST":
+                payload = json.loads(request.read())
+                trawl_requests.append(payload)
+                return response_fn(payload)
             if request.url.path == "/health":
                 return httpx.Response(200, json={"status": "ok"})
+            if request.url.path == "/":
+                return httpx.Response(200, json={"version": "2.0.0"})
             return httpx.Response(404, text="not found")
 
         return httpx.MockTransport(handler)
 
     monkeypatch.setattr(ta.httpx, "AsyncClient", factory)
-    return create_trawl_adapter_app(TRAWL_BASE)
+    base = FS_BASE if backend == "flaresolverr" else TRAWL_BASE
+    return create_trawl_adapter_app(base, backend)
 
 
 def _client(app):
@@ -149,6 +178,73 @@ async def test_mirror_requires_x_hostname(monkeypatch):
 @pytest.mark.asyncio
 async def test_trawl_connection_error_becomes_502(monkeypatch):
     app = create_trawl_adapter_app(TRAWL_BASE)
+    async with _client(app) as client:
+        resp = await client.get("/cookies?url=https://example.com/x")
+    assert resp.status_code == 502
+    assert "error" in resp.json()
+
+
+@pytest.mark.asyncio
+async def test_flaresolverr_cookies_endpoint_uses_v1(monkeypatch):
+    trawl_requests: list[dict] = []
+    app = _make_app(monkeypatch, trawl_requests, lambda p: _flaresolverr_response(p), backend="flaresolverr")
+    async with _client(app) as client:
+        resp = await client.get("/cookies?url=https://example.com/protected")
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["cookies"]["cf_clearance"] == "abc"
+    assert data["user_agent"] == "Mozilla/5.0 (FlareSolverr)"
+    payload = trawl_requests[0]
+    assert payload["cmd"] == "request.get"
+    assert payload["url"] == "https://example.com/protected"
+
+
+@pytest.mark.asyncio
+async def test_flaresolverr_html_endpoint_returns_solution_response(monkeypatch):
+    trawl_requests: list[dict] = []
+    app = _make_app(
+        monkeypatch, trawl_requests, lambda p: _flaresolverr_response(p, html="<html>fs</html>"), backend="flaresolverr"
+    )
+    async with _client(app) as client:
+        resp = await client.get("/html?url=https://example.com/protected")
+    assert resp.status_code == 200
+    assert resp.text == "<html>fs</html>"
+    assert resp.headers["x-cf-bypasser-final-url"] == "https://example.com/protected"
+    assert trawl_requests[0]["cmd"] == "request.get"
+
+
+@pytest.mark.asyncio
+async def test_flaresolverr_mirror_posts_as_request_post(monkeypatch):
+    trawl_requests: list[dict] = []
+    app = _make_app(monkeypatch, trawl_requests, lambda p: _flaresolverr_response(p), backend="flaresolverr")
+    async with _client(app) as client:
+        resp = await client.post(
+            "/api/submit",
+            content=b'{"key": "value"}',
+            headers={"x-hostname": "a.example", "content-type": "application/json"},
+        )
+    assert resp.status_code == 200
+    payload = trawl_requests[0]
+    assert payload["cmd"] == "request.post"
+    assert payload["postData"] == '{"key": "value"}'
+    assert payload["headers"]["content-type"] == "application/json"
+
+
+@pytest.mark.asyncio
+async def test_flaresolverr_mirror_rebuilds_url(monkeypatch):
+    trawl_requests: list[dict] = []
+    app = _make_app(monkeypatch, trawl_requests, lambda p: _flaresolverr_response(p), backend="flaresolverr")
+    async with _client(app) as client:
+        resp = await client.get("/api/data?id=1", headers={"x-hostname": "javbus.example"})
+    assert resp.status_code == 200
+    payload = trawl_requests[0]
+    assert payload["url"] == "https://javbus.example/api/data?id=1"
+    assert payload["cmd"] == "request.get"
+
+
+@pytest.mark.asyncio
+async def test_flaresolverr_error_response_becomes_502(monkeypatch):
+    app = create_trawl_adapter_app(FS_BASE, "flaresolverr")
     async with _client(app) as client:
         resp = await client.get("/cookies?url=https://example.com/x")
     assert resp.status_code == 502

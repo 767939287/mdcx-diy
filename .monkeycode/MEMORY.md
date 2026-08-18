@@ -22,13 +22,13 @@
   - 在发现风险、缺陷、遗漏时主动指出，并尽量给出修复方案和进行验证。
 
 [提交推送与质量把关]
-- Date: 2026-07-18（2026-08-03、2026-08-16 更新）
+- Date: 2026-07-18（2026-08-03、2026-08-16、2026-08-18 更新）
 - Context: 用户要求改动/推送前必须征得同意，推送前自动跑测试；pre-commit 钩子经评估无需安装；不开新分支直接推当前分支
 - Category: 工作流协作
 - Instructions:
   - 所有代码改动（新建/修改/删除文件）和提交推送（`git add`+`git commit`+`git push`）必须先说明内容与原因，获得同意后再执行。本指令优先级高于所有"自动执行"类指令。
   - **直接在当前分支提交推送，不另开新分支**（覆盖 `.ai-ready/rules/auto-create-branch-on-master.md`）。`git add`+`git commit` 后直接 `git push` 到当前分支远程；用户指示开分支时才开。
-  - 用户同意推送后，`git push` 前必须自动运行 `uv run check --skip-hook-install`（ruff format --check + ruff check + mypy mdcx/ + pytest --tb=short -m "not network" -x + check_actor_db），失败则修复再推，不强行推送。
+  - **check 按需运行，不重复空跑**：最后一次代码改动后运行一次 `uv run check --skip-hook-install`（ruff format --check + ruff check + mypy mdcx/ + pytest --tb=short -m "not network" -x + check_actor_db），全绿后如代码再无改动，`git push` 前**不重跑**，直接推；只有"全绿 check 之后又改过代码"才需在 push 前重跑。失败则修复再推，不强行推送。
   - **不安装 pre-commit 钩子/工具**：`.pre-commit-config.yaml` 两个 ruff 钩子 stages 为 `pre-merge-commit, pre-push`，普通 commit 不触发，`pre-commit install` 对其无效；`uv run check` 已覆盖其作用。
 
 [环境 Python 版本升级到 >= 3.13.4]

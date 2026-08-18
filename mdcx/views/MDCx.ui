@@ -22205,7 +22205,7 @@
                               <enum>Qt::RightToLeft</enum>
                             </property>
                             <property name="text">
-                              <string>TRAWL 服务：</string>
+                              <string>外部 CF 服务：</string>
                             </property>
                             <property name="alignment">
                               <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
@@ -22213,29 +22213,62 @@
                           </widget>
                         </item>
                         <item row="6" column="1">
-                          <widget class="QLineEdit" name="lineEdit_cf_bypass_trawl_url">
-                            <property name="sizePolicy">
-                              <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
-                                <horstretch>0</horstretch>
-                                <verstretch>0</verstretch>
-                              </sizepolicy>
-                            </property>
-                            <property name="minimumSize">
-                              <size>
-                                <width>300</width>
-                                <height>30</height>
-                              </size>
-                            </property>
-                            <property name="styleSheet">
-                              <string notr="true"> font: "Courier New";
-                                border: 1px solid rgba(0,0,0, 50);
-                                border-radius: 15px;
+                          <layout class="QHBoxLayout" name="horizontalLayout_trawl">
+                            <item>
+                              <widget class="QLineEdit" name="lineEdit_cf_bypass_trawl_url">
+                                <property name="sizePolicy">
+                                  <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
+                                    <horstretch>0</horstretch>
+                                    <verstretch>0</verstretch>
+                                  </sizepolicy>
+                                </property>
+                                <property name="minimumSize">
+                                  <size>
+                                    <width>300</width>
+                                    <height>30</height>
+                                  </size>
+                                </property>
+                                <property name="styleSheet">
+                                  <string notr="true"> font: "Courier New";
+                                    border: 1px solid rgba(0,0,0, 50);
+                                    border-radius: 15px;
 </string>
-                            </property>
-                            <property name="placeholderText">
-                              <string>例如: http://127.0.0.1:8191（TRAWL 服务，自动协议适配）</string>
-                            </property>
-                          </widget>
+                                </property>
+                                <property name="placeholderText">
+                                  <string>例如: http://127.0.0.1:8191</string>
+                                </property>
+                              </widget>
+                            </item>
+                            <item>
+                              <widget class="QComboBox" name="comboBox_cf_bypass_backend">
+                                <property name="sizePolicy">
+                                  <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+                                    <horstretch>0</horstretch>
+                                    <verstretch>0</verstretch>
+                                  </sizepolicy>
+                                </property>
+                                <property name="minimumSize">
+                                  <size>
+                                    <width>150</width>
+                                    <height>30</height>
+                                  </size>
+                                </property>
+                                <property name="toolTip">
+                                  <string>TRAWL：走 /scrape 原生 API；FlareSolverr：走 /v1 兼容 API</string>
+                                </property>
+                                <item>
+                                  <property name="text">
+                                    <string>trawl</string>
+                                  </property>
+                                </item>
+                                <item>
+                                  <property name="text">
+                                    <string>flaresolverr</string>
+                                  </property>
+                                </item>
+                              </widget>
+                            </item>
+                          </layout>
                         </item>
                         <item row="10" column="0">
                           <widget class="QLabel" name="label_cf_bypass_trusted_hosts">
@@ -24517,7 +24550,7 @@ p, li { white-space: pre-wrap; }
 &lt;p&gt;MDCx 内置 Cloudflare 绕过能力：遇到受 Cloudflare 保护的站点会自动尝试绕过，&lt;b&gt;无需额外配置或密钥&lt;/b&gt;。也可在"设置 → 网络"中配置独立的 CF Bypass 代理。部分站点已提供免 CF 的数据接口（如 MissAV-API），优先选用可获得更稳定的抓取。&lt;/p&gt;
 &lt;ul&gt;
  &lt;li&gt;&lt;b&gt;内置 Bypass&lt;/b&gt;：勾选"启用内置 Bypass"后自动启动本地服务，无需外部地址（需安装 cloakbrowser + cf_bypasser）。&lt;/li&gt;
- &lt;li&gt;&lt;b&gt;TRAWL 服务&lt;/b&gt;：填写 TRAWL（FlareSolverr 风格）外部 CF 服务地址（如 http://127.0.0.1:8191），MDCx 自动在本地拉起协议适配层把请求翻译给 TRAWL，无需自行填 /v1 地址。&lt;/li&gt;
+ &lt;li&gt;&lt;b&gt;外部 CF 服务&lt;/b&gt;：填写 TRAWL / FlareSolverr 风格外部 CF 服务地址（如 http://127.0.0.1:8191），并在右侧选择后端类型：TRAWL（走 /scrape 原生 API）或 FlareSolverr（走 /v1 兼容 API）。MDCx 自动在本地拉起协议适配层把请求翻译给外部服务，无需自行填 /v1 地址。&lt;/li&gt;
 &lt;li&gt;&lt;b&gt;Bypass 落地白名单&lt;/b&gt;：可填写可信落地域名白名单（逗号分隔，支持 *.example.com 子域通配），用于校验 Bypass 服务落地/重定向后的最终域名，防止第三方服务被劫持时把恶意页面当数据；留空表示不校验（默认）。&lt;/li&gt;
 &lt;/ul&gt;
 

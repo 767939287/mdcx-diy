@@ -26,8 +26,20 @@ logger = logging.getLogger(__name__)
 ADAPTER_HOST = "127.0.0.1"
 SERVER_START_TIMEOUT = 60
 HEALTH_CHECK_INTERVAL = 0.5
-TRAWL_REQUEST_TIMEOUT = 65.0
+BACKEND_REQUEST_TIMEOUT = 65.0
 DEFAULT_MAX_TIMEOUT_MS = 60_000
+
+# 外部 CF 服务后端类型
+BACKEND_TRAWL = "trawl"
+BACKEND_FLARESOLVERR = "flaresolverr"
+VALID_BACKENDS = (BACKEND_TRAWL, BACKEND_FLARESOLVERR)
+
+
+def _normalize_backend(backend: str | None) -> str:
+    backend = (backend or BACKEND_TRAWL).strip().lower()
+    if backend not in VALID_BACKENDS:
+        backend = BACKEND_TRAWL
+    return backend
 
 
 def _find_free_port() -> int:
@@ -66,12 +78,76 @@ async def _send_json(send, status: int, payload: dict) -> None:
     await send({"type": "http.response.body", "body": body})
 
 
-async def _call_trawl(
-    client: httpx.AsyncClient, trawl_url: str, payload: dict, timeout: float = TRAWL_REQUEST_TIMEOUT
+async def _call_backend(
+    client: httpx.AsyncClient,
+    *,
+    backend: str,
+    base_url: str,
+    url: str,
+    method: str = "GET",
+    headers: dict[str, str] | None = None,
+    proxy: str = "",
+    body: str = "",
+    skip_http: bool = False,
+    max_timeout_ms: int = DEFAULT_MAX_TIMEOUT_MS,
+    timeout: float = BACKEND_REQUEST_TIMEOUT,
 ) -> dict:
-    """调用 TRAWL 的 /scrape 原生 API（比 /v1 多返回 statusCode/responseHeaders/body）。"""
+    """调用外部 CF 服务（TRAWL /scrape 或 FlareSolverr /v1），归一化为统一结构。
+
+    返回结构：{url, statusCode, headers, cookies, userAgent, html, body}
+    失败时返回 {"error": ...}。
+    """
+    if backend == BACKEND_FLARESOLVERR:
+        return await _call_flaresolverr(
+            client,
+            base_url=base_url,
+            url=url,
+            method=method,
+            headers=headers,
+            proxy=proxy,
+            body=body,
+            max_timeout_ms=max_timeout_ms,
+            timeout=timeout,
+        )
+    return await _call_trawl(
+        client,
+        base_url=base_url,
+        url=url,
+        method=method,
+        headers=headers,
+        proxy=proxy,
+        body=body,
+        skip_http=skip_http,
+        max_timeout_ms=max_timeout_ms,
+        timeout=timeout,
+    )
+
+
+async def _call_trawl(
+    client: httpx.AsyncClient,
+    *,
+    base_url: str,
+    url: str,
+    method: str,
+    headers: dict[str, str] | None,
+    proxy: str,
+    body: str,
+    skip_http: bool,
+    max_timeout_ms: int,
+    timeout: float,
+) -> dict:
+    """调用 TRAWL 原生 /scrape API（比 /v1 多返回 statusCode/responseHeaders/body）。"""
+    payload: dict = {"url": url, "maxTimeout": max_timeout_ms, "method": method or "GET"}
+    if headers:
+        payload["headers"] = headers
+    if proxy:
+        payload["proxy"] = proxy
+    if body:
+        payload["body"] = body
+    if skip_http:
+        payload["skipHttp"] = True
     try:
-        resp = await client.post(f"{trawl_url}/scrape", json=payload, timeout=timeout)
+        resp = await client.post(f"{base_url}/scrape", json=payload, timeout=timeout)
     except httpx.HTTPError as exc:
         return {"error": f"TRAWL 连接失败: {exc}"}
     if resp.status_code == 503:
@@ -86,7 +162,77 @@ async def _call_trawl(
         return {"error": f"TRAWL 响应解析失败: {exc}"}
     if isinstance(data, dict) and data.get("error"):
         return {"error": f"TRAWL 错误: {data['error']}"}
-    return data
+
+    body_bytes: bytes | None = None
+    raw_body = data.get("body")
+    if isinstance(raw_body, list) and raw_body and isinstance(raw_body[0], int):
+        body_bytes = bytes(raw_body)
+    elif isinstance(raw_body, str) and raw_body:
+        body_bytes = raw_body.encode("utf-8")
+    return {
+        "url": data.get("url") or url,
+        "statusCode": int(data.get("statusCode") or 200),
+        "headers": dict(data.get("responseHeaders") or {}),
+        "cookies": list(data.get("cookies") or []),
+        "userAgent": data.get("userAgent") or "",
+        "html": data.get("html") or "",
+        "body": body_bytes,
+    }
+
+
+async def _call_flaresolverr(
+    client: httpx.AsyncClient,
+    *,
+    base_url: str,
+    url: str,
+    method: str,
+    headers: dict[str, str] | None,
+    proxy: str,
+    body: str,
+    max_timeout_ms: int,
+    timeout: float,
+) -> dict:
+    """调用 FlareSolverr POST /v1（FlareSolverr v2 兼容）。
+
+    FlareSolverr 只有 request.get / request.post 两种 cmd；/v1 的 solution 里
+    headers 是真实上游响应头（区别于 TRAWL 的 /v1 空 headers），足以还原镜像响应。
+    """
+    cmd = "request.post" if str(method or "GET").upper() == "POST" else "request.get"
+    payload: dict = {"cmd": cmd, "url": url, "maxTimeout": max_timeout_ms}
+    if headers:
+        payload["headers"] = headers
+    if proxy:
+        payload["proxy"] = proxy
+    if body and cmd == "request.post":
+        payload["postData"] = body
+    try:
+        resp = await client.post(f"{base_url}/v1", json=payload, timeout=timeout)
+    except httpx.HTTPError as exc:
+        return {"error": f"FlareSolverr 连接失败: {exc}"}
+    if resp.status_code == 503:
+        return {"error": "FlareSolverr 浏览器池初始化中，请稍后重试"}
+    if resp.status_code == 429:
+        return {"error": "FlareSolverr 浏览器池已饱和，请稍后重试"}
+    if resp.status_code != 200:
+        return {"error": f"FlareSolverr 返回 HTTP {resp.status_code}"}
+    try:
+        data = resp.json()
+    except Exception as exc:
+        return {"error": f"FlareSolverr 响应解析失败: {exc}"}
+    if isinstance(data, dict) and data.get("status") == "error":
+        return {"error": f"FlareSolverr 错误: {data.get('message') or ''}"}
+
+    solution = (data or {}).get("solution") or {}
+    html = solution.get("response") or ""
+    return {
+        "url": solution.get("url") or url,
+        "statusCode": int(solution.get("status") or 200),
+        "headers": dict(solution.get("headers") or {}),
+        "cookies": list(solution.get("cookies") or []),
+        "userAgent": solution.get("userAgent") or "",
+        "html": html,
+        "body": html.encode("utf-8") if html else None,
+    }
 
 
 def _build_target_url(hostname: str, path: str, query_string: str) -> str:
@@ -119,8 +265,9 @@ def _cookie_to_set_cookie(cookie: dict) -> str:
     return "; ".join(parts)
 
 
-def create_trawl_adapter_app(trawl_url: str):
-    """创建把 cf_bypasser 协议翻译成 TRAWL /scrape 的 ASGI 适配层。"""
+def create_trawl_adapter_app(trawl_url: str, backend: str = BACKEND_TRAWL):
+    """创建把 cf_bypasser 协议翻译成外部 CF 服务（TRAWL /scrape 或 FlareSolverr /v1）的 ASGI 适配层。"""
+    backend = _normalize_backend(backend)
 
     async def app(scope, receive, send):
         if scope["type"] != "http":
@@ -142,30 +289,30 @@ def create_trawl_adapter_app(trawl_url: str):
             return
 
         try:
-            client = httpx.AsyncClient(timeout=TRAWL_REQUEST_TIMEOUT)
+            client = httpx.AsyncClient(timeout=BACKEND_REQUEST_TIMEOUT)
         except Exception as exc:
             await _send_json(send, 500, {"error": f"创建 HTTP 客户端失败: {exc}"})
             return
 
         try:
             if path == "/cookies":
-                await _handle_cookies(client, trawl_url, qs, send)
+                await _handle_cookies(client, trawl_url, backend, qs, send)
             elif path == "/html":
-                await _handle_html(client, trawl_url, qs, headers, send)
+                await _handle_html(client, trawl_url, backend, qs, headers, send)
             else:
-                await _handle_mirror(client, trawl_url, scope, path, query_string, headers, receive, send)
+                await _handle_mirror(client, trawl_url, backend, scope, path, query_string, headers, receive, send)
         finally:
             await client.aclose()
 
     return app
 
 
-async def _handle_cookies(client, trawl_url, qs, send) -> None:
+async def _handle_cookies(client, trawl_url, backend, qs, send) -> None:
     target = qs.get("url", [""])[0]
     if not target:
         await _send_json(send, 400, {"error": "缺少 url 参数"})
         return
-    data = await _call_trawl(client, trawl_url, {"url": target, "maxTimeout": DEFAULT_MAX_TIMEOUT_MS})
+    data = await _call_backend(client, backend=backend, base_url=trawl_url, url=target)
     if "error" in data:
         await _send_json(send, 502, {"error": data["error"]})
         return
@@ -177,17 +324,19 @@ async def _handle_cookies(client, trawl_url, qs, send) -> None:
     await _send_json(send, 200, {"cookies": cookies, "user_agent": user_agent})
 
 
-async def _handle_html(client, trawl_url, qs, headers, send) -> None:
+async def _handle_html(client, trawl_url, backend, qs, headers, send) -> None:
     target = qs.get("url", [""])[0]
     if not target:
         await _send_json(send, 400, {"error": "缺少 url 参数"})
         return
-    payload: dict = {"url": target, "maxTimeout": DEFAULT_MAX_TIMEOUT_MS}
-    if qs.get("proxy"):
-        payload["proxy"] = qs["proxy"][0]
-    if qs.get("bypassCookieCache"):
-        payload["skipHttp"] = True
-    data = await _call_trawl(client, trawl_url, payload)
+    data = await _call_backend(
+        client,
+        backend=backend,
+        base_url=trawl_url,
+        url=target,
+        proxy=qs.get("proxy", [""])[0],
+        skip_http=bool(qs.get("bypassCookieCache")),
+    )
     if "error" in data:
         await _send_json(send, 502, {"error": data["error"]})
         return
@@ -202,15 +351,14 @@ async def _handle_html(client, trawl_url, qs, headers, send) -> None:
     await _send_text(send, status_code, html.encode("utf-8"), extra_headers)
 
 
-async def _handle_mirror(client, trawl_url, scope, path, query_string, headers, receive, send) -> None:
+async def _handle_mirror(client, trawl_url, backend, scope, path, query_string, headers, receive, send) -> None:
     hostname = (headers.get(b"x-hostname") or b"").decode("latin-1").strip()
     if not hostname:
         await _send_json(send, 400, {"error": "缺少 x-hostname 头"})
         return
 
     target_url = _build_target_url(hostname, path, query_string)
-    payload: dict = {"url": target_url, "maxTimeout": DEFAULT_MAX_TIMEOUT_MS}
-    payload["method"] = (scope.get("method") or "GET").upper()
+    method = (scope.get("method") or "GET").upper()
 
     upstream_headers: dict[str, str] = {}
     for raw_name, raw_value in scope.get("headers", []):
@@ -219,30 +367,34 @@ async def _handle_mirror(client, trawl_url, scope, path, query_string, headers, 
             continue
         value = raw_value.decode("latin-1")
         upstream_headers[name] = upstream_headers.get(name, "") + (", " if name in upstream_headers else "") + value
-    if upstream_headers:
-        payload["headers"] = upstream_headers
 
-    if (headers.get(b"x-proxy") or b"").decode("latin-1").strip():
-        payload["proxy"] = headers[b"x-proxy"].decode("latin-1").strip()
-    if (headers.get(b"x-bypass-cache") or b"").decode("latin-1").strip().lower() == "true":
-        payload["skipHttp"] = True
-
-    if scope.get("method", "GET").upper() in ("POST", "PUT", "PATCH", "DELETE"):
+    body_text = ""
+    if method in ("POST", "PUT", "PATCH", "DELETE"):
         try:
             body_received = await _read_body(scope, receive)
         except Exception:
             body_received = b""
         if body_received:
-            payload["body"] = body_received.decode("utf-8", errors="replace")
+            body_text = body_received.decode("utf-8", errors="replace")
 
-    data = await _call_trawl(client, trawl_url, payload)
+    data = await _call_backend(
+        client,
+        backend=backend,
+        base_url=trawl_url,
+        url=target_url,
+        method=method,
+        headers=upstream_headers or None,
+        proxy=(headers.get(b"x-proxy") or b"").decode("latin-1").strip(),
+        body=body_text,
+        skip_http=(headers.get(b"x-bypass-cache") or b"").decode("latin-1").strip().lower() == "true",
+    )
     if "error" in data:
         await _send_json(send, 502, {"error": data["error"]})
         return
 
     status_code = int(data.get("statusCode") or 200)
     response_headers: list[tuple[bytes, bytes]] = []
-    upstream_response_headers = data.get("responseHeaders") or {}
+    upstream_response_headers = data.get("headers") or {}
     for name, value in upstream_response_headers.items():
         if name.lower() in ("content-length", "connection", "transfer-encoding"):
             continue
@@ -254,12 +406,8 @@ async def _handle_mirror(client, trawl_url, scope, path, query_string, headers, 
     final_url = data.get("url") or target_url
     response_headers.append((b"x-cf-bypasser-final-url", final_url.encode("utf-8")))
 
-    body = data.get("body")
-    if isinstance(body, list) and body and isinstance(body[0], int):
-        body_bytes = bytes(body)
-    elif isinstance(body, str) and body:
-        body_bytes = body.encode("utf-8")
-    else:
+    body_bytes = data.get("body")
+    if not body_bytes:
         body_bytes = (data.get("html") or "").encode("utf-8")
 
     await _send_text(send, status_code, body_bytes, response_headers)
@@ -280,13 +428,19 @@ async def _read_body(scope, receive) -> bytes:
 
 
 class TrawlAdapterServer:
-    """本地 TRAWL 适配层服务：把 cf_bypasser 协议翻译成 TRAWL /scrape。
+    """本地外部 CF 服务适配层：把 cf_bypasser 协议翻译成 TRAWL /scrape 或 FlareSolverr /v1。
 
     与 LocalBypassServer 同模式：随机空闲端口 + uvicorn 子进程/进程内线程。
     """
 
-    def __init__(self, trawl_url: str, log_fn: Callable[[str], None] | None = None):
+    def __init__(
+        self,
+        trawl_url: str,
+        backend: str = BACKEND_TRAWL,
+        log_fn: Callable[[str], None] | None = None,
+    ):
         self._trawl_url = (trawl_url or "").strip().rstrip("/")
+        self._backend = _normalize_backend(backend)
         self._process: asyncio.subprocess.Process | None = None
         self._thread: threading.Thread | None = None
         self._server: uvicorn.Server | None = None
@@ -337,7 +491,7 @@ class TrawlAdapterServer:
 
         self._port = _find_free_port()
         self._url = f"http://{ADAPTER_HOST}:{self._port}"
-        self._log(f"启动 TRAWL 适配层 {self._url} -> {self._trawl_url} ...")
+        self._log(f"启动外部 CF 适配层 {self._url} -> {self._trawl_url} (backend={self._backend}) ...")
 
         if IS_PYINSTALLER:
             ok, err = await self._start_in_process()
@@ -347,7 +501,7 @@ class TrawlAdapterServer:
             return False, err
 
         self._started = True
-        self._log(f"TRAWL 适配层已就绪: {self._url}")
+        self._log(f"外部 CF 适配层已就绪: {self._url}")
         return True, self._url
 
     async def _start_subprocess(self) -> tuple[bool, str]:
@@ -368,7 +522,7 @@ class TrawlAdapterServer:
             stdout=_asyncio.subprocess.DEVNULL,
             stderr=_asyncio.subprocess.DEVNULL,
             start_new_session=True,
-            env={**os.environ, "MDCX_TRAWL_URL": self._trawl_url},
+            env={**os.environ, "MDCX_TRAWL_URL": self._trawl_url, "MDCX_BACKEND_TYPE": self._backend},
         )
         self._register_atexit()
         ready, error = await self._wait_ready()
@@ -396,7 +550,7 @@ class TrawlAdapterServer:
 
         try:
             config = uvicorn.Config(
-                create_trawl_adapter_app(self._trawl_url),
+                create_trawl_adapter_app(self._trawl_url, self._backend),
                 host=ADAPTER_HOST,
                 port=self._port,
                 log_level="warning",
@@ -406,7 +560,7 @@ class TrawlAdapterServer:
             self._thread = threading.Thread(target=self._server.run, daemon=True)
             self._thread.start()
         except Exception as e:
-            return False, f"启动 TRAWL 适配层线程失败: {e}"
+            return False, f"启动外部 CF 适配层线程失败: {e}"
 
         ready, error = await self._wait_ready()
         if not ready:
@@ -420,7 +574,7 @@ class TrawlAdapterServer:
         last_error = ""
         while time.monotonic() < deadline:
             if self._in_process and self._thread is not None and not self._thread.is_alive():
-                return False, "TRAWL 适配层线程已退出 (uvicorn 启动失败)"
+                return False, "外部 CF 适配层线程已退出 (uvicorn 启动失败)"
             if not self._in_process and self._process and self._process.returncode is not None:
                 return False, f"适配层进程异常退出 (code={self._process.returncode})"
             try:
@@ -431,14 +585,14 @@ class TrawlAdapterServer:
             except (httpx.ConnectError, httpx.TimeoutException, httpx.RemoteProtocolError) as e:
                 last_error = str(e)
             await asyncio.sleep(HEALTH_CHECK_INTERVAL)
-        return False, f"TRAWL 适配层启动超时 ({SERVER_START_TIMEOUT}s): {last_error}"
+        return False, f"外部 CF 适配层启动超时 ({SERVER_START_TIMEOUT}s): {last_error}"
 
     async def stop(self) -> None:
         if self._closing:
             return
         self._closing = True
         if self._in_process and self._server is not None:
-            self._log("正在停止 TRAWL 适配层(线程)...")
+            self._log("正在停止外部 CF 适配层(线程)...")
             try:
                 self._server.should_exit = True
                 if self._thread is not None:
@@ -449,7 +603,7 @@ class TrawlAdapterServer:
             self._thread = None
             self._in_process = False
         elif self._process is not None:
-            self._log("正在停止 TRAWL 适配层...")
+            self._log("正在停止外部 CF 适配层...")
             try:
                 self._process.terminate()
                 try:
@@ -465,10 +619,11 @@ class TrawlAdapterServer:
         self._started = False
         self._url = ""
         self._port = 0
-        self._log("TRAWL 适配层已停止")
+        self._log("外部 CF 适配层已停止")
 
 
 def create_trawl_adapter_factory():
-    """uvicorn --factory 入口：从环境变量读取 TRAWL 地址并创建适配层。"""
+    """uvicorn --factory 入口：从环境变量读取外部 CF 服务地址与后端类型并创建适配层。"""
     trawl_url = os.environ.get("MDCX_TRAWL_URL", "")
-    return create_trawl_adapter_app(trawl_url)
+    backend = os.environ.get("MDCX_BACKEND_TYPE", BACKEND_TRAWL)
+    return create_trawl_adapter_app(trawl_url, backend)
