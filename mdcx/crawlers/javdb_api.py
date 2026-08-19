@@ -319,7 +319,14 @@ class JavdbApiCrawler(BaseCrawler):
     async def _fetch_search(self, ctx, url: str, use_browser: bool | None = False) -> tuple[str | None, str]:
         async with self._page_request_lock:
             await self._throttle_page_request(ctx, "搜索", url)
-            return await self._try_mirrors(ctx, "/search?all=1&page=1", "搜索")
+            # 从 url 提取 path + query，保留 q=番号 参数
+            from urllib.parse import urlparse
+
+            parsed = urlparse(url)
+            path = parsed.path
+            if parsed.query:
+                path += "?" + parsed.query
+            return await self._try_mirrors(ctx, path, "搜索")
 
     @override
     async def _fetch_detail(self, ctx, url: str, use_browser: bool | None = False) -> tuple[str | None, str]:

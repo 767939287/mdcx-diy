@@ -141,6 +141,32 @@ async def test_generate_search_url():
 
 
 @pytest.mark.asyncio
+async def test_fetch_search_preserves_q_param(monkeypatch):
+    """回归保护: _fetch_search 必须保留搜索 URL 的 q=番号 参数, 不能硬编码成无 q 的路径."""
+    crawler = JavdbApiCrawler(client=None)
+    captured = {}
+
+    async def fake_try_mirrors(ctx, path: str, request_type: str):
+        captured["path"] = path
+        captured["request_type"] = request_type
+        return "<html>ok</html>", ""
+
+    monkeypatch.setattr(crawler, "_try_mirrors", fake_try_mirrors)
+    monkeypatch.setattr(crawler, "_throttle_page_request", lambda *a, **k: __import__("asyncio").sleep(0))
+
+    from mdcx.crawlers.base.types import Context
+
+    ctx = Context(input=CrawlerInput.empty())
+    search_url = "https://mirror/search?f=all&q=IPX-535&page=1"
+    html, error = await crawler._fetch_search(ctx, search_url)
+
+    assert html == "<html>ok</html>"
+    assert "q=IPX-535" in captured["path"], f"搜索 path 丢了 q 参数: {captured['path']}"
+    assert "f=all" in captured["path"]
+    assert captured["request_type"] == "搜索"
+
+
+@pytest.mark.asyncio
 async def test_parse_detail_full():
     html = _load_html("detail_full.html")
     crawler = JavdbApiCrawler(client=None)
