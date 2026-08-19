@@ -226,8 +226,15 @@ def _normalize_language(language: str) -> str:
     return language if language in _SUPPORTED_LANGUAGES else "zh_cn"
 
 
+_IQQTV_DOMAINS = [
+    "https://iqq5.xyz",
+    "https://iqqk4.quest",
+]
+
+
 class IqqtvCrawler(BaseCrawler):
     description = "IQQTV 综合：有码+无码+素人+国产"
+    _domains: list[str] = _IQQTV_DOMAINS
 
     @classmethod
     @override
@@ -237,7 +244,12 @@ class IqqtvCrawler(BaseCrawler):
     @classmethod
     @override
     def base_url_(cls) -> str:
-        return manager.config.get_site_url(Website.IQQTV, "https://iqq5.xyz")
+        return manager.config.get_site_url(Website.IQQTV, _IQQTV_DOMAINS[0])
+
+    @override
+    def __init__(self, client, base_url: str = "", browser=None):
+        super().__init__(client, base_url=base_url, browser=browser)
+        self._init_rotator(self._domains, custom_url=manager.config.get_site_url(Website.IQQTV, ""))
 
     def _language_base_url(self, language: str) -> str:
         if language == "zh_cn":
@@ -259,7 +271,7 @@ class IqqtvCrawler(BaseCrawler):
             if ctx.debug_info.search_urls is None:
                 ctx.debug_info.search_urls = []
             ctx.debug_info.search_urls.append(url_search)
-            html_search, error = await self.async_client.get_text(url_search)
+            html_search, error = await self._get_text_with_rotate(ctx, url_search)
             if html_search is None:
                 raise CrawlerException(f"网络请求错误: {error}")
             html = etree.fromstring(html_search, etree.HTMLParser())
@@ -273,7 +285,7 @@ class IqqtvCrawler(BaseCrawler):
             real_url = iqqtv_url + re.sub(r".*player", "player", appoint_url)
 
         ctx.debug(f"番号地址: {real_url}")
-        html_content, error = await self.async_client.get_text(real_url)
+        html_content, error = await self._get_text_with_rotate(ctx, real_url)
         if html_content is None:
             raise CrawlerException(f"网络请求错误: {error}")
         html_info = etree.fromstring(html_content, etree.HTMLParser())
