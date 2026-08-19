@@ -472,6 +472,8 @@ async def fetch_article_info_with_warmup(
 
 
 class Fc2ppvdbCrawler(BaseCrawler):
+    description = "FC2PPVDB 数据库（FC2）"
+
     @classmethod
     @override
     def site(cls) -> Website:

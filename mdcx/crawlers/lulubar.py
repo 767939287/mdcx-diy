@@ -110,6 +110,8 @@ class LulubarContext(Context):
 
 
 class LulubarCrawler(BaseCrawler[LulubarContext]):
+    description = "Lulubar 综合（仅能有码）"
+
     @classmethod
     @override
     def site(cls) -> Website:

@@ -37,6 +37,8 @@ class DmmApiMovie(BaseModel):
 
 
 class DmmApiCrawler(DmmCrawler):
+    description = "DMM 数据走 JavDB API（仅能有码）"
+
     @staticmethod
     def _log(message: str):
         signal.add_log(f"[DmmApi] {message}")

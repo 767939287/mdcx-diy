@@ -136,6 +136,8 @@ def normalize_language(language: str) -> str:
 
 
 class AiravCcCrawler(BaseCrawler):
+    description = "airav.cc 无码（综合：有码+无码）"
+
     @classmethod
     @override
     def site(cls) -> Website:

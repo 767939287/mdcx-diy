@@ -13,6 +13,7 @@ from .base.types import NOT_SUPPORT, Context
 
 
 class MissavApiCrawler(BaseCrawler):
+    description = "Recombee API 免 CF 直连，演员留空（综合：有码+无码，免 CF）"
     """
     MissAV 免 Cloudflare 数据源.
 

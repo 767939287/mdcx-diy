@@ -165,6 +165,8 @@ def clean_na(value) -> str:
 
 
 class HdoubanCrawler(BaseCrawler):
+    description = "HDOUBAN 国产（国产）"
+
     @classmethod
     @override
     def site(cls) -> Website:

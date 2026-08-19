@@ -58,6 +58,8 @@ class HscangkuContext(Context):
 
 
 class HscangkuCrawler(BaseCrawler[HscangkuContext]):
+    description = "收藏库 国产番号（国产）"
+
     @classmethod
     @override
     def site(cls) -> Website:

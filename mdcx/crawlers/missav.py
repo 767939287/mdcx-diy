@@ -264,6 +264,7 @@ class Parser(DetailPageParser):
 
 
 class MissavCrawler(BaseCrawler):
+    description = "MissAV 综合搜索（综合：有码+无码）"
     parser = Parser()
 
     CODE_PATTERN = re.compile(r"(?i)([a-z]{2,10})[-_ ]?(\d{2,6})")

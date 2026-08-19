@@ -113,6 +113,8 @@ def split_csv(value: str) -> list[str]:
 
 
 class OfficialCrawler(BaseCrawler):
+    description = "按番号前缀路由到子爬虫（综合：有码+无码）"
+
     @classmethod
     @override
     def site(cls) -> Website:

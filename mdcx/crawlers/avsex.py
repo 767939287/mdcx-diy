@@ -154,6 +154,7 @@ class AvsexContext(Context):
 
 
 class AvsexCrawler(BaseCrawler[AvsexContext]):
+    description = "AVSex 无码（综合：有码+无码）"
     UTF8_PARSER = etree.HTMLParser(encoding="utf-8")
 
     @classmethod

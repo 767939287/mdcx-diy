@@ -80,6 +80,8 @@ def get_trailer(html):  # 获取预览片
 
 
 class DahliaCrawler(BaseCrawler):
+    description = "Dahlia 官网（仅覆盖本厂）"
+
     @classmethod
     @override
     def site(cls) -> Website:

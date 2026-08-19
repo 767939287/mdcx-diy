@@ -179,6 +179,8 @@ def normalize_fc2_number(number: str) -> str:
 
 
 class Fc2Crawler(BaseCrawler):
+    description = "FC2 官网（FC2）"
+
     @classmethod
     @override
     def site(cls) -> Website:

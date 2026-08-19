@@ -160,6 +160,7 @@ def get_number(html, number):
 
 
 class MmtvCrawler(BaseCrawler):
+    description = "7MMTV 无码（综合：有码+无码）"
     # mmtv 镜像域名（主站 + 备用；用户配置 custom_url 时优先使用）
     _domains: list[str] = [
         "https://www.7mmtv.sx",

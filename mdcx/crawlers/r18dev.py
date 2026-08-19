@@ -184,6 +184,7 @@ async def _upgrade_dmm_cover(ctx, data: CrawlerData) -> None:
 
 
 class R18devCrawler(BaseCrawler):
+    description = "R18.dev JSON API 直连（仅能有码，免 CF）"
     _last_request_at: float = 0.0
 
     @classmethod

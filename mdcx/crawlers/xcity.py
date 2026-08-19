@@ -31,6 +31,7 @@ class XcityContext(Context):
 
 
 class XcityCrawler(BaseCrawler[XcityContext]):
+    description = "Xcity 综合（仅能有码）"
     # xcity 镜像域名（主站 + 备用；用户配置 custom_url 时优先使用）
     _domains: list[str] = [
         "https://tc.xcity.jp",

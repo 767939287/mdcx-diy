@@ -245,6 +245,7 @@ class FalenoParser(DetailPageParser[FalenoContext]):
 
 
 class FalenoCrawler(GenericBaseCrawler[FalenoContext]):
+    description = "Faleno 官网（仅覆盖本厂）"
     parser = FalenoParser()
 
     @classmethod

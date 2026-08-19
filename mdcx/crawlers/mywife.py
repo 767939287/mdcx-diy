@@ -62,6 +62,8 @@ def get_extrafanart(html):
 
 
 class MywifeCrawler(BaseCrawler):
+    description = "MyWife No. 素人番号（素人）"
+
     @classmethod
     @override
     def site(cls) -> Website:

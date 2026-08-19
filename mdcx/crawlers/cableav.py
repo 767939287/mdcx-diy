@@ -52,6 +52,8 @@ class CableavContext(Context):
 
 
 class CableavCrawler(BaseCrawler[CableavContext]):
+    description = "CableAV 综合信息（仅能有码）"
+
     @classmethod
     @override
     def site(cls) -> Website:

@@ -113,6 +113,8 @@ def get_cover_from_detail(html, key):
 
 
 class Kin8Crawler(BaseCrawler):
+    description = "Kin8 无码（无码专属）"
+
     @classmethod
     @override
     def site(cls) -> Website:

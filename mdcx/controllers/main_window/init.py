@@ -21,6 +21,23 @@ if TYPE_CHECKING:
     from .main_window import MyMAinWindow
 
 
+def _populate_site_combo(combo: QComboBox, site_values: list[str]) -> None:
+    """填充站点下拉框，并为每项附带站点定位说明 tooltip。"""
+    from mdcx.config.models import Website
+    from mdcx.crawlers import get_crawler
+
+    for value in site_values:
+        combo.addItem(value)
+        try:
+            crawler_cls = get_crawler(Website(value))
+            if crawler_cls is not None and hasattr(crawler_cls, "site_description"):
+                description = crawler_cls.site_description()
+                if description:
+                    combo.setItemData(combo.count() - 1, description, Qt.ItemDataRole.ToolTipRole)
+        except Exception:
+            pass
+
+
 def Init_Ui(self: "MyMAinWindow"):
     self.setWindowTitle("MDCx")  # 设置任务栏标题
     self.setWindowIcon(QIcon(resources.icon_ico))  # 设置任务栏图标
@@ -114,13 +131,13 @@ def Init_Ui(self: "MyMAinWindow"):
     self.Ui.pushButton_save_failed_list.hide()
     supported_websites = get_registered_crawler_site_values()
     self.Ui.comboBox_website_all.clear()
-    self.Ui.comboBox_website_all.addItems(supported_websites)
-    self.Ui.comboBox_custom_website.addItems(supported_websites)
+    self.Ui.comboBox_custom_website.clear()
+    _populate_site_combo(self.Ui.comboBox_website_all, supported_websites)
+    _populate_site_combo(self.Ui.comboBox_custom_website, supported_websites)
     # 初始化使用代理网站下拉框
     self.Ui.comboBox_no_proxy_sites.clear()
     self.Ui.comboBox_no_proxy_sites.addItem("选择网站...", "")
-    for site in sorted(supported_websites):
-        self.Ui.comboBox_no_proxy_sites.addItem(site, site)
+    _populate_site_combo(self.Ui.comboBox_no_proxy_sites, sorted(supported_websites))
     # 连接选择事件
     self.Ui.comboBox_no_proxy_sites.currentTextChanged.connect(self._add_no_proxy_site)
     _setup_combo_boxes(self)

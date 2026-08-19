@@ -88,6 +88,8 @@ def normalize_fc2_number(number: str) -> str:
 
 
 class Fc2clubCrawler(BaseCrawler):
+    description = "FC2Club 信息站（FC2）"
+
     @classmethod
     @override
     def site(cls) -> Website:

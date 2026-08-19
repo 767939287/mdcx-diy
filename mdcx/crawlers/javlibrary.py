@@ -117,6 +117,8 @@ def language_path(language: Language) -> str:
 
 
 class JavlibraryCrawler(BaseCrawler):
+    description = "老牌信息站，动态直连地址（仅能有码）"
+
     @classmethod
     @override
     def site(cls) -> Website:

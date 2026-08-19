@@ -135,6 +135,8 @@ class MadouquContext(Context):
 
 
 class MadouquCrawler(BaseCrawler[MadouquContext]):
+    description = "麻豆 国产（国产）"
+
     @classmethod
     @override
     def site(cls) -> Website:

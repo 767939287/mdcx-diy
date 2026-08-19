@@ -117,6 +117,8 @@ class MovieDetail(BaseModel):
 
 
 class JavdbAPICrawler(BaseCrawler):
+    description = "JavDB 移动端 API 直连（综合：有码+无码）"
+
     def __init__(self, client, base_url="", browser=None):
         super().__init__(client, base_url, browser)
         self._request_lock = asyncio.Lock()

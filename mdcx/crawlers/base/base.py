@@ -33,6 +33,10 @@ class GenericBaseCrawler[T: Context = Context](ABC):
     # 留空表示不轮询。子类可调用 _init_rotator() 用 custom_url 初始化。
     _domains: list[str] = []
 
+    # 站点定位说明（供 UI 列表 tooltip 展示）。如"免 CF 通道"、"综合站（有码+无码）"、
+    # "仅覆盖本厂作品"等。留空则不显示说明。
+    description: str = ""
+
     # 网络检测用的探针番号。默认用全局 SCRAPE_PROBE_NUMBER；
     # 站点有收录类型限制时（如欧美/无码站搜不到有码探针番号），子类可覆盖为适用的番号。
     probe_number: str = ""
@@ -113,6 +117,15 @@ class GenericBaseCrawler[T: Context = Context](ABC):
     def display_name(cls) -> str:
         """前端展示名称, 默认使用网站枚举值."""
         return cls.site().value
+
+    @classmethod
+    def site_description(cls) -> str:
+        """站点定位说明（用于 UI tooltip/列表标注）。
+
+        子类可覆写类属性 `description`（如"免 CF 通道"、"综合站（有码+无码）"、
+        "仅覆盖本厂作品"等），供站点列表悬停提示。留空则不显示说明。
+        """
+        return cls.description
 
     @classmethod
     def hidden_in_ui(cls) -> bool:

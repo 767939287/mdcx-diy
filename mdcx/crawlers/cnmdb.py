@@ -82,6 +82,8 @@ def get_actor_title(title, number, studio):
 
 
 class CnmdbCrawler(BaseCrawler):
+    description = "CNMDB 国产（国产）"
+
     @classmethod
     @override
     def site(cls) -> Website:

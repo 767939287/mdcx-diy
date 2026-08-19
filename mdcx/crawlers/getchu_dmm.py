@@ -8,6 +8,8 @@ from .getchu import GetchuCrawler
 
 
 class GetchuDmmCrawler(BaseCrawler):
+    description = "委托 Getchu 执行（仅能有码）"
+
     @classmethod
     @override
     def site(cls) -> Website:

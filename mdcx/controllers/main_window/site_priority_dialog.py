@@ -167,11 +167,25 @@ def _selected_sites(list_widget: QListWidget) -> list[Website]:
 def _make_site_item(site: Website) -> QListWidgetItem:
     item = QListWidgetItem(site.value)
     item.setData(Qt.ItemDataRole.UserRole, site.value)
-    item.setToolTip(site.value)
+    description = _site_description(site)
+    item.setToolTip(description or site.value)
     item.setFlags(
         item.flags() | Qt.ItemFlag.ItemIsDragEnabled | Qt.ItemFlag.ItemIsEnabled | Qt.ItemFlag.ItemIsSelectable
     )
     return item
+
+
+def _site_description(site: Website) -> str:
+    """获取站点定位说明（爬虫类 site_description），失败返回空串。"""
+    try:
+        from mdcx.crawlers import get_crawler
+
+        crawler_cls = get_crawler(site)
+        if crawler_cls is not None and hasattr(crawler_cls, "site_description"):
+            return crawler_cls.site_description()
+    except Exception:
+        pass
+    return ""
 
 
 def _setup_site_list(list_widget: QListWidget, sites: list[Website]) -> None:

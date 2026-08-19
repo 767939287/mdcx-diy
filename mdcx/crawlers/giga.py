@@ -105,6 +105,8 @@ def get_real_url(html, number):
 
 
 class GigaCrawler(BaseCrawler):
+    description = "Giga 官网（仅覆盖本厂）"
+
     @classmethod
     @override
     def site(cls) -> Website:

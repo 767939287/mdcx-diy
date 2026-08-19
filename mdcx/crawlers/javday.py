@@ -135,6 +135,8 @@ class JavdayContext(Context):
 
 
 class JavdayCrawler(BaseCrawler[JavdayContext]):
+    description = "JavDay 综合：有码+无码+国产"
+
     @classmethod
     @override
     def site(cls) -> Website:

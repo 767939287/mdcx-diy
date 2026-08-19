@@ -227,6 +227,8 @@ def _normalize_language(language: str) -> str:
 
 
 class IqqtvCrawler(BaseCrawler):
+    description = "IQQTV 综合：有码+无码+素人+国产"
+
     @classmethod
     @override
     def site(cls) -> Website:

@@ -6,6 +6,7 @@ from .aio_site import AioSiteCrawler
 
 
 class AvsoxCrawler(AioSiteCrawler):
+    description = "AVSOX 无码（无码专属）"
     """
     avsox（无码）爬虫.
 

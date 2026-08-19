@@ -121,6 +121,8 @@ class Love6Context(Context):
 
 
 class Love6Crawler(BaseCrawler[Love6Context]):
+    description = "Love6 FC2 番号（FC2）"
+
     @classmethod
     def site(cls) -> Website:
         return Website.LOVE6

@@ -131,6 +131,8 @@ def get_extrafanart(html):
 
 
 class GetchuCrawler(BaseCrawler):
+    description = "Getchu 游戏/视频综合（仅能有码）"
+
     @classmethod
     @override
     def site(cls) -> Website:

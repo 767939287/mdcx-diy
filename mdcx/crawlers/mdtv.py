@@ -173,6 +173,8 @@ class MdtvContext(Context):
 
 
 class MdtvCrawler(BaseCrawler[MdtvContext]):
+    description = "MDTV 国产（国产）"
+
     @classmethod
     @override
     def site(cls) -> Website:

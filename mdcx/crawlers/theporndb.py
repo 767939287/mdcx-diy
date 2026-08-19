@@ -192,6 +192,8 @@ def get_search_keyword(file_path):
 
 
 class TheporndbCrawler(BaseCrawler):
+    description = "ThePornDB 欧美（欧美）"
+
     @classmethod
     @override
     def site(cls) -> Website:

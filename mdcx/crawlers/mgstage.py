@@ -156,6 +156,8 @@ def build_candidate_numbers(number: str, short_number: str) -> list[str]:
 
 
 class MgstageCrawler(BaseCrawler):
+    description = "MGStage 官网（仅能有码+素人）"
+
     @classmethod
     @override
     def site(cls) -> Website:

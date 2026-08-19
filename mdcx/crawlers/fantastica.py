@@ -90,6 +90,8 @@ class FantasticaContext(Context):
 
 
 class FantasticaCrawler(GenericBaseCrawler[FantasticaContext]):
+    description = "Fantastica VR 内容（仅覆盖本厂）"
+
     @classmethod
     @override
     def site(cls) -> Website:

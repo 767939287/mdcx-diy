@@ -382,6 +382,7 @@ def _split_legacy_names(value: str) -> list[str]:
 
 
 class Jav321Crawler(BaseCrawler):
+    description = "综合信息（仅能有码）"
     UNCENSORED_STUDIOS = {
         "一本道",
         "HEYZO",
