@@ -1,9 +1,15 @@
 # Changelog
 
-## v2.0.6 (2026-08-17)
+## v2.0.6 (2026-08-19)
 
 ### 功能
 
+- **TRAWL 外部 CF 服务协议适配层**：新增 `mdcx/cf_bypass/trawl_adapter.py`——TRAWL（FlareSolverr 风格，POST /v1）与 mdcx 所需的 cf_bypasser 协议（/cookies /mirror /html）不兼容，直接填 /v1 无法工作，适配层暴露三端点并内部调用 TRAWL `/scrape` 原生 API（/v1 的 solution.headers 为空，拿不到状态码/响应头/二进制），支持 x-hostname/x-proxy/x-bypass-cache 控制头与 Set-Cookie 还原；`TrawlAdapterServer` 随机端口 + uvicorn 启动，配置 `cf_bypass_trawl_url` 后由 AsyncWebClient 自动拉起
+- **适配层支持 FlareSolverr 后端**：`_call_trawl` 重构为统一 `_call_backend`，按后端类型分流——trawl 走 `/scrape` 原生 API、flaresolverr 走 POST /v1（cmd=request.get/post），三端点共用归一化响应；新增 `cf_bypass_trawl_backend` 配置（默认 trawl）；UI 外部 CF 服务行加后端类型下拉框；network_check 健康检查按后端选端点
+- **TRAWL 稳定性优化**：适配层不再把 bypassCookieCache/x-bypass-cache 映射为 TRAWL skipHttp，恢复 Tier1 直连快速路径（已解 cookie 的域名直连命中）；新增 `trawl-goto-timeout.patch`（Tier3/4 页面加载超时 30s→90s），start-trawl.bat 与 package-trawl.yml 在 clone 后自动应用
+- **TRAWL 便携版内置 Redis 并自动跟随上游版本**：package-trawl.yml version 输入可空（默认 latest，git ls-remote 取最新 tag），新增 Redis 8.10.1 打入包内；start-trawl.bat 自动启动内置 Redis（端口 6380）启用 Tier2 会话缓存，浏览器池默认 2；check-trawl-update.yml CURRENT 改从本仓库 trawl-* release tag 提取
+- **域名轮询并修正站点域名**：新增 `mdcx/utils/domain_rotate.py`（DomainRotator 轮询切换 + rebuild_url + 用户自定义 URL 优先），爬虫基类接入 `_domains`/`_init_rotator`/`_get_text_with_rotate`，请求失败自动切下一镜像域名；javbus 12 个镜像（默认 dmmsee.cyou）、freejavbt（freejavbt22.cc）、mmtv（7mmtv.sx）、xcity（tc.xcity.jp）；javday 默认域名 .tv → .app（实测 .tv 不可达）
+- **javlibrary 动态获取最新直连地址**：新增 `get_javlibrary_domain()`，抓取 github.com/javlibcom 主页 `rel="nofollow me"` 链接提取最新地址（当前 f101w.com），带 1 天缓存，失败回退已知镜像逐个探测；javlibrary 爬虫未指定 base_url 且未配 custom_url 时 `_run` 开头动态获取
 - **新增 avmoo / avheat 爬虫**：avmoo（有码，jav.data 命名空间）、avheat（欧美，wav.data 命名空间）。这两个站点与 avsox 同属 tellme.pw AIO 平台，已改为 Vue SPA + JSON API，页面 HTML 只是壳，数据全部走 API：search（POST JSON 数组 body）+ getMovie（movieId）两步。新增共享基类 `AioSiteCrawler` 封装统一流程
 - **avsox 爬虫改为 API 方式**：旧 HTML 解析（#waterfall）因站点改版已失效，改用 javu.data 命名空间的 API 流程并补充简介字段
 - **tellme.pw 动态地址统一获取**：新增 `get_aio_domain()` 从 `tellme.pw/{site}` 导航页解析 `__AIO_SITE_URLS__`，带 1 天缓存、三站互相兜底，修复 avsox 旧地址源（tellme.pw/avsox 已 403）
@@ -18,6 +24,7 @@
 
 - 新增 `tests/crawlers/test_aio_sites.py`（avmoo/avheat/avsox 三站 API 流程与请求格式）与 `tests/core/test_amazon_match.py`（匹配函数单元测试）
 - 更新 `tests/test_network_check.py` 的爬虫探测测试（重写 `_run` 爬虫走真实刮削探测）
+- 新增 TRAWL 适配层测试（`test_trawl_adapter.py`，含 FlareSolverr 后端 cookies/html/mirror/URL 重建/错误处理）、域名轮询测试（javbus/freejavbt）、javlibrary 动态地址解析与缓存测试
 
 ### 文档
 
@@ -25,6 +32,8 @@
 
 ### 修复
 
+- **避免使用不支持的状态表情**：UI 中部分状态展示使用了某些环境不支持渲染的 emoji，替换为通用字符避免显示异常
+- **Windows 保存配置时黑色控制台窗口一闪而过**：保存/加载配置的日志调用 `platform.platform()`，在 Windows 上会执行 `cmd /c ver` 启动子进程，windowed 打包下每次闪黑色控制台窗口。`consts.py` 新增 `SYSTEM_INFO`（platform.uname()，无子进程，启动时算一次），save_config/load_config 改用之；local_server/trawl_adapter 的 uvicorn 子进程与 sync_gfriends 的 git pull 加 `CREATE_NO_WINDOW`
 - **翻译引擎说明文字重影**：v2.0.5 新建的 `label_baidu_hint`（百度提示）被放到 `gridLayout_32` col0（标签列，仅 ~130px），长说明不换行向右溢出进入 col1，被 col1 的 `label_60` 不透明背景遮挡，露出前半截产生重影。改为 `label_baidu_hint` 跨整行（col0-1）+ `setWordWrap(True)`，合并两段文案为一句综合说明，移除/隐藏 `label_60`
 - **配置保存 Windows 拒绝访问**：`_write_config_text` 的 `os.replace` 一次失败即抛异常，对 Windows 上常见的瞬时占用（杀软实时扫描 `.tmp`）/只读属性/权限不足零容错，导致「配置保存失败，软件已保持运行」。改为多级回退：重试 6 次（瞬时锁）→ 去只读属性 → 删目标改名 → 直接覆盖写，最后仍失败抛带中文操作指引的 `PermissionError`，所有走 `manager.save()` 的配置/资源文件（不止 `studios.json`）均受益
 - **修复 Emby 演员管理器窗口遮挡主窗口 + 按钮无反应（issue #38）**：`open_emby_actor_manager`/`tool_handlers.pushButton_emby_actor_manager_clicked` 由模态 `dialog.exec()` 改为 `dialog.show()` 非模态，并给 `EmbyActorManagerDialog` 加 `WindowMinimizeButtonHint`，窗口可最小化、不再盖死主窗口。修复 GUI 主线程直接 `executor.run()` 同步阻塞（全局单 loop 被长任务占满 + 网络慢时主窗口整个卡死）：`_on_connect`/`_on_fetch` 的 `get_media_folders`/`_on_fetch_finished` 的 `get_gfriends_index` 改 `executor.submit` + 自定义信号回传结果，`ActorDetailDialog` 的加载现有头像/获取头像/获取简介/单演员同步 4 处改后台执行 + `_detail_done` 信号回主线程更新 UI（并消除协程内直接碰 QWidget 的跨线程违规），统一 `_future_result_or` 兜底 Future 异常

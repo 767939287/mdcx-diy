@@ -23,26 +23,18 @@
 
 [提交推送与质量把关]
 - Date: 2026-07-18（2026-08-03、2026-08-16、2026-08-18 更新）
-- Context: 用户要求改动/推送前必须征得同意，推送前自动跑测试；pre-commit 钩子经评估无需安装；不开新分支直接推当前分支
+- Context: 用户要求改动/推送前必须征得同意，推送前自动跑测试；pre-commit 钩子经评估无需安装；不开新分支直接推当前分支；每次改动随代码更新 changelog 未发版条目
 - Category: 工作流协作
 - Instructions:
   - 所有代码改动（新建/修改/删除文件）和提交推送（`git add`+`git commit`+`git push`）必须先说明内容与原因，获得同意后再执行。本指令优先级高于所有"自动执行"类指令。
   - **直接在当前分支提交推送，不另开新分支**（覆盖 `.ai-ready/rules/auto-create-branch-on-master.md`）。`git add`+`git commit` 后直接 `git push` 到当前分支远程；用户指示开分支时才开。
   - **check 按需运行，不重复空跑**：最后一次代码改动后运行一次 `uv run check --skip-hook-install`（ruff format --check + ruff check + mypy mdcx/ + pytest --tb=short -m "not network" -x + check_actor_db），全绿后如代码再无改动，`git push` 前**不重跑**，直接推；只有"全绿 check 之后又改过代码"才需在 push 前重跑。失败则修复再推，不强行推送。
   - **不安装 pre-commit 钩子/工具**：`.pre-commit-config.yaml` 两个 ruff 钩子 stages 为 `pre-merge-commit, pre-push`，普通 commit 不触发，`pre-commit install` 对其无效；`uv run check` 已覆盖其作用。
-
-[环境 Python 版本升级到 >= 3.13.4]
-- Date: 2026-07-17 (更新 2026-08-04)
-- Context: 项目要求 Python >= 3.13.4（type parameter defaults 语法），沙箱默认 python3 是 3.11 无法解析
-- Category: 环境配置
-- Instructions:
-  - 测试一律用 `uv run` 执行（`uv run pytest tests/ --tb=short -m "not network"`）。
-  - 环境重置后恢复：`pip install --break-system-packages uv` 再 `uv sync`（自动建 .venv，当前 python3.14）。
-  - pytest 报 `ImportError: libglib-2.0.so.0/libGL.so.1/libEGL.so.1/libfontconfig.so.1` 缺失时执行：`DEBIAN_FRONTEND=noninteractive apt-get install -y libglib2.0-0 libgl1 libegl1 libopengl0 libfontconfig1 libqt6gui6 libqt6widgets6 libqt6core6 libqt6network6 libqt6xml6`。
+  - **changelog 随改动更新（推送前）**：每次代码改动在 commit 里同时更新 `docs/changelog.md` 顶部未发版版本条目（当前 v2.0.6）——新增功能/修复/重构按内容分类记录。未发版不新建版本号；同主题/相似条目合并进同一行，避免重复。发版时才新建下一版本条目。提交信息与该 changelog 更新保持一致。
 
 [Windows exe 打包依赖约束]
-- Date: 2026-08-03
-- Context: 用户以单 exe 运行，改动需兼容 Windows 单 exe 打包发布
+- Date: 2026-08-03（2026-08-18 更新）
+- Context: 用户以单 exe 运行，改动需兼容 Windows 单 exe 打包发布；影响打包的改动需自动核对打包程序与工作流
 - Category: 环境配置
 - Instructions:
   - 优先标准库，不主动引入三方依赖；持久化路径沿用 `resources`/`userdata` 目录习惯。
@@ -52,6 +44,7 @@
     - `EXCLUDED_MODULES` 排除的包（rich/typer/playwright 等）绝不能被 GUI 运行期引用。
     - 检查 `.github/workflows/build-windows.yml` 与 `release.yml` 打包流程、hidden-import、chromium 缓存过期键（版本更新 bump 末尾 vN）。
   - 已知：rich/typer 仅独立 CLI 脚本 `mdcx/cmd/crawl.py` 使用，不被打包，排除安全。
+  - **打包改动自动检查触发条件**：改 `pyproject.toml` 依赖、`scripts/build.py`、`.github/workflows/build-windows.yml`/`release.yml`、或运行时引入新三方依赖时，必须按上面清单逐项核对打包程序与工作流，确认无遗漏再提交（如移除内置 CF 依赖后同步清理 build.py 的 collect-all 与 workflow 缓存步骤）。
 
 [UI 改动注意事项]
 - Date: 2026-08-03（2026-08-16 更新）
@@ -189,3 +182,25 @@
   - 凭据：`echo -e "protocol=https\nhost=github.com\n" | git credential fill` 取 password 作 GH_TOKEN。
   - 列 runs：`gh run list --workflow ci.yaml --limit 30 --json databaseId,conclusion,number`，筛选 failure；逐条 `gh run delete <databaseId>`。
   - GH_TOKEN 需在 bash 调用前 export（新 shell 不继承），用完即删避免泄露。
+
+[时间以北京时间为准]
+- Date: 2026-08-19
+- Context: 用户是中国开发者，开发环境（devbox）系统时区为 UTC（+0000），git 提交时间戳显示 UTC
+- Category: 工作流协作
+- Instructions:
+  - **所有文档/记忆/changelog 中的日期标注一律使用北京时间（UTC+8）**，不直接照抄 git log 的 UTC 时间戳或系统 date 输出。
+  - 北京时间换算：UTC + 8 小时。例如 UTC 08-18 16:00 = 北京 08-19 00:00；本次改动按北京时间发生在 08-18 ~ 08-19。
+  - 写 changelog 版本日期、记忆条目 Date、发布 Tag 日期时，先换算成北京时间再写。
+
+[功能改动同步 UI 说明文字、弹窗与文档]
+- Date: 2026-08-18
+- Context: 新增 avmoo/avheat 爬虫、移除内置 CF Bypass 等大量功能改动后，用户发现 UI 使用说明页、启动提示弹窗、仓库文档存在过时内容（如还写着"启用内置 Bypass"、网站数量仍 45 个）
+- Category: 工作流协作
+- Instructions:
+  - 功能改动（新增/移除/改名站点、爬虫、CF 服务、配置项）完成后，必须检查并同步以下用户可见文字：
+    - **UI 使用说明页**：`mdcx/views/MDCx.ui` 内的帮助文档 HTML（章节"四、网站选择"的网站数量与站点列表、"五、Cloudflare 绕过"等），改 `.ui` 后重编译 `MDCx.py`。
+    - **启动提示/弹窗**：`mdcx/controllers/main_window/main_window.py` 的启动提示（show_net_info）与 `_show_tips` 帮助弹窗、二次弹窗（QMessageBox）文字。
+    - **仓库文档**：`README.md`、`docs/*.md`（FEATURES 网站列表与数量、CONFIGURATION 配置项表、USER_GUIDE 常见问题、DEVELOPMENT 架构说明）。
+  - 网站数量必须与 `get_registered_crawler_sites()` 实际注册数一致（如新增爬虫后 45→47），不要只改一处。
+  - 移除功能时同步删除对应 UI 控件/说明文字/配置项描述（如移除内置 CF 后清理"启用内置 Bypass"开关、placeholder 示例、文档中的内置服务描述）。
+  - changelog 随改动更新见「提交推送与质量把关」条目。
