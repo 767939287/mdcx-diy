@@ -27,7 +27,7 @@
 设置 → 刮削：
 - 按影片类型分别配置：有码、无码、FC2、国产、欧美、素人
 - 每个类型可以选多个网站，拖动排序决定优先级
-- **免墙通道**（missav_api、r18dev、javdb_api）默认没启用，需要在这手动加到列表
+- **免 CF 通道**（missav_api、r18dev、javdb_api）默认没启用，需要在这手动加到列表
 
 ### 3. 字段优先级
 
@@ -101,7 +101,7 @@ export QT_QPA_PLATFORM=xcb
 3. 配置代理（设置 → 网络）
 
 **有的网站一直失败**：可能是被墙了。试试：
-- 启用免墙通道（在刮削设置里加 missav_api、r18dev、javdb_api）
+- 启用免 CF 通道（在刮削设置里加 missav_api、r18dev、javdb_api）
 - 或者配置外部 CF 服务（设置 → 网络 → 外部 CF 服务，填 TRAWL / FlareSolverr 地址）
 
 **刮出来的标题是日文/英文**：设置 → 翻译，开启翻译并选 Google 或 Bing。
