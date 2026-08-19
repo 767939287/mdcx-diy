@@ -166,10 +166,12 @@ async def test_merge_asin_db_from_backup(_tmp_asin_db, tmp_path):
     wb = load_workbook(_tmp_asin_db)
     ws = wb.active
     rows = {}
+    order = []
     for r in range(2, ws.max_row + 1):
         num = ws.cell(row=r, column=1).value
         if num:
             rows[num] = [ws.cell(row=r, column=c).value for c in range(2, 7)]
+            order.append(num)
     # 已有番号不覆盖用户值
     assert rows["ABC-123"][0] == "B999999999"  # ASIN 不被出厂覆盖
     assert rows["ABC-123"][1] == "https://user.url"  # 链接不被覆盖
@@ -178,6 +180,42 @@ async def test_merge_asin_db_from_backup(_tmp_asin_db, tmp_path):
     # 新番号追加
     assert rows["NEW-001"][0] == "B000000003"
     assert rows["NEW-001"][1] == "https://www.amazon.co.jp/dp/B000000003"
+    # 合并后按番号排序
+    assert order == ["ABC-123", "DEF-456", "NEW-001"]
+    wb.close()
+
+
+@pytest.mark.asyncio
+async def test_merge_asin_db_from_backup_resorts(_tmp_asin_db, tmp_path):
+    """合并新增行后，用户库整体按番号（前缀字母 + 数字）重排。"""
+    import openpyxl
+
+    from mdcx.core.amazon_database import merge_asin_db_from_backup
+
+    # 用户库：乱序番号（SSNI 在前、ABC 在后）
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.append(["影片番号", "ASIN 编号", "影片链接", "商品标题", "封面 URL", "搜索关键词"])
+    ws.append(["SSNI-804", "B000000010", "", "", "", ""])
+    ws.append(["ABC-123", "B000000020", "", "", "", ""])
+    wb.save(_tmp_asin_db)
+    wb.close()
+
+    # 出厂库：新增 MMD-001（应排到 ABC 与 SSNI 之间）
+    backup_path = tmp_path / "backup.xlsx"
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.append(["影片番号", "ASIN 编号", "影片链接", "商品标题", "封面 URL", "搜索关键词"])
+    ws.append(["MMD-001", "B000000030", "", "", "", ""])
+    wb.save(backup_path)
+    wb.close()
+
+    merge_asin_db_from_backup(backup_path, _tmp_asin_db)
+
+    wb = load_workbook(_tmp_asin_db)
+    ws = wb.active
+    numbers = [ws.cell(row=r, column=1).value for r in range(2, ws.max_row + 1)]
+    assert numbers == ["ABC-123", "MMD-001", "SSNI-804"]
     wb.close()
 
 

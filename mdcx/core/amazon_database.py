@@ -31,12 +31,56 @@ def _get_default_excel_path() -> Path:
     return userdata_dir / "amazon_asin_database.xlsx"
 
 
+def _asin_sort_key(row: tuple) -> tuple:
+    """ASIN 库按番号排序键：前缀字母升序 + 数字升序；无法解析的放最后。"""
+    import re
+
+    n = str(row[0]) if row and row[0] is not None else ""
+    m = re.match(r"^([A-Za-z]+)[-_]?(\d+)", n)
+    if not m:
+        return (chr(0x10FFFF), n)
+    return (m.group(1).upper(), int(m.group(2)))
+
+
+def _resort_asin_worksheet(local_path: Path) -> None:
+    """读取 ASIN 库全部数据行，按番号排序后重建工作簿并重新格式化。
+
+    用重建（而非原地 sort_rows）避免 delete_rows 的 max_row 虚高/空行残留，
+    复用 _format_asin_worksheet 保持表头样式/边框/超链接/auto_filter 一致。
+    """
+    import openpyxl
+    from openpyxl import Workbook
+
+    wb = openpyxl.load_workbook(local_path, read_only=True, data_only=True)
+    ws = wb.active
+    header = [c.value for c in ws[1]]
+    rows = [
+        tuple(r[:6])
+        for r in ws.iter_rows(min_row=2, max_col=6, values_only=True)
+        if r and r[0] is not None and str(r[0]).strip()
+    ]
+    wb.close()
+
+    rows.sort(key=_asin_sort_key)
+
+    new_wb = Workbook()
+    new_ws = new_wb.active
+    new_ws.title = ws.title
+    new_ws.append(header)
+    for r in rows:
+        new_ws.append(list(r))
+    _format_asin_worksheet(new_ws)
+    new_wb.save(local_path)
+    new_wb.close()
+
+
 def merge_asin_db_from_backup(backup_path: Path, local_path: Path) -> None:
     """把出厂 ASIN 库的增量同步进已存在的用户库（按番号去重，只增不删、不覆盖用户已有值）。
 
     出厂库随软件版本更新（新增/修正番号→ASIN 映射），老用户的用户库不会自动获得
     这些改进。此函数在启动时把出厂库中「用户库没有的番号」完整追加，给「用户库
     已有但字段空缺」的条目补全，绝不覆盖用户已填的值、绝不删除用户库任何行。
+    合并产生新增行时，合并后按番号（前缀字母 + 数字）整体重排并重新格式化。
 
     用出厂库文件 md5 作为合并标记写入 local_path 同目录的 .asin_db_merge_marker，
     出厂库内容未变时跳过，避免每次启动重复扫描。
@@ -96,6 +140,9 @@ def merge_asin_db_from_backup(backup_path: Path, local_path: Path) -> None:
             wb.save(local_path)
         wb.close()
         write_file_atomic(marker_path, backup_hash, "utf-8")
+        if added:
+            # 有新增行才整体重排（纯字段补全不改变行数与顺序，无需重排）
+            _resort_asin_worksheet(local_path)
         if added or filled:
             LogBuffer.log().write(f"  ℹ️ [ASIN 数据库] 出厂库增量合并: 新增 {added} 条, 补全 {filled} 个字段")
     except Exception as e:
