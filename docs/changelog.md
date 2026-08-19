@@ -42,9 +42,11 @@
 - **crawl CLI 代理白名单失效**：`mdcx/cmd/crawl.py` 构造 `AsyncWebClient` 时漏传 `proxy_sites`，导致 `--proxy` 参数实际不生效。两处调用补传 `proxy_sites`，与 GUI 路径一致；新增回归测试
 - **crawl CLI 失败仍返回 exit 0**：`_crawl` 与 `_fetch_async` 业务失败时不控制退出码。任一失败抛 `typer.Exit(1)`；新增退出码回归测试
 - **javdb_api 搜索 q 参数丢失**：`_fetch_search` 硬编码 `/search?all=1&page=1` 丢弃番号，改为透传 URL 的 path+query；新增回归测试
+- **dmm_new 图片校验 zip(strict=True) 脆弱耦合**：`_sanitize_image_list` 中 `remaining_candidates` 与 `remaining_results` 配对依赖 `asyncio.gather` 默认不返回异常保证长度一致，若协程被取消或 gather 签名改变会抛 ValueError 崩溃。改为非 strict，不足时自动截断
 
 ### 清理
 
+- **删除 AVWikiDB 别名查询死代码**：`tmdb_actor.fetch_avwiki_aliases` 全站被 Cloudflare 拦截（403）已不可达，UI 补别名入口早已改走 minnano，该函数无业务调用方（仅测试引用）。删除函数及配套 `_avwiki_rate_limiter`/`_avwiki_session` 模块级对象、`tests/test_avwiki_aliases.py`
 - **文件移动冗余分支**：`file.py` "are the same file" 两分支代码相同，合并
 - **Gfriends 缓存重复写入**：`emby_actor_manager` 先 wb 写原始字节再原子写展开 JSON，去掉首次写入直接解析展开
 - **CF 后退避死分支**：`web_async` `sleep_after_cf_bypass` 恒为 False 的日志分支，删除

@@ -269,7 +269,7 @@ class DmmCrawler(GenericBaseCrawler[DMMContext]):
                     for index, image_url in remaining_candidates
                 ]
             )
-            for (index, _), validated in zip(remaining_candidates, remaining_results, strict=True):
+            for (index, _), validated in zip(remaining_candidates, remaining_results, strict=False):
                 validated_by_index[index] = validated
 
         valid_urls = []
