@@ -12,7 +12,7 @@ mdcx/
 ├── controllers/       # 控制器（主窗口、海报裁剪）
 │   └── main_window/   # 主窗口逻辑（~3400 行）
 ├── core/              # 核心业务（刮削器、NFO、命名、图片、翻译等）
-├── crawlers/          # 45 个网站爬虫 + 基类框架
+├── crawlers/          # 47 个网站爬虫 + 基类框架
 ├── gen/               # 自动生成的枚举
 ├── models/            # 数据模型（FileInfo、CrawlerResult 等）
 ├── tools/             # 工具（演员数据库、Emby 同步、字幕等）
@@ -28,7 +28,7 @@ mdcx/
 UI 层 (PyQt6)         → 界面展示、用户操作
 控制器层               → 事件处理、配置管理、信号调度
 核心业务层             → 刮削器、NFO 生成、翻译、图片处理
-爬虫框架               → 45 个爬虫，统一基类
+爬虫框架               → 47 个爬虫，统一基类
 基础设施层             → HTTP 客户端、文件系统、OpenCV
 ```
 
@@ -166,7 +166,7 @@ ASIN 数据库（Excel `amazon_asin_database.xlsx`），搜索到的 ASIN 与番
 - **异步 HTTP**：httpx（默认）+ curl-cffi（指纹伪装）
 - **浏览器指纹**：6 种 TLS 指纹（Chrome 124/131/136、Firefox 133/135），按请求类型动态调整，定期轮换
 - **限流**：每个域名独立令牌桶，默认 8 req/s，失败自动退避重试
-- **Cloudflare Bypass**：内置 cloakbrowser 隐身 Chromium，自动绕过 CF 防护页，无需 license key
+- **Cloudflare Bypass**：通过 `trawl_adapter.py` 把请求翻译给外部 CF 服务（TRAWL `/scrape` 或 FlareSolverr `/v1`），自动绕过 CF 防护页
 - **代理**：HTTP/HTTPS/SOCKS5，按"走代理网站"域名路由（默认含 amazon.co.jp, m.media-amazon.com, xcity.jp, dmm.co.jp, minnano-av.com）
 
 ## 配置系统
@@ -187,7 +187,7 @@ ASIN 数据库（Excel `amazon_asin_database.xlsx`），搜索到的 ASIN 与番
 - Pillow + opencv-contrib-python-headless（图片处理）
 - Jinja2（命名模板）
 - openpyxl（Excel 读写）
-- cloakbrowser + CloudflareBypassForScraping（CF 绕过）
+- uvicorn（外部 CF 服务适配层）
 
 ## 测试
 

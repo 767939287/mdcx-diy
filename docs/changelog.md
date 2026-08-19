@@ -2,14 +2,33 @@
 
 ## v2.0.6 (2026-08-17)
 
+### 功能
+
+- **新增 avmoo / avheat 爬虫**：avmoo（有码，jav.data 命名空间）、avheat（欧美，wav.data 命名空间）。这两个站点与 avsox 同属 tellme.pw AIO 平台，已改为 Vue SPA + JSON API，页面 HTML 只是壳，数据全部走 API：search（POST JSON 数组 body）+ getMovie（movieId）两步。新增共享基类 `AioSiteCrawler` 封装统一流程
+- **avsox 爬虫改为 API 方式**：旧 HTML 解析（#waterfall）因站点改版已失效，改用 javu.data 命名空间的 API 流程并补充简介字段
+- **tellme.pw 动态地址统一获取**：新增 `get_aio_domain()` 从 `tellme.pw/{site}` 导航页解析 `__AIO_SITE_URLS__`，带 1 天缓存、三站互相兜底，修复 avsox 旧地址源（tellme.pw/avsox 已 403）
+- **检测网络适配动态域名/镜像/API 类爬虫**：新增 `check_urls()` 支持镜像与动态域名站点多地址检测（主站 + 镜像）；重写 `_run` 的 API 类爬虫（avmoo/avheat/avsox/missav_api）改走真实刮削探测，不再误报"无法自动探测"；javlibrary 检测改用动态直连地址，不再打已失效的 javlibrary.com；avsox/avheat 指定各自探针番号
+- **移除内置 CF Bypass 服务**：删除 cloakbrowser + cf_bypasser 内置服务（local_server.py），过 CF 统一走外部服务（TRAWL `/scrape` 或 FlareSolverr `/v1`）；移除 `cf_bypass_auto` 配置与 UI 开关，移除 Chromium 下载/预热/随包逻辑，打包体积与运行内存显著减小
+
+### 重构
+
+- **Amazon 标题匹配函数抽为模块级**：`get_big_pic_by_amazon` 内 11 个嵌套匹配函数（build_number_regex / clean_amazon_title_for_compare / normalize_title_for_compare / calculate_title_confidence / get_media_priority / is_supported_pic_ver / strip_trailing_media_noise / count_actor_group_matches / text_has_target_number / build_expected_titles / get_best_title_confidence）抽为 `mdcx/core/amazon_match.py` 模块级函数，闭包变量改为显式参数，可被批量采集脚本直接 import 复用；用 git HEAD 版本逐函数对比验证行为一致
+
+### 工程质量
+
+- 新增 `tests/crawlers/test_aio_sites.py`（avmoo/avheat/avsox 三站 API 流程与请求格式）与 `tests/core/test_amazon_match.py`（匹配函数单元测试）
+- 更新 `tests/test_network_check.py` 的爬虫探测测试（重写 `_run` 爬虫走真实刮削探测）
+
+### 文档
+
+- 更新 README / FEATURES / USER_GUIDE / CONFIGURATION / DEVELOPMENT：网站数量 45→47（新增 avmoo/avheat）、CF 说明改为外部服务（TRAWL/FlareSolverr）、移除内置 Bypass 相关描述、更新默认代理站点列表
+
 ### 修复
 
 - **翻译引擎说明文字重影**：v2.0.5 新建的 `label_baidu_hint`（百度提示）被放到 `gridLayout_32` col0（标签列，仅 ~130px），长说明不换行向右溢出进入 col1，被 col1 的 `label_60` 不透明背景遮挡，露出前半截产生重影。改为 `label_baidu_hint` 跨整行（col0-1）+ `setWordWrap(True)`，合并两段文案为一句综合说明，移除/隐藏 `label_60`
 - **配置保存 Windows 拒绝访问**：`_write_config_text` 的 `os.replace` 一次失败即抛异常，对 Windows 上常见的瞬时占用（杀软实时扫描 `.tmp`）/只读属性/权限不足零容错，导致「配置保存失败，软件已保持运行」。改为多级回退：重试 6 次（瞬时锁）→ 去只读属性 → 删目标改名 → 直接覆盖写，最后仍失败抛带中文操作指引的 `PermissionError`，所有走 `manager.save()` 的配置/资源文件（不止 `studios.json`）均受益
 - **修复 Emby 演员管理器窗口遮挡主窗口 + 按钮无反应（issue #38）**：`open_emby_actor_manager`/`tool_handlers.pushButton_emby_actor_manager_clicked` 由模态 `dialog.exec()` 改为 `dialog.show()` 非模态，并给 `EmbyActorManagerDialog` 加 `WindowMinimizeButtonHint`，窗口可最小化、不再盖死主窗口。修复 GUI 主线程直接 `executor.run()` 同步阻塞（全局单 loop 被长任务占满 + 网络慢时主窗口整个卡死）：`_on_connect`/`_on_fetch` 的 `get_media_folders`/`_on_fetch_finished` 的 `get_gfriends_index` 改 `executor.submit` + 自定义信号回传结果，`ActorDetailDialog` 的加载现有头像/获取头像/获取简介/单演员同步 4 处改后台执行 + `_detail_done` 信号回主线程更新 UI（并消除协程内直接碰 QWidget 的跨线程违规），统一 `_future_result_or` 兜底 Future 异常
-
 ### 工程/文档
-
 - 更新默认代理站点列表与使用说明文档
 - **UI 几何回归测试**：新增 `tests/test_ui_geometry.py`，offscreen 实例化 `Ui_MDCx`，遍历所有 `QGridLayout` 并强制激活布局（切换各 tab + 祖先链 setVisible），断言同 layout 内任意两个可见直接子控件包围盒无交集，挡住「同行同列多 item / 跨列长 label 溢出被邻列遮挡」类重影回归（与既有 XML 静态结构测试互补）
 - **百度翻译控件收口到 .ui**：`checkBox_baidu`/`label_baidu_appid`/`lineEdit_baidu_appid`/`label_baidu_key`/`lineEdit_baidu_key`/`label_baidu_hint` 从 `main_window.py::_setup_baidu_translate_ui` 运行时注入改为直接写进 `MDCx.ui`（`gridLayout_32` row4-6 + `horizontalLayout_20`），删除动态注入方法与运行时增高逻辑（增高固化到 .ui：`groupBox_trans`/`layoutWidget_2`/`scrollAreaWidgetContents_fanyi` +70、9 个兄弟 groupBox y+70）。`.ui` 成为唯一权威源，几何回归测试从此覆盖这些控件

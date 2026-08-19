@@ -102,7 +102,7 @@ export QT_QPA_PLATFORM=xcb
 
 **有的网站一直失败**：可能是被墙了。试试：
 - 启用免墙通道（在刮削设置里加 missav_api、r18dev、javdb_api）
-- 或者开启内置 CF Bypass（设置 → 网络 → 启用内置 Bypass）
+- 或者配置外部 CF 服务（设置 → 网络 → 外部 CF 服务，填 TRAWL / FlareSolverr 地址）
 
 **刮出来的标题是日文/英文**：设置 → 翻译，开启翻译并选 Google 或 Bing。
 

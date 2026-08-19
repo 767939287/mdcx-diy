@@ -17,7 +17,7 @@ MDCx 支持的功能全景。只想快速上手的话，先看 [QUICKSTART.md](Q
 | 欧美 | 数字.数字.数字.数字 | 123.45.67.89 |
 | 素人 | SIRO- 等 | SIRO-1234 |
 
-### 全部 45 个爬虫
+### 全部 47 个爬虫
 
 | 爬虫名 | 数据源 | 说明 |
 |--------|-------|------|
@@ -51,7 +51,9 @@ MDCx 支持的功能全景。只想快速上手的话，先看 [QUICKSTART.md](Q
 | xcity | xcity.jp | 综合（仅能有码） |
 | love6 | love6.tv | FC2 番号（FC2） |
 | kin8 | kin8.info | 无码（无码专属） |
-| avsox | avsox.com | 无码（无码专属） |
+| avsox | avsox.click | 无码（无码专属） |
+| avmoo | avmoo.shop | 有码信息站（仅能有码） |
+| avheat | avheat.shop | 欧美（欧美） |
 | airav_cc | airav.cc | 无码（综合：有码+无码） |
 | avsex | avsex.com | 无码（综合：有码+无码） |
 | fc2 | fc2.com | FC2 官网（FC2） |
@@ -70,12 +72,12 @@ MDCx 支持的功能全景。只想快速上手的话，先看 [QUICKSTART.md](Q
 > 注意：missav_api、r18dev、javdb_api 这三条是免墙通道，默认没启用，需要去「设置→站点」手动加。
 
 **各爬虫适用类型**（刮削类型默认网站源，可在「设置→站点」调整）：
-- **仅能有码**：dmm、dmm_api、libredmm、r18dev、avbase、faleno、giga、dahlia、xcity、prestige、mgstage、fantastica、cableav、getchu、getchu_dmm、javlibrary、jav321、freejavbt、lulubar
+- **仅能有码**：dmm、dmm_api、libredmm、r18dev、avbase、faleno、giga、dahlia、xcity、prestige、mgstage、fantastica、cableav、getchu、getchu_dmm、javlibrary、jav321、freejavbt、lulubar、avmoo
 - **无码专属**：avsox、kin8
 - **综合（有码+无码）**：javbus、javdb、javdb_api、javdb_app、missav、missav_api、javday、mmtv、airav_cc、avsex、official、iqqtv
 - **素人**：mgstage、prestige、javbus、javdb 系、dmm、dmm_api、avbase、mmtv、jav321、missav、missav_api、mywife、iqqtv
 - **FC2**：fc2、fc2club、fc2hub、fc2ppvdb、love6、javdb 系
-- **欧美**：theporndb
+- **欧美**：theporndb、avheat
 - **国产**：hdouban、cnmdb、madouqu、iqqtv、mdtv、javday、hscangku
 
 ### DMM 官方高清直链
@@ -209,8 +211,8 @@ MDCx 支持的功能全景。只想快速上手的话，先看 [QUICKSTART.md](Q
 ## 九、网络与反爬
 
 - **HTTP 客户端**：curl-cffi 模拟浏览器 TLS 指纹，6 种浏览器画像自动轮换
-- **代理**：支持 HTTP/HTTPS/SOCKS5 代理；仅对"走代理网站"域名列表中的站点走代理（默认含 amazon.co.jp, m.media-amazon.com, xcity.jp, minnano-av.com, avbase.net, javbus.com, javdb.com, javlibrary.com, r18.dev, mgstage.com, prestige-av.com, seesaawiki.jp, avsox.click, kin8tengoku.com, github.com, raw.githubusercontent.com, google.com），其他直连
-- **Cloudflare 绕过**：内置隐身 Chromium（cloakbrowser）自动绕过 CF 防护页，无需 license key；可选配置独立 Bypass 代理；内置 Bypass 服务带健康状态机（连续请求失败自动标记不可用并停止转发，冷却后可自动恢复）
+- **代理**：支持 HTTP/HTTPS/SOCKS5 代理；仅对"走代理网站"域名列表中的站点走代理（默认含 amazon.co.jp, m.media-amazon.com, xcity.jp, minnano-av.com, avbase.net, javbus.com, javdb.com, javlibrary.com, r18.dev, mgstage.com, prestige-av.com, seesaawiki.jp, avsox.click, avsox.com, avmoo.shop, avmoo.com, avheat.shop, avheat.com, kin8tengoku.com, github.com, raw.githubusercontent.com, google.com），其他直连
+- **Cloudflare 绕过**：通过外部 CF 服务（TRAWL `/scrape` 或 FlareSolverr `/v1`）自动绕过 CF 防护页，MDCx 自动拉起协议适配层翻译请求，无需内置浏览器；可选配置独立 Bypass 代理；Bypass 服务失效时自动跳过避免空等
 - **Bypass 落地域名白名单**：可配置可信落地域名列表（逗号分隔，支持 `*.example.com` 子域通配），校验 Bypass 服务落地/重定向后的最终域名，防止第三方服务被劫持时把恶意页面当数据；留空表示不校验
 - **限流**：每个网站独立令牌桶限流，自适应退避重试
 - **指纹伪装**：完整 sec-ch-ua、Accept-Language 等请求头，按请求类型动态调整
