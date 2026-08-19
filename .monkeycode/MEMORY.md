@@ -24,6 +24,13 @@
   - **check 按需运行，不重复空跑**：最后一次代码改动后运行一次 `uv run check --skip-hook-install`（ruff format --check + ruff check + mypy mdcx/ + pytest --tb=short -m "not network" -x + check_actor_db），全绿后如代码再无改动，`git push` 前**不重跑**，直接推；只有"全绿 check 之后又改过代码"才需在 push 前重跑。失败则修复再推，不强行推送。
   - **不安装 pre-commit 钩子/工具**：`.pre-commit-config.yaml` 两个 ruff 钩子 stages 为 `pre-merge-commit, pre-push`，普通 commit 不触发，`pre-commit install` 对其无效；`uv run check` 已覆盖其作用。
   - **changelog 随改动更新（推送前）**：每次代码改动在 commit 里同时更新 `docs/changelog.md` 顶部未发版版本条目（当前 v2.0.6）——新增功能/修复/重构按内容分类记录。未发版不新建版本号；同主题/相似条目合并进同一行，避免重复。发版时才新建下一版本条目。提交信息与该 changelog 更新保持一致。
+  - **提交检查清单（每次 commit 固定执行，防遗漏）**：准备提交时按固定顺序核对，每步是硬性环节而非可选：
+    1. `git status`/`git diff` 看本次改了什么；
+    2. 若有新功能/修复/重构 → **先更新 changelog**（未发版条目按分类补记，同主题合并），再 `git add`；
+    3. 若改依赖/打包/运行时引入三方依赖 → 按「Windows exe 打包依赖约束」清单核对 build.py 与 workflow；
+    4. 若涉及功能/站点/CF/配置项 → 检查 UI 说明文字/弹窗/文档是否需同步（见「功能改动同步 UI 说明文字、弹窗与文档」）；
+    5. 最后 `git add` + `git commit` + `git push`。
+    此清单优先级：changelog、打包核对、UI/文档同步都必须在 push 前完成，不允许"提交后补"。
 
 [Windows exe 打包依赖约束]
 - Date: 2026-08-03（2026-08-18 更新）
