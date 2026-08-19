@@ -32,10 +32,9 @@ cd C:\Tools\trawl-portable-1.4.0-windows
 ## 配置 MDCx
 
 1. 打开 MDCx → 设置 → 网络
-2. **取消勾选** "启用内置 CF Bypass"
-3. 在 "外部 CF 服务" 输入框中填写 TRAWL 服务地址：`http://localhost:8191`
-4. 右侧后端类型保持默认 `trawl`（走 TRAWL 原生 `/scrape` 接口）
-5. 保存设置
+2. 在 "外部 CF 服务" 输入框中填写 TRAWL 服务地址：`http://localhost:8191`
+3. 右侧后端类型保持默认 `trawl`（走 TRAWL 原生 `/scrape` 接口）
+4. 保存设置
 
 > **注意**：请填写 TRAWL 的**根地址**（如 `http://localhost:8191`），**不要**填写 `/v1` 路径。
 > MDCx 会在本地自动拉起协议适配层，把内部请求翻译成 TRAWL 的 `/scrape` 接口，

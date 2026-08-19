@@ -163,24 +163,47 @@ uv sync --locked          # 装依赖（需 Python >= 3.13）
 
 ---
 
-## 第 4 部分：外置 CF 服务过 CF 能力
+## 第 4 部分：TRAWL Windows 便携版专项验证（重点）
 
-> 本机有住宅 IP 时最接近真实场景。验证 TRAWL / FlareSolverr 解真实 CF 挑战。
+> TRAWL 便携版是 Windows 端外部 CF 服务的主要载体，必须本机实测。详见 `scripts/windows/USAGE.md`。
 
-### 4.1 启动外部 CF 服务
-- **TRAWL**：按 `scripts/windows/` 便携版说明启动，默认 `:8191`。
-- **FlareSolverr**（Docker）：`docker run -d -p 8191:8191 ghcr.io/flaresolverr/flaresolverr:latest`。
+### 4.1 便携版下载与启动
+- [ ] 从 Releases 下载 `trawl-portable-*-windows.zip`，解压
+- [ ] 运行 `download-bun.bat`（首次需装 Bun 时）
+- [ ] 双击 `start-trawl.bat` 启动，预期输出：
+  ```
+  [api] TRAWL starting on :8191  (pool: 1 browsers)
+  [api] session cache connected  (Tier 2 fast-path enabled)
+  ```
+- [ ] **内置 Redis 生效**：日志含 `Tier 2 fast-path enabled`（Redis 6380 自动拉起）
+- [ ] **内置补丁生效**：`trawl-goto-timeout.patch` 应用成功（Tier3/4 超时 30s→90s）
+- [ ] 服务监听 `http://localhost:8191`，浏览器池正常（Camoufox 加载）
 
-### 4.2 MDCx 配置
-GUI 设置 → 网络 → 外部 CF 服务填 `http://127.0.0.1:8191`，后端类型选 `trawl` 或 `flaresolverr`。
+### 4.2 便携版健康检查
+- [ ] `curl http://localhost:8191/health` 或 GUI 检测网络 → 外部 CF 服务项显示正常
+- [ ] 重启后 Redis/补丁仍自动生效（幂等）
 
-### 4.3 过 CF 测试目标（真实 CF 挑战站）
-| 目标 | 说明 | trawl | flaresolverr |
-|---|---|---|---|
-| fc2hub / javten 首页 | 轻挑战 | | |
-| fc2hub / javten 搜索页 | Turnstile | | |
-| lulubar | JS 渲染 + 挑战 | | |
-| f101w.com（javlibrary 镜像） | 标准 CF 挑战 | | |
+### 4.3 MDCx 配置（注意：内置 CF 已移除）
+GUI 设置 → 网络 → 外部 CF 服务填 `http://127.0.0.1:8191`，后端类型选 `trawl`。
+> 不要填 `/v1` 路径（MDCx 适配层检测的是 `/cookies`/`/html`/`/mirror` 端点）。
+
+---
+
+## 第 5 部分：外置 CF 服务过 CF 能力
+
+> 本机有住宅 IP 时最接近真实场景。用 **TRAWL 便携版**（第 4 部分）验证解真实 CF 挑战。
+> （本机无 Docker，不测原生 FlareSolverr；若以后有 Docker 可按需补测。）
+
+### 5.1 MDCx 配置
+GUI 设置 → 网络 → 外部 CF 服务填 `http://127.0.0.1:8191`，后端类型选 `trawl`。
+
+### 5.2 过 CF 测试目标（真实 CF 挑战站）
+| 目标 | 说明 | trawl 结果 |
+|---|---|---|
+| fc2hub / javten 首页 | 轻挑战 | |
+| fc2hub / javten 搜索页 | Turnstile | |
+| lulubar | JS 渲染 + 挑战 | |
+| f101w.com（javlibrary 镜像） | 标准 CF 挑战 | |
 
 ---
 
@@ -205,5 +228,6 @@ GUI 设置 → 网络 → 外部 CF 服务填 `http://127.0.0.1:8191`，后端�
 | Emby 集成 | /4 | |
 | 演员库维护 | /4 | |
 | 代理行为 | /2 | |
+| TRAWL 便携版启动/Redis/补丁 | /4 | |
 
 > 结论建议：哪些站确定失效可考虑精简、哪些需代理、外置 CF 服务实际过 CF 能力、本机专项有无问题。

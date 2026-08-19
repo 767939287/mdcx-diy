@@ -92,9 +92,9 @@ cat > README.txt << 'EOF'
   3. 确认浏览器: http://localhost:8191/health
 
 【配置 MDCx】
-  设置 → 网络 → Cloudflare Bypass:
-    启用内置 CF Bypass: [ ] 取消勾选
-    CF Bypass 地址: http://localhost:8191/v1
+  设置 → 网络:
+    外部 CF 服务: http://localhost:8191
+    后端类型: trawl（默认；原生 FlareSolverr 选 flaresolverr）
 
 【API 端点】
   - http://localhost:8191/        首页
