@@ -161,6 +161,17 @@
   - 绕过：`manager._replace_config(manager.config.model_copy(deep=True))` 后设 `cfg.use_proxy=False`、`cfg.proxy=""` 再 `_replace_config(cfg)`。直接赋值不生效（Computed client import 时已构建），仅内存态不影响配置文件。
   - 真实用户环境有可用代理，**不要据此改产品代码**。
 
+[devbox 跑 uv run check 需装系统 GUI 库]
+- Date: 2026-08-19
+- Context: devbox 首次跑 `uv run check --skip-hook-install` 时 pytest 收集阶段 ImportError（PyQt6 依赖的系统库缺失）
+- Category: 环境配置
+- Instructions:
+  - uv 通过 pip3 安装：`pip3 install uv`（装到 `/usr/local/bin/uv`），首次 `uv run` 自动拉 Python 3.13/3.14 + 装依赖到 `.venv/`。
+  - devbox 缺 PyQt6 运行所需的系统库，pytest import `mdcx.image`（依赖 PyQt6.QtGui/QtCore）时报 `libglib-2.0.so.0`/`libfontconfig.so.1`/`libGL.so.1` 等 not found。
+  - 一次性补装：`DEBIAN_FRONTEND=noninteractive apt-get install -y libglib2.0-0 libgl1 libegl1 libdbus-1-3 libfontconfig1 libxkbcommon0 libxkbcommon-x11-0 libxcb-xinerama0 libxcb-cursor0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-randr0 libxcb-render-util0 libxcb-shape0`（先 `apt-get update`）。
+  - 装齐后全量 check 可跑通：ruff format --check + ruff check + mypy mdcx/ + pytest（1095 passed）+ check_actor_db + check_info_db + check_thread_safety。
+  - `uv run` 执行的 Python 实际版本可能是 3.14.x（uv 取满足 `requires-python` 的最新版），项目要求 `>=3.13.4`。
+
 [GitHub CI 失败 runs 批量清理流程]
 - Date: 2026-08-14
 - Context: 批量删除 Actions 页 CI/CD Pipeline #579-#591 共 13 个失败 run
