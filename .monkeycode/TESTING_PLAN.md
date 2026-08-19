@@ -167,9 +167,9 @@ uv sync --locked          # 装依赖（需 Python >= 3.13）
 
 > TRAWL 便携版是 Windows 端外部 CF 服务的主要载体，必须本机实测。详见 `scripts/windows/USAGE.md`。
 
-### 4.1 便携版下载与启动
-- [ ] 从 Releases 下载 `trawl-portable-*-windows.zip`，解压
-- [ ] 运行 `download-bun.bat`（首次需装 Bun 时）
+### 4.1 便携版启动
+- [ ] 便携包已预下载（`trawl-portable-*-windows.zip`），确认版本
+- [ ] 解压后运行 `download-bun.bat`（首次需装 Bun 时）
 - [ ] 双击 `start-trawl.bat` 启动，预期输出：
   ```
   [api] TRAWL starting on :8191  (pool: 1 browsers)
