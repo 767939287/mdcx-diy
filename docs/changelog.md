@@ -43,6 +43,7 @@
 - **crawl CLI 失败仍返回 exit 0**：`_crawl` 与 `_fetch_async` 业务失败时不控制退出码。任一失败抛 `typer.Exit(1)`；新增退出码回归测试
 - **javdb_api 搜索 q 参数丢失**：`_fetch_search` 硬编码 `/search?all=1&page=1` 丢弃番号，改为透传 URL 的 path+query；新增回归测试
 - **dmm_new 图片校验 zip(strict=True) 脆弱耦合**：`_sanitize_image_list` 中 `remaining_candidates` 与 `remaining_results` 配对依赖 `asyncio.gather` 默认不返回异常保证长度一致，若协程被取消或 gather 签名改变会抛 ValueError 崩溃。改为非 strict，不足时自动截断
+- **TRAWL 便携版路径/补丁打包缺陷**：`start-trawl.bat` 检测的 `bun\bun.exe`/`redis\redis-server.exe` 与实际嵌套路径（`bun\bun-windows-x64\bun.exe`、`redis\Redis-*\redis-server.exe`）不符，导致 Bun/Redis 检测失败静默跳过；`package-trawl.yml` 打包时漏复制 `trawl-goto-timeout.patch`，运行时兜底应用分支永不触发。start-trawl.bat 改用通配查找定位实际 exe 路径（兼容扁平与嵌套两种结构），download-bun.bat 解压后扁平化到 `bun/` 根目录，package-trawl.yml 打包时同步扁平化 Bun/Redis 目录并补复制 patch 文件
 
 ### 清理
 

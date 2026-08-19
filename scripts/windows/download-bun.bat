@@ -43,6 +43,14 @@ echo [2/3] 解压...
 powershell -Command "Expand-Archive -Path 'bun.zip' -DestinationPath '.' -Force"
 del bun.zip
 
+:: 扁平化：bun-windows-x64.zip 解压后是 bun-windows-x64\bun.exe，
+:: 提到 bun/ 根目录，与 start-trawl.bat 的 bun\bun.exe 检测路径一致
+if not exist "bun.exe" (
+    for /d %%D in ("bun-windows-*") do (
+        if exist "%%D\bun.exe" move "%%D\bun.exe" "." >nul 2>&1
+    )
+)
+
 echo [3/3] 验证...
 if exist "bun.exe" (
     echo.

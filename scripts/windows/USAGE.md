@@ -54,9 +54,10 @@ cd C:\Tools\trawl-portable-1.4.0-windows
 
 ### 内置补丁（自动生效）
 
-便携包已内置 `trawl-goto-timeout.patch`，`start-trawl.bat` 首次运行 clone 源码后自动应用，
-把 TRAWL Tier3/4 的页面加载超时上限从 30s 提升到 90s，改善 JS 渲染站点（如 lulubar 搜索页）
-的挑战通过率。补丁无法应用时会回退原版并提示。
+便携包源码打包时已应用 `trawl-goto-timeout.patch`，把 TRAWL Tier3/4 的页面加载
+超时上限从 30s 提升到 90s，改善 JS 渲染站点（如 lulubar 搜索页）的挑战通过率。
+`start-trawl.bat` 启动时还会检测包内 `trawl-goto-timeout.patch`，对未应用补丁的
+源码（如用户单独 clone 的源码）兜底应用；已应用或无法应用时自动跳过。
 
 ### 浏览器池
 
@@ -125,11 +126,14 @@ BROWSER_POOL_SIZE=1
 trawl-portable-1.4.0-windows/
 ├── start-trawl.bat          # 启动脚本
 ├── download-bun.bat         # Bun 下载脚本
+├── trawl-goto-timeout.patch # 稳定性补丁（Tier3/4 超时 30s→90s）
 ├── README.md                # 本说明
 ├── .env                     # 配置文件
 ├── .env.example             # 配置示例
 ├── bun/                     # Bun 运行时 (~50MB)
+│   └── bun.exe
 ├── redis/                   # 内置 Redis（会话缓存，自动启动）
+│   └── redis-server.exe
 ├── .cache/
 │   └── camoufox/            # Camoufox 浏览器 (~663MB)
 ├── src/                     # TRAWL 源码

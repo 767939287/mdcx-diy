@@ -134,6 +134,8 @@ jobs:
           Copy-Item "scripts\windows\download-bun.bat" $PACKAGE
           Copy-Item "scripts\windows\README.md" $PACKAGE
           Copy-Item "scripts\windows\USAGE.md" $PACKAGE
+          # 复制补丁文件：start-trawl.bat 运行时对单独 clone 的源码兜底应用
+          Copy-Item "scripts\windows\trawl-goto-timeout.patch" $PACKAGE
           
           # 打包 Bun 运行时
           $BunVersion = bun --version
@@ -143,10 +145,27 @@ jobs:
           New-Item -ItemType Directory -Force -Path "$PACKAGE\bun" | Out-Null
           Expand-Archive -Path "bun.zip" -DestinationPath "$PACKAGE\bun" -Force
           Remove-Item "bun.zip" -Force
+          # 扁平化：bun-windows-x64.zip 解压后是 bun-windows-x64\bun.exe，
+          # 提到 bun/ 根目录，与 start-trawl.bat 的 bun\bun.exe 检测路径一致
+          $NestedBun = Get-ChildItem -Path "$PACKAGE\bun\bun-windows-*\bun.exe" -ErrorAction SilentlyContinue
+          if ($NestedBun) {
+            Move-Item $NestedBun.FullName "$PACKAGE\bun\bun.exe" -Force
+            Get-ChildItem -Path "$PACKAGE\bun" -Directory | Where-Object { $_.Name -like "bun-windows-*" } | Remove-Item -Recurse -Force
+            Write-Host "已扁平化 Bun 目录结构"
+          }
           
           # 复制 Redis 到包内，由 start-trawl.bat 自动启动
           New-Item -ItemType Directory -Force -Path "$PACKAGE\redis" | Out-Null
           Copy-Item -Path "redis-dist\*" -Destination "$PACKAGE\redis\" -Recurse -Force
+          # 扁平化：Redis-x.y.z-Windows-x64-msys2.zip 解压后是 Redis-x.y.z-Windows-x64-msys2\redis-server.exe，
+          # 提到 redis/ 根目录，与 start-trawl.bat 的 redis\redis-server.exe 检测路径一致
+          $NestedRedis = Get-ChildItem -Path "$PACKAGE\redis\Redis-*\redis-server.exe" -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
+          if ($NestedRedis) {
+            $RedisDir = $NestedRedis.DirectoryName
+            Move-Item "$RedisDir\*" "$PACKAGE\redis\" -Force
+            Remove-Item $RedisDir -Recurse -Force
+            Write-Host "已扁平化 Redis 目录结构"
+          }
           Write-Host "已包含 Redis"
           
           # 复制缓存的 Camoufox 到包内，并由 start-trawl.bat 的 CAMOUFOX_INSTALL_DIR 指向
