@@ -149,6 +149,21 @@ Jinja2 模板引擎，支持条件渲染、智能截断。三类命名目标：�
 5. 在 `mdcx/config/enums.py` 的 `Website` 枚举中加新值
 6. 在 `mdcx/crawlers/__init__.py` 中导入并注册
 
+### 镜像域名轮询
+
+`mdcx/utils/domain_rotate.py` 的 `DomainRotator` 提供镜像域名轮询：声明类属性 `_domains` 后，请求失败（连接/SSL/超时等可重试错误）自动切换下一镜像域名重试。`_init_rotator(domains, custom_url)` 支持用户自定义 URL 优先。已接入：javbus（12 个镜像）、freejavbt、mmtv、xcity。
+
+### API 类爬虫（AioSiteCrawler）
+
+部分站点是 Vue SPA + JSON API（页面 HTML 只是壳），无法用 `_parse_search_page` 解析 HTML。此类爬虫重写 `_run` 完全自定义流程，`_generate_search_url`/`_parse_search_page` 抛 `NotImplementedError` 占位。
+
+- **AioSiteCrawler**（`mdcx/crawlers/aio_site.py`）：tellme.pw AIO 系列站点（avmoo/avsox/avheat）共享基类，封装 search（POST JSON 数组 body）+ getMovie（movieId）两步 API 流程、动态域名解析、字段映射。子类只需指定 `namespace`/`domain_site`/`mosaic`/`fallback_domain`。
+- 参考实现：`missav_api.py`（Recombee API）、`aio_site.py`。
+
+### 网络检测（check_urls）
+
+`GenericBaseCrawler.check_urls()` 返回网络检测用的 URL 列表，默认返回 `_domains` 镜像列表或 `base_url_()`；动态域名站点覆写返回动态解析地址（avmoo/avheat/avsox 用 `get_aio_domain`，javlibrary 用 `get_javlibrary_domain`）。`mdcx/core/network_check.py` 据此对镜像/动态站点生成多地址检测项。
+
 ## 缓存系统
 
 ### TMDB 缓存
@@ -168,6 +183,28 @@ ASIN 数据库（Excel `amazon_asin_database.xlsx`），搜索到的 ASIN 与番
 - **限流**：每个域名独立令牌桶，默认 8 req/s，失败自动退避重试
 - **Cloudflare Bypass**：通过 `trawl_adapter.py` 把请求翻译给外部 CF 服务（TRAWL `/scrape` 或 FlareSolverr `/v1`），自动绕过 CF 防护页
 - **代理**：HTTP/HTTPS/SOCKS5，按"走代理网站"域名路由（默认含 amazon.co.jp, m.media-amazon.com, xcity.jp, dmm.co.jp, minnano-av.com）
+
+### TRAWL / FlareSolverr 适配层（mdcx/cf_bypass/trawl_adapter.py）
+
+外部 CF 服务（TRAWL、FlareSolverr）与 mdcx 所需的 cf_bypasser 协议（`/cookies` `/html` `/mirror`）不兼容，适配层负责翻译：
+
+- **协议转换**：暴露 cf_bypasser 三端点，内部按后端调用外部服务并归一化为统一结构。
+  - `trawl` 后端：走 TRAWL 原生 `/scrape` API（返回 statusCode/responseHeaders/body，信息完整）。
+  - `flaresolverr` 后端：走 POST `/v1`（`cmd=request.get/post`），从 `solution.headers` 还原响应头。
+- **启用**：配置 `cf_bypass_trawl_url` + `cf_bypass_trawl_backend`（默认 trawl），`AsyncWebClient` 自动在本地拉起 `TrawlAdapterServer`（随机端口 + uvicorn 子进程）。
+- **架构**：web_async 的 `_try_bypass_cloudflare` 只通过 `cf_bypass_url` 调本地 ASGI 服务端点，不区分内置/外部——`_ensure_local_bypass` 统一拉起适配层后设置 `cf_bypass_url`。
+- 内置 CF Bypass（cloakbrowser + cf_bypasser）已移除（v2.0.6），过 CF 统一走外部服务。
+
+### 动态域名
+
+- `mdcx/base/web.py::get_aio_domain(site)`：从 `tellme.pw/{site}` 导航页解析 `__AIO_SITE_URLS__`，带 1 天缓存、三站互相兜底，供 avmoo/avsox/avheat 使用。
+- `mdcx/base/web.py::get_javlibrary_domain()`：抓取 github.com/javlibcom 主页 `rel="nofollow me"` 链接提取最新直连地址，失败回退已知镜像。
+
+### 网络检测（mdcx/core/network_check.py）
+
+- 站点检测项由爬虫 `check_urls()` 动态生成（见"爬虫框架"章节）。
+- API 类爬虫（重写 `_run`）走真实刮削探测：`_probe_crawler_by_run` 直接 `crawler.run(input)` 验证刮削能力，而非解析 HTML。
+- 探针番号用 `SCRAPE_PROBE_NUMBER`（默认 SSNI-647），站点有收录类型限制时用爬虫 `probe_number` 类属性覆盖（如 avsox 用无码番号、avheat 用欧美番号）。
 
 ## 配置系统
 
