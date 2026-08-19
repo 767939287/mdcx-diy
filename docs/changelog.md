@@ -15,6 +15,7 @@
 - **tellme.pw 动态地址统一获取**：新增 `get_aio_domain()` 从 `tellme.pw/{site}` 导航页解析 `__AIO_SITE_URLS__`，带 1 天缓存、三站互相兜底，修复 avsox 旧地址源（tellme.pw/avsox 已 403）
 - **检测网络适配动态域名/镜像/API 类爬虫**：新增 `check_urls()` 支持镜像与动态域名站点多地址检测（主站 + 镜像）；重写 `_run` 的 API 类爬虫（avmoo/avheat/avsox/missav_api）改走真实刮削探测，不再误报"无法自动探测"；javlibrary 检测改用动态直连地址，不再打已失效的 javlibrary.com；avsox/avheat 指定各自探针番号
 - **移除内置 CF Bypass 服务**：删除 cloakbrowser + cf_bypasser 内置服务（local_server.py），过 CF 统一走外部服务（TRAWL `/scrape` 或 FlareSolverr `/v1`）；移除 `cf_bypass_auto` 配置与 UI 开关，移除 Chromium 下载/预热/随包逻辑，打包体积与运行内存显著减小
+- **站点定位说明**：为全部 47 个爬虫新增 `description` 定位说明（综合站/免 CF 通道/仅覆盖本厂/类型），站点下拉框与优先级弹窗列表项悬停展示 tooltip，帮助选站时快速了解站点定位
 
 ### 重构
 
