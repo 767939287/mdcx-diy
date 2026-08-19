@@ -409,7 +409,12 @@ def get_translator_skip_reason(translator: Translator) -> str | None:
         return f"{'、'.join(missing)} 未配置"
 
     if translator == Translator.BAIDU:
-        return _missing_reason([("APP ID", translate_config.baidu_appid), ("密钥", translate_config.baidu_key)])
+        return _missing_reason(
+            [
+                ("APP ID", translate_config.baidu_appid.strip()),
+                ("密钥", translate_config.baidu_key.strip()),
+            ]
+        )
     if translator == Translator.DEEPL:
         return _missing_reason([("DeepL API Key", translate_config.deepl_key)])
     if translator == Translator.DEEPLX:
@@ -436,13 +441,15 @@ async def _baidu_translate_message(msg: str, target_lang: str) -> tuple[list[str
         return [], ""
 
     translate_config = manager.config.translate_config
+    appid = translate_config.baidu_appid.strip()
+    key = translate_config.baidu_key.strip()
     salt = str(int(time.time() * 1000)) + str(random.randint(0, 9))
-    sign = hashlib.md5(f"{translate_config.baidu_appid}{msg}{salt}{translate_config.baidu_key}".encode()).hexdigest()
+    sign = hashlib.md5(f"{appid}{msg}{salt}{key}".encode()).hexdigest()
     data = {
         "q": msg,
         "from": "auto",
         "to": target_lang,
-        "appid": translate_config.baidu_appid,
+        "appid": appid,
         "salt": salt,
         "sign": sign,
     }
