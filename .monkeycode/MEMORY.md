@@ -2,14 +2,7 @@
 
 本文件记录用户的指令、偏好和教导，用于未来交互参考。
 
-## 格式
-
-- **用户指令条目**：`[摘要]` / `- Date` / `- Context` / `- Instructions: 逐行`
-- **项目知识条目**：同用户指令 + `- Category: [运维部署|构建方法|测试方法|排错调试|工作流协作|环境配置]`
-
-## 去重策略
-
-添加前先查重；重复则合并（更新 Context/Date），保持文件精简。
+格式：用户指令条目 `[摘要]`/`- Date`/`- Context`/`- Instructions`；项目知识条目附加 `- Category`。添加前查重，重复则合并（更新 Context/Date），保持精简。
 
 ## 条目
 
@@ -85,19 +78,12 @@
 - **需要回传结果时用自定义 Signal**：`run_in_background` 只恢复按钮不带结果。主线程阻塞调用（Emby 管理器 `_on_connect`/`_on_fetch`/`_on_fetch_finished`、ActorDetailDialog 的头像/简介/同步）改为 `executor.submit(coro)` + `add_done_callback(lambda fut: self.xxx_signal.emit(_future_result_or(fut, default)))`，协程**只返回结果不碰 QWidget**，主线程槽按结果更新 UI。`_future_result_or(future, default)` 兜底 Future 异常，避免回调里 `fut.result()` 抛到全局 loop 线程。模态弹窗 `exec()` 改非模态 `show()` + `WindowMinimizeButtonHint` 可最小化不遮挡主窗口（issue #38）。
 - **跨线程安全扫描**：`scripts/check_thread_safety.py` AST 扫 `async def` 体内直接操作 QWidget setter（setEnabled/setText/setGeometry 等）的违规，当前 0 违规。新增后台协程前跑一遍防回归。
 
-[刮削并发架构参考]
-- Date: 2026-08-03
-- Context: actor_db_tool 并发提速时发现刮削已有滑动窗口并发
+[并发与性能优化约束]
+- Date: 2026-08-03（2026-08-17 更新）
+- Context: 刮削并发架构 + 性能优化批次（8bda0e7）+ 启动数据库延迟加载（5733018）沉淀的可复用模式
 - Category: 构建方法
 - Instructions:
-  - 刮削是两层并发：文件间 `_run_tasks_with_limit`（滑动窗口 `asyncio.wait(FIRST_COMPLETED)`，并发=配置 thread_number）；文件内 `_call_crawlers` 多站点 `asyncio.gather`。慢常是单站点超时拖累。
-  - 新增异步批量工具优先用滑动窗口而非 `Semaphore+gather`（参考 `mdcx/tools/actor_db_tool.py`）：内存峰值低、取消响应快。
-
-[性能优化关键约束]
-- Date: 2026-08-17
-- Context: 性能优化批次（8bda0e7）+ 启动数据库延迟加载（5733018）沉淀的可复用模式
-- Category: 构建方法
-- Instructions:
+  - **刮削两层并发**：文件间 `_run_tasks_with_limit`（滑动窗口 `asyncio.wait(FIRST_COMPLETED)`，并发=配置 thread_number）；文件内 `_call_crawlers` 多站点 `asyncio.gather`。慢常是单站点超时拖累。新增异步批量工具优先用滑动窗口而非 `Semaphore+gather`（参考 `mdcx/tools/actor_db_tool.py`）：内存峰值低、取消响应快。
   - **httpx session 绑定全局 loop 是硬约束**：`computed.async_client` 的 httpx session 在全局 executor loop 创建，跨 loop 复用会破坏连接池/代理/CF-bypass 架构。网络请求必须留在全局 loop，不能为并发改多 loop（issue #38 评估过）。
   - **启动重型资源后台加载**：`Resources` 构造只做路径/图标/字典，XLSX 迁移合并加载走 `start_data_loading()` 后台线程（daemon）+ `ensure_data_ready()` 同步屏障（`threading.Event` + 加载错误捕获），业务入口首次访问前等待。GUI 首屏不被数据库加载阻塞。
   - **save_remain_list 后台写**：QTimer 触发时快照 `list(Flags.remain_list)` 后丢 daemon 线程，`threading.Lock` 防重复线程，失败保留 `can_save_remain` 下次重试；主线程不写盘。
@@ -107,26 +93,20 @@
   - **json_data_dic 有界**：OrderedDict 上限 2000，写时 `move_to_end` + 超限 `popitem(last=False)`，只淘汰结果缓存不影响 json_get_status。
   - **info_db 索引**：加载时 `_normalize_info_key`（大写+全半角）+ `_build_info_db_index`（setdefault 保跨行首个匹配）建 dict，查询 O(1)；`get_info_data` 在索引空时惰性重建兼容外部直接替换 info_db 的测试替身。
 
-[演员库结构与 TMDB 同步决策]
-- Date: 2026-08-04（2026-08-06 更新）
-- Context: 梳理本地 actor 数据分发读写路径；曾评估 AVdb 同步后弃用
+[演员库结构与清洗方法论（TMDB 校验）]
+- Date: 2026-08-04（2026-08-05、2026-08-06 更新）
+- Context: 梳理本地 actor 数据分发读写路径、提取男优名单去噪、TMDB 全量排查非 AV 演员；曾评估 AVdb 同步后弃用
 - Category: 运维部署
 - Instructions:
   - **两层 actor 库**：出厂模板 `resources/userdata/actor_database.xlsx`（git 跟踪，新用户首启复制到运行时目录）；运行时实际读写库 `manager.data_folder/userdata/actor_database.xlsx`（`mdcx/core/tmdb_actor.py:_get_db_path`，默认 git 忽略）。dev 环境 `data_folder` 指向 /workspace，运行时库是 `/workspace/userdata/`。
   - **改库分清目标**：给用户实际用改运行时库；进 git 作新装默认改出厂模板并提交。
   - `get_actor_data(name)`（`resources.py`）按名反查返回 `birth_date`/`bio`/`has_name`，是 Emby 补全等下游统一查询入口；`emby_actor_info._process_actor_async` 先本地后 wiki/minnano/ActressDB 兜底，返回 bit3(8) 表示本地命中。
   - **AVdb 已弃用**：GUI 入口 v2.0.5 移除，不再从 AVdb 同步；`sync_from_avdb` 与相关测试保留供脚本复用但不主动建议。与该条目相关的 AVdb 匹配/清洗细节均已过时，实施时以 TMDB 校验为准。
-
-[演员身份清洗方法论：男优名单与 TMDB 校验]
-- Date: 2026-08-04（2026-08-05 更新）
-- Context: 提取男优名单时噪声多易混入女优；又用 TMDB 全量排查非 AV 演员
-- Category: 构建方法
-- Instructions:
   - **男优名单**：`resources/userdata/male_actors.txt`（625 人），脚本 `scripts/build_male_actor_list.py` 可复现，文档 `docs/male_actor_list.md`。
   - actor 字段噪声：标签词/括号/多名字/`×`/`？`。清洗：括号拆解、超长(>8)剔除、标签黑名单、去后缀。
   - 女优混入是最大风险（レズ片把女优填进 actor）：用 actress 字段交叉验证（actress 次数 ≥ actor×0.5，或 actor≤3 且 actress>0 判女优）。原则宁漏勿误删。
   - 双通道清洗：`clean_male_actors`/`filter_male` = 名单精确匹配 + TMDB gender=2 校验（名单命中不重复请求 TMDB）。
-- **宁缺毋滥**：错误 id 比无 id 更糟。曾清除 7120 行孤儿 url + 删疑似非 AV 3447 行（出厂库 24243→20796），详见 changelog「TMDB 演员身份排查与清理」。
+  - **宁缺毋滥**：错误 id 比无 id 更糟。曾清除 7120 行孤儿 url + 删疑似非 AV 3447 行（出厂库 24243→20796），详见 changelog「TMDB 演员身份排查与清理」。
   - 沙箱访问 TMDB：`api.themoviedb.org` 直连被证书劫持，用 `api.tmdb.org` 域名 + `Host: api.themoviedb.org` 请求头（`_resolve_tmdb_config` 即此）。
 
 [openpyxl 删除行后 max_row 虚高与空行残留]
