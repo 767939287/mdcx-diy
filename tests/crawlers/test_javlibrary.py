@@ -46,22 +46,54 @@ def _detail_html(title: str, actor: str) -> str:
     """
 
 
+def _detail_html_with_tbody(title: str, actor: str) -> str:
+    """Selenium page_source 返回的 HTML 会被浏览器自动补全 <tbody> 标签。"""
+    return f"""
+    <html><body>
+      <div id="video_title"><h3><a>{title}</a></h3></div>
+      <div id="video_id"><table><tbody><tr><td class="text">FSDSS-200</td></tr></tbody></table></div>
+      <div id="video_cast"><table><tbody><tr><td class="text"><span><span class="star"><a>{actor}</a></span></span></td></tr></tbody></table></div>
+      <img id="video_jacket_img" src="//img.example.test/cover.jpg" />
+      <div id="video_genres"><table><tbody><tr><td class="text"><span><a>剧情</a></span></td></tr></tbody></table></div>
+      <div id="video_date"><table><tbody><tr><td class="text">2026-04-03</td></tr></tbody></table></div>
+      <div id="video_maker"><table><tbody><tr><td class="text"><span><a>制作商</a></span></td></tr></tbody></table></div>
+      <div id="video_label"><table><tbody><tr><td class="text"><span><a>发行商</a></span></td></tr></tbody></table></div>
+      <div id="video_length"><table><tbody><tr><td><span class="text">120</span></td></tr></tbody></table></div>
+      <div id="video_review"><table><tbody><tr><td><span class="score">(4.20)</span></td></tr></tbody></table></div>
+      <div id="video_director"><table><tbody><tr><td class="text"><span><a>导演A</a></span></td></tr></tbody></table></div>
+      <a href="userswanted.php?mode=add">99</a>
+    </body></html>
+    """
+
+
+def _make_input(number: str = "FSDSS-200", language: Language = Language.ZH_CN) -> CrawlerInput:
+    return CrawlerInput(
+        appoint_number="",
+        appoint_url="",
+        file_path=None,
+        mosaic="",
+        number=number,
+        short_number=number,
+        language=language,
+        org_language=language,
+    )
+
+
+@pytest.fixture(autouse=True)
+def _mock_dmm_upgrade(monkeypatch):
+    """Mock DMM 封面升级，避免测试网络请求。"""
+
+    async def fake_upgrade(ctx, number, cover, poster):
+        return cover, poster
+
+    monkeypatch.setattr("mdcx.crawlers.dmm_direct.upgrade_dmm_cover", fake_upgrade)
+
+
 @pytest.mark.asyncio
 async def test_javlibrary_crawler_keeps_jp_original_title_for_zh_cn():
     manager.config.set_field_language(CrawlerResultFields.TITLE, Language.ZH_CN)
     crawler = JavlibraryCrawler(client=FakeJavlibraryClient(), base_url="https://www.javlibrary.com")
-    res = await crawler.run(
-        CrawlerInput(
-            appoint_number="",
-            appoint_url="",
-            file_path=None,
-            mosaic="",
-            number="FSDSS-200",
-            short_number="FSDSS-200",
-            language=Language.ZH_CN,
-            org_language=Language.ZH_CN,
-        )
-    )
+    res = await crawler.run(_make_input())
 
     assert res.debug_info.error is None
     assert res.data is not None
@@ -85,6 +117,76 @@ async def test_javlibrary_crawler_keeps_jp_original_title_for_zh_cn():
     assert res.data.publisher == "发行商"
     assert res.data.thumb == "https://img.example.test/cover.jpg"
     assert res.data.wanted == "99"
+
+
+@pytest.mark.asyncio
+async def test_javlibrary_xpath_compat_with_tbody():
+    """验证 xpath 兼容 Selenium page_source 自动补全的 <tbody>。"""
+    from lxml import etree
+
+    html = _detail_html_with_tbody("FSDSS-200 Test Title", "女優A")
+    tree = etree.fromstring(html, etree.HTMLParser())
+
+    from mdcx.crawlers.javlibrary import (
+        get_actor,
+        get_cover,
+        get_director,
+        get_number,
+        get_publisher,
+        get_release,
+        get_runtime,
+        get_score,
+        get_studio,
+        get_tag,
+        get_title,
+    )
+
+    assert get_title(tree) == "FSDSS-200 Test Title"
+    assert get_number(tree, "FSDSS-200") == "FSDSS-200"
+    assert get_actor(tree) == "女優A"
+    assert get_tag(tree) == "剧情"
+    assert get_release(tree) == "2026-04-03"
+    assert get_runtime(tree) == "120"
+    assert get_score(tree) == "4.20"
+    assert get_studio(tree) == "制作商"
+    assert get_publisher(tree) == "发行商"
+    assert get_director(tree) == "导演A"
+    assert get_cover(tree) == "https://img.example.test/cover.jpg"
+
+
+@pytest.mark.asyncio
+async def test_javlibrary_xpath_compat_without_tbody():
+    """验证 xpath 兼容普通 HTTP 请求的无 <tbody> HTML。"""
+    from lxml import etree
+
+    html = _detail_html("FSDSS-200 Test Title", "女優A")
+    tree = etree.fromstring(html, etree.HTMLParser())
+
+    from mdcx.crawlers.javlibrary import (
+        get_actor,
+        get_cover,
+        get_director,
+        get_number,
+        get_publisher,
+        get_release,
+        get_runtime,
+        get_score,
+        get_studio,
+        get_tag,
+        get_title,
+    )
+
+    assert get_title(tree) == "FSDSS-200 Test Title"
+    assert get_number(tree, "FSDSS-200") == "FSDSS-200"
+    assert get_actor(tree) == "女優A"
+    assert get_tag(tree) == "剧情"
+    assert get_release(tree) == "2026-04-03"
+    assert get_runtime(tree) == "120"
+    assert get_score(tree) == "4.20"
+    assert get_studio(tree) == "制作商"
+    assert get_publisher(tree) == "发行商"
+    assert get_director(tree) == "导演A"
+    assert get_cover(tree) == "https://img.example.test/cover.jpg"
 
 
 def test_javlibrary_crawler_is_registered():
@@ -143,3 +245,95 @@ async def test_get_javlibrary_domain_uses_cache(monkeypatch):
     domain2 = await get_javlibrary_domain()
     assert domain2 == "https://www.f101w.com"
     web._JAVLIBRARY_DOMAIN_CACHE.clear()
+
+
+def test_selenium_cf_detection():
+    """测试 CF 挑战页检测。"""
+    from mdcx.cf_bypass.selenium_adapter import is_cf_html
+
+    assert is_cf_html("<html><head><title>Just a moment...</title></head></html>")
+    assert is_cf_html("<html><body>cf-chl challenge</body></html>")
+    assert is_cf_html("<html><body>Checking your browser before accessing</body></html>")
+    assert not is_cf_html("<html><body>Normal page content</body></html>")
+    assert not is_cf_html("<html><head><title>SSNI-804 Detail</title></head></html>")
+
+
+@pytest.mark.asyncio
+async def test_selenium_bypass_disabled_when_config_off(monkeypatch):
+    """配置关闭时 Selenium bypass 不触发，遇 CF 直接报错。"""
+    monkeypatch.setattr(manager.config, "cf_selenium_bypass", False)
+
+    selenium_called = False
+
+    async def fake_get_html(url, timeout=90):
+        nonlocal selenium_called
+        selenium_called = True
+        return None
+
+    monkeypatch.setattr("mdcx.cf_bypass.selenium_adapter.get_html", fake_get_html)
+    monkeypatch.setattr("mdcx.cf_bypass.selenium_adapter.is_available", lambda: True)
+
+    class FakeClientWithCF:
+        async def get_text(self, url, **kwargs):
+            return "<html><title>Just a moment...</title></html>", ""
+
+    crawler = JavlibraryCrawler(client=FakeClientWithCF(), base_url="https://www.javlibrary.com")
+    res = await crawler.run(_make_input(language=Language.JP))
+
+    assert res.data is None
+    assert res.debug_info.error is not None
+    assert "Cloudflare" in str(res.debug_info.error)
+    assert not selenium_called
+
+
+@pytest.mark.asyncio
+async def test_post_process_upgrades_dmm_cover(monkeypatch):
+    """post_process 调用 DMM 封面升级。"""
+    upgrade_called = False
+    upgrade_args = None
+
+    async def fake_upgrade(ctx, number, cover, poster):
+        nonlocal upgrade_called, upgrade_args
+        upgrade_called = True
+        upgrade_args = (number, cover, poster)
+        return "https://dmm.hd/cover.jpg", "https://dmm.hd/poster.jpg"
+
+    monkeypatch.setattr("mdcx.crawlers.dmm_direct.upgrade_dmm_cover", fake_upgrade)
+    monkeypatch.setattr("mdcx.crawlers.dmm_direct.is_uncensored_number", lambda n: False)
+
+    from mdcx.models.types import CrawlerResult
+
+    res = CrawlerResult(
+        number="SSNI-804",
+        mosaic="有码",
+        image_download=False,
+        actors=[],
+        all_actors=[],
+        directors=[],
+        extrafanart=[],
+        originalplot="",
+        originaltitle="",
+        outline="",
+        poster="",
+        publisher="",
+        release="",
+        runtime="",
+        score="0.0",
+        series="",
+        studio="",
+        tags=[],
+        thumb="https://original/cover.jpg",
+        title="test",
+        trailer="",
+        wanted="",
+        year="",
+        source="javlibrary",
+        external_id="",
+    )
+
+    crawler = JavlibraryCrawler(client=FakeJavlibraryClient(), base_url="https://www.javlibrary.com")
+    result = await crawler.post_process(None, res)  # type: ignore[arg-type]
+
+    assert upgrade_called
+    assert result.thumb == "https://dmm.hd/cover.jpg"
+    assert result.poster == "https://dmm.hd/poster.jpg"

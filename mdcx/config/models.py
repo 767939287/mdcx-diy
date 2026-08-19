@@ -723,6 +723,12 @@ class Config(BaseModel):
         description="逗号分隔的可信落地域名（支持 *.example.com 子域通配）。"
         "用于校验 bypass 服务返回/重定向后的最终 URL 域名，防止第三方服务被劫持时把恶意页面当数据。留空表示不校验。",
     )
+    cf_selenium_bypass: bool = Field(
+        default=True,
+        title="Selenium CF Bypass（JavLibrary）",
+        description="JavLibrary 遇 Cloudflare 时自动用 Selenium+Edge headless 过 CF。"
+        "需要 Windows 10/11 + Edge 浏览器，首次使用自动安装 selenium。",
+    )
     verify_ssl: bool = Field(default=True, title="HTTPS证书校验（关闭仅用于自签名代理/MITM调试）")
     timeout: int = Field(default=10, title="超时")
     retry: int = Field(default=3, title="重试")

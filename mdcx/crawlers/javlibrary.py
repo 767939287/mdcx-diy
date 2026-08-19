@@ -5,9 +5,11 @@ from typing import override
 from lxml import etree
 
 from ..base.web import _JAVLIBRARY_DOMAINS, get_javlibrary_domain
+from ..cf_bypass.selenium_adapter import is_cf_html as is_selenium_cf_html
 from ..config.enums import Language, Website
 from ..config.manager import manager
 from ..gen.field_enums import CrawlerResultFields
+from ..models.types import CrawlerResult
 from .base import BaseCrawler, Context, CrawlerData, CrawlerException, get_year
 from .base.types import split_csv
 
@@ -45,12 +47,12 @@ def get_title(html):
 
 
 def get_number(html, number):
-    result = html.xpath('//div[@id="video_id"]/table/tr/td[@class="text"]/text()')
+    result = html.xpath('//div[@id="video_id"]//td[@class="text"]/text()')
     return result[0] if result else number
 
 
 def get_actor(html):
-    result = html.xpath('//div[@id="video_cast"]/table/tr/td[@class="text"]/span/span[@class="star"]/a/text()')
+    result = html.xpath('//div[@id="video_cast"]//span[@class="star"]/a/text()')
     return str(result).strip(" []").replace("'", "").replace(", ", ",") if result else ""
 
 
@@ -60,37 +62,37 @@ def get_cover(html):
 
 
 def get_tag(html):
-    result = html.xpath('//div[@id="video_genres"]/table/tr/td[@class="text"]/span/a/text()')
+    result = html.xpath('//div[@id="video_genres"]//td[@class="text"]//span/a/text()')
     return str(result).strip(" []").replace("'", "").replace(", ", ",") if result else ""
 
 
 def get_release(html):
-    result = html.xpath('//div[@id="video_date"]/table/tr/td[@class="text"]/text()')
+    result = html.xpath('//div[@id="video_date"]//td[@class="text"]/text()')
     return str(result).strip(" []").replace("'", "").replace(", ", ",") if result else ""
 
 
 def get_studio(html):
-    result = html.xpath('//div[@id="video_maker"]/table/tr/td[@class="text"]/span/a/text()')
+    result = html.xpath('//div[@id="video_maker"]//td[@class="text"]/span/a/text()')
     return result[0] if result else ""
 
 
 def get_publisher(html):
-    result = html.xpath('//div[@id="video_label"]/table/tr/td[@class="text"]/span/a/text()')
+    result = html.xpath('//div[@id="video_label"]//td[@class="text"]/span/a/text()')
     return result[0] if result else ""
 
 
 def get_runtime(html):
-    result = html.xpath('//div[@id="video_length"]/table/tr/td/span[@class="text"]/text()')
+    result = html.xpath('//div[@id="video_length"]//span[@class="text"]/text()')
     return result[0] if result else ""
 
 
 def get_score(html):
-    result = html.xpath('//div[@id="video_review"]/table/tr/td/span[@class="score"]/text()')
+    result = html.xpath('//div[@id="video_review"]//span[@class="score"]/text()')
     return result[0].strip("()") if result else ""
 
 
 def get_director(html):
-    result = html.xpath('//div[@id="video_director"]/table/tr/td[@class="text"]/span/a/text()')
+    result = html.xpath('//div[@id="video_director"]//td[@class="text"]/span/a/text()')
     return result[0] if result else ""
 
 
@@ -217,10 +219,15 @@ class JavlibraryCrawler(BaseCrawler):
             ctx.debug(f"搜索地址[{language.value}]: {search_url}")
             ctx.debug_info.search_urls = [*(ctx.debug_info.search_urls or []), search_url]
             html_search, error = await self.async_client.get_text(search_url, use_proxy=self.use_proxy)
-            if html_search is None:
-                raise CrawlerException(f"请求错误: {error}")
-            if "Cloudflare" in html_search:
-                raise CrawlerException("搜索结果: 被 Cloudflare 5 秒盾拦截！")
+            if html_search is None or is_selenium_cf_html(html_search):
+                ctx.debug(f"搜索页遇 CF challenge，尝试 Selenium bypass: {search_url}")
+                selenium_html = await self._selenium_bypass(ctx, search_url)
+                if selenium_html:
+                    html_search = selenium_html
+                elif html_search is None:
+                    raise CrawlerException(f"请求错误: {error}")
+                else:
+                    raise CrawlerException("搜索结果: 被 Cloudflare 拦截，Selenium bypass 失败！")
             html = etree.fromstring(html_search, etree.HTMLParser())
             real_url = get_real_url(html, number, domain_2)
             if not real_url:
@@ -229,10 +236,15 @@ class JavlibraryCrawler(BaseCrawler):
         ctx.debug(f"番号地址[{language.value}]: {real_url}")
         ctx.debug_info.detail_urls = [*(ctx.debug_info.detail_urls or []), real_url]
         html_info, error = await self.async_client.get_text(real_url, use_proxy=self.use_proxy)
-        if html_info is None:
-            raise CrawlerException(f"请求错误: {error}")
-        if "Cloudflare" in html_info:
-            raise CrawlerException("搜索结果: 被 Cloudflare 5 秒盾拦截！")
+        if html_info is None or is_selenium_cf_html(html_info):
+            ctx.debug(f"详情页遇 CF challenge，尝试 Selenium bypass: {real_url}")
+            selenium_html = await self._selenium_bypass(ctx, real_url)
+            if selenium_html:
+                html_info = selenium_html
+            elif html_info is None:
+                raise CrawlerException(f"请求错误: {error}")
+            else:
+                raise CrawlerException("详情页: 被 Cloudflare 拦截，Selenium bypass 失败！")
 
         html_detail = etree.fromstring(html_info, etree.HTMLParser())
         title = get_title(html_detail)
@@ -266,6 +278,45 @@ class JavlibraryCrawler(BaseCrawler):
             external_id=real_url,
             wanted=get_wanted(html_detail),
         )
+
+    async def _selenium_bypass(self, ctx: Context, url: str) -> str | None:
+        """Selenium+Edge CF bypass fallback。
+
+        配置开关关闭或环境不可用时返回 None。
+        """
+        if not manager.config.cf_selenium_bypass:
+            ctx.debug("Selenium bypass 已在配置中关闭")
+            return None
+
+        from ..cf_bypass.selenium_adapter import get_html, is_available
+
+        if not is_available():
+            ctx.debug("Selenium bypass 不可用（无 Edge 或 selenium 未安装）")
+            return None
+
+        try:
+            html = await get_html(url)
+            if html and not is_selenium_cf_html(html):
+                ctx.debug("Selenium bypass 成功")
+                return html
+            ctx.debug("Selenium bypass 后仍含 CF 标记")
+            return None
+        except Exception as e:
+            ctx.debug(f"Selenium bypass 异常: {e}")
+            return None
+
+    @override
+    async def post_process(self, ctx: Context, res: CrawlerResult) -> CrawlerResult:
+        """DMM 高清封面升级，与 JavBus/JavDB 对齐。"""
+        number = (res.number or "").strip()
+        if number and not number.startswith("FC2"):
+            from ..crawlers.dmm_direct import is_uncensored_number, upgrade_dmm_cover
+
+            if not is_uncensored_number(number):
+                thumb, poster = await upgrade_dmm_cover(ctx, number, res.thumb, res.poster)
+                res.thumb = thumb
+                res.poster = poster
+        return res
 
     @override
     async def _generate_search_url(self, ctx: Context) -> list[str] | str | None:
