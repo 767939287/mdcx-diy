@@ -133,6 +133,7 @@ def _crawl(sites: list[Website], input: CrawlerInput, output: str | None, proxy:
         return await crawler.run(input)
 
     futures = [executor.submit(task(c)) for c in classes]
+    has_failure = False
     try:
         executor.wait_all()
 
@@ -140,6 +141,7 @@ def _crawl(sites: list[Website], input: CrawlerInput, output: str | None, proxy:
             print(f"\n[blue]====== Res from site: [bold]{sites[i]}[/bold] ======[/blue]")
             if f.exception():
                 print(f"[red]错误: {f.exception()}[/red]")
+                has_failure = True
                 continue
 
             res = f.result()
@@ -159,8 +161,12 @@ def _crawl(sites: list[Website], input: CrawlerInput, output: str | None, proxy:
                 print("[red]失败[/red]\n")
                 if res.debug_info.error:
                     print(f"[red]{res.debug_info.error}[/red]")
+                has_failure = True
     finally:
         executor.run(client.close())
+
+    if has_failure:
+        raise typer.Exit(1)
 
 
 site_help = "指定网站类型. 若未指定, 将尝试从 URL 自动检测. 若有相应 GenericBaseCrawler 实现, 将调用其 _fetch_detail 方法, 否则将直接使用 AsyncWebClient.get_text"
@@ -305,7 +311,7 @@ async def _fetch_async(
 
             if html is None:
                 console.print(f"[red]错误: 获取详情页失败 - {error}[/red]")
-                return
+                raise typer.Exit(1)
 
             progress.update(task, description="请求成功，正在保存...")
 
