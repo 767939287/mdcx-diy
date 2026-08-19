@@ -313,7 +313,6 @@ class JavdbApiCrawler(BaseCrawler):
             self.base_url = self._next_mirror()
             ctx.debug(f"JavdbApi {request_type} 失败: {old_url} -> 切换到 {self.base_url}")
         return None, last_error
-        self._last_page_request_at = time.monotonic()
 
     @override
     async def _fetch_search(self, ctx, url: str, use_browser: bool | None = False) -> tuple[str | None, str]:

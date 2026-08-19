@@ -39,7 +39,8 @@ async def test_http_request_with_retry_uses_single_network_attempt_per_outer_att
     assert response is None
     assert "已尝试 3 次" in error
     assert len(calls) == 3
-    assert all(call["retry_count"] == 1 for call in calls)
+    # 外层循环承担重试, 底层 retry_count=0 不叠加重试(每次外层尝试仅发 1 次网络请求)
+    assert all(call["retry_count"] == 0 for call in calls)
 
 
 def test_build_fanza_trailer_url_from_temporary_pv_mp4():

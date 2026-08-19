@@ -1672,8 +1672,6 @@ class AsyncWebClient:
                 # 重试前等待
                 if should_sleep_before_retry and attempt < retry_count - 1:
                     sleep_seconds = self._calc_retry_sleep_seconds(attempt, after_cf_bypass=sleep_after_cf_bypass)
-                    if sleep_after_cf_bypass and host:
-                        self._log_cf(f"⏳ bypass 后退避 {sleep_seconds:.2f}s", host)
                     await asyncio.sleep(sleep_seconds)
             return None, f"{method} {url} 失败: {error_msg}"
         except Exception as e:

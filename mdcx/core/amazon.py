@@ -1346,7 +1346,7 @@ async def get_big_pic_by_amazon(
         )
 
     def is_hd_candidate_width(width: int) -> bool:
-        return width >= 1770 or 1750 > width > 600 or not width
+        return width >= 600 or not width
 
     def candidate_is_hard_match(candidate: dict[str, object]) -> bool:
         if bool(candidate.get("detail_barcode_match")):

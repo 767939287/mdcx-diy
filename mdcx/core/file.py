@@ -186,18 +186,11 @@ async def move_movie(other: OtherInfo, file_info: FileInfo, file_path: Path, fil
         file_info.file_path = file_new_path
         return True
     if "are the same file" in error_info.lower():  # 大小写不同，win10 用raidrive 挂载 google drive 改名会出错
-        if file_info.cd_part:
-            temp_folder, temp_file = split_path(str(file_new_path))
-            if temp_file not in await aiofiles.os.listdir(temp_folder):
-                tmp_path = str(file_new_path) + ".MDCx.tmp"
-                await move_file_async(str(file_path), tmp_path)
-                await asyncio.to_thread(os.rename, tmp_path, str(file_new_path))
-        else:
-            temp_folder, temp_file = split_path(str(file_new_path))
-            if temp_file not in await aiofiles.os.listdir(temp_folder):
-                tmp_path = str(file_new_path) + ".MDCx.tmp"
-                await move_file_async(str(file_path), tmp_path)
-                await asyncio.to_thread(os.rename, tmp_path, str(file_new_path))
+        temp_folder, temp_file = split_path(str(file_new_path))
+        if temp_file not in await aiofiles.os.listdir(temp_folder):
+            tmp_path = str(file_new_path) + ".MDCx.tmp"
+            await move_file_async(str(file_path), tmp_path)
+            await asyncio.to_thread(os.rename, tmp_path, str(file_new_path))
         LogBuffer.log().write(f"\n 🍀 Movie done! \n 🙉 [Movie] {file_new_path}")
         file_info.file_path = file_new_path
         return True

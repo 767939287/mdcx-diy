@@ -33,9 +33,22 @@
 
 ### 修复
 
-- **crawl CLI 代理白名单失效**：`mdcx/cmd/crawl.py` 构造 `AsyncWebClient` 时漏传 `proxy_sites`，导致 `_is_proxy_host` 对任何 host 返回 False，`--proxy` 参数实际不生效（代理形同虚设）。两处调用补传 `proxy_sites`，与 GUI 路径（computed.py）行为一致；新增回归测试
-- **crawl CLI 失败仍返回 exit 0**：`_crawl` 与 `_fetch_async` 业务失败时只打印不控制退出码，脚本无法判断成败。`_crawl` 任一站点失败抛 `typer.Exit(1)`（成功返回 0），`_fetch_async` 详情页获取失败改 `raise typer.Exit(1)`；新增退出码回归测试
-- **javdb_api 搜索 q 参数丢失**：`_fetch_search` 收到含番号的搜索 URL 却硬编码成 `/search?all=1&page=1`（无 q），导致任何番号都搜索失败。改为从传入 url 提取 path + query（保留 `q=番号`），与 `_fetch_detail` 一致；新增回归测试
+- **网络检测取消崩溃**：`run_network_check` 取消时调用不存在的 `asyncio.Task.close()` 抛 AttributeError，改为 `pending.cancel()` 且跳过已完成任务，优雅终止
+- **详情页候选浪费**：基类 `_detail` 首个详情 URL 解析为 None 时直接返回，不尝试后续候选；改为解析失败继续尝试下一个
+- **dmm_new 双重重试叠加**：外层重试循环 + 底层 `retry_count=1` 相乘放大请求次数，底层改 `retry_count=0`（外层承担重试）
+- **javbus 搜索不走镜像轮换**：`get_real_url` 搜索请求用首个镜像且 us 类型硬编码 `javbus.hair`，改为镜像轮换重试
+- **Amazon 高清宽度空隙**：`is_hd_candidate_width` 区间 `[1750,1770)` 误判标准大图，改为 `width >= 600`
+- **minnano 标题校验失效**：精确匹配时详情页标题不含演员名仅告警仍返回，改为拒绝该候选继续尝试
+- **crawl CLI 代理白名单失效**：`mdcx/cmd/crawl.py` 构造 `AsyncWebClient` 时漏传 `proxy_sites`，导致 `--proxy` 参数实际不生效。两处调用补传 `proxy_sites`，与 GUI 路径一致；新增回归测试
+- **crawl CLI 失败仍返回 exit 0**：`_crawl` 与 `_fetch_async` 业务失败时不控制退出码。任一失败抛 `typer.Exit(1)`；新增退出码回归测试
+- **javdb_api 搜索 q 参数丢失**：`_fetch_search` 硬编码 `/search?all=1&page=1` 丢弃番号，改为透传 URL 的 path+query；新增回归测试
+
+### 清理
+
+- **文件移动冗余分支**：`file.py` "are the same file" 两分支代码相同，合并
+- **Gfriends 缓存重复写入**：`emby_actor_manager` 先 wb 写原始字节再原子写展开 JSON，去掉首次写入直接解析展开
+- **CF 后退避死分支**：`web_async` `sleep_after_cf_bypass` 恒为 False 的日志分支，删除
+- **javdb_api 不可达代码**：`_try_mirrors` return 后不可达的 `_last_page_request_at` 赋值，删除
 - **避免使用不支持的状态表情**：UI 中部分状态展示使用了某些环境不支持渲染的 emoji，替换为通用字符避免显示异常
 - **Windows 保存配置时黑色控制台窗口一闪而过**：保存/加载配置的日志调用 `platform.platform()`，在 Windows 上会执行 `cmd /c ver` 启动子进程，windowed 打包下每次闪黑色控制台窗口。`consts.py` 新增 `SYSTEM_INFO`（platform.uname()，无子进程，启动时算一次），save_config/load_config 改用之；local_server/trawl_adapter 的 uvicorn 子进程与 sync_gfriends 的 git pull 加 `CREATE_NO_WINDOW`
 - **翻译引擎说明文字重影**：v2.0.5 新建的 `label_baidu_hint`（百度提示）被放到 `gridLayout_32` col0（标签列，仅 ~130px），长说明不换行向右溢出进入 col1，被 col1 的 `label_60` 不透明背景遮挡，露出前半截产生重影。改为 `label_baidu_hint` 跨整行（col0-1）+ `setWordWrap(True)`，合并两段文案为一句综合说明，移除/隐藏 `label_60`

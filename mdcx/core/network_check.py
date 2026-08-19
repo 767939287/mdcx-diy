@@ -857,9 +857,9 @@ async def run_network_check(
         tasks = [asyncio.create_task(run_one(spec)) for spec in group_specs]
         for task in asyncio.as_completed(tasks):
             if cancel_event and cancel_event.is_set():
-                task.close()
                 for pending in tasks:
-                    pending.cancel()
+                    if not pending.done():
+                        pending.cancel()
                 await asyncio.gather(*tasks, return_exceptions=True)
                 elapsed = time.perf_counter() - start_time
                 for line in format_summary(results, elapsed, cancelled=True):

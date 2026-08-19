@@ -389,33 +389,42 @@ async def _upgrade_dmm_cover(ctx, number: str, cover_url: str, poster_url: str) 
 
 
 async def get_real_url(client, ctx: Context, number, url_type, javbus_url, headers):  # 获取详情页链接
+    # 搜索走镜像轮换: 优先当前 javbus_url, 失败/未命中时依次尝试其他镜像
     if url_type == "us":  # 欧美
-        url_search = "https://www.javbus.hair/search/" + number
-    elif url_type == "censored":  # 有码
-        url_search = javbus_url + "/search/" + number + "&type=&parent=ce"
-    else:  # 无码
-        url_search = javbus_url + "/uncensored/search/" + number + "&type=0&parent=uc"
+        base_candidates = ["https://www.javbus.hair", javbus_url]
+    else:
+        base_candidates = [javbus_url]
 
-    ctx.debug(f"搜索地址: {url_search}")
-    ctx.debug_info.search_urls.append(url_search)
-    html_search, error = await client.get_text(url_search, headers=headers)
-    if html_search is None:
-        raise CrawlerException(f"网络请求错误: {error}")
-    if "lostpasswd" in html_search:
-        raise CrawlerException("Cookie 无效！请重新填写 Cookie 或更新节点！")
+    for base in base_candidates:
+        if url_type == "us":
+            url_search = base + "/search/" + number
+        elif url_type == "censored":  # 有码
+            url_search = base + "/search/" + number + "&type=&parent=ce"
+        else:  # 无码
+            url_search = base + "/uncensored/search/" + number + "&type=0&parent=uc"
 
-    html = etree.fromstring(html_search, etree.HTMLParser())
-    url_list = html.xpath("//a[@class='movie-box']/@href")
-    for each in url_list:
-        each_url = each.upper().replace("-", "")
-        number_1 = "/" + number.upper().replace(".", "").replace("-", "")
-        number_2 = number_1 + "_"
-        if each_url.endswith(number_1) or number_2 in each_url:
-            ctx.debug(f"番号地址: {each}")
-            # 搜索结果 href 可能是根相对路径（如 /SSIS-538），直接请求会因 host 为空而失败，需补全为绝对 URL
-            if each.startswith("/"):
-                each = javbus_url + each
-            return each
+        ctx.debug(f"搜索地址: {url_search}")
+        ctx.debug_info.search_urls.append(url_search)
+        html_search, error = await client.get_text(url_search, headers=headers)
+        if html_search is None:
+            ctx.debug(f"搜索请求失败: {error}, 尝试下一镜像")
+            continue
+        if "lostpasswd" in html_search:
+            raise CrawlerException("Cookie 无效！请重新填写 Cookie 或更新节点！")
+
+        html = etree.fromstring(html_search, etree.HTMLParser())
+        url_list = html.xpath("//a[@class='movie-box']/@href")
+        for each in url_list:
+            each_url = each.upper().replace("-", "")
+            number_1 = "/" + number.upper().replace(".", "").replace("-", "")
+            number_2 = number_1 + "_"
+            if each_url.endswith(number_1) or number_2 in each_url:
+                ctx.debug(f"番号地址: {each}")
+                # 搜索结果 href 可能是根相对路径（如 /SSIS-538），直接请求会因 host 为空而失败，需补全为绝对 URL
+                if each.startswith("/"):
+                    each = base + each
+                return each
+        ctx.debug(f"镜像 {base} 未匹配到番号, 尝试下一镜像")
     raise CrawlerException("搜索结果: 未匹配到番号！")
 
 

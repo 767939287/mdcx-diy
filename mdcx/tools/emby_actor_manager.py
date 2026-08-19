@@ -402,17 +402,14 @@ async def get_gfriends_index() -> dict[str, str] | None:
         if filetree_response is None:
             signal.show_log_text("🔴 Gfriends 数据表获取失败！")
             return None
-        async with aiofiles.open(gfriends_json_path, "wb") as f:
-            await f.write(filetree_response)
-        signal.show_log_text("✅ Gfriends 数据表已缓存！")
         try:
-            async with aiofiles.open(gfriends_json_path, encoding="utf-8") as f:
-                data = json.loads(await f.read())
+            data = json.loads(filetree_response.decode("utf-8"))
             expanded = _expand(data)
             await write_file_atomic_async(
                 gfriends_json_path,
                 json.dumps(expanded, ensure_ascii=False, sort_keys=True, indent=4, separators=(",", ": ")),
             )
+            signal.show_log_text("✅ Gfriends 数据表已缓存！")
             return expanded
         except Exception:
             signal.show_log_text("🔴 Gfriends 数据表展开失败！")

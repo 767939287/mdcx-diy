@@ -425,7 +425,8 @@ class DmmCrawler(GenericBaseCrawler[DMMContext]):
         """
         max_attempts = max(int(manager.config.retry), 1)  # 从配置获取尝试次数
         request_kwargs = dict(kwargs)
-        request_kwargs["retry_count"] = 1
+        # 外层循环已承担重试, 底层不再重复重试, 避免 retry_count × max_attempts 叠加放大请求
+        request_kwargs["retry_count"] = 0
 
         last_error = None
 

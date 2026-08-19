@@ -757,6 +757,7 @@ async def _search_minnano_by_name(actor_name: str) -> tuple[str | None, str | No
                     )
                     if actor_name and actor_name not in detail_title:
                         LogBuffer.log().write(f"  ⚠️ [minnano] 详情页标题不含演员名: '{detail_title[:60]}'")
+                        continue  # 标题校验失败, 拒绝该候选, 继续尝试下一个
                     return mid, detail_html
 
     # 2. 模糊匹配名字（解决异体字/写法差异，如 绫瀬舞菜 vs あやせ舞菜）
