@@ -502,41 +502,53 @@ async def fetch_javdb_actor_info(actor_name: str) -> JavdbActorInfo | None:
         if not movies:
             return None
 
+        # 并发拉取前 5 部影片详情（原串行 for 循环是主要瓶颈）
         async with manager.acquire_computed() as computed:
-            for movie_summary in movies[:5]:
-                movie_id = movie_summary.get("id")
-                if not movie_id:
-                    continue
+            async def _fetch_movie_detail(movie_id: str) -> list[dict]:
                 detail_params = dict(base_params)
                 detail_url = f"{_API_BASE}/api/v4/movies/{movie_id}?{urlencode(detail_params)}"
                 detail_resp, detail_err = await computed.async_client.get_json(
                     detail_url, headers=headers, retry_count=1
                 )
                 if detail_resp is None:
+                    return []
+                actors = ((detail_resp.get("data") or {}).get("movie") or {}).get("actors")
+                return actors if isinstance(actors, list) else []
+
+            movie_ids = [m.get("id") for m in movies[:5] if m.get("id")]
+            actors_lists = await asyncio.gather(*[_fetch_movie_detail(mid) for mid in movie_ids])
+
+        # 在所有影片的演员列表中找匹配者，取其 actor_id 查演员详情
+        matched_actor_ids: list[str] = []
+        for actors in actors_lists:
+            for actor in actors:
+                if not isinstance(actor, dict):
                     continue
-                actors = ((detail_resp.get("data") or {}).get("movie") or {}).get("actors") or []
-                for actor in actors:
-                    if not isinstance(actor, dict):
-                        continue
-                    cand_name = (actor.get("name") or "").strip()
-                    if not cand_name or not _actor_name_matches(target, cand_name):
-                        continue
-                    actor_id = actor.get("id")
-                    if not actor_id:
-                        continue
-                    actor_params = dict(base_params)
-                    actor_url = f"{_API_BASE}/api/v1/actors/{actor_id}?{urlencode(actor_params)}"
-                    actor_resp, actor_err = await computed.async_client.get_json(
-                        actor_url, headers=headers, retry_count=1
-                    )
-                    if actor_resp is None:
-                        continue
-                    actor_data = (actor_resp.get("data") or {}).get("actor") or {}
-                    return JavdbActorInfo(
-                        name=(actor_data.get("name") or cand_name).strip(),
-                        name_zht=(actor_data.get("name_zht") or "").strip(),
-                        other_name=(actor_data.get("other_name") or "").strip(),
-                    )
+                cand_name = (actor.get("name") or "").strip()
+                if not cand_name or not _actor_name_matches(target, cand_name):
+                    continue
+                actor_id = actor.get("id")
+                if actor_id and actor_id not in matched_actor_ids:
+                    matched_actor_ids.append(actor_id)
+
+        if not matched_actor_ids:
+            return None
+
+        async with manager.acquire_computed() as computed:
+            for actor_id in matched_actor_ids:
+                actor_params = dict(base_params)
+                actor_url = f"{_API_BASE}/api/v1/actors/{actor_id}?{urlencode(actor_params)}"
+                actor_resp, actor_err = await computed.async_client.get_json(
+                    actor_url, headers=headers, retry_count=1
+                )
+                if actor_resp is None:
+                    continue
+                actor_data = (actor_resp.get("data") or {}).get("actor") or {}
+                return JavdbActorInfo(
+                    name=(actor_data.get("name") or "").strip(),
+                    name_zht=(actor_data.get("name_zht") or "").strip(),
+                    other_name=(actor_data.get("other_name") or "").strip(),
+                )
         return None
     except Exception:
         logger.debug("[javdb-actor] 查询失败: %s", target, exc_info=True)

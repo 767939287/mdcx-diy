@@ -1348,7 +1348,12 @@ async def run_actor_db_xlsx(
     linked_count = 0
 
     async with aiohttp.ClientSession() as client:
-        base_concurrency = 2 if mode == "link" else 5
+        if mode == "link":
+            base_concurrency = 2
+        elif mode == "fill_zh_javdb":
+            base_concurrency = 5
+        else:
+            base_concurrency = 5
         current_concurrency = base_concurrency
         consecutive_failures = 0
         consecutive_successes = 0
