@@ -982,6 +982,12 @@ def load_config(self: "MyMAinWindow"):
         self.Ui.lineEdit_local_library_path.setText(",".join(manager.config.local_library))
         # 演员名
         self.Ui.lineEdit_actors_name.setText(manager.config.actors_name)
+        self.Ui.lineEdit_actors_name.setPlaceholderText("波多野結衣, 水菜麗(无码), Angela White(欧美), 蜜柚(国产)")
+        self.Ui.lineEdit_actors_name.setToolTip(
+            "演员名后可用括号标注类型：(有码)、(无码)、(欧美)、(国产)，不标注默认有码。\n"
+            "多个演员用逗号分隔。\n"
+            "有码：libredmm → javbus兜底 | 无码：avsox → javbus兜底 | 欧美：avheat | 国产：iqqtv"
+        )
         # 网盘目录
         self.Ui.lineEdit_netdisk_path.setText(manager.config.netdisk_path)
         # 本地磁盘目录

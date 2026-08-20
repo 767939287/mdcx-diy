@@ -23,6 +23,7 @@
 - **检测网络适配动态域名/镜像/API 类爬虫**：新增 `check_urls()` 支持镜像与动态域名站点多地址检测（主站 + 镜像）；重写 `_run` 的 API 类爬虫（avmoo/avheat/avsox/missav_api）改走真实刮削探测，不再误报"无法自动探测"；javlibrary 检测改用动态直连地址，不再打已失效的 javlibrary.com；avsox/avheat 指定各自探针番号
 - **移除内置 CF Bypass 服务**：删除 cloakbrowser + cf_bypasser 内置服务（local_server.py），过 CF 统一走外部服务（TRAWL `/scrape` 或 FlareSolverr `/v1`）；移除 `cf_bypass_auto` 配置与 UI 开关，移除 Chromium 下载/预热/随包逻辑，打包体积与运行内存显著减小
 - **站点定位说明**：为全部 47 个爬虫新增 `description` 定位说明（综合站/免 CF 通道/仅覆盖本厂/类型），站点下拉框与优先级弹窗列表项悬停展示 tooltip，帮助选站时快速了解站点定位
+- **检查演员缺失番号多数据源重写**：「检查演员缺失番号」工具从单一 JAVBus 改为按演员类型分四路数据源——有码（libredmm xlsx href → fuzzy 搜索 → javbus searchstar 兜底）、无码（avsox getFilterMovies → javbus uncensored 兜底）、欧美（avheat getFilterMovies）、国产（iqqtv 演员页 num 分页 + title 提取番号）；演员名支持括号标注类型（如「水菜麗(无码)」「Angela White(欧美)」），不标注默认有码；javbus 使用 12 镜像轮询（与 JavbusCrawler 一致，DomainRotator 自动切换）；新增 `mdcx/tools/actor_sources.py` 封装各数据源的演员定位+番号拉取逻辑；UI 输入框增加 placeholder 与 tooltip 提示
 
 ### 重构
 

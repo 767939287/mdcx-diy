@@ -10,217 +10,83 @@ from typing import cast
 
 import aiofiles
 import aiofiles.os
-from lxml import etree
 
 from ..base.file import movie_lists
 from ..config.manager import manager
 from ..config.resources import resources
 from ..core.file import get_file_info_v2
-from ..crawlers.javbus import get_actress_video_list
 from ..models.flags import Flags
 from ..signals import signal
 from ..utils import get_used_time
 from ..utils.file import write_file_atomic_async
+from .actor_sources import (
+    _JavbusRotator,
+    fetch_censored,
+    fetch_guochan,
+    fetch_uncensored,
+    fetch_western,
+)
+
+_ACTOR_TYPE_PATTERN = re.compile(r"[（(]\s*(有码|无码|欧美|国产)\s*[)）]")
 
 
-async def _scraper_web(url):
-    async with manager.acquire_computed() as computed:
-        html, error = await computed.async_client.get_text(url)
-    if html is None:
-        signal.show_log_text(f"请求错误: {error}")
-        return ""
-    if "The owner of this website has banned your access based on your browser's behaving" in html:
-        signal.show_log_text(f"由于请求过多，javdb网站暂时禁止了你当前IP的访问！！可访问javdb.com查看详情！ {html}")
-        return ""
-    if "Cloudflare" in html:
-        signal.show_log_text("被 Cloudflare 5 秒盾拦截！请尝试更换cookie！")
-        return ""
-    return html
+def _parse_actor_entry(entry: str) -> tuple[str, str]:
+    """解析演员名条目，提取类型标注。返回 (演员名, 类型)。
 
-
-async def _get_actor_numbers(actor_url, actor_single_url):
+    格式: "波多野結衣" 或 "水菜麗(无码)" 或 "Angela White(欧美)"。
+    不标注的默认有码。
     """
-    获取演员的番号列表（使用JAVBus替代JAVDB）
-    """
-    from ..config.enums import Website
-
-    # 获取JAVBus基础URL
-    javbus_url = manager.config.get_site_url(Website.JAVBUS, "https://www.javbus.com")
-
-    # 获取单体番号
-    next_page = True
-    number_single_list = set()
-    i = 1
-    while next_page:
-        # 使用JAVBus的演员详情页URL格式
-        page_url = f"{actor_url}?page={i}"
-        async with manager.acquire_computed() as computed:
-            html, error = await computed.async_client.get_text(page_url)
-        if html is None:
-            if i == 1:  # 第一页就失败，可能是URL格式问题
-                # 尝试使用JAVBus格式的URL
-                page_url = f"{actor_url}?page={i}&t=s"
-                async with manager.acquire_computed() as computed:
-                    html, error = await computed.async_client.get_text(page_url)
-            if html is None:
-                return
-
-        # 检查是否被年龄验证挡住
-        if "你是否已經成年" in html or "Age Verification" in html:
-            signal.show_log_text("   提示：JAVBus需要年龄验证，请先在浏览器中访问并确认年龄")
-            return
-
-        # 检查是否有错误页面
-        if "404" in html or "Not Found" in html:
-            signal.show_log_text("   演员页面不存在或URL错误")
-            return
-
-        html_obj = etree.fromstring(html, etree.HTMLParser())
-        result = get_actress_video_list(html_obj, javbus_url)
-
-        if not result["videos"]:
-            break
-
-        for video in result["videos"]:
-            number_single_list.add(video["number"])
-
-        if not result["has_next"] or i >= 60:
-            next_page = False
-            if i == 60:
-                signal.show_log_text("   已达 60 页上限！！！（JAVBus 可能限制显示数量）")
-        i += 1
-
-    Flags.actor_numbers_dic[actor_single_url] = number_single_list
-
-    # 获取全部番号
-    next_page = True
-    i = 1
-    while next_page:
-        page_url = f"{actor_url}?page={i}"
-        html = await _scraper_web(page_url)
-        if len(html) < 1:
-            return
-
-        # 检查是否被年龄验证挡住
-        if "你是否已經成年" in html or "Age Verification" in html:
-            signal.show_log_text("   提示：JAVBus需要年龄验证，请先在浏览器中访问并确认年龄")
-            return
-
-        html_obj = etree.fromstring(html, etree.HTMLParser(encoding="utf-8"))
-        result = get_actress_video_list(html_obj, javbus_url)
-
-        if not result["videos"]:
-            break
-
-        for video in result["videos"]:
-            video_number = video["number"]
-            video_title = video["title"]
-            video_date = video["date"]
-            video_url = video["url"]
-
-            # 格式化日期
-            time_list = re.split(r"[./-]", video_date)
-            if len(time_list) >= 3:
-                if len(time_list[0]) == 2:
-                    video_date = f"{time_list[2]}/{time_list[0]}/{time_list[1]}"
-                else:
-                    video_date = f"{time_list[0]}/{time_list[1]}/{time_list[2]}"
-
-            # JAVBus可能不提供磁力链接信息，使用空字符串
-            download_info = "   "
-            single_info = "单体" if video_number in number_single_list else "\u3000\u3000"
-
-            Flags.actor_numbers_dic[actor_url].update(
-                {video_number: [video_number, video_date, video_url, download_info, video_title, single_info]}
-            )
-
-        if not result["has_next"] or i >= 60:
-            next_page = False
-            if i == 60:
-                signal.show_log_text("   已达 60 页上限！！！（JAVBus 可能限制显示数量）")
-        i += 1
+    entry = entry.strip()
+    m = _ACTOR_TYPE_PATTERN.search(entry)
+    if m:
+        actor_type = m.group(1)
+        name = _ACTOR_TYPE_PATTERN.sub("", entry).strip()
+        return name, actor_type
+    return entry, "有码"
 
 
-async def _get_actor_missing_numbers(actor_name, actor_url, actor_flag):
-    """
-    获取演员缺少的番号列表
-    """
-    start_time = time.time()
-    actor_single_url = actor_url + "?t=s"
+async def _fetch_actor_numbers(name: str, actor_type: str, rotator: _JavbusRotator) -> set[str] | None:
+    """按演员类型调用对应数据源拉取全部番号。"""
+    if actor_type == "无码":
+        return await fetch_uncensored(name, rotator)
+    if actor_type == "欧美":
+        return await fetch_western(name, rotator)
+    if actor_type == "国产":
+        return await fetch_guochan(name, rotator)
+    return await fetch_censored(name, rotator)
 
-    # 获取演员的所有番号，如果字典有，就从字典读取，否则去网络请求
-    if not Flags.actor_numbers_dic.get(actor_url):
-        Flags.actor_numbers_dic[actor_url] = {}
-        Flags.actor_numbers_dic[actor_single_url] = {}  # 单体作品
-        await _get_actor_numbers(actor_url, actor_single_url)  # 如果字典里没有该演员主页的番号，则从网络获取演员番号
 
-    # 演员信息排版和显示
-    actor_info = Flags.actor_numbers_dic.get(actor_url)
-    len_single = len(Flags.actor_numbers_dic.get(actor_single_url))
-    signal.show_log_text(
-        f"🎉 获取完毕！共找到 [ {actor_name} ] 番号数量（{len(actor_info)}）单体数量（{len_single}）({get_used_time(start_time)}s)"
-    )
-    if actor_info:
-        actor_numbers = actor_info.keys()
-        all_list = set()
-        not_download_list = set()
-        not_download_magnet_list = set()
-        not_download_cnword_list = set()
-        for actor_number in actor_numbers:
-            video_number, video_date, video_url, download_info, video_title, single_info = actor_info.get(actor_number)
-            if actor_flag:
-                video_url = video_title[:30]
-            space_char = "　"  # 全角空格
-            number_str = (
-                f"{video_date:>13}  {video_number:<10} {single_info}  {download_info:{space_char}>5}   {video_url}"
-            )
-            all_list.add(number_str)
-            if actor_number not in Flags.local_number_set:
-                not_download_list.add(number_str)
-                if "🧲" in download_info:
-                    not_download_magnet_list.add(number_str)
+async def _show_actor_missing_numbers(actor_name: str, actor_type: str, net_numbers: set[str]) -> None:
+    """对比网络番号与本地库，输出缺失列表。"""
+    local_set = Flags.local_number_set
+    cnword_set = Flags.local_number_cnword_set
 
-                if "🀄️" in download_info:
-                    not_download_cnword_list.add(number_str)
-            elif actor_number not in Flags.local_number_cnword_set and "🀄️" in download_info:
-                not_download_cnword_list.add(number_str)
+    missing = sorted(n for n in net_numbers if n not in local_set)
+    missing_cnword = sorted(n for n in missing if n in cnword_set)
 
-        all_list = sorted(all_list, reverse=True)
-        not_download_list = sorted(not_download_list, reverse=True)
-        not_download_magnet_list = sorted(not_download_magnet_list, reverse=True)
-        not_download_cnword_list = sorted(not_download_cnword_list, reverse=True)
+    type_tag = f"[{actor_type}]" if actor_type != "有码" else ""
+    _log = signal.show_log_text
+    _log(f"\n{'=' * 97}\n👩 {type_tag} {actor_name} 的全部网络番号({len(net_numbers)})...\n{'=' * 97}")
+    if net_numbers:
+        for each in sorted(net_numbers, reverse=True):
+            mark = "✓" if each in local_set else "✗"
+            sub = "🀄️" if each in cnword_set else ""
+            _log(f"   {each:<20} {mark} {sub}")
+    else:
+        _log("   没有找到任何番号...")
 
-        signal.show_log_text(f"\n👩 [ {actor_name} ] 的全部网络番号({len(all_list)})...\n{('=' * 97)}")
-        if all_list:
-            for each in all_list:
-                signal.show_log_text(each)
-        else:
-            signal.show_log_text("🎉 没有缺少的番号...\n")
+    _log(f"\n{'=' * 97}\n🔍 {type_tag} {actor_name} 本地缺失的番号({len(missing)})...\n{'=' * 97}")
+    if missing:
+        for each in missing:
+            sub = "🀄️" if each in cnword_set else ""
+            _log(f"   {each:<20} {sub}")
+    else:
+        _log("   没有缺失的番号，已全部收集！")
 
-        signal.show_log_text(f"\n👩 [ {actor_name} ] 本地缺失的番号({len(not_download_list)})...\n{('=' * 97)}")
-        if not_download_list:
-            for each in not_download_list:
-                signal.show_log_text(each)
-        else:
-            signal.show_log_text("🎉 没有缺少的番号...\n")
-
-        signal.show_log_text(
-            f"\n👩 [ {actor_name} ] 本地缺失的有磁力的番号({len(not_download_magnet_list)})...\n{('=' * 97)}"
-        )
-        if not_download_magnet_list:
-            for each in not_download_magnet_list:
-                signal.show_log_text(each)
-        else:
-            signal.show_log_text("🎉 没有缺少的番号...\n")
-
-        signal.show_log_text(
-            f"\n👩 [ {actor_name} ] 本地缺失的有字幕的番号({len(not_download_cnword_list)})...\n{('=' * 97)}"
-        )
-        if not_download_cnword_list:
-            for each in not_download_cnword_list:
-                signal.show_log_text(each)
-        else:
-            signal.show_log_text("🎉 没有缺少的番号...\n")
+    if missing_cnword:
+        _log(f"\n{'=' * 97}\n🀄️ {type_tag} {actor_name} 本地缺失的有字幕番号({len(missing_cnword)})...\n{'=' * 97}")
+        for each in missing_cnword:
+            _log(f"   {each}")
 
 
 async def check_missing_number(actor_flag):
@@ -305,23 +171,26 @@ async def check_missing_number(actor_flag):
 
     # 查询演员番号
     if manager.config.actors_name:
-        actor_list = re.split(r"[,，]", manager.config.actors_name)
+        raw_list = re.split(r"[,，]", manager.config.actors_name)
+        actor_entries = [_parse_actor_entry(e) for e in raw_list if e.strip()]
+        summary = ", ".join(f"{n}({t})" if t != "有码" else n for n, t in actor_entries)
         signal.show_log_text(
-            f"\n>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>\n🔍 需要查询的演员：\n   {', '.join(actor_list)}"
+            f"\n>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>\n🔍 需要查询的演员：\n   {summary}"
         )
-        for actor_name in actor_list:
-            if not actor_name:
+        rotator = _JavbusRotator()
+        for actor_name, actor_type in actor_entries:
+            signal.show_log_text(
+                f"\n>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>\n⏳ 查询 [ {actor_name} ]({actor_type}) 的所有番号列表..."
+            )
+            try:
+                net_numbers = await _fetch_actor_numbers(actor_name, actor_type, rotator)
+            except Exception as e:
+                signal.show_log_text(f"   查询出错: {e}")
                 continue
-            actor_url = actor_name if "http" in actor_name else resources.get_actor_data(actor_name).get("href")
-            if actor_url:
-                signal.show_log_text(
-                    f"\n>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>\n⏳ 从 JAVBus 获取 [ {actor_name} ] 的所有番号列表..."
-                )
-                await _get_actor_missing_numbers(actor_name, actor_url, actor_flag)
+            if net_numbers:
+                await _show_actor_missing_numbers(actor_name, actor_type, net_numbers)
             else:
-                signal.show_log_text(
-                    f"\n🔴 未找到 [ {actor_name} ] 的主页地址，你可以填写演员的 JAVBus 主页地址替换演员名称..."
-                )
+                signal.show_log_text(f"\n🔴 未找到 [ {actor_name} ] 的作品，请检查演员名或类型标注是否正确")
     else:
         signal.show_log_text("\n🔴 没有要查询的演员！")
 
