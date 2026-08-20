@@ -233,7 +233,9 @@ class Scraper:
             signal.show_log_text("\n ⏰ Start time: " + time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
 
         # 断点续刮：过滤掉已完成且 mtime 未变的文件；恢复上次失败的未超限文件（跨会话重试）
-        if cache.is_usable():
+        # 读取模式（main_mode==4）本质是读已有结果，不参与断点续刮的跳过/恢复逻辑，
+        # 否则会导致读取模式只能看到「mtime 变化」的文件，且读完即被标记 done 导致下次读不到。
+        if cache.is_usable() and manager.config.main_mode != 4:
             try:
                 existing = set(movie_list)
                 cache.cleanup_missing(existing)
@@ -497,7 +499,9 @@ class Scraper:
                     + file_info.definition
                 )
                 signal.show_list_name("succ", show_data, number)
-                if self._state_cache and self._state_cache.is_usable():
+                # 读取模式不写缓存：读取模式只读已有 NFO/结果，不应标记文件为 done，
+                # 否则下次读取模式或普通模式会被断点续刮跳过。
+                if self._state_cache and self._state_cache.is_usable() and manager.config.main_mode != 4:
                     try:
                         summary = {
                             "number": number,
@@ -545,7 +549,7 @@ class Scraper:
                 Flags.failed_list.append((fail_file_path, error_msg))
                 await self._failed_file_info_show(str(Flags.fail_count), fail_file_path, error_msg)
                 signal.view_failed_list_settext.emit(f"失败 {Flags.fail_count}")
-                if self._state_cache and self._state_cache.is_usable():
+                if self._state_cache and self._state_cache.is_usable() and manager.config.main_mode != 4:
                     try:
                         self._state_cache.set_failed(
                             file_path,
