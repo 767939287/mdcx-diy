@@ -91,6 +91,12 @@ async def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--batch", type=int, default=BATCH_SIZE, help="每批处理条数")
     parser.add_argument("--state", type=str, default=str(STATE_FILE), help="状态文件路径")
+    parser.add_argument(
+        "--max-runtime",
+        type=int,
+        default=2820,
+        help="最长运行秒数，到时后保存 state 优雅退出（默认 2820s≈47min，留余量避免后台 1h 超时被杀）",
+    )
     args = parser.parse_args()
 
     state_file = Path(args.state)
@@ -127,6 +133,13 @@ async def main():
         if remaining == 0:
             print(f"\n=== 全部完成！===")
             break
+
+        # 到达最长运行时间，保存 state 优雅退出（下次重启自动续跑）
+        if time.time() - start_time >= args.max_runtime:
+            print(f"\n=== 达到最长运行时间 {args.max_runtime}s，优雅退出 ===")
+            print(f"已完成 offset={offset}，剩余 {remaining} 条，下次重启自动续跑")
+            save_state(state_file, offset, total_updated)
+            return
 
         actual_batch = min(args.batch, remaining)
         print(f"[批次 {batch_num}] offset={offset}, 本批={actual_batch}, 剩余={remaining}")
