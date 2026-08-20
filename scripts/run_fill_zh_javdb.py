@@ -17,14 +17,14 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO))
 
+import openpyxl  # noqa: E402
+
 STATE_FILE = REPO / ".fill_zh_javdb_state.json"
 DB_PATH = REPO / "userdata" / "actor_database.xlsx"
 DB_ORIG = REPO / "resources" / "userdata" / "actor_database.xlsx"
 
 BATCH_SIZE = 200
 REPORT_INTERVAL_SEC = 30  # 每 30 秒打印一次进度
-
-import openpyxl
 
 
 def count_pending(offset: int) -> int:
@@ -56,7 +56,7 @@ def count_diff() -> int:
     old_rows = list(ws_old.iter_rows(min_row=2, max_col=3, values_only=True))
     new_rows = list(ws_new.iter_rows(min_row=2, max_col=3, values_only=True))
     diff = 0
-    for o, n in zip(old_rows, new_rows):
+    for o, n in zip(old_rows, new_rows, strict=False):
         if str(o[1] or "") != str(n[1] or "") or str(o[2] or "") != str(n[2] or ""):
             diff += 1
     wb_old.close()
@@ -112,7 +112,7 @@ async def main():
         print(f"  已复制 {DB_ORIG} -> {DB_PATH}")
 
     total_pending = count_pending(offset)
-    print(f"=== fill_zh_javdb 分批执行 ===")
+    print("=== fill_zh_javdb 分批执行 ===")
     print(f"起始 offset: {offset}")
     print(f"待处理条目: {total_pending}")
     print(f"每批: {args.batch}")
@@ -131,7 +131,7 @@ async def main():
         # 检查还有没有待处理
         remaining = count_pending(offset)
         if remaining == 0:
-            print(f"\n=== 全部完成！===")
+            print("\n=== 全部完成！===")
             break
 
         # 到达最长运行时间，保存 state 优雅退出（下次重启自动续跑）
@@ -169,7 +169,7 @@ async def main():
             last_report = now
 
     elapsed = time.time() - start_time
-    print(f"\n=== 最终结果 ===")
+    print("\n=== 最终结果 ===")
     print(f"总处理: {total_processed} 条")
     print(f"总更新: {total_updated} 条 (中文名或繁体名变化)")
     print(f"总耗时: {elapsed:.0f}s ({elapsed / 60:.1f}min)")

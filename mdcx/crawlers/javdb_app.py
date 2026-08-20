@@ -504,6 +504,7 @@ async def fetch_javdb_actor_info(actor_name: str) -> JavdbActorInfo | None:
 
         # 并发拉取前 5 部影片详情（原串行 for 循环是主要瓶颈）
         async with manager.acquire_computed() as computed:
+
             async def _fetch_movie_detail(movie_id: str) -> list[dict]:
                 detail_params = dict(base_params)
                 detail_url = f"{_API_BASE}/api/v4/movies/{movie_id}?{urlencode(detail_params)}"
@@ -538,9 +539,7 @@ async def fetch_javdb_actor_info(actor_name: str) -> JavdbActorInfo | None:
             for actor_id in matched_actor_ids:
                 actor_params = dict(base_params)
                 actor_url = f"{_API_BASE}/api/v1/actors/{actor_id}?{urlencode(actor_params)}"
-                actor_resp, actor_err = await computed.async_client.get_json(
-                    actor_url, headers=headers, retry_count=1
-                )
+                actor_resp, actor_err = await computed.async_client.get_json(actor_url, headers=headers, retry_count=1)
                 if actor_resp is None:
                     continue
                 actor_data = (actor_resp.get("data") or {}).get("actor") or {}
