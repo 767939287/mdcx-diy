@@ -1978,6 +1978,11 @@ async def clean_male_actors(*, limit: int = 5000, concurrency: int = 5) -> Clean
                 if name and is_male_actor(name):
                     name_male_rows.add(row_idx)
                     continue
+                # 别名列中的任意别名命中男优名单 → 同样标记删除
+                kw_raw = str(row[COL_KEYWORD] or "").strip() if len(row) > COL_KEYWORD else ""
+                if kw_raw and any(is_male_actor(k.strip()) for k in kw_raw.split(",") if k.strip()):
+                    name_male_rows.add(row_idx)
+                    continue
                 if len(row) > COL_TMDBID:
                     tmdb_val = str(row[COL_TMDBID] or "").strip()
                     if tmdb_val.isdigit():
