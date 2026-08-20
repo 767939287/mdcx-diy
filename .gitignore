@@ -203,3 +203,7 @@ test_*.xlsx
 
 # avdanyuwiki 作品数据（用户上传的原始提取数据，体积大不纳入版本库）
 jav_database/
+
+# fill_zh_javdb 分批执行脚本及状态文件（本地临时调试用）
+scripts/run_fill_zh_javdb.py
+.fill_zh_javdb_state.json
