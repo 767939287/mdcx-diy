@@ -486,6 +486,47 @@ def _extract_name_alias(text: str) -> list[str]:
     return aliases
 
 
+def _clean_alias_parens(alias: str) -> str | None:
+    """清洗别名中的括号后缀。
+
+    返回清洗后的名字，或 None 表示整条删除。
+    规则：
+      1. (注)/（注） 开头的注释说明 → 整条删除
+      2. 名字(数字/仮/仮名) + 后续内容 → 去括号及之后所有内容，只留括号前名字
+      3. 名字(标签) 末尾括号 → 去括号保留名字
+      4. 括号在中间（如 "しいなうしお SIR(...)"）→ 整条删除
+      5. 括号前为空 → 整条删除
+      6. 嵌套括号取最外层
+    """
+    import re
+
+    s = alias.strip()
+    if not s:
+        return None
+    # 无括号 → 原样返回
+    if "(" not in s and "（" not in s:
+        return s
+    # 统一全角括号
+    s = s.replace("（", "(").replace("）", ")")
+    # 规则1: (注) 开头的注释说明 → 整条删除
+    if re.match(r"^\(注\)", s):
+        return None
+    # 规则4: 括号前有空格（括号在中间，如 "しいなうしお SIR(...)"）→ 整条删除
+    if re.match(r"^\S+\s+\S*\(", s):
+        return None
+    # 找第一个括号
+    m = re.match(r"^(.+?)\s*\(", s)
+    if not m:
+        return None
+    base = m.group(1).strip()
+    # 规则5: 括号前为空 → 整条删除
+    if not base:
+        return None
+    # 规则2/3: 去括号及之后所有内容，只留括号前名字
+    # 但要确认括号前是"名字"而非"名字 标签"
+    return base
+
+
 def _build_bio_line(parsed: dict) -> str:
     """按 emby 补全风格拼一行简介（身高/罩杯/三围/生涯/出身/血型/事务所/爱好/出道/标签）。
 
@@ -1275,23 +1316,14 @@ async def run_actor_db_xlsx(
             seen_norm: set[str] = {jp.lower()}
             changed = False
             for part in parts:
-                m = re.match(r"^(.+?)\s*\(([^)]*)\)\s*$", part)
-                if m:
-                    base = m.group(1).strip()
-                    # 去括号后与主名或其他别名重复 → 整条删除
-                    if base.lower() in seen_norm or not base:
-                        changed = True
-                        continue
-                    seen_norm.add(base.lower())
-                    cleaned_parts.append(base)
+                base = _clean_alias_parens(part)
+                if base is None or base.lower() in seen_norm:
                     changed = True
-                else:
-                    # 不带括号的别名：与主名或已有别名重复 → 删除
-                    if part.lower() in seen_norm:
-                        changed = True
-                        continue
-                    seen_norm.add(part.lower())
-                    cleaned_parts.append(part)
+                    continue
+                if base != part:
+                    changed = True
+                seen_norm.add(base.lower())
+                cleaned_parts.append(base)
             if changed:
                 ws.cell(row=row_idx, column=COL_KEYWORD + 1, value=",".join(cleaned_parts))
                 cleaned += 1
