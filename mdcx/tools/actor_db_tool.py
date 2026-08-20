@@ -1100,6 +1100,10 @@ async def run_actor_db_xlsx(
                       空标签段（标签:）等，能抽出生涯/maggie 的先抽出再清
       'cleanup_aliases' — 清洗 keyword 列中带括号后缀的别名：去括号保留名字，
                         去括号后与主名或其他别名重复的整条删除（不发请求）
+      'fill_zh_javdb'  — 从 JavDB 移动端 API 补全「中文名/繁体名」：
+                        当「中文名为空」或「中文名 == 日文原名」时，查 JavDB 的 name/name_zht 字段，
+                        拿到正式中文名后转为简体更新中文名列、繁体更新繁体名列。
+                        不需要 tmdbid（按日文原名搜索）。
 
     overwrite:
       仅 fill_minnano 与 sync_aliases 生效。
@@ -1143,6 +1147,7 @@ async def run_actor_db_xlsx(
             continue
         # fill_minnano/reformat_minnano/merge_name_alias/cleanup_bio/cleanup_aliases 不要求 tmdbid
         # sync_aliases 仅在 javdb 来源时不要求 tmdbid（javdb 按演员名搜索，无需 id）
+        # fill_zh_javdb 同样按日文原名搜索，不要求 tmdbid
         _sync_aliases_no_id = mode == "sync_aliases" and alias_source == "javdb"
         if (
             mode
@@ -1152,6 +1157,7 @@ async def run_actor_db_xlsx(
                 "merge_name_alias",
                 "cleanup_bio",
                 "cleanup_aliases",
+                "fill_zh_javdb",
             )
             and not _sync_aliases_no_id
             and not tmdbid_val.isdigit()
@@ -1199,6 +1205,11 @@ async def run_actor_db_xlsx(
         elif mode == "cleanup_aliases":
             kw = str(row[3] or "").strip()
             if kw and re.search(r"\([^)]*\)", kw):
+                rows_to_process.append((jp, tmdbid, row_idx))
+        elif mode == "fill_zh_javdb":
+            # 处理两类行：1) 中文名为空；2) 中文名 == 日文原名（未做中文化）
+            # 均要求日文原名含汉字（纯假名无中文形式，跳过避免无意义请求）
+            if (not zh_cn or zh_cn == jp) and any("\u4e00" <= c <= "\u9fff" for c in jp):
                 rows_to_process.append((jp, tmdbid, row_idx))
 
     if limit and len(rows_to_process) > limit:
@@ -1417,6 +1428,46 @@ async def run_actor_db_xlsx(
                         new_count = len(new_parts)
                         _log_line(f"  ✅ [行{row_idx}] {jp}: 别名已同步 ({new_count} 个)")
 
+                elif mode == "fill_zh_javdb":
+                    from ..crawlers.javdb_app import fetch_javdb_actor_info
+
+                    info = await fetch_javdb_actor_info(jp)
+                    if info is not None:
+                        # 候选中文名优先级: name_zht（繁体正式名）> name（若与日文原名不同，说明是中文名）
+                        candidate_zht = info.name_zht
+                        candidate_name = info.name
+                        # JavDB 的 name 字段若与日文原名相同则无价值（可能就是日文原名本身）
+                        if candidate_name == jp:
+                            candidate_name = ""
+
+                        new_zh_tw = ""
+                        new_zh_cn = ""
+                        if candidate_zht:
+                            new_zh_tw = candidate_zht
+                            new_zh_cn = zhconv.convert(candidate_zht, "zh-cn")
+                        elif candidate_name:
+                            # name 可能是繁体中文名，转简体；若转换后与原名相同则无效
+                            new_zh_tw = candidate_name
+                            new_zh_cn = zhconv.convert(candidate_name, "zh-cn")
+                            if new_zh_cn == jp:
+                                new_zh_tw = ""
+                                new_zh_cn = ""
+
+                        if new_zh_cn:
+                            # 更新单元格（仅当与当前值不同时写）
+                            current_zh_cn = str(ws.cell(row=row_idx, column=COL_ZH_CN + 1).value or "").strip()
+                            if new_zh_cn != current_zh_cn:
+                                ws.cell(row=row_idx, column=COL_ZH_CN + 1, value=new_zh_cn)
+                            current_zh_tw = str(ws.cell(row=row_idx, column=COL_ZH_TW + 1).value or "").strip()
+                            if new_zh_tw and new_zh_tw != current_zh_tw:
+                                ws.cell(row=row_idx, column=COL_ZH_TW + 1, value=new_zh_tw)
+                            translated_count += 1
+                            _log_line(f"  ✅ [行{row_idx}] {jp}: zh_cn={new_zh_cn}, zh_tw={new_zh_tw}")
+                        else:
+                            _log_line(f"  ⚪ {jp}: JavDB 无中文名 (name={info.name!r}, name_zht={info.name_zht!r})")
+                    else:
+                        _log_line(f"  ⚠️ {jp}: JavDB 未匹配到演员")
+
                 elif mode == "fill_minnano":
                     from mdcx.tools.minnano_crawler import _clean_alias, _search_minnano_by_name, parse_minnano_page
 
@@ -1469,11 +1520,11 @@ async def run_actor_db_xlsx(
 
             except Exception as e:
                 _log_line(f"  ❌ {jp} 处理失败: {e}")
-                if mode == "fill_minnano":
+                if mode in ("fill_minnano", "fill_zh_javdb"):
                     consecutive_failures += 1
                     consecutive_successes = 0
             else:
-                if mode == "fill_minnano":
+                if mode in ("fill_minnano", "fill_zh_javdb"):
                     consecutive_successes += 1
                     consecutive_failures = 0
 
@@ -1502,7 +1553,7 @@ async def run_actor_db_xlsx(
             done, pending = await asyncio.wait(running_tasks, return_when=asyncio.FIRST_COMPLETED)
             running_tasks = set(pending)
             # 自适应限流：连续失败降并发，连续成功恢复
-            if mode == "fill_minnano":
+            if mode in ("fill_minnano", "fill_zh_javdb"):
                 if consecutive_failures >= 3 and current_concurrency > 1:
                     current_concurrency = max(1, current_concurrency // 2)
                     consecutive_failures = 0

@@ -8,6 +8,8 @@
 
 ### 功能
 
+- **JavDB 中文名补全**：演员数据管理工具新增「JavDB 中文名」按钮（`fill_zh_javdb` 模式），对 `actor_database.xlsx` 中「中文名为空」或「中文名 == 日文原名」的条目（约 15000 行未做中文化的含汉字姓名 + 11 行完全空名），通过 JavDB 移动端 API 查询演员详情的 `name_zht`/`name` 字段，拿到正式中文名后用 zhconv 转简体写入「中文名」列、繁体写入「繁体名」列；无需 TMDB API Key（按日文原名搜索），与原「补全中文名」（translate，走 TMDB 需 tmdbid）互补不冲突；`javdb_app.py` 新增 `fetch_javdb_actor_info` 函数返回完整 `{name, name_zht, other_name}`，原 `fetch_javdb_aliases` 改为调用该函数后拆分别名（消除重复代码）；支持「起始行/限量」分片续跑，连续失败降并发、连续成功恢复
+
 - **JavLibrary Selenium CF bypass**：新增 `mdcx/cf_bypass/selenium_adapter.py`——当普通 HTTP 请求遇 Cloudflare JS challenge 时，自动 fallback 到 Selenium+Edge headless 获取页面 HTML，通过真实浏览器引擎绕过 CF 挑战；selenium 作为可选依赖首次使用自动安装，driver 由 Selenium Manager 4.6+ 自动匹配；新增 `cf_selenium_bypass` 配置开关（默认开启），无 Edge 环境优雅降级，连续失败 3 次进入 5 分钟冷却
 - **JavLibrary DMM 高清封面升级**：javlibrary 爬虫新增 `post_process`，刮削成功后调用 `upgrade_dmm_cover` 将低清/水印封面升级为 DMM 高清版本（pl.jpg/ps.jpg），与 JavBus/JavDB 对齐
 - **JavLibrary xpath 兼容 Selenium**：`javlibrary.py` 所有字段 xpath 从 `/table/tr/` 改为 `//`，兼容普通 HTTP（无 tbody）和 Selenium page_source（浏览器自动补全 tbody）两种 HTML 来源
@@ -36,7 +38,7 @@
 ### 工程质量
 
 - 新增 `tests/crawlers/test_javlibrary.py` xpath 兼容性测试（含/不含 tbody 双场景）、Selenium CF 检测测试、配置关闭降级测试、DMM 封面升级 post_process 测试
-- 新增 `tests/crawlers/test_javdb_app.py` 的 `fetch_javdb_aliases` 测试（9 个用例：正常返回别名、name_zht 并入、other_name 为空、搜索无结果、演员未匹配、日文异体字匹配、空输入、名字归一化、匹配逻辑）
+- 新增 `tests/crawlers/test_javdb_app.py` 的 `fetch_javdb_aliases` 测试（9 个用例：正常返回别名、name_zht 并入、other_name 为空、搜索无结果、演员未匹配、日文异体字匹配、空输入、名字归一化、匹配逻辑）+ `fetch_javdb_actor_info` 测试（5 个用例：完整字段、null 字段、无匹配、空输入、dataclass 默认值）
 - 新增 `tests/crawlers/test_aio_sites.py`（avmoo/avheat/avsox 三站 API 流程与请求格式）与 `tests/core/test_amazon_match.py`（匹配函数单元测试）
 - 更新 `tests/test_network_check.py` 的爬虫探测测试（重写 `_run` 爬虫走真实刮削探测）
 - 新增 TRAWL 适配层测试（`test_trawl_adapter.py`，含 FlareSolverr 后端 cookies/html/mirror/URL 重建/错误处理）、域名轮询测试（javbus/freejavbt）、javlibrary 动态地址解析与缓存测试

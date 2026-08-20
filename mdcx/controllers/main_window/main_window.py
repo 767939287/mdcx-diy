@@ -146,6 +146,7 @@ class MyMAinWindow(QMainWindow):
     pushButton_actor_db_link = pyqtSignal(str)
     pushButton_actor_db_sync_aliases = pyqtSignal(str)
     pushButton_actor_db_fill_minnano = pyqtSignal(str)
+    pushButton_actor_db_fill_zh_javdb = pyqtSignal(str)
     pushButton_actor_db_clean_male = pyqtSignal(str)
     pushButton_actor_db_verify_tmdbid = pyqtSignal(str)
     pushButton_actor_db_check = pyqtSignal(str)
@@ -2499,6 +2500,17 @@ class MyMAinWindow(QMainWindow):
     def pushButton_actor_db_fill_minnano_clicked(self):
         self._run_actor_db_tool("fill_minnano")
 
+    def pushButton_actor_db_fill_zh_javdb_clicked(self):
+        offset = self.Ui.spinBox_actor_db_sync_offset.value()
+        limit = self.Ui.spinBox_actor_db_sync_limit.value()
+        slice_hint = f"，起始行={offset}，限量={limit if limit > 0 else '不限'}"
+        signal_qt.show_log_text(
+            "开始扫描 actor_database.xlsx：从 JavDB 补全中文名/繁体名（仅处理「中文名==日文原名」的行）"
+            + slice_hint
+            + ")..."
+        )
+        self._run_actor_db_tool("fill_zh_javdb", offset=offset, limit=limit)
+
     def pushButton_actor_db_open_clicked(self):
         from .tool_handlers import pushButton_actor_db_open_clicked
 
@@ -2535,6 +2547,7 @@ class MyMAinWindow(QMainWindow):
         "actor_db_link": "补全 LibreDMM 链接",
         "actor_db_sync_aliases": "补全别名",
         "actor_db_fill_minnano": "minnano 补全",
+        "actor_db_fill_zh_javdb": "JavDB 中文名",
         "actor_db_clean_male": "剔除男演员",
         "actor_db_verify_tmdbid": "校验 tmdbid 有效性",
         "actor_db_check": "检查用户库",
@@ -2543,7 +2556,13 @@ class MyMAinWindow(QMainWindow):
     # 由 change_buttons_status/reset_buttons_status 管理的 actor_db 按钮子集；
     # 这些按钮在主刮削时被禁用、刮削结束后若未在跑 actor_db 任务则被恢复。
     _ACTOR_DB_SCRAPE_MANAGED: frozenset[str] = frozenset(
-        {"actor_db_translate", "actor_db_link", "actor_db_sync_aliases", "actor_db_fill_minnano"}
+        {
+            "actor_db_translate",
+            "actor_db_link",
+            "actor_db_sync_aliases",
+            "actor_db_fill_minnano",
+            "actor_db_fill_zh_javdb",
+        }
     )
 
     def _run_actor_db_async(
@@ -2583,12 +2602,14 @@ class MyMAinWindow(QMainWindow):
             "link": "actor_db_link",
             "sync_aliases": "actor_db_sync_aliases",
             "fill_minnano": "actor_db_fill_minnano",
+            "fill_zh_javdb": "actor_db_fill_zh_javdb",
         }
         busy_text = {
             "translate": "运行中...",
             "link": "运行中...",
             "sync_aliases": "运行中...",
             "fill_minnano": "运行中...",
+            "fill_zh_javdb": "运行中...",
         }[mode]
         self._run_actor_db_async(
             button_map[mode],
@@ -3739,6 +3760,7 @@ class MyMAinWindow(QMainWindow):
         self.Ui.pushButton_actor_db_link.setEnabled(False)
         self.Ui.pushButton_actor_db_sync_aliases.setEnabled(False)
         self.Ui.pushButton_actor_db_fill_minnano.setEnabled(False)
+        self.Ui.pushButton_actor_db_fill_zh_javdb.setEnabled(False)
 
     def reset_buttons_status(self):
         self.Ui.pushButton_start_cap.setEnabled(True)

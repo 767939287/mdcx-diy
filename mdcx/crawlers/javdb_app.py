@@ -7,6 +7,7 @@ import random
 import re
 import time
 import unicodedata
+from dataclasses import dataclass
 from typing import override
 
 from pydantic import BaseModel, ConfigDict
@@ -460,16 +461,23 @@ def _actor_name_matches(target: str, candidate: str) -> bool:
     return False
 
 
-async def fetch_javdb_aliases(actor_name: str) -> list[str]:
-    """从 JavDB 移动端 API 查询演员别名。
+@dataclass
+class JavdbActorInfo:
+    """JavDB 演员详情（仅包含可用的名字相关字段）."""
 
-    流程: 搜索演员名 → 取前 5 部影片详情 → 匹配演员 → 取演员详情的 other_name 字段
-    → 拆分逗号 + 去重 + 排除原名 → 返回别名列表。
+    name: str = ""  # JavDB 数据库里的 name 字段（可能是日文原名或正式中文名）
+    name_zht: str = ""  # 繁体名（可能为空）
+    other_name: str = ""  # 别名字段（逗号分隔，可能含日文原名与其他别名）
 
-    搜索无结果、未匹配到演员、无别名均返回空列表，由调用方决定如何降级。
+
+async def fetch_javdb_actor_info(actor_name: str) -> JavdbActorInfo | None:
+    """从 JavDB 移动端 API 查询演员的完整名字信息。
+
+    流程: 搜索演员名 → 取前 5 部影片详情 → 匹配演员 → 取演员详情。
+    返回 JavdbActorInfo（含 name/name_zht/other_name）或 None（未匹配）。
     """
     if not actor_name or not actor_name.strip():
-        return []
+        return None
 
     target = actor_name.strip()
     try:
@@ -487,12 +495,12 @@ async def fetch_javdb_aliases(actor_name: str) -> list[str]:
         async with manager.acquire_computed() as computed:
             response, error = await computed.async_client.get_json(url, headers=headers, retry_count=1)
         if response is None:
-            logger.debug("[javdb-alias] 搜索失败: %s", error)
-            return []
+            logger.debug("[javdb-actor] 搜索失败: %s", error)
+            return None
 
         movies = (response.get("data") or {}).get("movies") or []
         if not movies:
-            return []
+            return None
 
         async with manager.acquire_computed() as computed:
             for movie_summary in movies[:5]:
@@ -524,14 +532,29 @@ async def fetch_javdb_aliases(actor_name: str) -> list[str]:
                     if actor_resp is None:
                         continue
                     actor_data = (actor_resp.get("data") or {}).get("actor") or {}
-                    other_name = actor_data.get("other_name") or ""
-                    name_zht = actor_data.get("name_zht") or ""
-                    db_name = actor_data.get("name") or cand_name
-                    return _split_aliases(other_name, name_zht, target, db_name)
-        return []
+                    return JavdbActorInfo(
+                        name=(actor_data.get("name") or cand_name).strip(),
+                        name_zht=(actor_data.get("name_zht") or "").strip(),
+                        other_name=(actor_data.get("other_name") or "").strip(),
+                    )
+        return None
     except Exception:
-        logger.debug("[javdb-alias] 查询失败: %s", target, exc_info=True)
+        logger.debug("[javdb-actor] 查询失败: %s", target, exc_info=True)
+        return None
+
+
+async def fetch_javdb_aliases(actor_name: str) -> list[str]:
+    """从 JavDB 移动端 API 查询演员别名。
+
+    流程: 搜索演员名 → 取前 5 部影片详情 → 匹配演员 → 取演员详情的 other_name 字段
+    → 拆分逗号 + 去重 + 排除原名 → 返回别名列表。
+
+    搜索无结果、未匹配到演员、无别名均返回空列表，由调用方决定如何降级。
+    """
+    info = await fetch_javdb_actor_info(actor_name)
+    if info is None:
         return []
+    return _split_aliases(info.other_name, info.name_zht, actor_name.strip(), info.name)
 
 
 def _is_combo_name(alias: str) -> bool:

@@ -386,6 +386,136 @@ async def test_fetch_javdb_aliases_empty_input():
     assert await fetch_javdb_aliases("   ") == []
 
 
+# ============================================================
+# fetch_javdb_actor_info 测试
+# ============================================================
+
+
+@pytest.mark.asyncio
+async def test_fetch_javdb_actor_info_returns_full_fields(monkeypatch):
+    """搜索 → 影片详情 → 演员详情，返回完整 name/name_zht/other_name"""
+    from mdcx.crawlers import javdb_app
+
+    class _Client:
+        async def get_json(self, url, headers=None, retry_count=1, **kwargs):
+            if "/api/v2/search" in url:
+                return ({"data": {"movies": [{"id": "m1"}]}}, "")
+            if "/api/v4/movies/m1" in url:
+                return ({"data": {"movie": {"actors": [{"id": "a1", "name": "桐谷まつり"}]}}}, "")
+            if "/api/v1/actors/a1" in url:
+                return (
+                    {
+                        "data": {
+                            "actor": {
+                                "name": "桐谷茉莉",
+                                "name_zht": "桐谷茉莉",
+                                "other_name": "桐谷まつり",
+                            }
+                        }
+                    },
+                    "",
+                )
+            raise AssertionError(f"unexpected: {url}")
+
+    class _Computed:
+        async_client = _Client()
+
+    class _Ctx:
+        async def __aenter__(self):
+            return _Computed()
+
+        async def __aexit__(self, *a):
+            return False
+
+    monkeypatch.setattr(javdb_app.manager, "acquire_computed", lambda: _Ctx())
+
+    info = await javdb_app.fetch_javdb_actor_info("桐谷まつり")
+    assert info is not None
+    assert info.name == "桐谷茉莉"
+    assert info.name_zht == "桐谷茉莉"
+    assert info.other_name == "桐谷まつり"
+
+
+@pytest.mark.asyncio
+async def test_fetch_javdb_actor_info_null_fields(monkeypatch):
+    """JavDB 演员详情中 name_zht/other_name 为 null 时正常返回空串"""
+    from mdcx.crawlers import javdb_app
+
+    class _Client:
+        async def get_json(self, url, headers=None, retry_count=1, **kwargs):
+            if "/api/v2/search" in url:
+                return ({"data": {"movies": [{"id": "m1"}]}}, "")
+            if "/api/v4/movies/m1" in url:
+                return ({"data": {"movie": {"actors": [{"id": "a1", "name": "神木麗"}]}}}, "")
+            if "/api/v1/actors/a1" in url:
+                return ({"data": {"actor": {"name": "神木麗", "name_zht": None, "other_name": None}}}, "")
+            raise AssertionError(f"unexpected: {url}")
+
+    class _Computed:
+        async_client = _Client()
+
+    class _Ctx:
+        async def __aenter__(self):
+            return _Computed()
+
+        async def __aexit__(self, *a):
+            return False
+
+    monkeypatch.setattr(javdb_app.manager, "acquire_computed", lambda: _Ctx())
+
+    info = await javdb_app.fetch_javdb_actor_info("神木麗")
+    assert info is not None
+    assert info.name == "神木麗"
+    assert info.name_zht == ""
+    assert info.other_name == ""
+
+
+@pytest.mark.asyncio
+async def test_fetch_javdb_actor_info_no_match(monkeypatch):
+    """搜索无结果返回 None"""
+    from mdcx.crawlers import javdb_app
+
+    class _Client:
+        async def get_json(self, url, headers=None, retry_count=1, **kwargs):
+            if "/api/v2/search" in url:
+                return ({"data": {"movies": []}}, "")
+            raise AssertionError(f"unexpected: {url}")
+
+    class _Computed:
+        async_client = _Client()
+
+    class _Ctx:
+        async def __aenter__(self):
+            return _Computed()
+
+        async def __aexit__(self, *a):
+            return False
+
+    monkeypatch.setattr(javdb_app.manager, "acquire_computed", lambda: _Ctx())
+
+    info = await javdb_app.fetch_javdb_actor_info("不存在的演员")
+    assert info is None
+
+
+@pytest.mark.asyncio
+async def test_fetch_javdb_actor_info_empty_input():
+    """空输入返回 None"""
+    from mdcx.crawlers.javdb_app import fetch_javdb_actor_info
+
+    assert await fetch_javdb_actor_info("") is None
+    assert await fetch_javdb_actor_info("   ") is None
+
+
+def test_javdb_actor_info_dataclass_defaults():
+    """JavdbActorInfo 默认值为空串"""
+    from mdcx.crawlers.javdb_app import JavdbActorInfo
+
+    info = JavdbActorInfo()
+    assert info.name == ""
+    assert info.name_zht == ""
+    assert info.other_name == ""
+
+
 def test_normalize_actor_name_strips_punctuation():
     from mdcx.crawlers.javdb_app import _normalize_actor_name
 

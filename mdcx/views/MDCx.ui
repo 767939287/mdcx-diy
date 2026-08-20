@@ -2565,6 +2565,41 @@
                     <bool>true</bool>
                   </property>
                 </widget>
+                <widget class="QPushButton" name="pushButton_actor_db_fill_zh_javdb">
+                  <property name="geometry">
+                    <rect>
+                      <x>40</x>
+                      <y>510</y>
+                      <width>200</width>
+                      <height>30</height>
+                    </rect>
+                  </property>
+                  <property name="toolTip">
+                    <string>从 JavDB 移动端 API 查询演员的中文名/繁体名。仅处理「中文名 == 日文原名」的行（即未做中文化、且日文原名含汉字的条目），用 JavDB 的 name_zht/name 字段补全正式中文名，繁体转简体写入中文名列、繁体写入繁体名列。无需 TMDB API Key，按日文原名搜索。配合「起始行/限量」可分片续跑。</string>
+                  </property>
+                  <property name="text">
+                    <string>JavDB 中文名</string>
+                  </property>
+                </widget>
+                <widget class="QLabel" name="label_actor_db_fill_zh_javdb_desc">
+                  <property name="geometry">
+                    <rect>
+                      <x>260</x>
+                      <y>514</y>
+                      <width>421</width>
+                      <height>30</height>
+                    </rect>
+                  </property>
+                  <property name="styleSheet">
+                    <string notr="true">color: rgb(160, 160, 160); font-size: 11px;</string>
+                  </property>
+                  <property name="text">
+                    <string>JavDB 的 name_zht 转简体补全中文名；仅处理「中文==日文原名」的行</string>
+                  </property>
+                  <property name="wordWrap">
+                    <bool>true</bool>
+                  </property>
+                </widget>
                 <widget class="QLineEdit" name="lineEdit_actor_db_nfo_dir">
                   <property name="geometry">
                     <rect>
