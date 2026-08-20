@@ -158,3 +158,290 @@ async def test_run_bf_matches_bf_result_when_present():
     assert response.data is not None
     assert response.data.number == "BF-002"
     assert response.data.title == "BF Title"
+
+
+# ============================================================
+# fetch_javdb_aliases 测试
+# ============================================================
+
+
+@pytest.mark.asyncio
+async def test_fetch_javdb_aliases_returns_other_name(monkeypatch):
+    """搜索 → 影片详情 → 演员详情，返回 other_name 中的别名"""
+    from mdcx.crawlers import javdb_app
+
+    class _Client:
+        async def get_json(self, url, headers=None, retry_count=1, **kwargs):
+            if "/api/v2/search" in url:
+                return ({"data": {"movies": [{"id": "m1", "number": "ABC-001"}]}}, "")
+            if "/api/v4/movies/m1" in url:
+                return ({"data": {"movie": {"actors": [{"id": "a1", "name": "波多野結衣", "gender": 0}]}}}, "")
+            if "/api/v1/actors/a1" in url:
+                return (
+                    {
+                        "data": {
+                            "actor": {
+                                "name": "波多野結衣",
+                                "name_zht": "波多野結衣",
+                                "other_name": "波多野結衣, 酒井愛美",
+                            }
+                        }
+                    },
+                    "",
+                )
+            raise AssertionError(f"unexpected: {url}")
+
+    class _Computed:
+        async_client = _Client()
+
+    class _Ctx:
+        async def __aenter__(self):
+            return _Computed()
+
+        async def __aexit__(self, *a):
+            return False
+
+    monkeypatch.setattr(javdb_app.manager, "acquire_computed", lambda: _Ctx())
+
+    result = await javdb_app.fetch_javdb_aliases("波多野結衣")
+    assert result == ["酒井愛美"]
+
+
+@pytest.mark.asyncio
+async def test_fetch_javdb_aliases_includes_name_zht(monkeypatch):
+    """name_zht 与 name 不同时作为别名返回"""
+    from mdcx.crawlers import javdb_app
+
+    class _Client:
+        async def get_json(self, url, headers=None, retry_count=1, **kwargs):
+            if "/api/v2/search" in url:
+                return ({"data": {"movies": [{"id": "m1"}]}}, "")
+            if "/api/v4/movies/m1" in url:
+                return ({"data": {"movie": {"actors": [{"id": "a1", "name": "桃乃木かな"}]}}}, "")
+            if "/api/v1/actors/a1" in url:
+                return (
+                    {
+                        "data": {
+                            "actor": {
+                                "name": "桃乃木香奈",
+                                "name_zht": "桃乃木香奈",
+                                "other_name": "桃乃木かな, 松嶋真麻",
+                            }
+                        }
+                    },
+                    "",
+                )
+            raise AssertionError(f"unexpected: {url}")
+
+    class _Computed:
+        async_client = _Client()
+
+    class _Ctx:
+        async def __aenter__(self):
+            return _Computed()
+
+        async def __aexit__(self, *a):
+            return False
+
+    monkeypatch.setattr(javdb_app.manager, "acquire_computed", lambda: _Ctx())
+
+    result = await javdb_app.fetch_javdb_aliases("桃乃木かな")
+    assert "松嶋真麻" in result
+    assert "桃乃木かな" not in result  # 原名排除
+    assert "桃乃木香奈" not in result  # db_name 排除
+
+
+@pytest.mark.asyncio
+async def test_fetch_javdb_aliases_empty_other_name(monkeypatch):
+    """other_name 为 None/空时返回空列表"""
+    from mdcx.crawlers import javdb_app
+
+    class _Client:
+        async def get_json(self, url, headers=None, retry_count=1, **kwargs):
+            if "/api/v2/search" in url:
+                return ({"data": {"movies": [{"id": "m1"}]}}, "")
+            if "/api/v4/movies/m1" in url:
+                return ({"data": {"movie": {"actors": [{"id": "a1", "name": "河北彩花"}]}}}, "")
+            if "/api/v1/actors/a1" in url:
+                return ({"data": {"actor": {"name": "河北彩花", "name_zht": "", "other_name": None}}}, "")
+            raise AssertionError(f"unexpected: {url}")
+
+    class _Computed:
+        async_client = _Client()
+
+    class _Ctx:
+        async def __aenter__(self):
+            return _Computed()
+
+        async def __aexit__(self, *a):
+            return False
+
+    monkeypatch.setattr(javdb_app.manager, "acquire_computed", lambda: _Ctx())
+
+    result = await javdb_app.fetch_javdb_aliases("河北彩花")
+    assert result == []
+
+
+@pytest.mark.asyncio
+async def test_fetch_javdb_aliases_no_search_results(monkeypatch):
+    """搜索无结果返回空列表"""
+    from mdcx.crawlers import javdb_app
+
+    class _Client:
+        async def get_json(self, url, headers=None, retry_count=1, **kwargs):
+            if "/api/v2/search" in url:
+                return ({"data": {"movies": []}}, "")
+            raise AssertionError(f"unexpected: {url}")
+
+    class _Computed:
+        async_client = _Client()
+
+    class _Ctx:
+        async def __aenter__(self):
+            return _Computed()
+
+        async def __aexit__(self, *a):
+            return False
+
+    monkeypatch.setattr(javdb_app.manager, "acquire_computed", lambda: _Ctx())
+
+    result = await javdb_app.fetch_javdb_aliases("不存在的演员")
+    assert result == []
+
+
+@pytest.mark.asyncio
+async def test_fetch_javdb_aliases_no_actor_match(monkeypatch):
+    """影片中无匹配演员时返回空列表"""
+    from mdcx.crawlers import javdb_app
+
+    class _Client:
+        async def get_json(self, url, headers=None, retry_count=1, **kwargs):
+            if "/api/v2/search" in url:
+                return ({"data": {"movies": [{"id": "m1"}, {"id": "m2"}]}}, "")
+            if "/api/v4/movies/" in url:
+                return ({"data": {"movie": {"actors": [{"id": "x", "name": "别人"}]}}}, "")
+            raise AssertionError(f"unexpected: {url}")
+
+    class _Computed:
+        async_client = _Client()
+
+    class _Ctx:
+        async def __aenter__(self):
+            return _Computed()
+
+        async def __aexit__(self, *a):
+            return False
+
+    monkeypatch.setattr(javdb_app.manager, "acquire_computed", lambda: _Ctx())
+
+    result = await javdb_app.fetch_javdb_aliases("三上悠亜")
+    assert result == []
+
+
+@pytest.mark.asyncio
+async def test_fetch_javdb_aliases_jp_variant_match(monkeypatch):
+    """日文异体字差异（亜/亞）也能匹配"""
+    from mdcx.crawlers import javdb_app
+
+    class _Client:
+        async def get_json(self, url, headers=None, retry_count=1, **kwargs):
+            if "/api/v2/search" in url:
+                return ({"data": {"movies": [{"id": "m1"}]}}, "")
+            if "/api/v4/movies/m1" in url:
+                # 搜索"三上悠亜"，影片里演员名是"三上悠亞"
+                return ({"data": {"movie": {"actors": [{"id": "a1", "name": "三上悠亞"}]}}}, "")
+            if "/api/v1/actors/a1" in url:
+                return (
+                    {
+                        "data": {
+                            "actor": {"name": "三上悠亜", "name_zht": "三上悠亜", "other_name": "三上悠亞, 鬼头桃菜"}
+                        }
+                    },
+                    "",
+                )
+            raise AssertionError(f"unexpected: {url}")
+
+    class _Computed:
+        async_client = _Client()
+
+    class _Ctx:
+        async def __aenter__(self):
+            return _Computed()
+
+        async def __aexit__(self, *a):
+            return False
+
+    monkeypatch.setattr(javdb_app.manager, "acquire_computed", lambda: _Ctx())
+
+    result = await javdb_app.fetch_javdb_aliases("三上悠亜")
+    assert "鬼头桃菜" in result
+
+
+@pytest.mark.asyncio
+async def test_fetch_javdb_aliases_empty_input():
+    """空输入返回空列表"""
+    from mdcx.crawlers.javdb_app import fetch_javdb_aliases
+
+    assert await fetch_javdb_aliases("") == []
+    assert await fetch_javdb_aliases("   ") == []
+
+
+def test_normalize_actor_name_strips_punctuation():
+    from mdcx.crawlers.javdb_app import _normalize_actor_name
+
+    assert _normalize_actor_name("檸檬.") == _normalize_actor_name("檸檬")
+    assert _normalize_actor_name("波多野 結衣") == _normalize_actor_name("波多野結衣")
+
+
+def test_actor_name_matches_inclusive():
+    from mdcx.crawlers.javdb_app import _actor_name_matches
+
+    assert _actor_name_matches("田中檸檬", "檸檬.")
+    assert _actor_name_matches("三上悠亜", "三上悠亞")  # 日文异体字
+    assert _actor_name_matches("波多野結衣", "波多野結衣")  # 精确
+    assert _actor_name_matches("ひかり", "青空ひかり")  # 3字假名包含
+    assert not _actor_name_matches("波多野結衣", "桃乃木かな")
+    assert not _actor_name_matches("", "有人")
+
+
+def test_actor_name_matches_short_kana_no_substring():
+    """纯假名短名（≤2字）不做子串包含匹配，避免误匹配"""
+    from mdcx.crawlers.javdb_app import _actor_name_matches
+
+    assert not _actor_name_matches("りな", "新ありな")  # 2字假名子串→拒绝
+    assert not _actor_name_matches("まい", "神菜美まい")  # 2字假名子串→拒绝
+    assert _actor_name_matches("さつき", "さつき芽衣")  # 3字假名前缀→允许
+
+
+def test_actor_name_matches_kanji_substring_allowed():
+    """含汉字的短名（≤2字）允许子串包含，如 田中檸檬 → 檸檬"""
+    from mdcx.crawlers.javdb_app import _actor_name_matches
+
+    assert _actor_name_matches("田中檸檬", "檸檬")  # 汉字2字子串→允许
+
+
+def test_is_combo_name_filters_dual_actor_names():
+    """组合名（A・B 格式，两边各为日本人姓名）应被过滤"""
+    from mdcx.crawlers.javdb_app import _is_combo_name
+
+    assert _is_combo_name("朝比奈菜々子・水原麗子")  # 双人名组合
+    assert not _is_combo_name("アンジェラ・ホワイト")  # 外国人名片假名
+    assert not _is_combo_name("岸畑孝美(人妻斬り・エッチな0930)")  # 括号内
+    assert not _is_combo_name("ボィーン・フジオカ")  # 昵称片假名
+    assert not _is_combo_name("ミウ・ザ・ヴァーチャル")  # 3段
+    assert not _is_combo_name("岸畑孝美")  # 无・
+
+
+def test_split_aliases_skips_combo_names():
+    """_split_aliases 应过滤组合名"""
+    from mdcx.crawlers.javdb_app import _split_aliases
+
+    aliases = _split_aliases(
+        other_name="朝比奈菜々子・水原麗子,単体女優,アンジェラ・ホワイト",
+        name_zht="",
+        search_name="テスト",
+        db_name="テスト",
+    )
+    assert "朝比奈菜々子・水原麗子" not in aliases  # 组合名被过滤
+    assert "単体女優" in aliases  # 普通别名保留
+    assert "アンジェラ・ホワイト" in aliases  # 外国人名保留

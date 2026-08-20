@@ -8,6 +8,8 @@
 - **JavLibrary DMM 高清封面升级**：javlibrary 爬虫新增 `post_process`，刮削成功后调用 `upgrade_dmm_cover` 将低清/水印封面升级为 DMM 高清版本（pl.jpg/ps.jpg），与 JavBus/JavDB 对齐
 - **JavLibrary xpath 兼容 Selenium**：`javlibrary.py` 所有字段 xpath 从 `/table/tr/` 改为 `//`，兼容普通 HTTP（无 tbody）和 Selenium page_source（浏览器自动补全 tbody）两种 HTML 来源
 - **IQQTV 域名轮询**：新增镜像 `https://iqqk4.quest`，IQQTV 爬虫接入 `_domains` + `_init_rotator` + `_get_text_with_rotate`，搜索和详情请求失败自动切换镜像域名重试；网络检测自动返回多地址
+- **JavDB 演员别名补全**：演员数据管理工具「补全别名」新增 JavDB 数据源（与 TMDB、minnano 并列），通过 JavDB 移动端 API（`/api/v1/actors/{id}`）获取 `other_name` 字段拆分别名，无需 cookie 走签名 API；演员名匹配支持 NFKC 归一化 + zhconv 繁简转换 + 日文异体字统一（亜/亞 等），兼容搜索名与数据库名写法差异；纯假名短名（≤2字）不做子串包含匹配避免误匹配（如「りな」→「新ありな」）；`_split_aliases` 过滤组合名（A・B 格式双人名）；`sync_aliases` 合并去重改为 casefold 大小写不敏感避免重复词
+- **别名清洗模式 cleanup_aliases**：`run_actor_db_xlsx` 新增 `cleanup_aliases` 模式，清洗 keyword 列中带括号后缀的别名——去括号保留名字，去括号后与主名或其他别名重复的整条删除（如「佐伯晴香(熟女)」整条删除）；出厂库 1475 行已清洗
 - **TRAWL 外部 CF 服务协议适配层**：新增 `mdcx/cf_bypass/trawl_adapter.py`——TRAWL（FlareSolverr 风格，POST /v1）与 mdcx 所需的 cf_bypasser 协议（/cookies /mirror /html）不兼容，直接填 /v1 无法工作，适配层暴露三端点并内部调用 TRAWL `/scrape` 原生 API（/v1 的 solution.headers 为空，拿不到状态码/响应头/二进制），支持 x-hostname/x-proxy/x-bypass-cache 控制头与 Set-Cookie 还原；`TrawlAdapterServer` 随机端口 + uvicorn 启动，配置 `cf_bypass_trawl_url` 后由 AsyncWebClient 自动拉起
 - **适配层支持 FlareSolverr 后端**：`_call_trawl` 重构为统一 `_call_backend`，按后端类型分流——trawl 走 `/scrape` 原生 API、flaresolverr 走 POST /v1（cmd=request.get/post），三端点共用归一化响应；新增 `cf_bypass_trawl_backend` 配置（默认 trawl）；UI 外部 CF 服务行加后端类型下拉框；network_check 健康检查按后端选端点
 - **TRAWL 稳定性优化**：适配层不再把 bypassCookieCache/x-bypass-cache 映射为 TRAWL skipHttp，恢复 Tier1 直连快速路径（已解 cookie 的域名直连命中）；新增 `trawl-goto-timeout.patch`（Tier3/4 页面加载超时 30s→90s），start-trawl.bat 与 package-trawl.yml 在 clone 后自动应用
@@ -28,6 +30,7 @@
 ### 工程质量
 
 - 新增 `tests/crawlers/test_javlibrary.py` xpath 兼容性测试（含/不含 tbody 双场景）、Selenium CF 检测测试、配置关闭降级测试、DMM 封面升级 post_process 测试
+- 新增 `tests/crawlers/test_javdb_app.py` 的 `fetch_javdb_aliases` 测试（9 个用例：正常返回别名、name_zht 并入、other_name 为空、搜索无结果、演员未匹配、日文异体字匹配、空输入、名字归一化、匹配逻辑）
 - 新增 `tests/crawlers/test_aio_sites.py`（avmoo/avheat/avsox 三站 API 流程与请求格式）与 `tests/core/test_amazon_match.py`（匹配函数单元测试）
 - 更新 `tests/test_network_check.py` 的爬虫探测测试（重写 `_run` 爬虫走真实刮削探测）
 - 新增 TRAWL 适配层测试（`test_trawl_adapter.py`，含 FlareSolverr 后端 cookies/html/mirror/URL 重建/错误处理）、域名轮询测试（javbus/freejavbt）、javlibrary 动态地址解析与缓存测试

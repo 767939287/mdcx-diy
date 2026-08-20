@@ -2,18 +2,23 @@ import asyncio
 import base64
 import hashlib
 import json
+import logging
 import random
 import re
 import time
+import unicodedata
 from typing import override
 
 from pydantic import BaseModel, ConfigDict
+from zhconv import convert as zhconv_convert
 
 from ..config.manager import manager
 from ..config.models import Website
 from ..models.types import CrawlerResult
 from ..number import match_number
 from .base import BaseCrawler, Context, CrawlerData, CrawlerException
+
+logger = logging.getLogger(__name__)
 
 # ============================================================
 # 签名算法 - 基于 JavDB 移动端 APK 逆向
@@ -384,3 +389,197 @@ class JavdbAPICrawler(BaseCrawler):
             res.thumb = thumb
             res.poster = poster
         return res
+
+
+# ============================================================
+# 演员别名查询 — 供演员数据管理工具调用
+# ============================================================
+
+_JP_VARIANT_MAP: dict[str, str] = {
+    "亜": "亞",
+    "亞": "亞",
+    "凉": "涼",
+    "涼": "涼",
+    "高": "髙",
+    "髙": "髙",
+    "斎": "齋",
+    "齋": "齋",
+    "沢": "澤",
+    "澤": "澤",
+    "桜": "櫻",
+    "櫻": "櫻",
+    "垅": "壟",
+    "壮": "壯",
+    "壯": "壯",
+    "屿": "嶼",
+    "嶼": "嶼",
+    "栗": "慄",
+    "慄": "慄",
+    "岬": "岬",
+}
+
+
+def _normalize_actor_name(name: str) -> str:
+    """归一化演员名用于匹配：NFKC + zhconv 繁体 + 日文异体字统一 + 去标点 + 小写"""
+    name = unicodedata.normalize("NFKC", name)
+    name = zhconv_convert(name, "zh-hant")
+    name = "".join(_JP_VARIANT_MAP.get(c, c) for c in name)
+    name = re.sub(r"[^\w\u4e00-\u9fff\u3040-\u309f\u30a0-\u30ff]", "", name)
+    return name.lower()
+
+
+def _is_pure_kana(name: str) -> bool:
+    """判断归一化后的名字是否纯假名（无汉字）"""
+    return bool(name) and all("\u3040" <= c <= "\u30ff" for c in name)
+
+
+def _actor_name_matches(target: str, candidate: str) -> bool:
+    """宽松匹配演员名：归一化后完全一致、包含、或去掉末字后一致。
+
+    纯假名短名（归一化后 ≤2 字）只允许精确匹配，不做子串包含——
+    2 字假名作为子串极易误命中（如 "りな" 出现在 "新ありな" 中）。
+    含汉字的名字不受此限制（如 "田中檸檬" 包含 "檸檬" 是安全的）。
+    """
+    t = _normalize_actor_name(target)
+    c = _normalize_actor_name(candidate)
+    if not t or not c:
+        return False
+    if t == c:
+        return True
+    # 纯假名短名（≤2字）不做子串包含，避免误匹配
+    short_side = t if len(t) <= len(c) else c
+    if _is_pure_kana(short_side) and len(short_side) <= 2:
+        # 但允许去掉末字后一致（处理异体字差异）
+        if len(t) >= 3 and len(c) >= 3 and t[:-1] == c[:-1]:
+            return True
+        return False
+    if t in c or c in t:
+        return True
+    if len(t) >= 3 and len(c) >= 3 and t[:-1] == c[:-1]:
+        return True
+    return False
+
+
+async def fetch_javdb_aliases(actor_name: str) -> list[str]:
+    """从 JavDB 移动端 API 查询演员别名。
+
+    流程: 搜索演员名 → 取前 5 部影片详情 → 匹配演员 → 取演员详情的 other_name 字段
+    → 拆分逗号 + 去重 + 排除原名 → 返回别名列表。
+
+    搜索无结果、未匹配到演员、无别名均返回空列表，由调用方决定如何降级。
+    """
+    if not actor_name or not actor_name.strip():
+        return []
+
+    target = actor_name.strip()
+    try:
+        from urllib.parse import urlencode
+
+        sig = make_signature()
+        headers = {"jdsignature": sig, "accept-language": "zh", "User-Agent": "Dart/3.5 (dart:io)"}
+        base_params = _build_api_params()
+
+        params = dict(base_params)
+        params["q"] = target
+        params["page"] = "1"
+        url = f"{_API_BASE}/api/v2/search?{urlencode(params)}"
+
+        async with manager.acquire_computed() as computed:
+            response, error = await computed.async_client.get_json(url, headers=headers, retry_count=1)
+        if response is None:
+            logger.debug("[javdb-alias] 搜索失败: %s", error)
+            return []
+
+        movies = (response.get("data") or {}).get("movies") or []
+        if not movies:
+            return []
+
+        async with manager.acquire_computed() as computed:
+            for movie_summary in movies[:5]:
+                movie_id = movie_summary.get("id")
+                if not movie_id:
+                    continue
+                detail_params = dict(base_params)
+                detail_url = f"{_API_BASE}/api/v4/movies/{movie_id}?{urlencode(detail_params)}"
+                detail_resp, detail_err = await computed.async_client.get_json(
+                    detail_url, headers=headers, retry_count=1
+                )
+                if detail_resp is None:
+                    continue
+                actors = ((detail_resp.get("data") or {}).get("movie") or {}).get("actors") or []
+                for actor in actors:
+                    if not isinstance(actor, dict):
+                        continue
+                    cand_name = (actor.get("name") or "").strip()
+                    if not cand_name or not _actor_name_matches(target, cand_name):
+                        continue
+                    actor_id = actor.get("id")
+                    if not actor_id:
+                        continue
+                    actor_params = dict(base_params)
+                    actor_url = f"{_API_BASE}/api/v1/actors/{actor_id}?{urlencode(actor_params)}"
+                    actor_resp, actor_err = await computed.async_client.get_json(
+                        actor_url, headers=headers, retry_count=1
+                    )
+                    if actor_resp is None:
+                        continue
+                    actor_data = (actor_resp.get("data") or {}).get("actor") or {}
+                    other_name = actor_data.get("other_name") or ""
+                    name_zht = actor_data.get("name_zht") or ""
+                    db_name = actor_data.get("name") or cand_name
+                    return _split_aliases(other_name, name_zht, target, db_name)
+        return []
+    except Exception:
+        logger.debug("[javdb-alias] 查询失败: %s", target, exc_info=True)
+        return []
+
+
+def _is_combo_name(alias: str) -> bool:
+    """判断别名是否为组合名（A・B 格式，两边各自像完整的日本人姓名）。
+
+    判断标准：去掉括号后，・ 两边各为 2-5 字的纯汉字/含假名姓名段。
+    外国人名（含片假名外来语）、罗马音间隔、括号内标签不受影响。
+    例: 朝比奈菜々子・水原麗子 -> True（双人名组合）
+        アンジェラ・ホワイト   -> False（片假名外来语）
+        岸畑孝美(人妻斬り・...)  -> False（括号内）
+    """
+    import re
+
+    # 去掉括号内容后再判断
+    clean = re.sub(r"\(.*?\)|【.*?】|\[.*?\]", "", alias).strip()
+    if "・" not in clean:
+        return False
+    parts = [p.strip() for p in clean.split("・") if p.strip()]
+    if len(parts) != 2:
+        return False
+
+    def _looks_like_jp_name(s: str) -> bool:
+        """2-6 字，含汉字或平假名（非片假名外来语），像日本人姓名"""
+        if not (2 <= len(s) <= 6):
+            return False
+        has_kanji = any("\u4e00" <= c <= "\u9fff" for c in s)
+        has_hira = any("\u3040" <= c <= "\u309f" for c in s)
+        # 片假名为主（外来语）不算日本人姓名
+        has_kata = any("\u30a0" <= c <= "\u30ff" for c in s)
+        if has_kata and not has_kanji:
+            return False
+        return has_kanji or has_hira
+
+    return _looks_like_jp_name(parts[0]) and _looks_like_jp_name(parts[1])
+
+
+def _split_aliases(other_name: str, name_zht: str, search_name: str, db_name: str) -> list[str]:
+    """拆分 other_name 字段为别名列表，排除原名和搜索名，过滤组合名"""
+    seen = {_normalize_actor_name(search_name), _normalize_actor_name(db_name)}
+    aliases: list[str] = []
+    for part in other_name.split(","):
+        part = part.strip()
+        if not part or _normalize_actor_name(part) in seen:
+            continue
+        if _is_combo_name(part):
+            continue
+        seen.add(_normalize_actor_name(part))
+        aliases.append(part)
+    if name_zht and _normalize_actor_name(name_zht) not in seen:
+        aliases.append(name_zht)
+    return aliases

@@ -217,8 +217,13 @@ def pushButton_actor_db_sync_aliases_clicked(self):
         + slice_hint
         + "）..."
     )
-    # 下拉项 "minnano" 经工具内部 fetch_minnano_aliases 走みんなのAV，与 UI 文案保持一致
-    alias_source = "avwiki" if source == "minnano" else "tmdb"
+    # 下拉项映射：UI "minnano" → 内部 "avwiki"（走みんなのAV）；"JavDB" → "javdb"
+    if source == "JavDB":
+        alias_source = "javdb"
+    elif source == "minnano":
+        alias_source = "avwiki"
+    else:
+        alias_source = "tmdb"
     self._run_actor_db_tool(
         "sync_aliases",
         alias_source=alias_source,

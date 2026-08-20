@@ -1057,6 +1057,8 @@ async def run_actor_db_xlsx(
                           别名列，然后清空简介（出厂库清理用，不发请求）
       'cleanup_bio'  — 清理简介中无用残留：单字段残值（三围: 90）、日文尺寸写法（サイズ：S）、
                       空标签段（标签:）等，能抽出生涯/maggie 的先抽出再清
+      'cleanup_aliases' — 清洗 keyword 列中带括号后缀的别名：去括号保留名字，
+                        去括号后与主名或其他别名重复的整条删除（不发请求）
 
     overwrite:
       仅 fill_minnano 与 sync_aliases 生效。
@@ -1098,9 +1100,19 @@ async def run_actor_db_xlsx(
         tmdbid_val = str(row[5] or "").strip()
         if not jp:
             continue
-        # fill_minnano/reformat_minnano/merge_name_alias/cleanup_bio 只依赖日文名，不要求 tmdbid（老演员常缺 tmdbid）
+        # fill_minnano/reformat_minnano/merge_name_alias/cleanup_bio/cleanup_aliases 不要求 tmdbid
+        # sync_aliases 仅在 javdb 来源时不要求 tmdbid（javdb 按演员名搜索，无需 id）
+        _sync_aliases_no_id = mode == "sync_aliases" and alias_source == "javdb"
         if (
-            mode not in ("fill_minnano", "reformat_minnano", "merge_name_alias", "cleanup_bio")
+            mode
+            not in (
+                "fill_minnano",
+                "reformat_minnano",
+                "merge_name_alias",
+                "cleanup_bio",
+                "cleanup_aliases",
+            )
+            and not _sync_aliases_no_id
             and not tmdbid_val.isdigit()
         ):
             continue
@@ -1142,6 +1154,10 @@ async def run_actor_db_xlsx(
             # 仅处理非结构化且有文本的行（已结构化的行已经过 minnano 校验，不动）
             bio = str(row[8] or "").strip() if len(row) > 8 else ""
             if bio and not _is_structured_bio(bio):
+                rows_to_process.append((jp, tmdbid, row_idx))
+        elif mode == "cleanup_aliases":
+            kw = str(row[3] or "").strip()
+            if kw and re.search(r"\([^)]*\)", kw):
                 rows_to_process.append((jp, tmdbid, row_idx))
 
     if limit and len(rows_to_process) > limit:
@@ -1245,6 +1261,45 @@ async def run_actor_db_xlsx(
         wb.close()
         return
 
+    # cleanup_aliases 纯本地同步处理，不走网络/并发通道
+    if mode == "cleanup_aliases":
+        cleaned = 0
+        for jp, _tmdbid, row_idx in rows_to_process:
+            if _is_stop_requested():
+                break
+            raw_kw = str(ws.cell(row=row_idx, column=COL_KEYWORD + 1).value or "").strip()
+            if not raw_kw:
+                continue
+            parts = [p.strip() for p in raw_kw.split(",") if p.strip()]
+            cleaned_parts: list[str] = []
+            seen_norm: set[str] = {jp.lower()}
+            changed = False
+            for part in parts:
+                m = re.match(r"^(.+?)\s*\(([^)]*)\)\s*$", part)
+                if m:
+                    base = m.group(1).strip()
+                    # 去括号后与主名或其他别名重复 → 整条删除
+                    if base.lower() in seen_norm or not base:
+                        changed = True
+                        continue
+                    seen_norm.add(base.lower())
+                    cleaned_parts.append(base)
+                    changed = True
+                else:
+                    # 不带括号的别名：与主名或已有别名重复 → 删除
+                    if part.lower() in seen_norm:
+                        changed = True
+                        continue
+                    seen_norm.add(part.lower())
+                    cleaned_parts.append(part)
+            if changed:
+                ws.cell(row=row_idx, column=COL_KEYWORD + 1, value=",".join(cleaned_parts))
+                cleaned += 1
+        wb.save(db_path)
+        _log_line(f" ✅ 别名清洗完成：{cleaned} 行已处理")
+        wb.close()
+        return
+
     start_time = time.time()
     translated_count = 0
     linked_count = 0
@@ -1291,7 +1346,11 @@ async def run_actor_db_xlsx(
                         _log_line(f"  ⚠️ {jp} 未在 LibreDMM 找到链接")
 
                 elif mode == "sync_aliases":
-                    if alias_source == "avwiki":
+                    if alias_source == "javdb":
+                        from ..crawlers.javdb_app import fetch_javdb_aliases
+
+                        new_keywords = ",".join(await fetch_javdb_aliases(jp))
+                    elif alias_source == "avwiki":
                         from ..tools.minnano_crawler import fetch_minnano_aliases
 
                         new_keywords = ",".join(await fetch_minnano_aliases(jp))
@@ -1313,10 +1372,17 @@ async def run_actor_db_xlsx(
 
                     if new_keywords:
                         existing_kw = str(ws.cell(row=row_idx, column=4).value or "").strip()
-                        existing_set = {k.strip() for k in existing_kw.split(",") if k.strip()}
-                        merged_set = existing_set | {k for k in new_keywords.split(",") if k.strip()}
-                        ws.cell(row=row_idx, column=4, value=",".join(sorted(merged_set)))
-                        new_count = len([k for k in new_keywords.split(",") if k.strip()])
+                        existing_parts = [k.strip() for k in existing_kw.split(",") if k.strip()]
+                        new_parts = [k.strip() for k in new_keywords.split(",") if k.strip()]
+                        # 归一化去重：大小写不敏感比较，已有别名优先保留
+                        seen_norm: dict[str, str] = {}
+                        for k in existing_parts + new_parts:
+                            norm = k.casefold()
+                            if norm not in seen_norm:
+                                seen_norm[norm] = k
+                        merged = sorted(seen_norm.values())
+                        ws.cell(row=row_idx, column=4, value=",".join(merged))
+                        new_count = len(new_parts)
                         _log_line(f"  ✅ [行{row_idx}] {jp}: 别名已同步 ({new_count} 个)")
 
                 elif mode == "fill_minnano":
