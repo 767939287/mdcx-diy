@@ -1440,6 +1440,22 @@ async def run_actor_db_xlsx(
                         if candidate_name == jp:
                             candidate_name = ""
 
+                        # 过滤无效候选：带括号（含别名/标注）、比日文原名短（截断或非完整名）
+                        def _is_valid_candidate(s: str) -> bool:
+                            if not s:
+                                return False
+                            if "(" in s or "（" in s or "[" in s or "【" in s:
+                                return False
+                            # 候选名不应比日文原名短（排除截断的别名误当中文名）
+                            if len(s) < len(jp):
+                                return False
+                            return True
+
+                        if not _is_valid_candidate(candidate_zht):
+                            candidate_zht = ""
+                        if not _is_valid_candidate(candidate_name):
+                            candidate_name = ""
+
                         new_zh_tw = ""
                         new_zh_cn = ""
                         if candidate_zht:

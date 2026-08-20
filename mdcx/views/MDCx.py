@@ -12457,6 +12457,16 @@ class Ui_MDCx(object):
         self.label_actor_db_check_desc.setText(
             _translate("MDCx", "检查格式错误、数据异常，安全项自动修复，tmdb 项给人工修复步骤")
         )
+        self.pushButton_actor_db_fill_zh_javdb.setToolTip(
+            _translate(
+                "MDCx",
+                "从 JavDB 移动端 API 查询演员的中文名/繁体名。仅处理「中文名 == 日文原名」的行（即未做中文化、且日文原名含汉字的条目），用 JavDB 的 name_zht/name 字段补全正式中文名，繁体转简体写入中文名列、繁体写入繁体名列。无需 TMDB API Key，按日文原名搜索。配合「起始行/限量」可分片续跑。",
+            )
+        )
+        self.pushButton_actor_db_fill_zh_javdb.setText(_translate("MDCx", "JavDB 中文名"))
+        self.label_actor_db_fill_zh_javdb_desc.setText(
+            _translate("MDCx", "JavDB 的 name_zht 转简体补全中文名；仅处理「中文==日文原名」的行")
+        )
         self.lineEdit_actor_db_nfo_dir.setPlaceholderText(_translate("MDCx", "选择 nfo 目录"))
         self.pushButton_actor_db_pick_nfo_dir.setText(_translate("MDCx", "选择目录"))
         self.pushButton_actor_db_update_nfo_tmdbid.setToolTip(
@@ -12503,18 +12513,6 @@ class Ui_MDCx(object):
                 "MDCx",
                 "来源 TMDB 需配置 API Key；minnano 直接抓取みんなのAV。默认仅补缺别名的行，勾选「全量更新」则并入全部行；用「起始行/限量」可分片续跑",
             )
-        )
-        self.pushButton_actor_db_fill_zh_javdb.setToolTip(
-            _translate(
-                "MDCx",
-                "从 JavDB 移动端 API 查询演员的中文名/繁体名。仅处理「中文名 == 日文原名」的行（即未做中文化、"
-                "且日文原名含汉字的条目），用 JavDB 的 name_zht/name 字段补全正式中文名，繁体转简体写入中文名列、"
-                "繁体写入繁体名列。无需 TMDB API Key，按日文原名搜索。配合「起始行/限量」可分片续跑。",
-            )
-        )
-        self.pushButton_actor_db_fill_zh_javdb.setText(_translate("MDCx", "JavDB 中文名"))
-        self.label_actor_db_fill_zh_javdb_desc.setText(
-            _translate("MDCx", "JavDB 的 name_zht 转简体补全中文名；仅处理「中文==日文原名」的行")
         )
         self.groupBox_cover_backfill.setTitle(
             _translate("MDCx", "封面补图（按番号补齐缺失的封面、缩略图，复用当前配置的各项规则）")
