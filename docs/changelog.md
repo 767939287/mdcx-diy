@@ -2,6 +2,10 @@
 
 ## v2.0.6 (2026-08-19)
 
+### 修复
+
+- **Bing 翻译引擎不可用修复**：`mdcx/base/translate.py` 将翻译页面与 API 端点从 `www.bing.com` 改为 `cn.bing.com`。`www.bing.com` 当前对爬虫式翻译接口返回 `HTTP 200` 但响应体为空（`Content-Length: 0`），疑似地区/风控限制；`cn.bing.com` 同样免 Key 免配置，参数提取逻辑（IG/key/token/path/IID）保持不变，实测中文、英文、日文互译全部正常
+
 ### 功能
 
 - **JavLibrary Selenium CF bypass**：新增 `mdcx/cf_bypass/selenium_adapter.py`——当普通 HTTP 请求遇 Cloudflare JS challenge 时，自动 fallback 到 Selenium+Edge headless 获取页面 HTML，通过真实浏览器引擎绕过 CF 挑战；selenium 作为可选依赖首次使用自动安装，driver 由 Selenium Manager 4.6+ 自动匹配；新增 `cf_selenium_bypass` 配置开关（默认开启），无 Edge 环境优雅降级，连续失败 3 次进入 5 分钟冷却

@@ -287,18 +287,18 @@ async def google_translate(title: str, outline: str) -> tuple[str, str, str | No
 
 async def _get_bing_auth_params() -> tuple[str, str, str, str, str] | tuple[None, str]:
     headers = {
-        "Referer": "https://www.bing.com/",
+        "Referer": "https://cn.bing.com/",
         "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
     }
     async with manager.acquire_computed() as computed:
         html, error = await computed.async_client.get_text(
-            "https://www.bing.com/translator",
+            "https://cn.bing.com/translator",
             headers=headers,
             retry_count=1,
         )
         if html is None:
             html, direct_error = await computed.async_client.get_text(
-                "https://www.bing.com/translator",
+                "https://cn.bing.com/translator",
                 headers=headers,
                 use_proxy=False,
                 retry_count=1,
@@ -350,10 +350,10 @@ async def _bing_translate(msg: str, target_lang: str = "zh-Hans") -> tuple[str |
     if auth[0] is None:
         return None, auth[1]
     ig, key, token, path, iid = auth
-    url = f"https://www.bing.com{path}IG={ig}&IID={iid}&key={key}&token={quote(token)}"
+    url = f"https://cn.bing.com{path}IG={ig}&IID={iid}&key={key}&token={quote(token)}"
     headers = {
-        "Referer": "https://www.bing.com/translator",
-        "Origin": "https://www.bing.com",
+        "Referer": "https://cn.bing.com/translator",
+        "Origin": "https://cn.bing.com",
         "Content-Type": "application/x-www-form-urlencoded",
         "Accept": "application/json, text/javascript, */*; q=0.01",
     }
