@@ -125,12 +125,14 @@ class DmmApiCrawler(DmmCrawler):
 
     @classmethod
     def _build_api_url(cls, **params: str) -> str:
-        query = urlencode({
-            "api_id": cls._api_id(),
-            "affiliate_id": cls._affiliate_id(),
-            "output": "json",
-            **params,
-        })
+        query = urlencode(
+            {
+                "api_id": cls._api_id(),
+                "affiliate_id": cls._affiliate_id(),
+                "output": "json",
+                **params,
+            }
+        )
         return f"{cls.base_url_()}{_API_PATH}?{query}"
 
     @staticmethod
@@ -256,9 +258,7 @@ class DmmApiCrawler(DmmCrawler):
         validated = await self._validate_trailer_url(ctx, best)
         if validated:
             best = validated
-        ctx.debug(
-            f"预告片候选: {len(candidates)} 个，最优 rank={self._trailer_quality_rank(best)}: {best}"
-        )
+        ctx.debug(f"预告片候选: {len(candidates)} 个，最优 rank={self._trailer_quality_rank(best)}: {best}")
         return best
 
     def _to_crawler_data(self, item: _DmmApiItem, *, fallback_number: str) -> CrawlerData:
