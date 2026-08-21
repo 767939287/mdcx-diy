@@ -180,11 +180,24 @@ def _prefixes_for(series: str, num: int) -> list[str]:
     return list(dict.fromkeys(_COMMON_PREFIXES + extra))
 
 
+def _learned_prefixes_for(series: str) -> tuple[list[str], list[str]]:
+    """查询学习表得到 (verified, provisional) 前缀，异常时返回空避免影响主流程。"""
+    try:
+        from mdcx.crawlers.dmm_prefix_learn import get_learned_prefixes
+
+        return get_learned_prefixes(series)
+    except Exception:
+        return [], []
+
+
 def generate_cid_candidates(number: str) -> list[str]:
     seen: set[str] = set()
     candidates: list[str] = []
     for series, num, padded in _parse_number(number):
-        for prefix in _prefixes_for(series, num):
+        learned_verified, learned_provisional = _learned_prefixes_for(series)
+        static_prefixes = _prefixes_for(series, num)
+        prefix_order = list(dict.fromkeys([*learned_verified, *static_prefixes, *learned_provisional]))
+        for prefix in prefix_order:
             cid = f"{prefix}{series}{padded}"
             if cid not in seen:
                 seen.add(cid)
@@ -252,6 +265,24 @@ def build_aws_poster_candidates(number: str) -> list[str]:
     return [url for orient, url in generate_image_candidates(number) if orient == "portrait"]
 
 
+async def find_valid_dmm_cover(number: str) -> str | None:
+    """尝试为番号找到一张可用的 DMM 高清横版封面（pl.jpg）.
+
+    全部站点图源失败时作兜底：按番号直构 DMM CDN 候选，逐个校验存在且为高清。
+    无码番号或候选全部失效时返回 None。
+
+    复用 check_url（DMM 图自动走 GET 验证）+ _is_dmm_hd_image（分辨率过滤缩略图占位图）。
+    """
+    from mdcx.base.web import check_url
+
+    if not number or is_uncensored_number(number):
+        return None
+    for url in build_aws_cover_candidates(number):
+        if await check_url(url) and await _is_dmm_hd_image(url):
+            return url
+    return None
+
+
 _DMM_HD_MIN_WIDTH = 700
 
 
@@ -265,6 +296,25 @@ async def _is_dmm_hd_image(url: str) -> bool:
 
     width, _height = await get_imgsize(url)
     return width >= _DMM_HD_MIN_WIDTH
+
+
+def _record_learn_evidence(number: str, candidates: list[str]) -> None:
+    """从命中的 DMM 候选 URL 提取 cid 并写入学习表（静默失败不影响主流程）。"""
+    try:
+        from mdcx.crawlers.dmm_prefix_learn import record_success
+
+        for url in candidates:
+            if not url:
+                continue
+            # https://awsimgsrc.dmm.co.jp/pics_dig/digital/video/{cid}/{cid}ps.jpg
+            segments = url.rstrip("/").split("/")
+            if len(segments) >= 2:
+                cid = segments[-2]
+                if cid:
+                    record_success(number, cid)
+                    return
+    except Exception:
+        return
 
 
 async def upgrade_dmm_cover(ctx, number: str, cover_url: str, poster_url: str) -> tuple[str, str]:
@@ -304,15 +354,21 @@ async def upgrade_dmm_cover(ctx, number: str, cover_url: str, poster_url: str) -
         _dmm_upgrade_pending[key] = future
     try:
         cover_found = ""
-        for url in build_aws_cover_candidates(number):
+        cover_candidates = build_aws_cover_candidates(number)
+        for url in cover_candidates:
             if await check_url(url) and await _is_dmm_hd_image(url):
                 cover_found = url
                 break
         poster_found = ""
-        for url in build_aws_poster_candidates(number):
+        poster_candidates = build_aws_poster_candidates(number)
+        for url in poster_candidates:
             if await check_url(url) and await _is_dmm_hd_image(url):
                 poster_found = url
                 break
+        if cover_found:
+            _record_learn_evidence(number, cover_candidates)
+        if poster_found:
+            _record_learn_evidence(number, poster_candidates)
         if cover_found and cover_found != cover_url:
             ctx.debug(f"封面升级为高清: {cover_found}")
         if poster_found and poster_found != poster_url:

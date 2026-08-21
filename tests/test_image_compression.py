@@ -104,7 +104,7 @@ def test_compress_image_can_be_disabled(tmp_path: Path):
 
 @pytest.mark.asyncio
 async def test_download_file_with_filepath_defers_compression_to_final_step(tmp_path: Path, monkeypatch):
-    async def fake_download(_url: str, file_path: Path):
+    async def fake_download(_url: str, file_path: Path, **_kwargs):
         _save_jpeg(file_path, (2000, 1000))
         return True
 

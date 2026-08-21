@@ -841,6 +841,36 @@ async def thumb_download(
     else:
         LogBuffer.log().write("\n 🟠 Thumb url is empty! ")
 
+    # 全部站点图源失败，尝试 DMM 官方 CDN 直构兜底
+    if manager.config.dmm_fallback_enabled:
+        from mdcx.crawlers.dmm_direct import find_valid_dmm_cover
+
+        dmm_cover_url = await find_valid_dmm_cover(result.number or "")
+        if dmm_cover_url:
+            LogBuffer.log().write(f"\n 🟡 站点图源全部失败，尝试 DMM 官方 CDN 直构兜底: {dmm_cover_url}")
+            thumb_final_path_temp = thumb_final_path
+            if await aiofiles.os.path.exists(thumb_final_path):
+                thumb_final_path_temp = thumb_final_path.with_suffix(".[DOWNLOAD].jpg")
+            if media_context is not None:
+                downloaded = await media_context.save_image(dmm_cover_url, thumb_final_path_temp, folder_new_path)
+            else:
+                downloaded = await download_file_with_filepath(dmm_cover_url, thumb_final_path_temp, folder_new_path)
+            if downloaded:
+                cover_size = await check_pic_async(thumb_final_path_temp)
+                if cover_size:
+                    if thumb_final_path_temp != thumb_final_path:
+                        await move_file_async(thumb_final_path_temp, thumb_final_path)
+                        await delete_file_async(thumb_final_path_temp)
+                    if cd_part:
+                        Flags.file_done_dic[result.number].update({"thumb": thumb_final_path})
+                    other.thumb_marked = False
+                    LogBuffer.log().write(f"\n 🍀 Thumb done! (dmm_fallback)({get_used_time(start_time)}s) ")
+                    other.thumb_path = thumb_final_path
+                    return True
+                LogBuffer.log().write("\n 🟠 DMM 兜底封面下载后校验失败，继续降级处理 ")
+            else:
+                LogBuffer.log().write("\n 🟠 DMM 兜底封面下载失败，继续降级处理 ")
+
     # 下载失败，本地有图
     if thumb_path:
         LogBuffer.log().write("\n 🟠 Thumb download failed! 将继续使用本地旧文件！")

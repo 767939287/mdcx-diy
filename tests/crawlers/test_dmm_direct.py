@@ -283,3 +283,46 @@ async def test_upgrade_dmm_cover_inflight_dedup(monkeypatch):
     )
     assert len(calls) == expected
     assert results[0][0] == results[1][0]
+
+
+@pytest.mark.asyncio
+async def test_find_valid_dmm_cover_hit(monkeypatch):
+    from mdcx.crawlers.dmm_direct import find_valid_dmm_cover
+
+    async def _counting_ok(url):
+        return url
+
+    async def _hd_size(url):
+        return 1032, 1469
+
+    monkeypatch.setattr("mdcx.base.web.check_url", _counting_ok)
+    monkeypatch.setattr("mdcx.base.web.get_imgsize", _hd_size)
+    url = await find_valid_dmm_cover("SSIS-001")
+    assert url is not None
+    assert url.endswith("pl.jpg")
+
+
+@pytest.mark.asyncio
+async def test_find_valid_dmm_cover_no_hit_returns_none(monkeypatch):
+    from mdcx.crawlers.dmm_direct import find_valid_dmm_cover
+
+    async def _fail(url):
+        return None
+
+    monkeypatch.setattr("mdcx.base.web.check_url", _fail)
+    assert await find_valid_dmm_cover("SSIS-001") is None
+
+
+@pytest.mark.asyncio
+async def test_find_valid_dmm_cover_skips_uncensored(monkeypatch):
+    from mdcx.crawlers.dmm_direct import find_valid_dmm_cover
+
+    async def _counting_ok(url):
+        return url
+
+    async def _hd_size(url):
+        return 1032, 1469
+
+    monkeypatch.setattr("mdcx.base.web.check_url", _counting_ok)
+    monkeypatch.setattr("mdcx.base.web.get_imgsize", _hd_size)
+    assert await find_valid_dmm_cover("FC2-PPV-1234567") is None

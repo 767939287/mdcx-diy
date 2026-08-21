@@ -1851,7 +1851,14 @@ class AsyncWebClient:
         self._log(f"🔴 获取文件大小失败: {url} HTTP {response.status_code}")
         return None
 
-    async def download(self, url: str, file_path: Path, *, use_proxy: bool = True) -> bool:
+    async def download(
+        self,
+        url: str,
+        file_path: Path,
+        *,
+        use_proxy: bool = True,
+        max_bytes: int | None = None,
+    ) -> bool:
         """
         下载文件. 当文件较大时分块下载
 
@@ -1859,6 +1866,7 @@ class AsyncWebClient:
             url: 下载链接
             file_path: 保存路径
             use_proxy: 是否使用代理
+            max_bytes: 文件大小上限（字节）。超过则拒绝下载；None 表示不限制
 
         Returns:
             bool: 下载是否成功
@@ -1869,6 +1877,10 @@ class AsyncWebClient:
         webp = False
         if file_path.suffix.lower() == ".jpg" and ".webp" in url.lower():
             webp = True
+
+        if max_bytes and file_size is not None and file_size > max_bytes:
+            self._log(f"🔴 文件超过大小上限 ({max_bytes // (1024**2)} MB)，已拒绝: {url}")
+            return False
 
         MB = 1024**2
         # 2 MB 以上使用分块下载, 不清楚为什么 webp 不分块, 可能是因为要转换成 jpg
@@ -1885,6 +1897,9 @@ class AsyncWebClient:
             if not content:
                 self._log(f"🔴 下载失败: {url} {error}")
                 return False
+        if max_bytes and len(content) > max_bytes:
+            self._log(f"🔴 文件超过大小上限 ({max_bytes // (1024**2)} MB)，已拒绝: {url}")
+            return False
         if not webp:
             return await self._write_file_content(url, file_path, content)
         try:

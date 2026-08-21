@@ -37,6 +37,7 @@ _amazon_request_throttle = _AdaptiveRequestThrottle(
 _DMM_IMAGE_BAD_URL_KEYS = ("now_printing", "nowprinting", "noimage", "nopic", "media_violation")
 _DMM_IMAGE_PROBE_PARAMS = (("w", "120"), ("h", "90"))
 _JDBSTATIC_HOST_SUFFIXES = ("jdbstatic.com",)
+_IMAGE_DOWNLOAD_MAX_BYTES = 50 * 1024 * 1024  # 图片下载大小上限：50MB，防异常大文件拖死磁盘
 
 
 def normalize_media_url(url: str, *, strip_dmm_probe_params: bool = False) -> str:
@@ -958,7 +959,7 @@ async def download_file_with_filepath(url: str, file_path: Path, folder_new_path
         await aiofiles.os.makedirs(folder_new_path)
     try:
         async with manager.acquire_computed() as computed:
-            if await computed.async_client.download(url, file_path):
+            if await computed.async_client.download(url, file_path, max_bytes=_IMAGE_DOWNLOAD_MAX_BYTES):
                 return True
     except Exception as e:
         LogBuffer.log().write(f"\n 🥺 Download failed! {url}\n    原因: {type(e).__name__}: {e}")
@@ -981,6 +982,9 @@ async def download_content_with_filepath(url: str, file_path: Path, folder_new_p
             content, error = await computed.async_client.get_content(url, headers=headers)
         if not content:
             LogBuffer.log().write(f"\n 🥺 Download failed! {url} {error}")
+            return False
+        if len(content) > _IMAGE_DOWNLOAD_MAX_BYTES:
+            LogBuffer.log().write(f"\n 🥺 Download failed! 图片超过大小上限: {url}")
             return False
 
         is_webp = file_path.suffix.lower() == ".jpg" and ".webp" in url.lower()
@@ -1029,6 +1033,9 @@ async def download_dmm_extrafanart_with_filepath(url: str, file_path: Path, fold
 
         if not response.content:
             LogBuffer.log().write(f"\n 🥺 Download failed! {url} empty content")
+            return False
+        if len(response.content) > _IMAGE_DOWNLOAD_MAX_BYTES:
+            LogBuffer.log().write(f"\n 🥺 Download failed! 图片超过大小上限: {url}")
             return False
 
         is_webp = file_path.suffix.lower() == ".jpg" and ".webp" in true_url.lower()

@@ -226,6 +226,27 @@ class DmmCrawler(GenericBaseCrawler[DMMContext]):
             self._log(f"图片[{label}]候选全部失效: {len(candidates)}")
         return ""
 
+    @staticmethod
+    def _record_dmm_cover_evidence(ctx: DMMContext, image_url: str) -> None:
+        """从已验证的 DMM 图 URL 提取 cid 写入前缀学习表（静默失败）。"""
+        normalized = str(image_url or "").strip()
+        if "awsimgsrc.dmm.co.jp" not in normalized:
+            return
+        number = str(getattr(ctx.input, "number", "") or "").strip()
+        if not number:
+            return
+        try:
+            from mdcx.crawlers.dmm_prefix_learn import record_success
+
+            # https://awsimgsrc.dmm.co.jp/pics_dig/digital/video/{cid}/{cid}ps.jpg
+            segments = normalized.rstrip("/").split("/")
+            if len(segments) >= 2:
+                cid = segments[-2]
+                if cid:
+                    record_success(number, cid)
+        except Exception:
+            return
+
     async def _sanitize_image_list(self, ctx: DMMContext, image_urls: Sequence[str], *, label: str) -> list[str]:
         candidates = self._normalize_image_urls(image_urls)
         if not candidates:
@@ -316,6 +337,7 @@ class DmmCrawler(GenericBaseCrawler[DMMContext]):
                 [*self._build_aws_thumb_candidates(ctx, original_thumb), original_thumb],
                 label=f"{label} thumb",
             )
+            self._record_dmm_cover_evidence(ctx, str(item.thumb or ""))
         else:
             item.thumb = self._with_https(normalize_media_url(original_thumb))
 

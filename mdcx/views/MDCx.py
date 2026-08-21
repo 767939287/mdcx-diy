@@ -4883,7 +4883,7 @@ class Ui_MDCx(object):
         self.label_79.setTextInteractionFlags(QtCore.Qt.TextInteractionFlag.NoTextInteraction)
         self.label_79.setObjectName("label_79")
         self.groupBox_51 = QtWidgets.QGroupBox(parent=self.scrollAreaWidgetContents_xiazai)
-        self.groupBox_51.setGeometry(QtCore.QRect(30, 1370, 701, 211))
+        self.groupBox_51.setGeometry(QtCore.QRect(30, 1414, 701, 211))
         self.groupBox_51.setStyleSheet('font:"Courier New";')
         self.groupBox_51.setObjectName("groupBox_51")
         self.label_87 = QtWidgets.QLabel(parent=self.groupBox_51)
@@ -4917,7 +4917,7 @@ class Ui_MDCx(object):
         self.pushButton_del_all_theme_videos.setGeometry(QtCore.QRect(340, 140, 181, 40))
         self.pushButton_del_all_theme_videos.setObjectName("pushButton_del_all_theme_videos")
         self.groupBox_34 = QtWidgets.QGroupBox(parent=self.scrollAreaWidgetContents_xiazai)
-        self.groupBox_34.setGeometry(QtCore.QRect(30, 1090, 701, 261))
+        self.groupBox_34.setGeometry(QtCore.QRect(30, 1134, 701, 261))
         self.groupBox_34.setMinimumSize(QtCore.QSize(500, 0))
         self.groupBox_34.setObjectName("groupBox_34")
         self.horizontalLayoutWidget_19 = QtWidgets.QWidget(parent=self.groupBox_34)
@@ -4972,7 +4972,7 @@ class Ui_MDCx(object):
         self.pushButton_del_all_extrafanart_copy.setGeometry(QtCore.QRect(340, 190, 181, 40))
         self.pushButton_del_all_extrafanart_copy.setObjectName("pushButton_del_all_extrafanart_copy")
         self.groupBox_52 = QtWidgets.QGroupBox(parent=self.scrollAreaWidgetContents_xiazai)
-        self.groupBox_52.setGeometry(QtCore.QRect(30, 670, 701, 181))
+        self.groupBox_52.setGeometry(QtCore.QRect(30, 670, 701, 225))
         self.groupBox_52.setMinimumSize(QtCore.QSize(500, 0))
         self.groupBox_52.setObjectName("groupBox_52")
         self.label_92 = QtWidgets.QLabel(parent=self.groupBox_52)
@@ -5058,8 +5058,31 @@ class Ui_MDCx(object):
         self.label_amazon_skip_poster_size_precheck.setStyleSheet("color: rgb(8, 128, 128);")
         self.label_amazon_skip_poster_size_precheck.setObjectName("label_amazon_skip_poster_size_precheck")
         self.horizontalLayout_158.addWidget(self.label_amazon_skip_poster_size_precheck)
+        self.horizontalLayoutWidget_dmm_fallback = QtWidgets.QWidget(parent=self.groupBox_52)
+        self.horizontalLayoutWidget_dmm_fallback.setGeometry(QtCore.QRect(60, 170, 621, 31))
+        self.horizontalLayoutWidget_dmm_fallback.setObjectName("horizontalLayoutWidget_dmm_fallback")
+        self.horizontalLayout_dmm_fallback = QtWidgets.QHBoxLayout(self.horizontalLayoutWidget_dmm_fallback)
+        self.horizontalLayout_dmm_fallback.setContentsMargins(0, 0, 0, 0)
+        self.horizontalLayout_dmm_fallback.setObjectName("horizontalLayout_dmm_fallback")
+        self.checkBox_dmm_fallback = QtWidgets.QCheckBox(parent=self.horizontalLayoutWidget_dmm_fallback)
+        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Policy.Fixed, QtWidgets.QSizePolicy.Policy.Fixed)
+        sizePolicy.setHorizontalStretch(0)
+        sizePolicy.setVerticalStretch(0)
+        sizePolicy.setHeightForWidth(self.checkBox_dmm_fallback.sizePolicy().hasHeightForWidth())
+        self.checkBox_dmm_fallback.setSizePolicy(sizePolicy)
+        self.checkBox_dmm_fallback.setObjectName("checkBox_dmm_fallback")
+        self.horizontalLayout_dmm_fallback.addWidget(self.checkBox_dmm_fallback)
+        self.label_dmm_fallback = QtWidgets.QLabel(parent=self.horizontalLayoutWidget_dmm_fallback)
+        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Policy.Minimum, QtWidgets.QSizePolicy.Policy.Fixed)
+        sizePolicy.setHorizontalStretch(0)
+        sizePolicy.setVerticalStretch(0)
+        sizePolicy.setHeightForWidth(self.label_dmm_fallback.sizePolicy().hasHeightForWidth())
+        self.label_dmm_fallback.setSizePolicy(sizePolicy)
+        self.label_dmm_fallback.setStyleSheet("color: rgb(8, 128, 128);")
+        self.label_dmm_fallback.setObjectName("label_dmm_fallback")
+        self.horizontalLayout_dmm_fallback.addWidget(self.label_dmm_fallback)
         self.groupBox_66 = QtWidgets.QGroupBox(parent=self.scrollAreaWidgetContents_xiazai)
-        self.groupBox_66.setGeometry(QtCore.QRect(30, 870, 701, 201))
+        self.groupBox_66.setGeometry(QtCore.QRect(30, 914, 701, 201))
         self.groupBox_66.setStyleSheet('font:"Courier New";')
         self.groupBox_66.setObjectName("groupBox_66")
         self.label_333 = QtWidgets.QLabel(parent=self.groupBox_66)
@@ -13232,6 +13255,10 @@ class Ui_MDCx(object):
         self.label_amazon_strict_pic_verify.setText(_translate("MDCx", "对所有 Amazon 结果做图片相似度校验"))
         self.checkBox_amazon_skip_poster_size_precheck.setText(_translate("MDCx", "跳过前置 Poster 大小校验"))
         self.label_amazon_skip_poster_size_precheck.setText(_translate("MDCx", "不因当前 Poster >=400KB 跳过 Amazon"))
+        self.checkBox_dmm_fallback.setText(_translate("MDCx", "DMM 官方图源兜底"))
+        self.label_dmm_fallback.setText(
+            _translate("MDCx", "站点图源全部失败时，按番号直构 DMM 官方 CDN 高清封面（自动学习厂牌前缀，仅影响有码片）")
+        )
         self.groupBox_66.setTitle(_translate("MDCx", "显示剧照"))
         self.label_333.setText(
             _translate(
@@ -14192,6 +14219,7 @@ class Ui_MDCx(object):
                 "<li><b>排除目录 / 字符 / 字符串</b>：多层目录刮削时跳过指定目录；命名单据时剔除指定字符；提取番号前先删除指定字符串以提高识别率（多项用逗号分隔）。</li>\n"
                 "<li><b>失败后移动</b>：刮削不到信息时，可选择不移动，或自动移入失败输出目录。</li>\n"
                 "<li><b>保存日志</b>：开启后日志写入程序目录下的 Log 文件夹（每次运行一个 txt），可随时删除，不影响运行。</li>\n"
+                "<li><b>下载高清图（DMM 兜底）</b>：勾选后当所有图源站点均无法获取封面时，程序按番号直构 DMM 官方 CDN 高清封面兜底，并自动学习各厂牌的前缀规则（学习数据保存在 userdata/dmm_prefix_learned.json，仅记录已验证成功的证据）。所有图片下载统一设 50MB 大小上限，防止异常大文件占用磁盘。</li>\n"
                 "</ul>\n"
                 "\n"
                 "<h4>九、工具页面</h4>\n"

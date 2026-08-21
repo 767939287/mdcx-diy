@@ -428,6 +428,7 @@ def save_config(self: "MyMAinWindow"):
     manager.config.amazon_strict_pic_verify = (
         self.Ui.checkBox_amazon_big_pic.isChecked() and self.Ui.checkBox_amazon_strict_pic_verify.isChecked()
     )
+    manager.config.dmm_fallback_enabled = self.Ui.checkBox_dmm_fallback.isChecked()
     # endregion
 
     # region name
