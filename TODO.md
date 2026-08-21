@@ -287,4 +287,22 @@
 **成本**：3-5 天（ffmpeg 集成 + 帧选择算法 + 配置 UI + 测试）
 **参考**：JavBoss `internal/jav/screenshot_manager.go` — ffmpeg/mpv 8 worker 并发截图
 
+---
+
+### 17. 刮削成功但字段缺失检测（OpenAver 借鉴）
+
+**目标**：检测已标记 done 但关键字段为空的影片，列出缺失字段供用户批量重刮。
+
+**背景**：mdcx `ScrapeStateCache` 只有 `should_skip`（done 跳过）、`should_retry`（failed 重试）、`list_pending`（列失败文件）。一旦标记 done 就永远跳过，即使只刮到番号+标题、演员/日期/标签全空。站点改版期间某段时间刮到的影片可能批量缺字段，用户只能手动逐个强制重刮。
+
+**实现要点**：
+- `ScrapeStateCache` 新增 `list_incomplete(required_fields: list[str]) -> list[tuple[Path, list[str]]]`
+- 遍历 `summary_json` 非空的 done 记录，检查每个字段是否有有效值（runtime="0" 视为无效）
+- 返回 `(file_path, missing_fields)` 列表
+- UI 工具页新增「字段缺失影片」面板，展示列表 + 批量重新入队刮削
+- 复用 `FailureReason` 枚举区分「来源没有」和「未抓到」
+
+**成本**：1-2 天
+**参考**：OpenAver `core/nfo_updater.py:needs_update()` — 检查 title/date/actor/genre/maker/director/duration 缺失
+
 
