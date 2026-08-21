@@ -5,6 +5,7 @@ import json
 import os
 import re
 import time
+import unicodedata
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -322,7 +323,12 @@ async def get_gfriends_index() -> dict[str, str] | None:
     """
     gfriends_github = manager.config.gfriends_github
     gfriends_local_path = manager.config.gfriends_local_path
-    raw_url = f"{gfriends_github}".replace("github.com/", "raw.githubusercontent.com/").replace("://www.", "://")
+    # 优先使用 jsdelivr CDN（国内可达性优于 raw.githubusercontent.com）
+    raw_url = (
+        f"{gfriends_github}"
+        .replace("://www.", "://")
+        .replace("github.com/", "cdn.jsdelivr.net/gh/")
+    )
     gfriends_json_path = resources.u("gfriends.json")
 
     def _expand(data: dict) -> dict[str, str]:
@@ -400,7 +406,17 @@ async def get_gfriends_index() -> dict[str, str] | None:
         async with manager.acquire_computed() as computed:
             filetree_response, _ = await computed.async_client.get_content(filetree_url)
         if filetree_response is None:
-            signal.show_log_text("🔴 Gfriends 数据表获取失败！")
+            signal.show_log_text("🔴 Gfriends 数据表获取失败！尝试使用本地缓存...")
+            if await aiofiles.os.path.exists(gfriends_json_path):
+                try:
+                    async with aiofiles.open(gfriends_json_path, encoding="utf-8") as f:
+                        data = json.loads(await f.read())
+                    stale = _expand(data)
+                    if stale:
+                        signal.show_log_text("🔶 已使用本地缓存（可能已过期）")
+                        return stale
+                except Exception:
+                    signal.show_log_text("🔴 本地缓存读取失败！")
             return None
         try:
             data = json.loads(filetree_response.decode("utf-8"))
@@ -520,9 +536,23 @@ async def upload_actor_backdrop(actor: ActorInfo, image_path: str | Path) -> tup
     return False, f"❌ {actor.name} 背景上传失败: {err or '服务器返回空响应'}"
 
 
+def _normalize_actor_name(name: str) -> str:
+    """演员名归一化：NFKC + 去空格 + 小写，用于模糊匹配 GFriends 索引。
+
+    解决全角/半角差异（如 ＨＤ→HD）和空格差异（如 "波多野 結衣" vs "波多野結衣"）。
+    """
+    normalized = unicodedata.normalize("NFKC", name or "")
+    normalized = re.sub(r"\s+", "", normalized).lower()
+    return normalized
+
+
 def gfriends_find_actor(gfriends_index: dict[str, str], name: str) -> str | None:
+    normalized_name = _normalize_actor_name(name)
+    if not normalized_name:
+        return None
     for key, url in gfriends_index.items():
-        if key.startswith(f"{name}."):
+        stem = key.rsplit(".", 1)[0] if "." in key else key
+        if _normalize_actor_name(stem) == normalized_name:
             return url
     return None
 

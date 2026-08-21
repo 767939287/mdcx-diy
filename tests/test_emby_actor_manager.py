@@ -79,6 +79,35 @@ def test_gfriends_find_actor_returns_none_for_empty_index():
     assert gfriends_find_actor({}, "三上悠亞") is None
 
 
+def test_gfriends_find_actor_matches_with_space_difference():
+    """NFKC + 去空格匹配：index 中带空格，查询不带空格"""
+    index = {"波多野 結衣.jpg": "https://gf.com/yui.jpg"}
+    assert gfriends_find_actor(index, "波多野結衣") == "https://gf.com/yui.jpg"
+
+
+def test_gfriends_find_actor_matches_query_with_space():
+    """NFKC + 去空格匹配：查询带空格，index 中不带空格"""
+    index = {"波多野結衣.jpg": "https://gf.com/yui.jpg"}
+    assert gfriends_find_actor(index, "波多野 結衣") == "https://gf.com/yui.jpg"
+
+
+def test_gfriends_find_actor_matches_fullwidth_to_halfwidth():
+    """NFKC 归一化：全角字母转半角后匹配"""
+    index = {"ＨＤテスト.jpg": "https://gf.com/hd.jpg"}
+    assert gfriends_find_actor(index, "HDテスト") == "https://gf.com/hd.jpg"
+
+
+def test_gfriends_find_actor_matches_case_insensitive():
+    """大小写不敏感匹配"""
+    index = {"YuiHatano.jpg": "https://gf.com/yui.jpg"}
+    assert gfriends_find_actor(index, "yuihatano") == "https://gf.com/yui.jpg"
+
+
+def test_gfriends_find_actor_returns_none_for_empty_name():
+    assert gfriends_find_actor({"A.jpg": "https://x.com/a.jpg"}, "") is None
+    assert gfriends_find_actor({"A.jpg": "https://x.com/a.jpg"}, None) is None
+
+
 def test_from_local_avatar_returns_path_when_file_matches(tmp_path: Path):
     avatar_dir = tmp_path / "avatars"
     avatar_dir.mkdir(parents=True)

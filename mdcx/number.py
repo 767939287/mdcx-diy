@@ -13,6 +13,25 @@ UNCENSORED_DIGIT_NUMBER_PREFIX_PATTERN = re.compile(
 )
 
 
+_DOMAIN_PATTERN = re.compile(
+    r"\b(?:[a-zA-Z0-9]+\.)*[a-zA-Z0-9]+\.(?:com|cn|net|org|gov|edu|info|io|xyz|cc|tk|me)\b",
+    re.IGNORECASE,
+)
+
+
+def remove_disturb(value: str) -> str:
+    """去除文件名中嵌入的域名干扰（如 489155.com@、www.xxx.cn 等）。
+
+    与 escape_string_list 互补：escape_string_list 处理用户配置的特定干扰词，
+    本函数用通用正则自动匹配任意域名，减少用户配置负担。
+
+    只在去除域名后仍有剩余内容时才去除——避免把整个文件名（恰好就是域名）
+    全部吃掉导致空结果。
+    """
+    cleaned = _DOMAIN_PATTERN.sub("", value or "")
+    return cleaned if cleaned.strip("@ /_-.") else value
+
+
 def strip_escape_strings(filename: str, escape_string_list: list[str], replace_char: str = "") -> str:
     filename = filename.upper()
     # 长字符串优先替换，避免 ".COM@" 抢先命中后破坏 "489155.COM@" 这类更具体的规则。
@@ -164,6 +183,9 @@ def long_name(short_name: str) -> str:
 
 def get_file_number(filepath: str, escape_string_list: list[str]) -> str:
     real_name = os.path.splitext(os.path.split(filepath)[1])[0].strip() + "."
+
+    # 去除域名干扰（489155.com@、www.xxx.cn 等），减少对 escape_string_list 配置的依赖
+    real_name = remove_disturb(real_name) + "."
 
     # 去除多余字符
     file_name = remove_escape_string1(real_name, escape_string_list) + "."
@@ -329,3 +351,37 @@ def remove_escape_string1(filename: str, escape_string_list: list[str], replace_
     for each in short_strings:
         filename = re.sub(rf"[-_ .\[]{each.upper()}[-_ .\]]", "-", filename)
     return filename.replace("--", "-").strip("-_ .")
+
+
+def normalize_movie_number(value: str) -> str:
+    """番号匹配键：用于两侧同时折叠后比较，不用于落库改写。
+
+    `_` -> `-` 与抹 `PPV-` 都是有损折叠（`072625_001` 一本道与 `072625-001` 加勒比
+    是两部不同影片），所以库里的番号永远存 provider 给出的规范原样；本函数只出现在
+    "两侧同时折叠后比较"的场景（字幕配对、番号一致性校验、合集前缀判定等）。
+
+    人工输入按番号查库不要用它——会因大小写/分隔符与列的原样形态对不上而 miss，
+    统一走 `movie_number_lookup_values` 做等值 IN 查询。
+    """
+    normalized = (value or "").strip().upper()
+    normalized = normalized.replace(" ", "")
+    normalized = normalized.replace("_", "-")
+    normalized = normalized.replace("PPV-", "")
+    return normalized
+
+
+def movie_number_lookup_values(value: str) -> list[str]:
+    """人工输入按番号点查的等值候选集（已大写，去重保序）。
+
+    列里存的是 provider 规范原样，用户手输的大小写/分隔符未必一致：大小写交给
+    `UPPER()`，分隔符靠候选集把 `_`/`-` 两种形态都列出来。等值 IN 走索引，
+    不做模糊匹配，也不改写库值。
+    """
+    stripped = (value or "").strip().upper()
+    if not stripped:
+        return []
+    candidates = [stripped]
+    for swapped in (stripped.replace("_", "-"), stripped.replace("-", "_")):
+        if swapped not in candidates:
+            candidates.append(swapped)
+    return candidates

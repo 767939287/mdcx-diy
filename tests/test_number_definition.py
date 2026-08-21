@@ -7,13 +7,57 @@ from mdcx.core.file import get_file_info_v2
 from mdcx.core.utils import get_video_size
 from mdcx.models.enums import FileMode
 from mdcx.models.flags import Flags
-from mdcx.number import get_file_number, is_uncensored, match_number
+from mdcx.number import (
+    get_file_number,
+    is_uncensored,
+    match_number,
+    movie_number_lookup_values,
+    normalize_movie_number,
+    remove_disturb,
+)
 
 
 def test_get_file_number_prefers_longer_escape_strings():
     escape_strings = ["4k2", ".com@", "489155.com@"]
 
     assert get_file_number(r"D:/test/489155.com@MXGS-992.mp4", escape_strings) == "MXGS-992"
+
+
+# ============================================================
+# remove_disturb — 域名干扰预处理
+# ============================================================
+
+
+@pytest.mark.parametrize(
+    ("raw", "expected"),
+    [
+        ("489155.com@MXGS-992", "@MXGS-992"),
+        ("www.example.com/ssis00123", "/ssis00123"),
+        ("ssis-00123", "ssis-00123"),
+        ("ABC-123", "ABC-123"),
+        ("100225_001", "100225_001"),
+        ("", ""),
+        (None, None),
+    ],
+)
+def test_remove_disturb(raw, expected):
+    assert remove_disturb(raw) == expected
+
+
+def test_remove_disturb_preserves_filename_when_only_domain():
+    """文件名本身恰好是域名时不去除，避免空结果"""
+    assert remove_disturb("ssis00123.com") == "ssis00123.com"
+    assert remove_disturb("ssis00123.com.") == "ssis00123.com."
+
+
+def test_get_file_number_removes_domain_without_escape_string_config():
+    """不配置 escape_string_list 也能去除域名干扰"""
+    assert get_file_number(r"D:/test/489155.com@MXGS-992.mp4", []) == "MXGS-992"
+
+
+def test_get_file_number_preserves_number_with_dotcom_extension():
+    """文件名含 .com 后缀但不配 escape_string 仍能解析番号"""
+    assert get_file_number(r"D:/test/ssis00123.com.mp4", []) == "SSIS-123"
 
 
 @pytest.mark.parametrize(
@@ -252,3 +296,61 @@ async def test_get_file_info_does_not_extract_short_number_for_non_suren_prefixe
 )
 def test_match_number(text: str, number: str, expected: bool):
     assert match_number(text, number) is expected
+
+
+# ============================================================
+# normalize_movie_number — 从 sakuramediabe 移植
+# ============================================================
+
+
+@pytest.mark.parametrize(
+    ("raw", "expected"),
+    [
+        ("ABC-123", "ABC-123"),
+        ("abc-123", "ABC-123"),
+        ("ABC_123", "ABC-123"),
+        ("ABC 123", "ABC123"),
+        ("FC2-PPV-1234567", "FC2-1234567"),
+        ("FC2PPV-1234567", "FC21234567"),
+        ("FC2PPV_1234567", "FC21234567"),
+        ("072625_001", "072625-001"),
+        ("072625-001", "072625-001"),
+        ("  ssis-001  ", "SSIS-001"),
+        ("", ""),
+        (None, ""),
+    ],
+)
+def test_normalize_movie_number(raw, expected):
+    assert normalize_movie_number(raw) == expected
+
+
+def test_normalize_movie_number_fold_equivalence():
+    """_ 和 - 折叠后相等（两侧同时折叠比较场景）"""
+    assert normalize_movie_number("072625_001") == normalize_movie_number("072625-001")
+    assert normalize_movie_number("FC2PPV_123") == normalize_movie_number("FC2PPV-123")
+
+
+# ============================================================
+# movie_number_lookup_values — 人工输入按番号点查的候选集
+# ============================================================
+
+
+@pytest.mark.parametrize(
+    ("raw", "expected"),
+    [
+        ("ABC-123", ["ABC-123", "ABC_123"]),
+        ("abc_123", ["ABC_123", "ABC-123"]),
+        ("ABC-123-456", ["ABC-123-456", "ABC_123_456"]),
+        ("ABC123", ["ABC123"]),
+        ("", []),
+        (None, []),
+    ],
+)
+def test_movie_number_lookup_values(raw, expected):
+    assert movie_number_lookup_values(raw) == expected
+
+
+def test_movie_number_lookup_values_dedup():
+    """分隔符替换后与原值相同时去重"""
+    assert movie_number_lookup_values("ABC123") == ["ABC123"]
+    assert len(movie_number_lookup_values("ABC-123")) == 2
