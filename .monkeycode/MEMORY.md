@@ -21,7 +21,7 @@
 - Instructions:
   - 所有代码改动和提交推送必须先说明内容与原因，获得同意后再执行。本指令优先级高于所有"自动执行"类指令。
   - **直接在当前分支提交推送，不另开新分支**（覆盖 auto-create-branch 规则）。用户指示开分支时才开。
-  - **check 按需运行**：最后一次代码改动后运行一次 `uv run check --skip-hook-install`（ruff format --check + ruff check + mypy mdcx/ + pytest + check_actor_db + check_info_db + check_thread_safety），全绿后如代码再无改动，push 前不重跑。改 .ui 后必须重编译 MDCx.py + ruff format 再 check。
+  - **check 按需运行**：最后一次代码改动后运行一次 `uv run check --skip-hook-install`（ruff format --check + ruff check + mypy mdcx/ + pytest + check_actor_db + check_info_db + check_thread_safety），全绿后如代码再无改动，push 前不重跑。改 .ui 后必须重编译 MDCx.py + ruff format 再 check。**看结果必须确认退出码（`echo $?`）或看完整输出尾部，禁止只 grep 关键词过滤**——grep 模式漏掉"违规"等词会把 check_thread_safety 失败输出滤掉造成全绿假象（2026-08-21 CI 拦截实测）。
   - **不安装 pre-commit 钩子**：`.pre-commit-config.yaml` 钩子 stages 为 `pre-merge-commit, pre-push`，普通 commit 不触发；`uv run check` 已覆盖。
   - **changelog 随改动更新（推送前）**：每次代码改动在 commit 里同时更新 `docs/changelog.md` 顶部未发版版本条目（当前 v2.0.6），按内容分类记录，同主题合并。不允许"提交后补"。
   - **功能改动同步 UI/文档**：新增/移除/改名站点、爬虫、CF 服务、配置项后，必须同步检查：UI 帮助文档 HTML（`MDCx.ui`）、启动提示/弹窗文字（`main_window.py`）、仓库文档（`README.md`、`docs/*.md`）。网站数量必须与 `get_registered_crawler_sites()` 实际注册数一致。移除功能时同步删除对应 UI 控件/说明/配置项描述。
