@@ -46,6 +46,7 @@
 ### 文档
 
 - 更新 README / FEATURES / USER_GUIDE / CONFIGURATION / DEVELOPMENT：网站数量 45→47（新增 avmoo/avheat）、CF 说明改为外部服务（TRAWL/FlareSolverr）、移除内置 Bypass 相关描述、更新默认代理站点列表
+- 同步 UI 使用说明页（`MDCx.ui` textBrowser_about）与仓库文档：刮削模式从 5 项修正为 4 种实际模式（正常/整理/更新/读取），软链接与调试模式标注为设置项/日志页选项；CF Bypass 补充 Selenium CF Bypass（JavLibrary 专用）与免 CF 通道说明；代理默认列表加入 missav.ws/missav.ai（完整 24 域名）；断点续刮补充「读取模式不受缓存干扰」与「刮削缓存管理」重置方式；工具页演员库维护新增「JavDB 中文名」按钮说明与「刮削缓存管理」条目；FAQ.md 引用修正为实际存在的 USER_GUIDE.md/CONFIGURATION.md/FEATURES.md；README Sites badge 40+→47
 
 ### 修复
 

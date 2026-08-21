@@ -3,7 +3,7 @@
 ![python](https://img.shields.io/badge/Python-3.13+-3776AB.svg?style=flat&logo=python&logoColor=white)
 ![License](https://img.shields.io/badge/License-GPLv3-blue.svg)
 ![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey.svg)
-![Crawlers](https://img.shields.io/badge/Sites-40+-brightgreen.svg)
+![Crawlers](https://img.shields.io/badge/Sites-47-brightgreen.svg)
 
 <p align="center"><b>如果你觉得不错可否赏我杯奶茶费，谢谢！ 😊</b></p>
 
@@ -53,7 +53,7 @@ MDCx-diy 是一个桌面工具，自动从 47 个网站抓取视频文件的元�
 - **演员数据库** — Excel 数据库 + TMDB/Wikidata/Gfriends 多源补全
 - **Emby/Jellyfin 集成** — 自动同步演员信息和头像
 - **异步并发** — 同时刮多个文件，不卡界面
-- **Cloudflare 绕过** — 支持 TRAWL / FlareSolverr 外部 CF 服务自动绕过防护页
+- **Cloudflare 绕过** — 支持 TRAWL / FlareSolverr 外部 CF 服务自动绕过防护页；JavLibrary 专属 Selenium+Edge headless fallback；部分站点免 CF 通道（missav_api、r18dev、javdb_api）
 
 ## 开发者
 

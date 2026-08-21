@@ -202,3 +202,16 @@
   - 网站数量必须与 `get_registered_crawler_sites()` 实际注册数一致（如新增爬虫后 45→47），不要只改一处。
   - 移除功能时同步删除对应 UI 控件/说明文字/配置项描述（如移除内置 CF 后清理"启用内置 Bypass"开关、placeholder 示例、文档中的内置服务描述）。
   - changelog 随改动更新见「提交推送与质量把关」条目。
+
+[长时间后台任务的断点续传与自动循环]
+- Date: 2026-08-20
+- Context: fill_zh_javdb 演员库补全任务需处理 18606 行（其中约 13336 条待处理），单轮 47 分钟只能跑 ~2400 条，踩过的坑沉淀为可复用模式
+- Category: 构建方法
+- Instructions:
+  - **后台 1 小时硬超时**：background_terminal_create 的 timeout 默认 1 小时会被强杀，长任务必须设 `--max-runtime`（建议 2820s≈47min）留余量优雅退出，不能贴着 3600s。
+  - **断点续传设计**：每批完成后把进度写入 state 文件（JSON `{"offset":N,"updated":M}`），重启时读取 offset 续跑。state 文件加入 `.gitignore` 不进版本库。
+  - **单轮退出后自动循环重启**：脚本拆成 `run_round()` + 外层 `for round_num in range(max_rounds)` 循环，单轮 max_runtime 到期保存 state 返回 False，外层 `await asyncio.sleep(5)` 后自动下一轮；全部完成返回 True 退出。设 `--max-rounds` 上限（如 10）防无限循环。
+  - **分批处理**：单批 200 条，`count_pending(offset)` 每轮统计剩余待处理数避免空跑。`count_diff()` 对比出厂库统计实际更新行数（比 offset 更准）。
+  - **并发踩坑**：JavDB API 高并发（15/8）反而被限流降吞吐，实测并发 5 是天花板（~1 条/s）。瓶颈是 API 单条响应延迟 ~1s，加并发无用。
+  - **临时脚本不入库**：执行脚本放 `scripts/`，已在 `.gitignore` 中排除（`scripts/run_fill_zh_javdb.py` 和 `.fill_zh_javdb_state.json`）。
+  - **内存预算**：background_terminal_create 前先 `background_terminal_list` 检查现有终端，新增 memory_percent + 既有总额不超环境总内存 85%；该任务峰值约 440MB，设 memory_percent=40 足够。

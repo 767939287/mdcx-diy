@@ -181,8 +181,8 @@ ASIN 数据库（Excel `amazon_asin_database.xlsx`），搜索到的 ASIN 与番
 - **异步 HTTP**：httpx（默认）+ curl-cffi（指纹伪装）
 - **浏览器指纹**：6 种 TLS 指纹（Chrome 124/131/136、Firefox 133/135），按请求类型动态调整，定期轮换
 - **限流**：每个域名独立令牌桶，默认 8 req/s，失败自动退避重试
-- **Cloudflare Bypass**：通过 `trawl_adapter.py` 把请求翻译给外部 CF 服务（TRAWL `/scrape` 或 FlareSolverr `/v1`），自动绕过 CF 防护页
-- **代理**：HTTP/HTTPS/SOCKS5，按"走代理网站"域名路由（默认含 amazon.co.jp, m.media-amazon.com, xcity.jp, dmm.co.jp, minnano-av.com）
+- **Cloudflare Bypass**：通过 `trawl_adapter.py` 把请求翻译给外部 CF 服务（TRAWL `/scrape` 或 FlareSolverr `/v1`），自动绕过 CF 防护页；JavLibrary 额外支持 Selenium+Edge headless fallback（`selenium_adapter.py`，cf_selenium_bypass 默认开启）
+- **代理**：HTTP/HTTPS/SOCKS5，按"走代理网站"域名路由（默认含 amazon.co.jp, m.media-amazon.com, xcity.jp, minnano-av.com, avbase.net, javbus.com, javdb.com, javlibrary.com, r18.dev, mgstage.com, prestige-av.com, seesaawiki.jp, avsox.click, avsox.com, avmoo.shop, avmoo.com, avheat.shop, avheat.com, kin8tengoku.com, github.com, raw.githubusercontent.com, google.com, missav.ws, missav.ai）
 
 ### TRAWL / FlareSolverr 适配层（mdcx/cf_bypass/trawl_adapter.py）
 

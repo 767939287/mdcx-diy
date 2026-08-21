@@ -148,9 +148,10 @@
 |-------|------|
 | HTTP 代理 | 代理地址（http://127.0.0.1:10809 这种）|
 | SOCKS5 代理 | SOCKS5 代理地址 |
-| 走代理网站 | 只对这些网站用代理，其他直连（默认含 `amazon.co.jp, m.media-amazon.com, xcity.jp, dmm.co.jp, minnano-av.com, avsox.click, avmoo.shop, avheat.shop` 等）|
+| 走代理网站 | 只对这些网站用代理，其他直连（默认含 `amazon.co.jp, m.media-amazon.com, xcity.jp, minnano-av.com, avbase.net, javbus.com, javdb.com, javlibrary.com, r18.dev, mgstage.com, prestige-av.com, seesaawiki.jp, avsox.click, avsox.com, avmoo.shop, avmoo.com, avheat.shop, avheat.com, kin8tengoku.com, github.com, raw.githubusercontent.com, google.com, missav.ws, missav.ai`）|
 | 外部 CF 服务 | TRAWL / FlareSolverr 风格外部 CF 服务地址（如 `http://127.0.0.1:8191`），MDCx 自动拉起协议适配层 |
 | CF 服务后端 | 外部 CF 服务类型：TRAWL（走 /scrape）或 FlareSolverr（走 /v1） |
+| Selenium CF Bypass | JavLibrary 遇 Cloudflare JS challenge 时自动 fallback 到 Selenium+Edge headless（默认开启，需 Windows 10/11 + Edge）|
 | Bypass 独立代理 | bypass 服务专用的代理 |
 | Bypass 落地白名单 | 可信落地域名（逗号分隔，支持 `*.example.com` 子域通配）；校验 Bypass 服务落地/重定向后的最终域名，防第三方服务被劫持时把恶意页面当数据；留空不校验（默认） |
 | 请求超时 | 每次请求等多久 |

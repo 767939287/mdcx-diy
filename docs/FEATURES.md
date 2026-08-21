@@ -185,7 +185,7 @@ MDCx 支持的功能全景。只想快速上手的话，先看 [QUICKSTART.md](Q
 - **自动补全**：通过 TMDB API 查询演员 ID 和多语言名称
 - **数据来源**：TMDB、Wikidata、Gfriends、graphis.ne.jp
 - **反向查询**：已知中文名找日文名，或反过来
- - **演员库维护工具**（工具页）：直接操作 `actor_database.xlsx`，独立按钮——补全中文名（按已有 TMDB ID 补中英繁体翻译）、补全 LibreDMM 链接（补信息链接）、补全别名（从 minnano 拉取别名，默认仅补缺别名的条目，勾选「全量更新」并入全部行且不覆盖本地已有别名，配套「起始行/限量」分片续跑——中断后日志输出"将起始行填入 N-1 即可续跑"，处理日志带 [行N] 前缀便于人工定位）、minnano 补全（从 minnano-av 补缺生日/简介，日文字段自动翻译）、检查用户库（扫描格式/结构/数据异常并弹窗报告，安全项可一键自动修复，tmdb 项给人工修复步骤）、剔除男演员（按 tmdbid 校验 TMDB gender 删除男优，删前备份到「男优备份」sheet，支持限量/可中断，gender 0/1/未知一律保留）、校验 tmdbid 有效性（清除 TMDB 失效 id 并按名字重搜补回）、更新 nfo tmdbid（用本地库新 id 覆盖 nfo 旧 id，持久源同步）、打开演员数据库（用系统默认程序打开 xlsx 供查看与手工编辑）。另设「停止当前维护任务」按钮独立于主界面刮削停止，一键请求停止当前维护任务。网络请求采用滑动窗口并发（TMDB 并发 5 / LibreDMM 并发 2），每个联网维护工具支持限量参数（默认 5000，配合幂等可多次运行逐片处理 2 万+ 行，断点续传），停止时保存已处理部分，日志实时显示在 GUI 日志页。无需输入演员名单或选择 nfo 目录
+ - **演员库维护工具**（工具页）：直接操作 `actor_database.xlsx`，独立按钮——补全中文名（按已有 TMDB ID 补中英繁体翻译）、补全 LibreDMM 链接（补信息链接）、补全别名（可选来源：TMDB、minnano 或 JavDB；默认仅补缺别名的条目，勾选「全量更新」并入全部行且不覆盖本地已有别名，配套「起始行/限量」分片续跑——中断后日志输出"将起始行填入 N-1 即可续跑"，处理日志带 [行N] 前缀便于人工定位）、JavDB 中文名（从 JavDB 移动端 API 查询演员中文名/繁体名，仅处理「中文名 == 日文原名」的行，用 name_zht 转简体补全，无需 TMDB API Key，支持分片续跑）、minnano 补全（从 minnano-av 补缺生日/简介，日文字段自动翻译）、检查用户库（扫描格式/结构/数据异常并弹窗报告，安全项可一键自动修复，tmdb 项给人工修复步骤）、剔除男演员（按 tmdbid 校验 TMDB gender 删除男优，删前备份到「男优备份」sheet，支持限量/可中断，gender 0/1/未知一律保留）、校验 tmdbid 有效性（清除 TMDB 失效 id 并按名字重搜补回）、更新 nfo tmdbid（用本地库新 id 覆盖 nfo 旧 id，持久源同步）、打开演员数据库（用系统默认程序打开 xlsx 供查看与手工编辑）。另设「停止当前维护任务」按钮独立于主界面刮削停止，一键请求停止当前维护任务。网络请求采用滑动窗口并发（TMDB 并发 5 / LibreDMM 并发 2 / JavDB 并发 5），每个联网维护工具支持限量参数（默认 5000，配合幂等可多次运行逐片处理 2 万+ 行，断点续传），停止时保存已处理部分，日志实时显示在 GUI 日志页。无需输入演员名单或选择 nfo 目录
 - **Emby 演员管理器**（工具页）：连接 Emby/Jellyfin 后获取演员列表（可配置只获取演员类型 / 重复去重），按可配置的数据源优先级匹配头像和背景图（Gfriends / graphis.ne.jp / minnano-av / 本地文件夹）与简介信息（本地演员库 / 维基百科 / minnano-av / 本地数据库），预览后批量同步到 Emby（仅补缺失或强制重新获取，同步完成后自动刷新列表）。Gfriends / Graphis / 信息链路已合并为统一函数，按数据源优先级依次尝试；本地文件夹头像匹配采用预扫描索引（`build_local_avatar_index`），将 N 次全树遍历降为 1 次；头像缓存持久化到 `userdata/emby_actor_cache/` 目录（不再随临时目录清理丢失）。「设置」可配置数据源优先级与获取过滤；「数据源测试」可输入演员名逐源验证；双击演员行打开详情编辑对话框，可编辑简介/信息并单独同步头像/简介；「清空缓存文件夹」清理已下载的头像缓存。底部状态栏实时显示连接与当前操作状态。
 
 ## 七、文件命名系统
@@ -212,8 +212,9 @@ MDCx 支持的功能全景。只想快速上手的话，先看 [QUICKSTART.md](Q
 
 - **HTTP 客户端**：curl-cffi 模拟浏览器 TLS 指纹，6 种浏览器画像自动轮换
 - **网络连通性检测**：网络页「开始检测」按钮逐站检查连通性与刮削能力——镜像/动态域名站点多地址检测（主站+镜像），API 类爬虫走真实刮削探测，结果按基础环境/连通性/刮削站点/账号 API/辅助服务分组展示
-- **代理**：支持 HTTP/HTTPS/SOCKS5 代理；仅对"走代理网站"域名列表中的站点走代理（默认含 amazon.co.jp, m.media-amazon.com, xcity.jp, minnano-av.com, avbase.net, javbus.com, javdb.com, javlibrary.com, r18.dev, mgstage.com, prestige-av.com, seesaawiki.jp, avsox.click, avsox.com, avmoo.shop, avmoo.com, avheat.shop, avheat.com, kin8tengoku.com, github.com, raw.githubusercontent.com, google.com），其他直连
+- **代理**：支持 HTTP/HTTPS/SOCKS5 代理；仅对"走代理网站"域名列表中的站点走代理（默认含 amazon.co.jp, m.media-amazon.com, xcity.jp, minnano-av.com, avbase.net, javbus.com, javdb.com, javlibrary.com, r18.dev, mgstage.com, prestige-av.com, seesaawiki.jp, avsox.click, avsox.com, avmoo.shop, avmoo.com, avheat.shop, avheat.com, kin8tengoku.com, github.com, raw.githubusercontent.com, google.com, missav.ws, missav.ai），其他直连
 - **Cloudflare 绕过**：通过外部 CF 服务（TRAWL `/scrape` 或 FlareSolverr `/v1`）自动绕过 CF 防护页，MDCx 自动拉起协议适配层翻译请求，无需内置浏览器；可选配置独立 Bypass 代理；Bypass 服务失效时自动跳过避免空等
+- **Selenium CF Bypass（JavLibrary 专用）**：JavLibrary 遇 Cloudflare JS challenge 时自动 fallback 到 Selenium+Edge headless 获取页面 HTML（cf_selenium_bypass，默认开启）。需要 Windows 10/11 + Edge 浏览器，首次使用自动安装 selenium；无 Edge 环境优雅降级，连续失败 3 次进入 5 分钟冷却
 - **Bypass 落地域名白名单**：可配置可信落地域名列表（逗号分隔，支持 `*.example.com` 子域通配），校验 Bypass 服务落地/重定向后的最终域名，防止第三方服务被劫持时把恶意页面当数据；留空表示不校验
 - **限流**：每个网站独立令牌桶限流，自适应退避重试
 - **指纹伪装**：完整 sec-ch-ua、Accept-Language 等请求头，按请求类型动态调整
@@ -225,7 +226,7 @@ MDCx 支持的功能全景。只想快速上手的话，先看 [QUICKSTART.md](Q
 - **缺失文件检测**：检查媒体库中缺失的文件
 - **海报裁剪工具**：图形化裁剪海报，可拖拽选择区域
 - **封面补图工具**：按番号批量补齐缺失的封面和缩略图，复用当前配置的站点优先级、命名、裁切、水印规则；所有爬虫站点都拿不到图时走 **DMM 官方高清直链兜底**（`dmm_direct`：番号→DMM cid 前缀映射生成 awsimgsrc 高清直链，约 110 个主流系列含 h_xxx 特殊前缀；竖版优先下 `ps` 高清作海报，竖版不存在/失败时下横版 `pl` 并复用 `cut_thumb_to_poster` 裁剪成海报；无码番号自动跳过）
-- **演员库维护工具**：直接操作 `actor_database.xlsx`，一键补全中文名、LibreDMM 链接、别名（从 minnano 拉取，默认仅补缺别名行，可全量并入，支持起始行/限量分片续跑）、minnano 补全、检查用户库（扫描+自动修复安全项）、剔除男演员、校验 tmdbid 有效性、更新 nfo tmdbid、打开数据库查看编辑（复用当前配置的 TMDB API），并发请求日志实时显示
+- **演员库维护工具**：直接操作 `actor_database.xlsx`，一键补全中文名、LibreDMM 链接、别名（可选来源 TMDB/minnano/JavDB，默认仅补缺别名行，可全量并入，支持起始行/限量分片续跑）、JavDB 中文名（从 JavDB 移动端 API 查询演员中文名/繁体名，无需 TMDB API Key）、minnano 补全、检查用户库（扫描+自动修复安全项）、剔除男演员、校验 tmdbid 有效性、更新 nfo tmdbid、打开数据库查看编辑（复用当前配置的 TMDB API），并发请求日志实时显示
 - **网络连通性检查**：一键测试各网站可不可达
 - **相似片推荐**：结果树右键 →「查看相似片推荐」，基于 tag IDF 加权 Jaccard + 系列/片商/发行商/导演/评分/年份/时长/演员多维特征本地离线计算相似影片（借鉴 OpenAver 设计，零网络零模型），支持全部历史刮削结果（含跨会话），双击推荐项可跳转
 - **命令行刮削**：`uv run crawl` 在终端中调试爬虫
@@ -233,6 +234,8 @@ MDCx 支持的功能全景。只想快速上手的话，先看 [QUICKSTART.md](Q
 ## 十一、断点续刮与状态缓存
 
 - **SQLite 刮削状态缓存**：刮削进度自动保存到 `userdata/scrape_state.db`（标准库 sqlite3 + WAL），程序重启或崩溃后再次刮削自动跳过已完成且未变化的文件（按 mtime 判断），从上次进度继续
+- **读取模式不受缓存干扰**：读取模式（main_mode==4）始终处理全部选中文件，不跳过已完成的文件，不写入 done/failed 状态，确保维护操作覆盖完整
+- **刮削缓存管理**：工具页刮削缓存面板可查看缓存统计（已完成/失败/总数）、刷新统计、导出缓存数据、重置缓存（清除已完成标记，下次全量重刮）、清空缓存（删除 scrape_state.db 文件）
 - **失败跨会话重试**：失败文件自动记录，下次启动重新尝试，连续失败 3 次后停止自动重试（可在结果树中对失败项右键强制重刮）；成功即清零计数
 - **结果摘要缓存**：刮削成功时存储相似推荐所需字段，供相似片推荐跨会话使用
 - **安全回退**：数据库损坏或不可用时自动回退内存模式，行为与无缓存一致
