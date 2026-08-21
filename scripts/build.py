@@ -34,7 +34,6 @@ EXCLUDED_MODULES = [
     "matplotlib_inline",
     "rich",
     "typer",
-    "playwright",
     "setuptools",
     "pyright",
     "virtualenv",

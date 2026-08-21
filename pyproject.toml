@@ -57,8 +57,6 @@ dev = [
     "opencv-contrib-python-headless>=4.13.0.92",
     "pre-commit>=4.2.0",
     "pyinstaller>=6.14.2",
-    # 构建期用于下载并随包打入 CF Bypass 所需的 Chromium (CI 中通过 PLAYWRIGHT_BROWSERS_PATH 指定缓存位置)
-    "playwright>=1.40.0",
     "pyright>=1.1.400",
     "pytest>=9.0.3",  # GHSA-6w46-j5rx-g56g tmpdir 处理漏洞 (dev)
     "pytest-asyncio>=1.1.0",
