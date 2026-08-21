@@ -53,6 +53,8 @@
 
 支持的字段：标题、原始标题、简介、演员、海报、缩略图、剧照、预告片、发行日期、片长、评分、标签、导演、系列、制作商、发行商。
 
+每个字段行还可勾选「跳过」：勾选后该字段不从任何来源抓取，保留 NFO 既有值。
+
 还可以按刮削类型（有码/无码/FC2/国产/欧美）分别设置不同的字段优先级。
 
 ## 翻译
@@ -149,7 +151,7 @@
 |-------|------|
 | HTTP 代理 | 代理地址（http://127.0.0.1:10809 这种）|
 | SOCKS5 代理 | SOCKS5 代理地址 |
-| 走代理网站 | 只对这些网站用代理，其他直连（默认含 `amazon.co.jp, m.media-amazon.com, xcity.jp, minnano-av.com, avbase.net, javbus.com, javdb.com, javlibrary.com, r18.dev, mgstage.com, prestige-av.com, seesaawiki.jp, avsox.click, avsox.com, avmoo.shop, avmoo.com, avheat.shop, avheat.com, kin8tengoku.com, github.com, raw.githubusercontent.com, google.com, missav.ws, missav.ai`）|
+| 走代理网站 | 只对这些网站用代理，其他直连（默认含 `amazon.co.jp, m.media-amazon.com, xcity.jp, minnano-av.com, avbase.net, javbus.com, javdb.com, javlibrary.com, r18.dev, mgstage.com, prestige-av.com, seesaawiki.jp, avsox.click, avsox.com, avmoo.shop, avmoo.com, avheat.shop, avheat.com, kin8tengoku.com, github.com, raw.githubusercontent.com, google.com, missav.ws, missav.ai, missav.live`）|
 | 外部 CF 服务 | TRAWL / FlareSolverr 风格外部 CF 服务地址（如 `http://127.0.0.1:8191`），MDCx 自动拉起协议适配层 |
 | CF 服务后端 | 外部 CF 服务类型：TRAWL（走 /scrape）或 FlareSolverr（走 /v1） |
 | Selenium CF Bypass | JavLibrary 遇 Cloudflare JS challenge 时自动 fallback 到 Selenium+Edge headless（默认开启，需 Windows 10/11 + Edge）|

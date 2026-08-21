@@ -17,12 +17,13 @@ MDCx 支持的功能全景。只想快速上手的话，先看 [QUICKSTART.md](Q
 | 欧美 | 数字.数字.数字.数字 | 123.45.67.89 |
 | 素人 | SIRO- 等 | SIRO-1234 |
 
-### 全部 47 个爬虫
+### 全部 48 个爬虫
 
 | 爬虫名 | 数据源 | 说明 |
 |--------|-------|------|
 | dmm | dmm.co.jp | 日本最大成人平台 FANZA（仅能有码） |
-| dmm_api | JavDB v1 API | DMM 数据走 API（仅能有码） |
+| dmm_api | DMM 官方 Affiliate API | 直连 api.dmm.com/affiliate/v3（仅能有码） |
+| thejavdb_api | api.thejavdb.net | TheJavDB API 数据源（免 CF，仅能有码） |
 | javdb | javdb.com | JavDB 综合信息站（综合：有码+无码） |
 | javdb_api | JavDB 镜像站 | 镜像站 HTML 直连，带简繁转换和异体字修正（综合：有码+无码） |
 | javdb_app | JavDB 移动端 API | APK 逆向签名直连（综合：有码+无码） |
@@ -69,10 +70,10 @@ MDCx 支持的功能全景。只想快速上手的话，先看 [QUICKSTART.md](Q
 | javday | javday.tv | 综合：有码+无码+国产 |
 | theporndb | api.theporndb.net | 欧美（欧美） |
 
-> 注意：missav_api、r18dev、javdb_api 这三条是免 CF 通道，默认没启用，需要去「设置→站点」手动加。
+> 注意：missav_api、r18dev、javdb_api、thejavdb_api 这四条是免 CF 通道，默认没启用，需要去「设置→站点」手动加。
 
 **各爬虫适用类型**（刮削类型默认网站源，可在「设置→站点」调整）：
-- **仅能有码**：dmm、dmm_api、libredmm、r18dev、avbase、faleno、giga、dahlia、xcity、prestige、mgstage、fantastica、cableav、getchu、getchu_dmm、javlibrary、jav321、freejavbt、lulubar、avmoo
+- **仅能有码**：dmm、dmm_api、thejavdb_api、libredmm、r18dev、avbase、faleno、giga、dahlia、xcity、prestige、mgstage、fantastica、cableav、getchu、getchu_dmm、javlibrary、jav321、freejavbt、lulubar、avmoo
 - **无码专属**：avsox、kin8
 - **综合（有码+无码）**：javbus、javdb、javdb_api、javdb_app、missav、missav_api、javday、7mmtv、airav_cc、avsex、official、iqqtv
 - **素人**：mgstage、prestige、javbus、javdb 系、dmm、dmm_api、avbase、7mmtv、jav321、missav、missav_api、mywife、iqqtv
@@ -82,7 +83,7 @@ MDCx 支持的功能全景。只想快速上手的话，先看 [QUICKSTART.md](Q
 
 ### DMM 官方高清直链
 
-- 封面/海报统一走 DMM 官方 awsimgsrc CDN 高清直链（竖版 `ps` 通常 1032×1469，部分系列为 745×1081 等中尺寸档；横版 `pl` 通常 2184×1469），由 `mdcx/crawlers/dmm_direct.py` 的番号→DMM cid 前缀映射生成，覆盖约 110 个主流系列（含 `h_xxx`/数字特殊前缀与跨厂商附加前缀）。升级时校验分辨率宽≥700 过滤 147×200 缩略图占位图，避免把海报覆盖成低清缩略图。
+- 封面/海报统一走 DMM 官方 awsimgsrc CDN 高清直链（竖版 `ps` 通常 1032×1469，部分系列为 745×1081 等中尺寸档；横版 `pl` 通常 2184×1469），由 `mdcx/crawlers/dmm_direct.py` 的番号→DMM cid 前缀映射生成，内置静态前缀表覆盖约 110 个主流系列（含 `h_xxx`/数字特殊前缀与跨厂商附加前缀），并叠加学习表自动扩充未收录系列的前缀。升级时校验分辨率宽≥700 过滤 147×200 缩略图占位图，避免把海报覆盖成低清缩略图。
 - **LibreDMM / R18.dev / JavBus / JavDB / JavDB API / JavDB App / DMM / DMM API / avbase** 九个爬虫在刮削时直接把返回的低清封面/海报升级为 DMM 高清（R18.dev 的 `jacket_full_url` 是 pics.dmm.co.jp 低清且部分系列 cid 未补零，JavBus 是自家 CDN 低清镜像，JavDB 三站是 javdb 图床缩略图 `c0.jdbstatic.com` 哈希路径非高清，DMM/avbase 用域名替换 + dmm_direct 前缀表候选），无码番号自动跳过。
 - 开启「Poster 选优」（poster_auto_best）时，候选池自动注入 DMM 竖版高清候选，按尺寸自动胜过低清原图，其他爬虫也能受益。
 - DMM 图下载失败自动重试一次，应对 awsimgsrc 偶发的随机 404/连接抖动。
@@ -90,6 +91,8 @@ MDCx 支持的功能全景。只想快速上手的话，先看 [QUICKSTART.md](Q
 ### 多网站结果合并
 
 多个爬虫返回的数据会按字段优先级合并。比如标题优先取 JavBus 的数据，简介优先取 DMM 的数据——每个字段都可以独立配置优先级。
+
+字段优先级对话框中每个字段行还可勾选「跳过」：勾选后该字段不从任何来源抓取（保持 NFO 中的既有值），适合某些字段想全部手动维护、不被刮削结果覆盖的情况。按刮削类型（有码/无码等）可分别设置。
 
 ## 二、四种刮削模式
 
@@ -134,6 +137,8 @@ MDCx 支持的功能全景。只想快速上手的话，先看 [QUICKSTART.md](Q
 - **制作**：制作商、厂牌、发行商
 - **媒体**：海报 URL、缩略图 URL、背景图 URL、预告片 URL
 - **外部 ID**：各网站 ID（javdbid、javlibid 等）
+
+写入时可通过 **NFO 合并策略**控制如何处理已存在的 NFO（主界面读取模式区域下拉框，5 选 1）：偏好刮削结果 / 偏好本地 NFO / 数组字段合并 / 保留现有 / 仅填空缺，防止重刮覆盖手动整理的内容（如手改的简介、标签）。
 
 ## 四、图片处理
 
@@ -235,7 +240,7 @@ MDCx 支持的功能全景。只想快速上手的话，先看 [QUICKSTART.md](Q
 - **Emby 演员管理器**：连接 Emby 管理演员头像和简介，支持多数据源匹配和批量同步
 - **缺失文件检测**：检查媒体库中缺失的文件
 - **海报裁剪工具**：图形化裁剪海报，可拖拽选择区域
-- **封面补图工具**：按番号批量补齐缺失的封面和缩略图，复用当前配置的站点优先级、命名、裁切、水印规则；所有爬虫站点都拿不到图时走 **DMM 官方高清直链兜底**（`dmm_direct`：番号→DMM cid 前缀映射生成 awsimgsrc 高清直链，约 110 个主流系列含 h_xxx 特殊前缀；竖版优先下 `ps` 高清作海报，竖版不存在/失败时下横版 `pl` 并复用 `cut_thumb_to_poster` 裁剪成海报；无码番号自动跳过）
+- **封面补图工具**：按番号批量补齐缺失的封面和缩略图，复用当前配置的站点优先级、命名、裁切、水印规则；所有爬虫站点都拿不到图时走 **DMM 官方高清直链兜底**（`dmm_direct`：番号→DMM cid 前缀映射生成 awsimgsrc 高清直链，内置约 110 个主流系列前缀表含 h_xxx 特殊前缀，并叠加学习表自动扩充未收录系列；竖版优先下 `ps` 高清作海报，竖版不存在/失败时下横版 `pl` 并复用 `cut_thumb_to_poster` 裁剪成海报；无码番号自动跳过）
 - **演员库维护工具**：直接操作 `actor_database.xlsx`，一键补全中文名、LibreDMM 链接、别名（可选来源 TMDB/minnano/JavDB，默认仅补缺别名行，可全量并入，支持起始行/限量分片续跑）、JavDB 中文名（从 JavDB 移动端 API 查询演员中文名/繁体名，无需 TMDB API Key）、minnano 补全、检查用户库（扫描+自动修复安全项）、剔除男演员、校验 tmdbid 有效性、更新 nfo tmdbid、打开数据库查看编辑（复用当前配置的 TMDB API），并发请求日志实时显示
 - **网络连通性检查**：一键测试各网站可不可达
 - **相似片推荐**：结果树右键 →「查看相似片推荐」，基于 tag IDF 加权 Jaccard + 系列/片商/发行商/导演/评分/年份/时长/演员多维特征本地离线计算相似影片（借鉴 OpenAver 设计，零网络零模型），支持全部历史刮削结果（含跨会话），双击推荐项可跳转

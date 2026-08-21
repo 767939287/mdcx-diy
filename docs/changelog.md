@@ -22,6 +22,7 @@
 
 ### 修复
 
+- **文档与代码同步**：站点数量统一更新为实际注册数 48（README 徽章 Sites-47→48、FEATURES 标题「全部 47 个爬虫」、DEVELOPMENT、UI 帮助文档「当前 47 个」），FEATURES 补上遗漏的 thejavdb_api 爬虫行并标「仅能有码」；dmm_api 数据源描述从误写的「JavDB v1 API」改为「DMM 官方 Affiliate API」；免 CF 通道清单由 3 条补为 4 条（+thejavdb_api）；DMM 兜底描述统一补前缀学习机制（覆盖 USER_GUIDE/FEATURES/UI 帮助文档）；UI 帮助文档与 FEATURES 补 NFO 合并策略（5 种 MergeStrategy）、FEATURES 与 CONFIGURATION 补字段 skip 哨兵说明；CONFIGURATION 走代理网站默认白名单补 missav.live
 - **演员数据库日文异体字简体化**：`actor_db_tool.py` 新增日文新字体/异体字→简体映射表（87 字，覆盖 亜→亚、桜→樱、沢→泽、恵→惠、瀬→濑 等），在 zhconv 繁简转换后额外应用；修复 `fill_zh_javdb` 和 TMDB 翻译模式中因 zhconv 不识别日文汉字导致中文名保留日文原字的问题。一次性修复脚本对现有 xlsx 修复 4569 条中文名 + 2561 条繁体名
 - **演员数据库异常数据清理**：清理 2 条中文名/繁体名包含拉丁字母前缀的异常记录（`Aiko SUZUHARA - 鈴原愛子`、`Chihiro SHIRASAKI - 白崎千尋`）
 - **copytree same-file 防护**：新增 `safe_copytree`/`safe_copytree_async`（`utils/file.py`），在 `shutil.copytree` 前检查 src==dst，命中则直接返回。修复用户把 `extrafanart_folder` 配成 `"extrafanart"` 时，外层 `rmtree(dst)` 先删源目录再 `copytree` 导致 extrafanart 剧照数据丢失的问题。`base/image.py`（`extrafanart_copy2`/`extrafanart_extras_copy`/批量补图）和 `base/video.py`（`add_del_extras`）4 处裸 `shutil.copytree` 已替换
