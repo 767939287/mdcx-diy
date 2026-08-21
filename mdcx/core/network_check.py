@@ -505,6 +505,21 @@ async def _build_site_specs() -> list[NetworkCheckSpec]:
         elif site == Website.MGSTAGE:
             cookies["adc"] = "1"
         elif site == Website.DMM_API:
+            from mdcx.crawlers.dmm_api import DmmApiCrawler
+
+            api_url = DmmApiCrawler._build_api_url(keyword="SSIS-200", sort="match", hits="1")
+            specs.append(
+                NetworkCheckSpec(
+                    name=site.value,
+                    group="账号/API",
+                    url=api_url,
+                    site=site,
+                    headers={"Accept": "application/json"},
+                    validator="dmm_api",
+                )
+            )
+            continue
+        elif site == Website.THEJAVDB_API:
             url = f"{url.rstrip('/')}/movies?q=ssni-200"
             specs.append(
                 NetworkCheckSpec(
@@ -513,7 +528,7 @@ async def _build_site_specs() -> list[NetworkCheckSpec]:
                     url=url,
                     site=site,
                     headers={"Accept": "application/json"},
-                    validator="dmm_api",
+                    validator="thejavdb_api",
                 )
             )
             continue
@@ -769,6 +784,8 @@ async def run_network_check_item(
             status, message = _classify_theporndb_token(int(response.status_code), text)
         elif spec.validator == "dmm_api":
             status, message = _classify_dmm_api(int(response.status_code), text)
+        elif spec.validator == "thejavdb_api":
+            status, message = _classify_thejavdb_api(int(response.status_code), text)
         elif spec.name == "CF Bypass" and status == NetworkCheckStatus.OK:
             message = "服务可用"
 
@@ -817,12 +834,22 @@ def _classify_theporndb_token(status_code: int, text: str) -> tuple[NetworkCheck
 
 
 def _classify_dmm_api(status_code: int, text: str) -> tuple[NetworkCheckStatus, str]:
+    if status_code == 200 and '"status":200' in text and ("content_id" in text or "ssis" in text.lower()):
+        return NetworkCheckStatus.OK, "API 查询正常"
+    if status_code == 200:
+        return NetworkCheckStatus.WARNING, "API 可访问，但 SSIS-200 查询返回数据异常"
+    return _classify_http_result(
+        NetworkCheckSpec(name="dmm_api", group="账号/API", url="", site=Website.DMM_API), status_code, text
+    )
+
+
+def _classify_thejavdb_api(status_code: int, text: str) -> tuple[NetworkCheckStatus, str]:
     if status_code == 200 and ("universal_id" in text or "SSNI" in text.upper()):
         return NetworkCheckStatus.OK, "API 查询正常"
     if status_code == 200:
         return NetworkCheckStatus.WARNING, "API 可访问，但 ssni-200 查询返回数据异常"
     return _classify_http_result(
-        NetworkCheckSpec(name="dmm_api", group="账号/API", url="", site=Website.DMM_API), status_code, text
+        NetworkCheckSpec(name="thejavdb_api", group="账号/API", url="", site=Website.THEJAVDB_API), status_code, text
     )
 
 

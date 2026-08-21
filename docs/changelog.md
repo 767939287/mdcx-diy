@@ -4,6 +4,8 @@
 
 ### 重构
 
+- **dmm_api 爬虫底层替换为 DMM 官方 Affiliate API**：原 `dmm_api` 爬虫实际走 `api.thejavdb.net`（JavDB 第三方 API），名不副实。现将 `dmm_api` 底层实现替换为 DMM 官方 Affiliate API（`api.dmm.com/affiliate/v3/ItemList`），枚举值 `dmm_api` 不变，老用户配置零迁移、无感知。新爬虫直连 DMM 官方 API（无需日本节点），单请求获取完整元数据（标题/演员/厂牌/标签/系列/导演/日期/时长/评分/封面/剧照），并从 HTML5 player 页面提取预告片直链（复用 DmmCrawler 预告片质量分级系统，自动选最优画质）。NetworkConfig 新增 `dmm_api_id`/`dmm_affiliate_id` 配置项，留空使用内置默认值开箱即用，正式使用建议自行注册获取
+- **新增 thejavdb_api 爬虫**：保留原有 thejavdb.net API 数据源为独立爬虫 `thejavdb_api`（`crawlers/thejavdb_api.py`），枚举值 `thejavdb_api`，默认未启用，需手动添加到网站列表。修复原 `dmm_api` 未设置 `ctx.number_00`/`ctx.number_no_00` 导致 DMM 高清封面升级（AWS CDN `pl.jpg`）部分失效的问题
 - **爬虫文件去 `_new` 后缀**：`dmm_new` → `dmm`、`javdb_new` → `javdb`、`avbase_new` → `avbase`，消除"有旧版"的误导。纯文件重命名 + import 路径更新，无功能变更
 - **JavDB App 爬虫类名统一**：`javdb_app.py` 的 `JavdbAPICrawler` → `JavdbAppCrawler`，与文件名一致且避免与 `javdb_api.py` 的 `JavdbApiCrawler` 同名冲突
 - **love6.py 死代码清理**：删除未调用的 `get_extrafanart` 函数（从 lulubar.py 复制粘贴遗留，拼接了错误的 `lulubar.net` 域名）

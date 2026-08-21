@@ -181,21 +181,29 @@ async def test_run_network_check_can_cancel_between_groups(monkeypatch: pytest.M
 
 @pytest.mark.anyio
 async def test_dmm_api_spec_uses_real_query_url(monkeypatch: pytest.MonkeyPatch):
-    class ApiCrawler:
+    class DmmApiCrawlerStub:
         @classmethod
         def base_url_(cls):
-            return "https://api.thejavdb.net/v1"
+            return "https://api.dmm.com"
+
+        @classmethod
+        def _build_api_url(cls, **params):
+            from urllib.parse import urlencode
+
+            query = urlencode({"api_id": "test", "affiliate_id": "test", "output": "json", **params})
+            return f"https://api.dmm.com/affiliate/v3/ItemList?{query}"
 
     fake_crawlers = SimpleNamespace(
         get_registered_crawler_sites=lambda include_hidden=False: [Website.DMM_API],
-        get_crawler=lambda site: ApiCrawler,
+        get_crawler=lambda site: DmmApiCrawlerStub,
     )
     monkeypatch.setitem(sys.modules, "mdcx.crawlers", fake_crawlers)
 
     specs = await build_network_check_specs()
 
     dmm_api = next(spec for spec in specs if spec.site == Website.DMM_API)
-    assert dmm_api.url == "https://api.thejavdb.net/v1/movies?q=ssni-200"
+    assert "api.dmm.com/affiliate/v3/ItemList" in dmm_api.url
+    assert "keyword=SSIS-200" in dmm_api.url
     assert dmm_api.validator == "dmm_api"
 
 

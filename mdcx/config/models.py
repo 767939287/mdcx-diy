@@ -738,6 +738,16 @@ class Config(BaseModel):
     javdb: str = Field(default="", title="Javdb")
     fc2ppvdb: str = Field(default="", title="FC2PPVDB")
     javbus: str = Field(default="", title="Javbus")
+    dmm_api_id: str = Field(
+        default="",
+        title="DMM Affiliate API ID",
+        description="DMM Affiliate API 的 api_id，留空使用内置默认值。正式使用建议自行注册获取。",
+    )
+    dmm_affiliate_id: str = Field(
+        default="",
+        title="DMM Affiliate ID",
+        description="DMM Affiliate API 的 affiliate_id，留空使用内置默认值。",
+    )
     # endregion
 
     # region: Log Settings

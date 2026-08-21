@@ -13891,7 +13891,7 @@ class Ui_MDCx(object):
                 '<li><b>外部 CF 服务</b>：在"设置 → 网络"填写 TRAWL / FlareSolverr 风格外部 CF 服务地址（如 http://127.0.0.1:8191），并在右侧选择后端类型：TRAWL（走 /scrape 原生 API）或 FlareSolverr（走 /v1 兼容 API）。MDCx 自动在本地拉起协议适配层把请求翻译给外部服务，无需自行填 /v1 地址。</li>\n'
                 "<li><b>Selenium CF Bypass</b>（JavLibrary 专用）：JavLibrary 遇 Cloudflare JS challenge 时自动 fallback 到 Selenium+Edge headless 获取页面 HTML。默认开启（cf_selenium_bypass），需要 Windows 10/11 + Edge 浏览器，首次使用自动安装 selenium，无 Edge 环境优雅降级，连续失败 3 次进入 5 分钟冷却。</li>\n"
                 "<li><b>Bypass 落地白名单</b>：可填写可信落地域名白名单（逗号分隔，支持 *.example.com 子域通配），用于校验 Bypass 服务落地/重定向后的最终域名，防止第三方服务被劫持时把恶意页面当数据；留空表示不校验（默认）。</li>\n"
-                "<li><b>免 CF 通道</b>：部分站点已提供免 CF 的数据接口（missav_api、r18dev、javdb_api），默认未启用，需在「设置 → 刮削」手动添加到网站列表。优先选用可获得更稳定的抓取。</li>\n"
+                "<li><b>免 CF 通道</b>：部分站点已提供免 CF 的数据接口（missav_api、r18dev、thejavdb_api），默认未启用，需在「设置 → 刮削」手动添加到网站列表。优先选用可获得更稳定的抓取。</li>\n"
                 "</ul>\n"
                 "\n"
                 "<h4>六、代理设置</h4>\n"

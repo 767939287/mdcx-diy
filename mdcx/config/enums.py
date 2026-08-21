@@ -514,6 +514,7 @@ class Website(Enum):
     JAVDAY = "javday"
     JAVDB = "javdb"
     DMM_API = "dmm_api"
+    THEJAVDB_API = "thejavdb_api"
     JAVDB_API = "javdb_api"
     JAVDB_APP = "javdb_app"
     JAVLIBRARY = "javlibrary"
