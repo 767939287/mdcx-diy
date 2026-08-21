@@ -41,7 +41,7 @@
   - 改动打包入口/运行时依赖后按清单核对单 exe 安全：
     - 延迟导入模块须加入 `scripts/build.py` 的 `--hidden-import`/`--collect-all`，否则 exe 报 ModuleNotFoundError。
     - 顶层 import 的三方依赖 PyInstaller 静态分析自动收集，必要时补 `--collect-all`。
-    - `EXCLUDED_MODULES` 排除的包（rich/typer/playwright 等）绝不能被 GUI 运行期引用。
+    - `EXCLUDED_MODULES` 排除的包（rich/typer 等）绝不能被 GUI 运行期引用。
     - 检查 `.github/workflows/build-windows.yml` 与 `release.yml` 打包流程、hidden-import、chromium 缓存过期键（版本更新 bump 末尾 vN）。
   - 已知：rich/typer 仅独立 CLI 脚本 `mdcx/cmd/crawl.py` 使用，不被打包，排除安全。
   - **打包改动自动检查触发条件**：改 `pyproject.toml` 依赖、`scripts/build.py`、`.github/workflows/build-windows.yml`/`release.yml`、或运行时引入新三方依赖时，必须按上面清单逐项核对打包程序与工作流，确认无遗漏再提交（如移除内置 CF 依赖后同步清理 build.py 的 collect-all 与 workflow 缓存步骤）。

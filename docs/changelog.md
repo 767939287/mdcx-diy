@@ -50,6 +50,9 @@
 
 ### 修复
 
+- **build-windows 工作流 upload-artifact 版本不存在**：`.github/workflows/build-windows.yml` 使用 `actions/upload-artifact@v7`，该 action 最高版本为 v4，v7 不存在导致构建上传产物步骤失败；改为 v4（与 package-trawl.yml 一致）
+- **移除过时的 playwright dev 依赖**：内置 CF Bypass 服务移除后 `playwright` 不再被任何代码引用（仅 `scripts/build.py` 的 `EXCLUDED_MODULES` 排除它），`pyproject.toml` 的 dev group 仍保留且注释写着"构建期下载并随包打入 CF Bypass 所需的 Chromium"；移除 playwright 依赖与 build.py 的 exclude 项，同步更新 uv.lock
+
 - **网络检测取消崩溃**：`run_network_check` 取消时调用不存在的 `asyncio.Task.close()` 抛 AttributeError，改为 `pending.cancel()` 且跳过已完成任务，优雅终止
 - **详情页候选浪费**：基类 `_detail` 首个详情 URL 解析为 None 时直接返回，不尝试后续候选；改为解析失败继续尝试下一个
 - **dmm_new 双重重试叠加**：外层重试循环 + 底层 `retry_count=1` 相乘放大请求次数，底层改 `retry_count=0`（外层承担重试）
