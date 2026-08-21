@@ -263,8 +263,16 @@ class Parser(DetailPageParser):
         return ""
 
 
+_MISSAV_DOMAINS = [
+    "https://missav.ai",
+    "https://missav.ws",
+    "https://missav.live",
+]
+
+
 class MissavCrawler(BaseCrawler):
     description = "MissAV 综合搜索（综合：有码+无码）"
+    _domains: list[str] = _MISSAV_DOMAINS
     parser = Parser()
 
     CODE_PATTERN = re.compile(r"(?i)([a-z]{2,10})[-_ ]?(\d{2,6})")
@@ -326,7 +334,12 @@ class MissavCrawler(BaseCrawler):
     @classmethod
     @override
     def base_url_(cls) -> str:
-        return manager.config.get_site_url(Website.MISSAV, "https://missav.ws")
+        return manager.config.get_site_url(Website.MISSAV, _MISSAV_DOMAINS[0])
+
+    @override
+    def __init__(self, client, base_url: str = "", browser=None):
+        super().__init__(client, base_url=base_url, browser=browser)
+        self._init_rotator(self._domains, custom_url=manager.config.get_site_url(Website.MISSAV, ""))
 
     @staticmethod
     def _normalize_keyword(value: str) -> str:
