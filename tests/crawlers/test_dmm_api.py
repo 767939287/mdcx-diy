@@ -1,6 +1,6 @@
 import pytest
 
-import mdcx.crawlers.dmm_new as dmm_module
+import mdcx.crawlers.dmm as dmm_module
 from mdcx.config.enums import DownloadableFile
 from mdcx.config.manager import manager
 from mdcx.config.models import Website
@@ -104,7 +104,7 @@ async def test_run_calls_api_and_reuses_dmm_image_processing(monkeypatch: pytest
 
 def test_build_aws_thumb_candidates_includes_dmm_direct_prefix(monkeypatch):
     """特殊前缀系列（ABF）的低清图应能构造出 dmm_direct 前缀表高清候选."""
-    from mdcx.crawlers.dmm_new import DmmCrawler
+    from mdcx.crawlers.dmm import DmmCrawler
 
     crawler = DmmCrawler(client=None)
     ctx = crawler.new_context(CrawlerInput.empty())

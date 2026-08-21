@@ -1,6 +1,6 @@
 from ..config.models import Website
 from . import (
-    avbase_new,
+    avbase,
     avsox,
     cableav,
     cnmdb,
@@ -22,7 +22,7 @@ from . import (
     xcity,
 )
 from .airav_cc import AiravCcCrawler
-from .avbase_new import AvbaseCrawler
+from .avbase import AvbaseCrawler
 from .avheat import AvheatCrawler
 from .avmoo import AvmooCrawler
 from .avsex import AvsexCrawler
@@ -31,7 +31,7 @@ from .base import get_crawler, get_registered_crawler_sites, register_crawler
 from .cableav import CableavCrawler
 from .cnmdb import CnmdbCrawler
 from .dahlia import DahliaCrawler
-from .dmm_new import DmmCrawler
+from .dmm import DmmCrawler
 from .faleno import FalenoCrawler
 from .fantastica import FantasticaCrawler
 from .fc2 import Fc2Crawler
@@ -48,9 +48,9 @@ from .iqqtv import IqqtvCrawler
 from .jav321 import Jav321Crawler
 from .javbus import JavbusCrawler
 from .javday import JavdayCrawler
+from .javdb import JavdbCrawler
 from .javdb_api import JavdbApiCrawler
 from .javdb_app import JavdbAPICrawler
-from .javdb_new import JavdbCrawler
 from .javlibrary import JavlibraryCrawler
 from .kin8 import Kin8Crawler
 from .libredmm import LibredmmCrawler

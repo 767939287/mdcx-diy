@@ -1,6 +1,6 @@
 import pytest
 
-from mdcx.crawlers import dmm_new, javdb_new
+from mdcx.crawlers import dmm, javdb
 from tests.crawlers.parser import ParserTestBase
 
 
@@ -8,10 +8,10 @@ from tests.crawlers.parser import ParserTestBase
 @pytest.mark.parametrize(
     "name, parser_class",
     [
-        ("dmm/mono", dmm_new.MonoParser),
-        ("dmm/digital", dmm_new.DigitalParser),
-        ("dmm/rental", dmm_new.RentalParser),
-        ("javdb", javdb_new.Parser),
+        ("dmm/mono", dmm.MonoParser),
+        ("dmm/digital", dmm.DigitalParser),
+        ("dmm/rental", dmm.RentalParser),
+        ("javdb", javdb.Parser),
     ],
 )
 async def test_parsers(name, parser_class, overwrite, parser_names):

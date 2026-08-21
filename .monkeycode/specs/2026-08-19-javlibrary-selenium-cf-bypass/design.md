@@ -304,7 +304,7 @@ class SeleniumBypassState:
 [^2]: (web_async.py#L1101) - CF challenge 检测逻辑: `mdcx/web_async.py`
 [^3]: (dmm_direct.py#L270) - DMM 封面升级函数: `mdcx/crawlers/dmm_direct.py`
 [^4]: (trawl_adapter.py) - TRAWL 适配层（现有 CF bypass 架构参考）: `mdcx/cf_bypass/trawl_adapter.py`
-[^5]: (javdb_new.py#L263) - JavDB post_process（DMM 升级参考）: `mdcx/crawlers/javdb_new.py`
+[^5]: (javdb.py#L263) - JavDB post_process（DMM 升级参考）: `mdcx/crawlers/javdb.py`
 [^6]: (javbus.py#L522) - JavBus DMM 封面升级调用: `mdcx/crawlers/javbus.py`
 [^7]: (edge_bypass_probe.py) - 已验证的 Selenium+Edge bypass 探测脚本: `scripts/edge_bypass_probe.py`
 [^8]: (base.py#L268) - BaseCrawler.post_process 基类定义: `mdcx/crawlers/base/base.py`

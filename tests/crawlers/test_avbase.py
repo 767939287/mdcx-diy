@@ -1,7 +1,7 @@
 import pytest
 
-import mdcx.crawlers.avbase_new as avbase_module
-from mdcx.crawlers.avbase_new import AvbaseCrawler
+import mdcx.crawlers.avbase as avbase_module
+from mdcx.crawlers.avbase import AvbaseCrawler
 from mdcx.models.types import CrawlerInput
 
 

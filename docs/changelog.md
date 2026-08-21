@@ -1,5 +1,11 @@
 # Changelog
 
+## 未发布
+
+### 重构
+
+- **爬虫文件去 `_new` 后缀**：`dmm_new` → `dmm`、`javdb_new` → `javdb`、`avbase_new` → `avbase`，消除"有旧版"的误导。纯文件重命名 + import 路径更新，无功能变更
+
 ## v2.0.6 (2026-08-19)
 
 ### 修复
@@ -56,14 +62,14 @@
 
 - **网络检测取消崩溃**：`run_network_check` 取消时调用不存在的 `asyncio.Task.close()` 抛 AttributeError，改为 `pending.cancel()` 且跳过已完成任务，优雅终止
 - **详情页候选浪费**：基类 `_detail` 首个详情 URL 解析为 None 时直接返回，不尝试后续候选；改为解析失败继续尝试下一个
-- **dmm_new 双重重试叠加**：外层重试循环 + 底层 `retry_count=1` 相乘放大请求次数，底层改 `retry_count=0`（外层承担重试）
+- **dmm 双重重试叠加**：外层重试循环 + 底层 `retry_count=1` 相乘放大请求次数，底层改 `retry_count=0`（外层承担重试）
 - **javbus 搜索不走镜像轮换**：`get_real_url` 搜索请求用首个镜像且 us 类型硬编码 `javbus.hair`，改为镜像轮换重试
 - **Amazon 高清宽度空隙**：`is_hd_candidate_width` 区间 `[1750,1770)` 误判标准大图，改为 `width >= 600`
 - **minnano 标题校验失效**：精确匹配时详情页标题不含演员名仅告警仍返回，改为拒绝该候选继续尝试
 - **crawl CLI 代理白名单失效**：`mdcx/cmd/crawl.py` 构造 `AsyncWebClient` 时漏传 `proxy_sites`，导致 `--proxy` 参数实际不生效。两处调用补传 `proxy_sites`，与 GUI 路径一致；新增回归测试
 - **crawl CLI 失败仍返回 exit 0**：`_crawl` 与 `_fetch_async` 业务失败时不控制退出码。任一失败抛 `typer.Exit(1)`；新增退出码回归测试
 - **javdb_api 搜索 q 参数丢失**：`_fetch_search` 硬编码 `/search?all=1&page=1` 丢弃番号，改为透传 URL 的 path+query；新增回归测试
-- **dmm_new 图片校验 zip(strict=True) 脆弱耦合**：`_sanitize_image_list` 中 `remaining_candidates` 与 `remaining_results` 配对依赖 `asyncio.gather` 默认不返回异常保证长度一致，若协程被取消或 gather 签名改变会抛 ValueError 崩溃。改为非 strict，不足时自动截断
+- **dmm 图片校验 zip(strict=True) 脆弱耦合**：`_sanitize_image_list` 中 `remaining_candidates` 与 `remaining_results` 配对依赖 `asyncio.gather` 默认不返回异常保证长度一致，若协程被取消或 gather 签名改变会抛 ValueError 崩溃。改为非 strict，不足时自动截断
 - **TRAWL 便携版路径/补丁打包缺陷**：`start-trawl.bat` 检测的 `bun\bun.exe`/`redis\redis-server.exe` 与实际嵌套路径（`bun\bun-windows-x64\bun.exe`、`redis\Redis-*\redis-server.exe`）不符，导致 Bun/Redis 检测失败静默跳过；`package-trawl.yml` 打包时漏复制 `trawl-goto-timeout.patch`，运行时兜底应用分支永不触发。start-trawl.bat 改用通配查找定位实际 exe 路径（兼容扁平与嵌套两种结构），download-bun.bat 解压后扁平化到 `bun/` 根目录，package-trawl.yml 打包时同步扁平化 Bun/Redis 目录并补复制 patch 文件
 - **百度翻译 appid/key 未 strip 导致签名错误**：`_baidu_translate_message` 直接用原始 `baidu_appid`/`baidu_key` 计算签名，用户复制粘贴时可能带入前后空格/换行，导致 MD5 签名不匹配返回 `54001`。DeepL/DeepLX 使用前均 `.strip()`，百度翻译遗漏。修复为使用前 strip appid 和 key，`get_translator_skip_reason` 检测空值时同步 strip
 
@@ -123,7 +129,7 @@
 - **停止标志 / 跨线程 Qt**：`_show_version_thread` 移除 worker 线程直接操作 QWidget（`setCursor`/cookie 检查改经 `version_check_done` 信号回主线程）；`network_check` 按钮状态经信号回主线程 + 防重入 + 删重复 setText；`to_cut` 后台线程读 QWidget 改为主线程采集 `mark_list` 传入、`_set_pixmap` 跨线程改 UI 经信号回主线程
 - **trailer 旧文件复用**：`deal_old_files` 带文件名时用旧 `file_name` 构造目标路径，与 `trailer_download` 的 `naming_rule` 命名不一致导致旧 trailer 无法复用/孤立文件，新增 `naming_rule` 参数对齐
 - **Amazon ASIN 记录丢失**：低清兜底路径 `asyncio.create_task` fire-and-forget（事件循环关闭时 pending task 销毁），改为 `await`
-- **爬虫修复**：`get_amazon_data` 删除对恒为 None 的 `html_info` 提取 session 的死逻辑；`get_avsox_domain` 布尔优先级错误（or→and）；`check_url` `max_retries` 1→3 启用真实退避重试；非数字评分 `float()` 崩溃防御；`translate_actor` 空演员名误替换全部演员；missav 冒号格式时长解析（1:30:00）；missav URL slug 非番号格式不覆盖番号；javbus 搜索结果相对路径补全绝对 URL；javdb_new XPath 作用域逃逸；r18dev dvd_id 补零比较
+- **爬虫修复**：`get_amazon_data` 删除对恒为 None 的 `html_info` 提取 session 的死逻辑；`get_avsox_domain` 布尔优先级错误（or→and）；`check_url` `max_retries` 1→3 启用真实退避重试；非数字评分 `float()` 崩溃防御；`translate_actor` 空演员名误替换全部演员；missav 冒号格式时长解析（1:30:00）；missav URL slug 非番号格式不覆盖番号；javbus 搜索结果相对路径补全绝对 URL；javdb XPath 作用域逃逸；r18dev dvd_id 补零比较
 - **读模式 tmdbid 不落盘**：xlsx 缓存命中 tmdbid 立即回写 `res.actor_tmdb_ids`，修复 `still_missing` 为空时 NFO 缺 tmdbid
 - **文件写入原子化**：NFO 与配置保存改为临时文件 + `os.replace` 原子写入（防写入中断损坏），推广到 missing 番号清单、gfriends JSON、actor_db 断点文件、amazon_database 报告等
 - **LogBuffer 并发安全**：`write`/`clear` 加锁、`get` 遍历浅拷贝，修复并发 append 时 `list changed size during iteration`

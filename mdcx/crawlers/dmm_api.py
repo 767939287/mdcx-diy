@@ -12,7 +12,7 @@ from mdcx.models.types import CrawlerResult
 from mdcx.signals import signal
 
 from .base import CrawlerData, CrawlerException
-from .dmm_new import DMMContext, DmmCrawler
+from .dmm import DMMContext, DmmCrawler
 
 
 class DmmApiMovie(BaseModel):

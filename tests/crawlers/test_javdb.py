@@ -2,7 +2,7 @@ import pytest
 from parsel import Selector
 
 from mdcx.config.models import Website
-from mdcx.crawlers.javdb_new import JavdbCrawler
+from mdcx.crawlers.javdb import JavdbCrawler
 from mdcx.models.types import CrawlerInput
 
 
