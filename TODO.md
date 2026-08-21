@@ -69,9 +69,11 @@
 - Actor Split（yamdc）：正则 `\s*(.+?)\s*\(\s*(.+?)\s*\)` 从 `"演员A (别名B)"` 自动拆分
 - 已有影片不自动重命名
 - 与 #10（GFriends 候选名）联动：别名配置直接作为候选名来源
+- 显示优先级（local-javlibrary 借鉴）：用户配置的规范名 > NFO 原始名；曾用名/别名参与头像与资料匹配时支持简繁体转换（复用 zhconv）
+- 重名冲突软合并（local-javlibrary 借鉴）：别名配置与其他演员规范名冲突时提示合并，采用软合并方式统一影片与别名，不回写已有 NFO
 
 **成本**：2-3 天（配置解析 + 替换逻辑 + 标签树 + 测试）
-**参考**：MDCz `personSync.actorAliases` TOML；yamdc `tag_mapper.go` / `actor_split_handler.go`；mdcx `actor_db_tool.py` 别名同步逻辑
+**参考**：MDCz `personSync.actorAliases` TOML；yamdc `tag_mapper.go` / `actor_split_handler.go`；mdcx `actor_db_tool.py` 别名同步逻辑；local-javlibrary 演员「显示名+曾用名+软合并」设计
 
 ---
 
@@ -317,3 +319,19 @@
 **参考**：NFO.Editor 目录浏览 + `mapping_actor.xml` 演员映射思路
 
 
+### 19. NFO 库管理增强（local-javlibrary 借鉴）
+
+**目标**：给 #18 的 NFO 库管理页补上海报墙浏览体验和更强的筛选能力。
+
+**背景**：local-javlibrary（Electron+Vue3 本地库浏览工具）的核心体验是封面墙 + 多维筛选。mdcx 定位刮削工具，全量建库/收藏夹/播放历史不照搬，但以下 4 点与现有 NFO 库管理页天然契合。
+
+**实现要点**：
+- **缩略图视图（海报墙模式）**：列表加「文字/缩略图」视图切换，`QListWidget.setIconMode()` + 异步加载同目录 `poster.jpg` 缩略图（复用主界面 `PreviewImageLoader` 异步加载模式，避免大库卡顿；扫描时不加载，切到缩略图模式才按可视范围懒加载）
+- **仅显示可播放**：复选框过滤无对应视频文件的孤儿 NFO（`_make_file_info` 已做视频探测，扫描时顺便标记 `Qt.UserRole+2`）
+- **多条件组合筛选**：单文本框扩展为 演员 + 年份范围 + 标签 组合筛选（本地内存数据零网络成本），保留现有关键词框作为快速入口
+- **随机摸奖**：「随机看一部」按钮从当前列表（应用筛选后）随机选中并跳转详情
+
+**不做**：SQLite 全量建库（万级以下 rglob 够用，建库引入缓存失效复杂度）、收藏夹/最近看过（需播放数据，稀释刮削工具定位）
+
+**成本**：缩略图 1 天 + 可播放过滤 0.5 天 + 组合筛选 1 天 + 随机 0.5 天
+**参考**：local-javlibrary 视图切换/分类筛选/随机摸奖
