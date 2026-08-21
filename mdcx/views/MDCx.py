@@ -2274,6 +2274,17 @@ class Ui_MDCx(object):
         self.checkBox_read_no_nfo_scrape.setObjectName("checkBox_read_no_nfo_scrape")
         self.horizontalLayout_86.addWidget(self.checkBox_read_no_nfo_scrape)
         self.verticalLayout_5.addLayout(self.horizontalLayout_86)
+        self.horizontalLayout_nfo_merge = QtWidgets.QHBoxLayout()
+        self.horizontalLayout_nfo_merge.setObjectName("horizontalLayout_nfo_merge")
+        self.label_nfo_merge_strategy = QtWidgets.QLabel(parent=self.gridLayoutWidget_2)
+        self.label_nfo_merge_strategy.setObjectName("label_nfo_merge_strategy")
+        self.label_nfo_merge_strategy.setStyleSheet("color: rgb(8, 128, 128);")
+        self.horizontalLayout_nfo_merge.addWidget(self.label_nfo_merge_strategy)
+        self.comboBox_nfo_merge_strategy = QtWidgets.QComboBox(parent=self.gridLayoutWidget_2)
+        self.comboBox_nfo_merge_strategy.setObjectName("comboBox_nfo_merge_strategy")
+        self.comboBox_nfo_merge_strategy.setMinimumSize(QtCore.QSize(200, 0))
+        self.horizontalLayout_nfo_merge.addWidget(self.comboBox_nfo_merge_strategy)
+        self.verticalLayout_5.addLayout(self.horizontalLayout_nfo_merge)
         self.gridLayout_2.addLayout(self.verticalLayout_5, 5, 1, 1, 1)
         self.horizontalLayout_120 = QtWidgets.QHBoxLayout()
         self.horizontalLayout_120.setObjectName("horizontalLayout_120")
@@ -12675,6 +12686,17 @@ class Ui_MDCx(object):
         self.checkBox_read_download_file_again.setText(_translate("MDCx", "重新下载图片等文件（nfo 需有链接）"))
         self.label_347.setText(_translate("MDCx", "将按「设置」-「下载」，更新文件"))
         self.checkBox_read_no_nfo_scrape.setText(_translate("MDCx", "本地没有nfo的文件，重新刮削（按正常模式规则）"))
+        self.label_nfo_merge_strategy.setText(_translate("MDCx", "NFO合并策略:"))
+        self.comboBox_nfo_merge_strategy.clear()
+        self.comboBox_nfo_merge_strategy.addItems(
+            [
+                _translate("MDCx", "新数据优先（覆盖）"),
+                _translate("MDCx", "本地NFO优先"),
+                _translate("MDCx", "合并数组（去重）"),
+                _translate("MDCx", "保留已有（只补新字段）"),
+                _translate("MDCx", "仅填空字段"),
+            ]
+        )
         self.label_36.setText(
             _translate("MDCx", "流程同正常模式，但命名按照更新模式规则执行（在下方设置），适合二次刮削")
         )

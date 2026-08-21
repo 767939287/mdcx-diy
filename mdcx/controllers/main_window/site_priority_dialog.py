@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
     QAbstractItemView,
+    QCheckBox,
     QDialog,
     QDialogButtonBox,
     QGridLayout,
@@ -530,6 +531,7 @@ class FieldPriorityDialog(QDialog):
         self._type_sites = list(dict.fromkeys(type_sites))
         self._field_configs = field_configs
         self._field_lists: dict[CrawlerResultFields, QListWidget] = {}
+        self._skip_checks: dict[CrawlerResultFields, QCheckBox] = {}
 
         layout = QVBoxLayout(self)
         layout.addWidget(self._build_palette_panel())
@@ -564,7 +566,8 @@ class FieldPriorityDialog(QDialog):
             label.setMinimumWidth(88)
             label.setStyleSheet(f"color: {get_theme_tokens(self._dark)['text']};")
             list_widget = PrioritySiteList(self._type_sites, 58, self, self._dark)
-            configured = self._field_configs.get(field, FieldPriorityConfig()).site_prority
+            existing_config = self._field_configs.get(field, FieldPriorityConfig())
+            configured = existing_config.site_prority
             sites = [site for site in configured if site in self._type_sites]
             _setup_site_list(list_widget, sites)
             remove_button = QPushButton("移除")
@@ -574,14 +577,22 @@ class FieldPriorityDialog(QDialog):
             remove_button.clicked.connect(partial(self._remove_from_field, field))
             reset_field_button.clicked.connect(partial(self._reset_field, field))
 
+            skip_check = QCheckBox("跳过")
+            skip_check.setToolTip("勾选后该字段不从任何来源抓取")
+            skip_check.setChecked(existing_config.skip)
+            _style_inline_button(skip_check, self._dark)
+            skip_check.toggled.connect(partial(self._on_skip_toggled, field))
+
             button_layout = QHBoxLayout()
             button_layout.addWidget(remove_button)
             button_layout.addWidget(reset_field_button)
+            button_layout.addWidget(skip_check)
 
             grid.addWidget(label, row, 0)
             grid.addWidget(list_widget, row, 1)
             grid.addLayout(button_layout, row, 2)
             self._field_lists[field] = list_widget
+            self._skip_checks[field] = skip_check
 
         buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Ok | QDialogButtonBox.StandardButton.Cancel)
         _localize_dialog_buttons(buttons)
@@ -593,9 +604,18 @@ class FieldPriorityDialog(QDialog):
 
     def field_configs(self) -> dict[CrawlerResultFields, FieldPriorityConfig]:
         return {
-            field: FieldPriorityConfig(site_prority=_list_sites(list_widget))
+            field: FieldPriorityConfig(
+                site_prority=_list_sites(list_widget),
+                skip=self._skip_checks.get(field, QCheckBox()).isChecked(),
+            )
             for field, list_widget in self._field_lists.items()
         }
+
+    def _on_skip_toggled(self, field: CrawlerResultFields, checked: bool) -> None:
+        """跳过复选框状态变化时，禁用/启用对应的网站列表和按钮。"""
+        list_widget = self._field_lists.get(field)
+        if list_widget:
+            list_widget.setEnabled(not checked)
 
     def _build_palette_panel(self) -> QWidget:
         panel = QWidget()
@@ -615,8 +635,11 @@ class FieldPriorityDialog(QDialog):
         _setup_site_list(self._field_lists[field], self._type_sites)
 
     def _reset_all(self) -> None:
-        for list_widget in self._field_lists.values():
+        for field, list_widget in self._field_lists.items():
             _setup_site_list(list_widget, self._type_sites)
+            skip_check = self._skip_checks.get(field)
+            if skip_check:
+                skip_check.setChecked(False)
 
     def _keep_enabled_only(self) -> None:
         type_site_set = set(self._type_sites)
@@ -624,8 +647,11 @@ class FieldPriorityDialog(QDialog):
             _setup_site_list(list_widget, [site for site in _list_sites(list_widget) if site in type_site_set])
 
     def _clear_all(self) -> None:
-        for list_widget in self._field_lists.values():
+        for field, list_widget in self._field_lists.items():
             list_widget.clear()
+            skip_check = self._skip_checks.get(field)
+            if skip_check:
+                skip_check.setChecked(False)
 
 
 def setup_site_priority_ui(window: "MyMAinWindow") -> None:

@@ -16,6 +16,7 @@ from mdcx.config.enums import (
     KeepableFile,
     MarkType,
     NfoInclude,
+    NfoMergeStrategy,
     NoEscape,
     OutlineShow,
     ReadMode,
@@ -475,6 +476,20 @@ def load_config(self: "MyMAinWindow"):
             (self.Ui.checkBox_read_no_nfo_scrape, ReadMode.NO_NFO_SCRAPE),
         )
         # endregion
+
+        # NFO 合并策略下拉框
+        _strategy_items = [
+            NfoMergeStrategy.PREFER_SCRAPER,
+            NfoMergeStrategy.PREFER_NFO,
+            NfoMergeStrategy.MERGE_ARRAYS,
+            NfoMergeStrategy.PRESERVE_EXISTING,
+            NfoMergeStrategy.FILL_MISSING_ONLY,
+        ]
+        self.Ui.comboBox_nfo_merge_strategy.setCurrentIndex(
+            _strategy_items.index(manager.config.nfo_merge_strategy)
+            if manager.config.nfo_merge_strategy in _strategy_items
+            else 0
+        )
 
         # 更新模式
         self.Ui.checkBox_update_a.setChecked(False)

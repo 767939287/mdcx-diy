@@ -19,6 +19,7 @@ from mdcx.config.enums import (
     Language,
     MarkType,
     NfoInclude,
+    NfoMergeStrategy,
     NoEscape,
     OutlineShow,
     ReadMode,
@@ -342,6 +343,18 @@ def save_config(self: "MyMAinWindow"):
         (self.Ui.checkBox_read_no_nfo_scrape, ReadMode.NO_NFO_SCRAPE),
         (self.Ui.checkBox_read_download_file_again, ReadMode.READ_DOWNLOAD_AGAIN),
         (self.Ui.checkBox_read_update_nfo, ReadMode.READ_UPDATE_NFO),
+    )
+    # NFO 合并策略
+    _strategy_items = [
+        NfoMergeStrategy.PREFER_SCRAPER,
+        NfoMergeStrategy.PREFER_NFO,
+        NfoMergeStrategy.MERGE_ARRAYS,
+        NfoMergeStrategy.PRESERVE_EXISTING,
+        NfoMergeStrategy.FILL_MISSING_ONLY,
+    ]
+    _idx = self.Ui.comboBox_nfo_merge_strategy.currentIndex()
+    manager.config.nfo_merge_strategy = (
+        _strategy_items[_idx] if 0 <= _idx < len(_strategy_items) else NfoMergeStrategy.PREFER_SCRAPER
     )
     # update 模式设置
     if self.Ui.radioButton_update_c.isChecked():
