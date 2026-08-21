@@ -324,11 +324,7 @@ async def get_gfriends_index() -> dict[str, str] | None:
     gfriends_github = manager.config.gfriends_github
     gfriends_local_path = manager.config.gfriends_local_path
     # 优先使用 jsdelivr CDN（国内可达性优于 raw.githubusercontent.com）
-    raw_url = (
-        f"{gfriends_github}"
-        .replace("://www.", "://")
-        .replace("github.com/", "cdn.jsdelivr.net/gh/")
-    )
+    raw_url = f"{gfriends_github}".replace("://www.", "://").replace("github.com/", "cdn.jsdelivr.net/gh/")
     gfriends_json_path = resources.u("gfriends.json")
 
     def _expand(data: dict) -> dict[str, str]:
