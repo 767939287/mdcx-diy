@@ -1798,13 +1798,14 @@ class MyMAinWindow(QMainWindow):
         if self._check_main_file_path():
             file_path = self.file_main_open_path
             main_file_name = split_path(file_path)[1]
+            from mdcx.manual import ManualConfig
+
+            supported_sites = ", ".join(sorted({site.value for site in ManualConfig.WEB_DIC.values()}))
             text, ok = QInputDialog.getText(
                 self,
                 "输入网址重新刮削",
-                f"文件名: {main_file_name}\n支持网站:airav_cc、avsox、dmm、getchu、fc2"
-                f"、fc2club、fc2hub、iqqtv、jav321、javbus、javdb、freejavbt、javlibrary、mdtv"
-                f"、madouqu、mgstage、7mmtv、xcity、mywife、giga、faleno、dahlia、fantastica、avbase"
-                f"、prestige、hdouban、lulubar、cnmdb、theporndb、kin8\n请输入番号对应的网址（不是网站首页地址！！！是番号页面地址！！！）:",
+                f"文件名: {main_file_name}\n支持网站: {supported_sites}"
+                "\n请输入番号对应的网址（不是网站首页地址！！！是番号页面地址！！！）:",
             )
             if ok and text:
                 website, url = deal_url(text)
@@ -3003,15 +3004,15 @@ class MyMAinWindow(QMainWindow):
 <body>
   <p><span style=" font-weight:700;">所有可用网站:</span></p>
 {sites_html}  <p><span style=" font-weight:700;">指定类型影片可指定刮削网站:<span></p>
-  <p>· 有码：dmm、dmm_api、libredmm、r18dev、avbase、faleno、giga、dahlia、xcity、prestige、mgstage、fantastica、cableav、getchu、getchu_dmm、javlibrary、jav321、freejavbt、lulubar、avmoo，以及 javbus、javdb 系、missav 系、official、mmtv、airav_cc、avsex、javday、iqqtv 等综合站；javdb_api/missav_api/r18dev 是免 CF 通道</p>
-  <p>· 无码：avsox、kin8，以及 javbus、javdb 系、missav 系、mmtv、airav_cc、avsex、official、javday、iqqtv 等综合站</p>
+  <p>· 有码：dmm、dmm_api、libredmm、r18dev、avbase、faleno、giga、dahlia、xcity、prestige、mgstage、fantastica、cableav、getchu、getchu_dmm、javlibrary、jav321、freejavbt、lulubar、avmoo，以及 javbus、javdb 系、missav 系、official、7mmtv、airav_cc、avsex、javday、iqqtv 等综合站；javdb_api/missav_api/r18dev 是免 CF 通道</p>
+  <p>· 无码：avsox、kin8，以及 javbus、javdb 系、missav 系、7mmtv、airav_cc、avsex、official、javday、iqqtv 等综合站</p>
   <p>· 欧美：theporndb、avheat</p>
   <p>· 国产：hdouban、cnmdb、madouqu、iqqtv、mdtv、javday、hscangku</p>
   <p>· 里番：getchu_dmm </p>
   <p>· Mywife：mywife </p>
   <p>· GIGA：giga </p>
   <p>· Kin8：kin8 </p>
-  <p>· 素人：mgstage、prestige、javbus、javdb 系、dmm、dmm_api、avbase、mmtv、jav321、missav、missav_api、mywife、iqqtv </p>
+  <p>· 素人：mgstage、prestige、javbus、javdb 系、dmm、dmm_api、avbase、7mmtv、jav321、missav、missav_api、mywife、iqqtv </p>
   <p>· FC2：fc2、fc2club、fc2hub、fc2ppvdb、love6、javdb 系 </p>
 </body>
 </html>""")

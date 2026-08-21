@@ -151,6 +151,15 @@
   - 删死字段前必须先实测验证功能是否正常（最小复现 import/跑一遍），不能因字段没人用判定整个功能在跑。
   - 用户"是不是可复用"的反问是高价值信号，小白的常识直觉能刺穿专家盲点。
 
+[排查 UI 必须覆盖弹窗/QDialog 模块]
+- Date: 2026-08-21
+- Context: 排查"NFO 不写入导演是否仍刮削"时，AI 只 grep 了 `main_window.py` 和 `MDCx.ui` 顶层控件，漏看了独立弹窗模块 `site_priority_dialog.py` 中的 `FieldPriorityDialog`，误报"UI 没暴露字段网站优先级开关"
+- Category: 排错调试
+- Instructions:
+  - 排查 UI 功能时必须搜索**所有 QDialog 子类和弹窗模块**，不能只看主窗口。项目弹窗集中在 `mdcx/controllers/main_window/site_priority_dialog.py` 等独立文件，grep 主窗口命中不到。
+  - 标准排查路径：`grep -rn "QDialog\|class.*Dialog"` 全仓找弹窗类 → 逐个检查弹窗内的控件/按钮/列表 → 确认"功能不存在"前先确认弹窗入口的触发方式（如按钮 clicked → `_open_priority_editor`）。
+  - 典型坑：配置项在二次弹窗（如 FieldPriorityDialog 的字段网站优先级列表），主窗口只放一个触发按钮，不看弹窗内部就会误判"UI 没暴露该配置"。
+
 [devbox 验证环境默认代理指向无进程的 127.0.0.1:7890]
 - Date: 2026-08-14
 - Context: 多次踩坑（r18dev/javbus 高清、DMM 图下载、check_url）——所有走 manager.acquire_computed() 的请求失败，curl 报 proxy 127.0.0.1 连接失败

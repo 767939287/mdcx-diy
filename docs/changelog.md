@@ -47,6 +47,7 @@
 
 - 更新 README / FEATURES / USER_GUIDE / CONFIGURATION / DEVELOPMENT：网站数量 45→47（新增 avmoo/avheat）、CF 说明改为外部服务（TRAWL/FlareSolverr）、移除内置 Bypass 相关描述、更新默认代理站点列表
 - 同步 UI 使用说明页（`MDCx.ui` textBrowser_about）与仓库文档：刮削模式从 5 项修正为 4 种实际模式（正常/整理/更新/读取），软链接与调试模式标注为设置项/日志页选项；CF Bypass 补充 Selenium CF Bypass（JavLibrary 专用）与免 CF 通道说明；代理默认列表加入 missav.ws/missav.ai（完整 24 域名）；断点续刮补充「读取模式不受缓存干扰」与「刮削缓存管理」重置方式；工具页演员库维护新增「JavDB 中文名」按钮说明与「刮削缓存管理」条目；FAQ.md 引用修正为实际存在的 USER_GUIDE.md/CONFIGURATION.md/FEATURES.md；README Sites badge 40+→47
+- **UI 文字全面修正**：(1) 输入网址弹窗支持网站列表改为从 `WEB_DIC` 动态生成，修复遗漏 missav/avmoo/avheat/cableav/love6/hsck/fc2ppvdb 共 7 个站点；(2) 帮助文档「调试模式」位置从"日志页面"修正为"设置→高级"；(3) CF Bypass tooltip 修正"为空=关闭"误导，补充外部 CF 服务自动启用适配层说明；(4) CF Bypass placeholder 移除已废弃的旧内置服务端口 8000；(5) init.py tooltip "免翻网址"修正为"走代理网站"，路径"设置-代理"统一为"设置→网络"，全量替换 `「设置」-「` 为 `「设置→`
 
 ### 修复
 

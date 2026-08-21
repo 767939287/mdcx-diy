@@ -13647,7 +13647,7 @@ class Ui_MDCx(object):
         self.label_103.setText(
             _translate(
                 "MDCx",
-                "<p>支持 http(s), socks5(h) 代理. 示例: http://127.0.0.1:7897<br>需要用户名和密码时格式为: schema://username:password@host:port<br>Cloudflare Bypass 为空时表示关闭该功能<br>“使用代理”仅控制常规网络请求代理开关，不控制 CF Bypass 代理<br>“CF Bypass代理”仅作用于 bypass 服务请求（mirror/html）</p>",
+                '<p>支持 http(s), socks5(h) 代理. 示例: http://127.0.0.1:7897<br>需要用户名和密码时格式为: schema://username:password@host:port<br>Cloudflare Bypass 地址留空时，若配置了下方"外部 CF 服务"则自动启动适配层；两者均留空时关闭 CF Bypass 功能<br>"使用代理"仅控制常规网络请求代理开关，不控制 CF Bypass 代理<br>"CF Bypass代理"仅作用于 bypass 服务请求（mirror/html）</p>',
             )
         )
         self.checkBox_use_proxy.setToolTip(_translate("MDCx", "仅控制常规网络请求代理开关，不控制 CF Bypass 代理"))
@@ -13657,7 +13657,9 @@ class Ui_MDCx(object):
         self.comboBox_no_proxy_sites.setCurrentText(_translate("MDCx", "选择网站..."))
         self.lineEdit_no_proxy_sites.setPlaceholderText(_translate("MDCx", "逗号分隔，如 api.tmdb.org,libredmm"))
         self.label_cf_bypass.setText(_translate("MDCx", "CF Bypass："))
-        self.lineEdit_cf_bypass_url.setPlaceholderText(_translate("MDCx", "例如: http://127.0.0.1:8000"))
+        self.lineEdit_cf_bypass_url.setPlaceholderText(
+            _translate("MDCx", "留空则由外部 CF 服务自动启动（高级：手动指定 cf_bypasser 协议服务地址）")
+        )
         self.label_cf_bypass_proxy.setText(_translate("MDCx", "CF Bypass代理："))
         self.lineEdit_cf_bypass_proxy.setPlaceholderText(_translate("MDCx", "例如: http://127.0.0.1:7890（可选）"))
         self.label_cf_bypass_trawl.setText(_translate("MDCx", "外部 CF 服务："))
@@ -13861,7 +13863,7 @@ class Ui_MDCx(object):
                 "<li><b>更新模式</b>：对已有 NFO 的影片在不改动文件位置结构的前提下重新整理文件结构，按更新规则重新命名目录和文件。适合已刮过但想调整目录结构的情况。</li>\n"
                 "<li><b>读取模式</b>：通过读取本地 NFO 文件实现无需联网的查看或更新，4 个独立选项可自由组合——有 NFO 时更新（按更新规则整理）、无 NFO 时刮削（对没 NFO 的文件联网刮）、重新下载（重新下载图片）、更新 NFO（更新 NFO 内容如补演员 TMDB ID）。读取模式不受断点续刮缓存干扰，始终处理全部选中文件。</li>\n"
                 "<li><b>软链接</b>（设置项，非独立模式）：在任意模式下勾选「创建软链接」即可刮削后不移动原视频，而是在目标目录创建软链接（类快捷方式），便于 PT 下载既刮削又保种；需以管理员 / 有权限身份运行。注意：软链接通常只能在媒体库展示，不能直接播放。</li>\n"
-                "<li><b>调试模式</b>（日志页面选项）：在日志页面勾选「调试模式」后，输出番号对应的完整元数据（封面、导演、演员、简介等）供排查。</li>\n"
+                "<li><b>调试模式</b>（设置→高级选项）：在「设置→高级」勾选「调试模式」选项后，日志页面会输出番号对应的完整元数据（封面、导演、演员、简介等）供排查。</li>\n"
                 "</ul>\n"
                 "\n"
                 "<h4>三、命名规则</h4>\n"
