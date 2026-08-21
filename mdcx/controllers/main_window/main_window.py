@@ -155,6 +155,9 @@ class MyMAinWindow(QMainWindow):
     label_show_version = pyqtSignal(str)
     version_check_done = pyqtSignal(bool)  # 版本检查完成（参数为是否有新版本），主线程执行 UI 操作
     net_check_done = pyqtSignal()  # 网络检测完成，主线程恢复按钮状态
+    nfo_lib_data_loaded = pyqtSignal(str)  # NFO 库管理：后台读取 NFO 完成，主线程填充表单
+    nfo_lib_save_done = pyqtSignal(str)  # NFO 库管理：后台保存完成，主线程恢复按钮
+    nfo_lib_batch_done = pyqtSignal(str)  # NFO 库管理：批量操作完成，主线程更新状态
 
     # endregion
 
@@ -187,6 +190,12 @@ class MyMAinWindow(QMainWindow):
         self.dark_mode = False  # 暗黑模式标识
         self.check_mac = True  # 检测配置目录
         self._actor_db_running: set[str] = set()  # 正在运行的 actor_db 异步任务的 btn_attr 集合
+        self._nfo_lib_current_path: Path | None = None  # NFO 库管理：当前选中的 NFO 路径
+        self._nfo_lib_pending_data: CrawlersResult | None = None  # NFO 库管理：后台读取的临时数据
+        self._nfo_lib_pending_info: OtherInfo | None = None  # NFO 库管理：后台读取的临时 OtherInfo
+        self._nfo_lib_save_result: bool = False  # NFO 库管理：后台保存结果
+        self._nfo_lib_batch_result: tuple[int, int, int] = (0, 0, 0)  # NFO 库管理：批量结果 (成功, 失败, 总数)
+        self._nfo_lib_original_data: CrawlersResult | None = None  # NFO 库管理：加载时的原始数据（diff 基准）
         # self.window_marjin = 0 窗口外边距，为0时不往里缩
         self.show_flag = True  # 是否加载刷新样式
 
@@ -875,6 +884,90 @@ class MyMAinWindow(QMainWindow):
         self.Ui.stackedWidget.setCurrentIndex(5)
         self.set_left_button_style()
         self.Ui.pushButton_about.setStyleSheet("font-weight: bold; background-color: rgba(160,160,165,60);")
+
+    # endregion
+
+    # region NFO 库管理
+
+    def pushButton_nfo_library_clicked(self):
+        from .nfo_library import pushButton_nfo_library_clicked
+
+        pushButton_nfo_library_clicked(self)
+
+    def pushButton_nfo_lib_select_dir_clicked(self):
+        from .nfo_library import pushButton_nfo_lib_select_dir_clicked
+
+        pushButton_nfo_lib_select_dir_clicked(self)
+
+    def pushButton_nfo_lib_refresh_clicked(self):
+        from .nfo_library import pushButton_nfo_lib_refresh_clicked
+
+        pushButton_nfo_lib_refresh_clicked(self)
+
+    def listWidget_nfo_lib_item_clicked(self):
+        from .nfo_library import listWidget_nfo_lib_item_clicked
+
+        listWidget_nfo_lib_item_clicked(self)
+
+    def pushButton_nfo_lib_save_clicked(self):
+        from .nfo_library import pushButton_nfo_lib_save_clicked
+
+        pushButton_nfo_lib_save_clicked(self)
+
+    def on_nfo_lib_data_loaded(self, nfo_path_str: str):
+        from .nfo_library import on_nfo_lib_data_loaded
+
+        on_nfo_lib_data_loaded(self, nfo_path_str)
+
+    def on_nfo_lib_save_done(self, nfo_path_str: str):
+        from .nfo_library import on_nfo_lib_save_done
+
+        on_nfo_lib_save_done(self, nfo_path_str)
+
+    def lineEdit_nfo_lib_filter_changed(self):
+        from .nfo_library import lineEdit_nfo_lib_filter_changed
+
+        lineEdit_nfo_lib_filter_changed(self)
+
+    def pushButton_nfo_lib_crop_clicked(self):
+        from .nfo_library import pushButton_nfo_lib_crop_clicked
+
+        pushButton_nfo_lib_crop_clicked(self)
+
+    def pushButton_nfo_lib_batch_actor_clicked(self):
+        from .nfo_library import pushButton_nfo_lib_batch_actor_clicked
+
+        pushButton_nfo_lib_batch_actor_clicked(self)
+
+    def pushButton_nfo_lib_batch_add_tag_clicked(self):
+        from .nfo_library import pushButton_nfo_lib_batch_add_tag_clicked
+
+        pushButton_nfo_lib_batch_add_tag_clicked(self)
+
+    def pushButton_nfo_lib_batch_del_tag_clicked(self):
+        from .nfo_library import pushButton_nfo_lib_batch_del_tag_clicked
+
+        pushButton_nfo_lib_batch_del_tag_clicked(self)
+
+    def pushButton_nfo_lib_batch_series_clicked(self):
+        from .nfo_library import pushButton_nfo_lib_batch_series_clicked
+
+        pushButton_nfo_lib_batch_series_clicked(self)
+
+    def pushButton_nfo_lib_batch_save_clicked(self):
+        from .nfo_library import pushButton_nfo_lib_batch_save_clicked
+
+        pushButton_nfo_lib_batch_save_clicked(self)
+
+    def on_nfo_lib_batch_done(self, arg: str):
+        from .nfo_library import on_nfo_lib_batch_done
+
+        on_nfo_lib_batch_done(self, arg)
+
+    def listWidget_nfo_lib_context_menu(self, pos):
+        from .nfo_library import listWidget_nfo_lib_context_menu
+
+        listWidget_nfo_lib_context_menu(self, pos)
 
     # endregion
 

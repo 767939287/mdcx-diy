@@ -8337,7 +8337,92 @@
                             </property>
                           </widget>
                         </item>
-</layout>
+                        <item>
+                          <widget class="QGroupBox" name="groupBox_nfo_lib_batch">
+                            <property name="title">
+                              <string>批量操作（选中多条后使用）</string>
+                            </property>
+                            <layout class="QGridLayout" name="gridLayout_nfo_lib_batch">
+                              <item row="0" column="0">
+                                <widget class="QPushButton" name="pushButton_nfo_lib_batch_actor">
+                                  <property name="text">
+                                    <string>替换演员名</string>
+                                  </property>
+                                </widget>
+                              </item>
+                              <item row="0" column="1">
+                                <widget class="QLineEdit" name="lineEdit_nfo_lib_batch_actor">
+                                  <property name="placeholderText">
+                                    <string>新演员名（逗号分隔）</string>
+                                  </property>
+                                </widget>
+                              </item>
+                              <item row="1" column="0">
+                                <widget class="QPushButton" name="pushButton_nfo_lib_batch_add_tag">
+                                  <property name="text">
+                                    <string>加标签</string>
+                                  </property>
+                                </widget>
+                              </item>
+                              <item row="1" column="1">
+                                <widget class="QLineEdit" name="lineEdit_nfo_lib_batch_add_tag">
+                                  <property name="placeholderText">
+                                    <string>标签（逗号分隔）</string>
+                                  </property>
+                                </widget>
+                              </item>
+                              <item row="2" column="0">
+                                <widget class="QPushButton" name="pushButton_nfo_lib_batch_del_tag">
+                                  <property name="text">
+                                    <string>删标签</string>
+                                  </property>
+                                </widget>
+                              </item>
+                              <item row="2" column="1">
+                                <widget class="QLineEdit" name="lineEdit_nfo_lib_batch_del_tag">
+                                  <property name="placeholderText">
+                                    <string>标签（逗号分隔）</string>
+                                  </property>
+                                </widget>
+                              </item>
+                              <item row="3" column="0">
+                                <widget class="QPushButton" name="pushButton_nfo_lib_batch_series">
+                                  <property name="text">
+                                    <string>统一系列名</string>
+                                  </property>
+                                </widget>
+                              </item>
+                              <item row="3" column="1">
+                                <widget class="QLineEdit" name="lineEdit_nfo_lib_batch_series">
+                                  <property name="placeholderText">
+                                    <string>系列名</string>
+                                  </property>
+                                </widget>
+                              </item>
+                              <item row="4" column="0" colspan="2">
+                                <widget class="QPushButton" name="pushButton_nfo_lib_batch_save">
+                                  <property name="minimumSize">
+                                    <size>
+                                      <width>0</width>
+                                      <height>36</height>
+                                    </size>
+                                  </property>
+                                  <property name="text">
+                                    <string>批量保存</string>
+                                  </property>
+                                </widget>
+                              </item>
+                              <item row="5" column="0" colspan="2">
+                                <widget class="QLabel" name="label_nfo_lib_batch_status">
+                                  <property name="text">
+                                    <string/>
+                                  </property>
+                                </widget>
+                              </item>
+                            </layout>
+                          </widget>
+                        </item>
+                      </layout>
                     </widget>
                   </widget>
                   <widget class="QGroupBox" name="groupBox_35">
@@ -24696,6 +24781,448 @@ p, li { white-space: pre-wrap; }
             </property>
           </widget>
         </widget>
+        <widget class="QWidget" name="page_nfo_library">
+          <layout class="QVBoxLayout" name="nfo_library_main_layout">
+            <property name="spacing">
+              <number>6</number>
+            </property>
+            <property name="leftMargin">
+              <number>10</number>
+            </property>
+            <property name="topMargin">
+              <number>10</number>
+            </property>
+            <property name="rightMargin">
+              <number>10</number>
+            </property>
+            <property name="bottomMargin">
+              <number>10</number>
+            </property>
+            <item>
+              <widget class="QWidget" name="nfo_lib_top_bar" native="true">
+                <layout class="QHBoxLayout" name="nfo_lib_top_layout">
+                  <property name="spacing">
+                    <number>8</number>
+                  </property>
+                  <item>
+                    <widget class="QPushButton" name="pushButton_nfo_lib_select_dir">
+                      <property name="minimumSize">
+                        <size>
+                          <width>0</width>
+                          <height>32</height>
+                        </size>
+                      </property>
+                      <property name="text">
+                        <string>选择目录</string>
+                      </property>
+                    </widget>
+                  </item>
+                  <item>
+                    <widget class="QLineEdit" name="lineEdit_nfo_lib_dir">
+                      <property name="minimumSize">
+                        <size>
+                          <width>0</width>
+                          <height>32</height>
+                        </size>
+                      </property>
+                      <property name="readOnly">
+                        <bool>true</bool>
+                      </property>
+                      <property name="placeholderText">
+                        <string>点击"选择目录"选择 NFO 所在文件夹</string>
+                      </property>
+                    </widget>
+                  </item>
+                  <item>
+                    <widget class="QLabel" name="label_nfo_lib_count">
+                      <property name="text">
+                        <string>共 0 个</string>
+                      </property>
+                    </widget>
+                  </item>
+                  <item>
+                    <widget class="QLineEdit" name="lineEdit_nfo_lib_filter">
+                      <property name="minimumSize">
+                        <size>
+                          <width>120</width>
+                          <height>32</height>
+                        </size>
+                      </property>
+                      <property name="maximumSize">
+                        <size>
+                          <width>180</width>
+                          <height>16777215</height>
+                        </size>
+                      </property>
+                      <property name="placeholderText">
+                        <string>筛选番号/演员/标题...</string>
+                      </property>
+                    </widget>
+                  </item>
+                  <item>
+                    <widget class="QPushButton" name="pushButton_nfo_lib_refresh">
+                      <property name="minimumSize">
+                        <size>
+                          <width>0</width>
+                          <height>32</height>
+                        </size>
+                      </property>
+                      <property name="text">
+                        <string>刷新</string>
+                      </property>
+                    </widget>
+                  </item>
+                </layout>
+              </widget>
+            </item>
+            <item>
+              <widget class="QWidget" name="nfo_lib_content" native="true">
+                <layout class="QHBoxLayout" name="nfo_lib_content_layout">
+                  <property name="spacing">
+                    <number>6</number>
+                  </property>
+                  <property name="leftMargin">
+                    <number>0</number>
+                  </property>
+                  <property name="topMargin">
+                    <number>0</number>
+                  </property>
+                  <property name="rightMargin">
+                    <number>0</number>
+                  </property>
+                  <property name="bottomMargin">
+                    <number>0</number>
+                  </property>
+                  <item>
+                    <widget class="QWidget" name="nfo_lib_list_panel" native="true">
+                      <layout class="QVBoxLayout" name="nfo_lib_list_layout">
+                        <property name="leftMargin">
+                          <number>0</number>
+                        </property>
+                        <property name="topMargin">
+                          <number>0</number>
+                        </property>
+                        <property name="rightMargin">
+                          <number>0</number>
+                        </property>
+                        <property name="bottomMargin">
+                          <number>0</number>
+                        </property>
+                        <item>
+                          <widget class="QLabel" name="label_nfo_lib_list_title">
+                            <property name="text">
+                              <string>NFO 文件列表</string>
+                            </property>
+                          </widget>
+                        </item>
+                        <item>
+                          <widget class="QListWidget" name="listWidget_nfo_lib">
+                            <property name="minimumSize">
+                              <size>
+                                <width>280</width>
+                                <height>0</height>
+                              </size>
+                            </property>
+                            <property name="selectionMode">
+                              <enum>QAbstractItemView::ExtendedSelection</enum>
+                            </property>
+                            <property name="sortingEnabled">
+                              <bool>true</bool>
+                            </property>
+                          </widget>
+                        </item>
+                      </layout>
+                    </widget>
+                  </item>
+                  <item>
+                    <widget class="QScrollArea" name="scrollArea_nfo_lib_form">
+                      <property name="widgetResizable">
+                        <bool>true</bool>
+                      </property>
+                      <property name="minimumSize">
+                        <size>
+                          <width>300</width>
+                          <height>0</height>
+                        </size>
+                      </property>
+                      <widget class="QWidget" name="scrollAreaWidgetContents_nfo_lib">
+                        <property name="geometry">
+                          <rect>
+                            <x>0</x>
+                            <y>0</y>
+                            <width>298</width>
+                            <height>560</height>
+                          </rect>
+                        </property>
+                        <layout class="QFormLayout" name="formLayout_nfo_lib">
+                          <property name="fieldGrowthPolicy">
+                            <enum>QFormLayout::AllNonFixedFieldsGrow</enum>
+                          </property>
+                          <property name="horizontalSpacing">
+                            <number>6</number>
+                          </property>
+                          <property name="verticalSpacing">
+                            <number>6</number>
+                          </property>
+                          <item row="0" column="0">
+                            <widget class="QLabel" name="label_nfo_lib_number">
+                              <property name="text">
+                                <string>番号</string>
+                              </property>
+                            </widget>
+                          </item>
+                          <item row="0" column="1">
+                            <widget class="QLineEdit" name="lineEdit_nfo_lib_number"/>
+                          </item>
+                          <item row="1" column="0">
+                            <widget class="QLabel" name="label_nfo_lib_title">
+                              <property name="text">
+                                <string>标题</string>
+                              </property>
+                            </widget>
+                          </item>
+                          <item row="1" column="1">
+                            <widget class="QLineEdit" name="lineEdit_nfo_lib_title"/>
+                          </item>
+                          <item row="2" column="0">
+                            <widget class="QLabel" name="label_nfo_lib_actor">
+                              <property name="text">
+                                <string>演员</string>
+                              </property>
+                            </widget>
+                          </item>
+                          <item row="2" column="1">
+                            <widget class="QLineEdit" name="lineEdit_nfo_lib_actor"/>
+                          </item>
+                          <item row="3" column="0">
+                            <widget class="QLabel" name="label_nfo_lib_release">
+                              <property name="text">
+                                <string>发行日</string>
+                              </property>
+                            </widget>
+                          </item>
+                          <item row="3" column="1">
+                            <widget class="QLineEdit" name="lineEdit_nfo_lib_release"/>
+                          </item>
+                          <item row="4" column="0">
+                            <widget class="QLabel" name="label_nfo_lib_year">
+                              <property name="text">
+                                <string>年份</string>
+                              </property>
+                            </widget>
+                          </item>
+                          <item row="4" column="1">
+                            <widget class="QLineEdit" name="lineEdit_nfo_lib_year"/>
+                          </item>
+                          <item row="5" column="0">
+                            <widget class="QLabel" name="label_nfo_lib_runtime">
+                              <property name="text">
+                                <string>时长</string>
+                              </property>
+                            </widget>
+                          </item>
+                          <item row="5" column="1">
+                            <widget class="QLineEdit" name="lineEdit_nfo_lib_runtime"/>
+                          </item>
+                          <item row="6" column="0">
+                            <widget class="QLabel" name="label_nfo_lib_director">
+                              <property name="text">
+                                <string>导演</string>
+                              </property>
+                            </widget>
+                          </item>
+                          <item row="6" column="1">
+                            <widget class="QLineEdit" name="lineEdit_nfo_lib_director"/>
+                          </item>
+                          <item row="7" column="0">
+                            <widget class="QLabel" name="label_nfo_lib_studio">
+                              <property name="text">
+                                <string>制作商</string>
+                              </property>
+                            </widget>
+                          </item>
+                          <item row="7" column="1">
+                            <widget class="QLineEdit" name="lineEdit_nfo_lib_studio"/>
+                          </item>
+                          <item row="8" column="0">
+                            <widget class="QLabel" name="label_nfo_lib_publisher">
+                              <property name="text">
+                                <string>发行商</string>
+                              </property>
+                            </widget>
+                          </item>
+                          <item row="8" column="1">
+                            <widget class="QLineEdit" name="lineEdit_nfo_lib_publisher"/>
+                          </item>
+                          <item row="9" column="0">
+                            <widget class="QLabel" name="label_nfo_lib_series">
+                              <property name="text">
+                                <string>系列</string>
+                              </property>
+                            </widget>
+                          </item>
+                          <item row="9" column="1">
+                            <widget class="QLineEdit" name="lineEdit_nfo_lib_series"/>
+                          </item>
+                          <item row="10" column="0">
+                            <widget class="QLabel" name="label_nfo_lib_score">
+                              <property name="text">
+                                <string>评分</string>
+                              </property>
+                            </widget>
+                          </item>
+                          <item row="10" column="1">
+                            <widget class="QLineEdit" name="lineEdit_nfo_lib_score"/>
+                          </item>
+                          <item row="11" column="0">
+                            <widget class="QLabel" name="label_nfo_lib_outline">
+                              <property name="text">
+                                <string>简介</string>
+                              </property>
+                            </widget>
+                          </item>
+                          <item row="11" column="1">
+                            <widget class="QPlainTextEdit" name="plainTextEdit_nfo_lib_outline">
+                              <property name="minimumSize">
+                                <size>
+                                  <width>0</width>
+                                  <height>80</height>
+                                </size>
+                              </property>
+                            </widget>
+                          </item>
+                          <item row="12" column="0">
+                            <widget class="QLabel" name="label_nfo_lib_tag">
+                              <property name="text">
+                                <string>标签</string>
+                              </property>
+                            </widget>
+                          </item>
+                          <item row="12" column="1">
+                            <widget class="QPlainTextEdit" name="plainTextEdit_nfo_lib_tag">
+                              <property name="minimumSize">
+                                <size>
+                                  <width>0</width>
+                                  <height>80</height>
+                                </size>
+                              </property>
+                            </widget>
+                          </item>
+                          <item row="13" column="0">
+                            <widget class="QLabel" name="label_nfo_lib_cover_url">
+                              <property name="text">
+                                <string>封面URL</string>
+                              </property>
+                            </widget>
+                          </item>
+                          <item row="13" column="1">
+                            <widget class="QLineEdit" name="lineEdit_nfo_lib_cover_url"/>
+                          </item>
+                          <item row="14" column="0">
+                            <widget class="QLabel" name="label_nfo_lib_poster_url">
+                              <property name="text">
+                                <string>海报URL</string>
+                              </property>
+                            </widget>
+                          </item>
+                          <item row="14" column="1">
+                            <widget class="QLineEdit" name="lineEdit_nfo_lib_poster_url"/>
+                          </item>
+                          <item row="15" column="0" colspan="2">
+                            <widget class="QPushButton" name="pushButton_nfo_lib_save">
+                              <property name="minimumSize">
+                                <size>
+                                  <width>0</width>
+                                  <height>36</height>
+                                </size>
+                              </property>
+                              <property name="text">
+                                <string>保存当前 NFO</string>
+                              </property>
+                            </widget>
+                          </item>
+                        </layout>
+                      </widget>
+                    </widget>
+                  </item>
+                  <item>
+                    <widget class="QWidget" name="nfo_lib_preview_panel" native="true">
+                      <layout class="QVBoxLayout" name="nfo_lib_preview_layout">
+                        <property name="spacing">
+                          <number>6</number>
+                        </property>
+                        <property name="leftMargin">
+                          <number>0</number>
+                        </property>
+                        <property name="topMargin">
+                          <number>0</number>
+                        </property>
+                        <property name="rightMargin">
+                          <number>0</number>
+                        </property>
+                        <property name="bottomMargin">
+                          <number>0</number>
+                        </property>
+                        <item>
+                          <widget class="QLabel" name="label_nfo_lib_poster_preview">
+                            <property name="minimumSize">
+                              <size>
+                                <width>200</width>
+                                <height>280</height>
+                              </size>
+                            </property>
+                            <property name="text">
+                              <string>海报预览</string>
+                            </property>
+                            <property name="alignment">
+                              <set>Qt::AlignCenter</set>
+                            </property>
+                          </widget>
+                        </item>
+                        <item>
+                          <widget class="QLabel" name="label_nfo_lib_thumb_preview">
+                            <property name="minimumSize">
+                              <size>
+                                <width>200</width>
+                                <height>120</height>
+                              </size>
+                            </property>
+                            <property name="text">
+                              <string>缩略图预览</string>
+                            </property>
+                            <property name="alignment">
+                              <set>Qt::AlignCenter</set>
+                            </property>
+                          </widget>
+                        </item>
+                        <item>
+                          <widget class="QPushButton" name="pushButton_nfo_lib_crop">
+                            <property name="text">
+                              <string>裁剪封面</string>
+                            </property>
+                          </widget>
+                        </item>
+                        <item>
+                          <spacer name="verticalSpacer_nfo_lib">
+                            <property name="orientation">
+                              <enum>Qt::Vertical</enum>
+                            </property>
+                            <property name="sizeHint" stdset="0">
+                              <size>
+                                <width>20</width>
+                                <height>40</height>
+                              </size>
+                            </property>
+                          </spacer>
+                        </item>
+                      </layout>
+                    </widget>
+                  </item>
+                </layout>
+              </widget>
+            </item>
+          </layout>
+        </widget>
       </widget>
       <widget class="QWidget" name="widget_setting" native="true">
         <property name="geometry">
@@ -24896,6 +25423,41 @@ p, li { white-space: pre-wrap; }
               </item>
               <item>
                 <spacer name="verticalSpacer_6">
+                  <property name="orientation">
+                    <enum>Qt::Vertical</enum>
+                  </property>
+                  <property name="sizeType">
+                    <enum>QSizePolicy::Fixed</enum>
+                  </property>
+                  <property name="sizeHint" stdset="0">
+                    <size>
+                      <width>20</width>
+                      <height>8</height>
+                    </size>
+                  </property>
+                </spacer>
+              </item>
+              <item>
+                <widget class="QPushButton" name="pushButton_nfo_library">
+                  <property name="minimumSize">
+                    <size>
+                      <width>0</width>
+                      <height>40</height>
+                    </size>
+                  </property>
+                  <property name="maximumSize">
+                    <size>
+                      <width>16777215</width>
+                      <height>40</height>
+                    </size>
+                  </property>
+                  <property name="text">
+                    <string> NFO库管理</string>
+                  </property>
+                </widget>
+              </item>
+              <item>
+                <spacer name="verticalSpacer_nfo_lib">
                   <property name="orientation">
                     <enum>Qt::Vertical</enum>
                   </property>

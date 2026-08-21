@@ -305,4 +305,15 @@
 **成本**：1-2 天
 **参考**：OpenAver `core/nfo_updater.py:needs_update()` — 检查 title/date/actor/genre/maker/director/duration 缺失
 
+### 18. NFO 库管理编辑器（NFO.Editor 借鉴）✅ 已完成
+
+**目标**：将 NFO 编辑从主界面单文件模式提升为目录级浏览+批量编辑的独立管理页面。
+
+**实现**：左侧导航「NFO库管理」页（`page_nfo_library`，index 6），controller 在 `controllers/main_window/nfo_library.py`。
+
+已交付：三栏布局（文件列表/15 字段表单/封面预览）、目录递归扫描+筛选、单条读写（复用 `get_nfo_data`/`write_nfo`）、封面本地预览+裁剪（复用 `cut_window`）、批量操作（替换演员/加删标签/统一系列名/批量保存，实时进度）、字段级 diff 预览（保存前弹窗确认）、右键菜单（重新刮削/打开所在目录/删除 NFO）。读写均走 `executor.submit` + `pyqtSignal` 回主线程。
+
+**遗留**：操作历史记录 + 回滚 → 已合并到 TODO #11
+**参考**：NFO.Editor 目录浏览 + `mapping_actor.xml` 演员映射思路
+
 
