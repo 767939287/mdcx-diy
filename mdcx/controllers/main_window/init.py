@@ -214,6 +214,7 @@ def Init_Singal(self: "MyMAinWindow"):
     self.nfo_lib_data_loaded.connect(self.on_nfo_lib_data_loaded)
     self.nfo_lib_save_done.connect(self.on_nfo_lib_save_done)
     self.nfo_lib_batch_done.connect(self.on_nfo_lib_batch_done)
+    self.nfo_lib_batch_progress.connect(self.on_nfo_lib_batch_progress)
     self.Ui.pushButton_nfo_lib_batch_actor.clicked.connect(self.pushButton_nfo_lib_batch_actor_clicked)
     self.Ui.pushButton_nfo_lib_batch_add_tag.clicked.connect(self.pushButton_nfo_lib_batch_add_tag_clicked)
     self.Ui.pushButton_nfo_lib_batch_del_tag.clicked.connect(self.pushButton_nfo_lib_batch_del_tag_clicked)

@@ -158,6 +158,7 @@ class MyMAinWindow(QMainWindow):
     nfo_lib_data_loaded = pyqtSignal(str)  # NFO 库管理：后台读取 NFO 完成，主线程填充表单
     nfo_lib_save_done = pyqtSignal(str)  # NFO 库管理：后台保存完成，主线程恢复按钮
     nfo_lib_batch_done = pyqtSignal(str)  # NFO 库管理：批量操作完成，主线程更新状态
+    nfo_lib_batch_progress = pyqtSignal(str)  # NFO 库管理：批量操作进度，主线程更新标签
 
     # endregion
 
@@ -963,6 +964,11 @@ class MyMAinWindow(QMainWindow):
         from .nfo_library import on_nfo_lib_batch_done
 
         on_nfo_lib_batch_done(self, arg)
+
+    def on_nfo_lib_batch_progress(self, text: str):
+        from .nfo_library import on_nfo_lib_batch_progress
+
+        on_nfo_lib_batch_progress(self, text)
 
     def listWidget_nfo_lib_context_menu(self, pos):
         from .nfo_library import listWidget_nfo_lib_context_menu

@@ -410,7 +410,8 @@ async def _batch_modify(
     total = len(nfo_paths)
     for i, nfo_path in enumerate(nfo_paths, 1):
         try:
-            self.Ui.label_nfo_lib_batch_status.setText(f"处理中 {i}/{total}: {nfo_path.stem}")
+            # 线程安全：进度走信号，由主线程槽更新标签
+            self.nfo_lib_batch_progress.emit(f"处理中 {i}/{total}: {nfo_path.stem}")
             data, _info = await get_nfo_data(nfo_path.with_suffix(""), nfo_path.stem)
             if data is None:
                 failed += 1
@@ -530,6 +531,11 @@ def _run_batch(self: MyMAinWindow, paths: list[Path], modify_fn) -> None:
             self.nfo_lib_batch_done.emit("")
 
     executor.submit(_run())
+
+
+def on_nfo_lib_batch_progress(self: MyMAinWindow, text: str) -> None:
+    """批量进度信号槽（主线程）：更新状态标签。"""
+    self.Ui.label_nfo_lib_batch_status.setText(text)
 
 
 def on_nfo_lib_batch_done(self: MyMAinWindow, _arg: str) -> None:
