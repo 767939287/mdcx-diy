@@ -26,7 +26,7 @@
   - **changelog 随改动更新（推送前）**：每次代码改动在 commit 里同时更新 `docs/changelog.md` 顶部未发版版本条目（当前 v2.0.6），按内容分类记录，同主题合并。不允许"提交后补"。
   - **功能改动同步 UI/文档**：新增/移除/改名站点、爬虫、CF 服务、配置项后，必须同步检查：UI 帮助文档 HTML（`MDCx.ui`）、启动提示/弹窗文字（`main_window.py`）、仓库文档（`README.md`、`docs/*.md`）。网站数量必须与 `get_registered_crawler_sites()` 实际注册数一致。移除功能时同步删除对应 UI 控件/说明/配置项描述。
   - **提交检查清单**：① `git status`/`git diff` 看改了什么 → ② 有功能/修复/重构 → 先更新 changelog → ③ 改依赖/打包 → 按「Windows exe 打包依赖约束」核对 → ④ 涉及功能/站点/CF/配置 → 检查 UI 说明/弹窗/文档 → ⑤ `git add` + `git commit` + `git push`。
-  - **.monkeycode/specs/ 已删除**（提交 f4c52db），实现意图从代码/`tests/`/`docs/changelog.md` 回溯；未来 feature-design 新生成 spec 实现验证后可清理。
+  - **.monkeycode/specs/ 规则**：feature-design 新生成 spec 实现验证后即删除对应子目录；实现意图从代码/`tests/`/`docs/changelog.md` 回溯。当前 specs/ 为空。
 
 [Windows exe 打包依赖约束]
 - Date: 2026-08-03（2026-08-18 更新）
