@@ -51,12 +51,14 @@
 
 [排错调试方法论]
 - Date: 2026-08-03（2026-08-04、2026-08-11、2026-08-21 更新）
-- Context: Onefile 静默退出、openpyxl 空行残留、死代码误删、UI 弹窗漏查等典型坑
+- Context: Onefile 静默退出、openpyxl 空行残留、死代码误删、UI 弹窗漏查、zhconv 不覆盖日文异体字等典型坑
 - Category: 排错调试
 - Instructions:
   - **疑似死代码先怀疑功能从未运行**：问三点——赋值点在哪（是否抛异常）、读取点在哪（是否被调用）、中间产物是否由别处写入。删前必须先实测验证功能正常（最小复现 import/跑一遍）。用户"是不是可复用"的反问是高价值信号。
   - **Onefile 静默退出**：`-w` 下普通 Python 异常被静默吞掉（`sys.__stderr__` 不存在），表现为程序直接退出。诊断三件套：`faulthandler.enable()` + `sys.excepthook` 写文件 + stdout/stderr 重定向到 `MAIN_PATH/crash/`。工具内部日志走 `signal_qt.show_log_text`，`LogBuffer.log().write()` 只存内存不显示。
   - **openpyxl delete_rows 空行残留**：历史脏库上 `delete_rows` 后 `max_row` 不变、空行残留（样式残留导致行号错乱）。可靠方案：重建工作簿——`iter_rows` 过滤空行，`Workbook()` 新建 append 表头+数据、重设样式。`check_actor_db` 报大量"jp 为空"即空行残留信号。
+  - **zhconv 不覆盖日文新字体/异体字**：`zhconv.convert("zh-cn")` 只做标准繁简映射，不识别 亜→亚、桜→樱、沢→泽、恵→惠、瀬→濑 等日文新字体。`actor_db_tool.py` 中 `_to_simplified()` 在 zhconv 前额外应用 `_JP_SHINJITAI_TO_SIMPLIFIED` 映射表（87 字）补救。zhconv 还会误转某些日文汉字（如 栞→刊），因此对 info_database 的 zh_cn 列只做 `.translate()` 不调 zhconv。
+  - **str.maketrans 返回 dict 的 key 是 int 不是 str**：`str.maketrans({"亜":"亚"})` 返回的 dict key 是 `ord("亜")`=int。用 `ch in mapping`（ch 是 str）检查永远 False，但 `"亜".translate(mapping)` 能正常工作。统计映射覆盖字时必须用 `ord(ch) in mapping` 而非 `ch in mapping`。
 
 [executor.submit 与跨线程 Qt 安全]
 - Date: 2026-08-03（2026-08-16 更新）
@@ -83,17 +85,18 @@
   - **json_data_dic 有界**：OrderedDict 上限 2000，写时 `move_to_end` + 超限 `popitem(last=False)`。
   - **info_db 索引**：加载时 `_normalize_info_key`（大写+全半角）+ `_build_info_db_index` 建 dict，查询 O(1)。
 
-[演员库结构与清洗方法论（TMDB 校验）]
-- Date: 2026-08-04（2026-08-05、2026-08-06 更新）
-- Context: 梳理本地 actor 数据读写路径、提取男优名单去噪、TMDB 全量排查非 AV 演员
+[演员库与标签库结构（TMDB 校验 + 日文异体字修复）]
+- Date: 2026-08-04（2026-08-05、2026-08-06、2026-08-21 更新）
+- Context: 梳理本地 actor 数据读写路径、提取男优名单去噪、TMDB 全量排查非 AV 演员；日文异体字简体化修复
 - Category: 运维部署
 - Instructions:
-  - **两层 actor 库**：出厂模板 `resources/userdata/actor_database.xlsx`（git 跟踪，新用户首启复制）；运行时实际读写库 `manager.data_folder/userdata/actor_database.xlsx`（默认 git 忽略）。给用户用改运行时库，进 git 作新装默认改出厂模板并提交。
+  - **两层库结构**（actor_database / info_database 均同）：出厂模板 `resources/userdata/*.xlsx`（git 跟踪，新用户首启复制）；运行时实际读写库 `manager.data_folder/userdata/*.xlsx`（默认 git 忽略）。给用户用改运行时库，进 git 作新装默认改出厂模板并提交。
   - `get_actor_data(name)`（`resources.py`）按名反查返回 `birth_date`/`bio`/`has_name`，是 Emby 补全等下游统一查询入口。
   - **AVdb 已弃用**：GUI 入口 v2.0.5 移除，`sync_from_avdb` 与测试保留供脚本复用但不主动建议。
   - **男优名单**：`resources/userdata/male_actors.txt`，脚本 `scripts/build_male_actor_list.py` 可复现。
   - **清洗**：括号拆解、超长(>8)剔除、标签黑名单、去后缀。女优混入是最大风险（レズ片女优填进 actor），用 actress 字段交叉验证。双通道清洗：名单精确匹配 + TMDB gender=2 校验。宁缺毋滥。
   - 沙箱访问 TMDB：用 `api.tmdb.org` 域名 + `Host: api.themoviedb.org` 请求头。
+  - **info_database 结构**：4 列 `jp`/`zh_cn`/`zh_tw`/`keyword`。jp 列是日文标签名（含日文新字体是正常的，不改）；keyword 列含多语言变体用于匹配（不改）。只修 zh_cn（日文异体字→简体）和 zh_tw（非标准繁体→标准繁体）。
 
 [ruff RUF100 误删 scripts/*.py 防御性 noqa 的坑]
 - Date: 2026-08-10
