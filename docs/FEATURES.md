@@ -43,7 +43,7 @@ MDCx 支持的功能全景。只想快速上手的话，先看 [QUICKSTART.md](Q
 | cableav | cableav.video | 综合信息（仅能有码） |
 | freejavbt | freejavbt.com | 磁力信息站（仅能有码） |
 | hscangku | hsck.net | 国产番号（国产） |
-| mmtv | 7mmtv.tv | 无码（综合：有码+无码） |
+| 7mmtv | 7mmtv.tv | 无码（综合：有码+无码） |
 | mywife | mywife.cc | No. 素人番号（素人） |
 | getchu | getchu.com | 游戏/视频综合（仅能有码） |
 | getchu_dmm | getchu.com | 委托 getchu 执行（不在前端显示）（仅能有码） |
@@ -74,8 +74,8 @@ MDCx 支持的功能全景。只想快速上手的话，先看 [QUICKSTART.md](Q
 **各爬虫适用类型**（刮削类型默认网站源，可在「设置→站点」调整）：
 - **仅能有码**：dmm、dmm_api、libredmm、r18dev、avbase、faleno、giga、dahlia、xcity、prestige、mgstage、fantastica、cableav、getchu、getchu_dmm、javlibrary、jav321、freejavbt、lulubar、avmoo
 - **无码专属**：avsox、kin8
-- **综合（有码+无码）**：javbus、javdb、javdb_api、javdb_app、missav、missav_api、javday、mmtv、airav_cc、avsex、official、iqqtv
-- **素人**：mgstage、prestige、javbus、javdb 系、dmm、dmm_api、avbase、mmtv、jav321、missav、missav_api、mywife、iqqtv
+- **综合（有码+无码）**：javbus、javdb、javdb_api、javdb_app、missav、missav_api、javday、7mmtv、airav_cc、avsex、official、iqqtv
+- **素人**：mgstage、prestige、javbus、javdb 系、dmm、dmm_api、avbase、7mmtv、jav321、missav、missav_api、mywife、iqqtv
 - **FC2**：fc2、fc2club、fc2hub、fc2ppvdb、love6、javdb 系
 - **欧美**：theporndb、avheat
 - **国产**：hdouban、cnmdb、madouqu、iqqtv、mdtv、javday、hscangku

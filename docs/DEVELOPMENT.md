@@ -151,7 +151,7 @@ Jinja2 模板引擎，支持条件渲染、智能截断。三类命名目标：�
 
 ### 镜像域名轮询
 
-`mdcx/utils/domain_rotate.py` 的 `DomainRotator` 提供镜像域名轮询：声明类属性 `_domains` 后，请求失败（连接/SSL/超时等可重试错误）自动切换下一镜像域名重试。`_init_rotator(domains, custom_url)` 支持用户自定义 URL 优先。已接入：javbus（12 个镜像）、freejavbt、mmtv、xcity。
+`mdcx/utils/domain_rotate.py` 的 `DomainRotator` 提供镜像域名轮询：声明类属性 `_domains` 后，请求失败（连接/SSL/超时等可重试错误）自动切换下一镜像域名重试。`_init_rotator(domains, custom_url)` 支持用户自定义 URL 优先。已接入：javbus（12 个镜像）、freejavbt、7mmtv、xcity。
 
 ### API 类爬虫（AioSiteCrawler）
 
