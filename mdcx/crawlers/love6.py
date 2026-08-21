@@ -48,13 +48,6 @@ def get_studio(html):
     return result.strip()
 
 
-def get_extrafanart(html):
-    result = html.xpath('//div[@id="stills"]/div/img/@src')
-    for i in range(len(result)):
-        result[i] = "https://lulubar.net" + result[i]
-    return result
-
-
 def get_release(html):
     result = html.xpath('//div[@class="video_description"]/span[contains(text(), "發行時間")]/text()')
     return result[0].replace("發行時間: ", "").strip() if result else ""

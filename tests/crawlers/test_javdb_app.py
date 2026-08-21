@@ -1,12 +1,12 @@
 import pytest
 
 from mdcx.config.models import Website
-from mdcx.crawlers.javdb_app import JavdbAPICrawler
+from mdcx.crawlers.javdb_app import JavdbAppCrawler
 from mdcx.models.types import CrawlerInput
 
 
 def test_normalize_image_url_rewrites_legacy_host():
-    crawler = JavdbAPICrawler(client=None)
+    crawler = JavdbAppCrawler(client=None)
 
     assert (
         crawler._normalize_image_url("https://tp.cmastd.com/rhe951l4q/covers/demo.jpg")
@@ -77,7 +77,7 @@ async def test_run_maps_cover_to_thumb_and_thumb_to_poster():
 
             raise AssertionError(f"unexpected url: {url}")
 
-    crawler = JavdbAPICrawler(client=FakeClient())
+    crawler = JavdbAppCrawler(client=FakeClient())
     input_data = CrawlerInput.empty()
     input_data.number = "URE-018"
 
@@ -107,7 +107,7 @@ async def test_run_bf_does_not_match_abf():
                 )
             raise AssertionError(f"unexpected url: {url}")
 
-    crawler = JavdbAPICrawler(client=FakeClient())
+    crawler = JavdbAppCrawler(client=FakeClient())
     input_data = CrawlerInput.empty()
     input_data.number = "BF-002"
 
@@ -149,7 +149,7 @@ async def test_run_bf_matches_bf_result_when_present():
                 )
             raise AssertionError(f"unexpected url: {url}")
 
-    crawler = JavdbAPICrawler(client=FakeClient())
+    crawler = JavdbAppCrawler(client=FakeClient())
     input_data = CrawlerInput.empty()
     input_data.number = "BF-002"
 

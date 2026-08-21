@@ -5,6 +5,8 @@
 ### 重构
 
 - **爬虫文件去 `_new` 后缀**：`dmm_new` → `dmm`、`javdb_new` → `javdb`、`avbase_new` → `avbase`，消除"有旧版"的误导。纯文件重命名 + import 路径更新，无功能变更
+- **JavDB App 爬虫类名统一**：`javdb_app.py` 的 `JavdbAPICrawler` → `JavdbAppCrawler`，与文件名一致且避免与 `javdb_api.py` 的 `JavdbApiCrawler` 同名冲突
+- **love6.py 死代码清理**：删除未调用的 `get_extrafanart` 函数（从 lulubar.py 复制粘贴遗留，拼接了错误的 `lulubar.net` 域名）
 
 ## v2.0.6 (2026-08-19)
 
