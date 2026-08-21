@@ -5323,6 +5323,55 @@
                                 </item>
                               </layout>
                             </item>
+                            <item>
+                              <layout class="QHBoxLayout" name="horizontalLayout_nfo_merge">
+                                <item>
+                                  <widget class="QLabel" name="label_nfo_merge_strategy">
+                                    <property name="styleSheet">
+                                      <string notr="true">color: rgb(8, 128, 128);</string>
+                                    </property>
+                                    <property name="text">
+                                      <string>NFO合并策略:</string>
+                                    </property>
+                                  </widget>
+                                </item>
+                                <item>
+                                  <widget class="QComboBox" name="comboBox_nfo_merge_strategy">
+                                    <property name="minimumSize">
+                                      <size>
+                                        <width>200</width>
+                                        <height>0</height>
+                                      </size>
+                                    </property>
+                                    <item>
+                                      <property name="text">
+                                        <string>新数据优先（覆盖）</string>
+                                      </property>
+                                    </item>
+                                    <item>
+                                      <property name="text">
+                                        <string>本地NFO优先</string>
+                                      </property>
+                                    </item>
+                                    <item>
+                                      <property name="text">
+                                        <string>合并数组（去重）</string>
+                                      </property>
+                                    </item>
+                                    <item>
+                                      <property name="text">
+                                        <string>保留已有（只补新字段）</string>
+                                      </property>
+                                    </item>
+                                    <item>
+                                      <property name="text">
+                                        <string>仅填空字段</string>
+                                      </property>
+                                    </item>
+                                  </widget>
+                                </item>
+                              </layout>
+                            </item>
                           </layout>
                         </item>
                         <item row="3" column="1">

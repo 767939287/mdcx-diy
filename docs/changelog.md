@@ -2,6 +2,11 @@
 
 ## 未发布
 
+### 功能
+
+- **字段 skip 哨兵（字段级跳过抓取）**：新增 `FieldConfig.skip`/`FieldPriorityConfig.skip` 字段，勾选后该字段不从任何来源抓取。`file_crawler.py` 预收集阶段和字段处理阶段两处检查 skip 标志，命中则跳过抓取并记录日志。字段优先级对话框（`FieldPriorityDialog`）每个字段行新增「跳过」复选框，勾选后禁用对应网站列表；全部重置/清空时同步清除 skip 状态。`set_field_skip()` 方法设置后清空并重建 `type_field_configs` 确保 skip 立即传播到 type 级配置
+- **NFO 合并策略（5 种 MergeStrategy）**：新增 `NfoMergeStrategy` 枚举（`prefer_scraper`/`prefer_nfo`/`merge_arrays`/`keep_existing`/`fill_empty`），`write_nfo()` 写入前按策略读取现有 NFO 并合并。`core/nfo_merger.py` 合并引擎区分标量字段（17 个）和数组字段（5 个），关键字段（number/title）双重保护，合并结果带溯源标记。UI 在主界面「读取模式」区域（「允许更新 nfo 文件」复选框下方）新增「NFO合并策略」下拉框，5 项按枚举顺序排列，`load_config`/`save_config` 双向同步
+
 ### 重构
 
 - **dmm_api 爬虫底层替换为 DMM 官方 Affiliate API**：原 `dmm_api` 爬虫实际走 `api.thejavdb.net`（JavDB 第三方 API），名不副实。现将 `dmm_api` 底层实现替换为 DMM 官方 Affiliate API（`api.dmm.com/affiliate/v3/ItemList`），枚举值 `dmm_api` 不变，老用户配置零迁移、无感知。新爬虫直连 DMM 官方 API（无需日本节点），单请求获取完整元数据（标题/演员/厂牌/标签/系列/导演/日期/时长/评分/封面/剧照），并从 HTML5 player 页面提取预告片直链（复用 DmmCrawler 预告片质量分级系统，自动选最优画质）。NetworkConfig 新增 `dmm_api_id`/`dmm_affiliate_id` 配置项，留空使用内置默认值开箱即用，正式使用建议自行注册获取
@@ -10,6 +15,7 @@
 - **JavDB App 爬虫类名统一**：`javdb_app.py` 的 `JavdbAPICrawler` → `JavdbAppCrawler`，与文件名一致且避免与 `javdb_api.py` 的 `JavdbApiCrawler` 同名冲突
 - **love6.py 死代码清理**：删除未调用的 `get_extrafanart` 函数（从 lulubar.py 复制粘贴遗留，拼接了错误的 `lulubar.net` 域名）
 - **JavDB App 签名简化 + 设备参数补全**：`javdb_app.py` 签名算法从运行时 base64 解密（`_decrypt` + `_ENCRYPTED_PART1/2` + `_SECRET`）改为直接硬编码已验证的 prefix/suffix 常量（与 javdb-cli 项目交叉验证值一致），消除 `base64`/`json` 模块依赖；`_build_api_params` 补全 `system_version`/`device_model`/`device_name`/`device_uuid` 四个设备标识参数（与真实 JavDB App 请求一致），降低被风控的概率
+- **移植 sakuramediabe 4 项改进**：① `remove_disturb` 域名干扰预处理——番号清洗时去除附带域名（如 `ABC-123.example.com` → `ABC-123`），去除后为空则保留原值防止整个文件名被吃掉；② jsdelivr CDN 加速——`Content`/`Filetree` 资源 URL 从 github.com 改为 jsdelivr CDN（版本检测保持 github.com）；③ NFKC 归一化匹配——演员名等匹配时先做 NFKC 归一化消除全半角差异（不预构建索引）；④ stale cache 降级——缓存过期时不直接报错而是降级使用旧数据（不替换版本检测逻辑）
 
 ### 修复
 

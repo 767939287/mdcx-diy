@@ -184,7 +184,7 @@ def merge_nfo_fields(
         _, source = (
             _merge_scalar(field_name, scraped_val, nfo_val, strategy)
             if field_name in _SCALAR_FIELDS
-            else _merge_array(field_name, scraped_val, nfo_val, strategy)
+            else _merge_array(field_name, scraped_val or [], nfo_val or [], strategy)
         )
         if source in ("nfo", "merged"):
             try:
