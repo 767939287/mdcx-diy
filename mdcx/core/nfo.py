@@ -8,7 +8,16 @@ import aiofiles
 import aiofiles.os
 from lxml import etree
 
-from ..config.enums import DownloadableFile, KeepableFile, Language, NfoInclude, OutlineShow, ReadMode, Website
+from ..config.enums import (
+    DownloadableFile,
+    KeepableFile,
+    Language,
+    NfoInclude,
+    NfoMergeStrategy,
+    OutlineShow,
+    ReadMode,
+    Website,
+)
 from ..config.manager import manager
 from ..config.resource_policy import resource_policy
 from ..gen.field_enums import CrawlerResultFields
@@ -99,6 +108,18 @@ async def write_nfo(file_info: FileInfo, data: CrawlersResult, nfo_file: Path, o
         nfo_title_template = manager.config.update_titletemplate
     else:
         nfo_title_template = manager.config.naming_media
+
+    # NFO 合并策略：非 prefer_scraper 时读取现有 NFO 并按策略合并
+    merge_strategy = manager.config.nfo_merge_strategy
+    if merge_strategy != NfoMergeStrategy.PREFER_SCRAPER and await aiofiles.os.path.exists(nfo_file):
+        try:
+            existing_data, _ = await get_nfo_data(file_info.file_path, data.number)
+            if existing_data is not None:
+                from .nfo_merger import merge_nfo_fields
+
+                data = merge_nfo_fields(data, existing_data, merge_strategy)
+        except Exception as e:
+            LogBuffer.error().write(f"\n ⚠️ NFO合并失败，使用新数据: {e}")
 
     def normalize_linebreaks(raw: str) -> str:
         raw = (

@@ -360,6 +360,10 @@ class FileScraper:
                 type_field_config = self.config.get_type_field_config(classification.scraping_type, field)
             else:
                 type_field_config = f_config
+
+            if getattr(type_field_config, "skip", False) or getattr(f_config, "skip", False):
+                continue
+
             f_sites = [s for s in type_field_config.site_prority if s in type_site_set]
             f_lang = f_config.language
             for site in f_sites:
@@ -423,6 +427,11 @@ class FileScraper:
                 type_field_config = self.config.get_type_field_config(classification.scraping_type, field)
             else:
                 type_field_config = f_config
+
+            if getattr(type_field_config, "skip", False) or getattr(f_config, "skip", False):
+                reduced.field_log += f"\n\n    📌 {field} \n    ⏭️ 已跳过（skip 哨兵）"
+                continue
+
             f_sites = [s for s in type_field_config.site_prority if s in type_site_set]
             f_lang = f_config.language
 

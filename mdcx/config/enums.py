@@ -257,6 +257,20 @@ class ReadMode(Enum):
         return ["有NFO时更新", "无NFO时刮削", "重新下载", "更新NFO"]
 
 
+class NfoMergeStrategy(Enum):
+    """NFO 合并策略：控制重新刮削时新数据与本地已有 NFO 的合并方式。"""
+
+    PREFER_SCRAPER = "prefer_scraper"
+    PREFER_NFO = "prefer_nfo"
+    MERGE_ARRAYS = "merge_arrays"
+    PRESERVE_EXISTING = "preserve_existing"
+    FILL_MISSING_ONLY = "fill_missing_only"
+
+    @classmethod
+    def names(cls):
+        return ["新数据优先（覆盖）", "本地NFO优先", "合并数组（去重）", "保留已有（只补新字段）", "仅填空字段"]
+
+
 class DownloadableFile(Enum):
     POSTER = "poster"
     THUMB = "thumb"

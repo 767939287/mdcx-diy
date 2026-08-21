@@ -22,6 +22,7 @@ from .enums import (
     Language,
     MarkType,
     NfoInclude,
+    NfoMergeStrategy,
     NoEscape,
     OutlineShow,
     ReadMode,
@@ -103,10 +104,12 @@ class FieldConfig(BaseModel):
         title="翻译此字段",
         description="若启用则使用首个来源的数据并翻译为指定语言; 否则使用第一个指定语言的数据, 如果所有来源都没有指定语言数据则视为失败.",
     )
+    skip: bool = Field(default=False, title="跳过此字段", description="启用后该字段不从任何来源抓取")
 
 
 class FieldPriorityConfig(BaseModel):
     site_prority: list[Website] = Field(default_factory=list, title="来源网站优先级")
+    skip: bool = Field(default=False, title="跳过此字段", description="启用后该字段不从任何来源抓取")
 
 
 CONFIGURABLE_SCRAPING_TYPES = (
@@ -574,6 +577,11 @@ class Config(BaseModel):
     nfo_tag_publisher: str = Field(default="发行: publisher", title="NFO发行商标签")
     nfo_tag_actor: str = Field(default="actor", title="NFO演员标签")
     nfo_tag_actor_contains: list[str] = Field(default_factory=list, title="NFO 演员名白名单")
+    nfo_merge_strategy: NfoMergeStrategy = Field(
+        default=NfoMergeStrategy.PREFER_SCRAPER,
+        title="NFO合并策略",
+        description="重新刮削时如何处理已有NFO: prefer_scraper=��数据覆盖(默认), prefer_nfo=保留本地, merge_arrays=合并去重, preserve_existing=只补新字段, fill_missing_only=仅填空字段",
+    )
     folder_name: str = Field(default="{{ actor }}/{{ number }} {{ actor }}", title="目录名称")
     naming_file: str = Field(default="{{ number }}", title="文件命名")
     naming_media: str = Field(
@@ -890,7 +898,11 @@ class Config(BaseModel):
         type_site_set = set(type_sites)
         configs: dict[CrawlerResultFields, FieldPriorityConfig] = {}
         for crawler_field in ManualConfig.REDUCED_FIELDS:
-            field_sites = self.get_field_config(crawler_field).site_prority
+            fc = self.get_field_config(crawler_field)
+            if fc.skip:
+                configs[crawler_field] = FieldPriorityConfig(skip=True)
+                continue
+            field_sites = fc.site_prority
             sites = [site for site in field_sites if site in type_site_set]
             if not sites:
                 sites = list(type_sites)
@@ -906,12 +918,14 @@ class Config(BaseModel):
         default = self.build_type_field_configs(scraping_type)
         normalized: dict[CrawlerResultFields, FieldPriorityConfig] = {}
         for crawler_field in ManualConfig.REDUCED_FIELDS:
-            if crawler_field in current:
+            if crawler_field in current and current[crawler_field].skip:
+                normalized[crawler_field] = FieldPriorityConfig(skip=True)
+            elif crawler_field in current:
                 old_sites = current[crawler_field].site_prority
                 sites = [site for site in self.parse_sites(old_sites) if site in type_site_set]
+                normalized[crawler_field] = FieldPriorityConfig(site_prority=sites)
             else:
-                sites = default[crawler_field].site_prority
-            normalized[crawler_field] = FieldPriorityConfig(site_prority=sites)
+                normalized[crawler_field] = default[crawler_field]
         return normalized
 
     def fill_missing_type_field_configs(self) -> None:
@@ -943,6 +957,11 @@ class Config(BaseModel):
 
     def set_field_translate(self, field: CrawlerResultFields, translate: bool):
         self.field_configs.setdefault(field, FieldConfig()).translate = translate
+
+    def set_field_skip(self, field: CrawlerResultFields, skip: bool):
+        self.field_configs.setdefault(field, FieldConfig()).skip = skip
+        self.type_field_configs = {}  # 强制下次 ensure_type_field_configs 重建
+        self.ensure_type_field_configs()
 
     @staticmethod
     def parse_sites(sites: list | set | str) -> list[Website]:
