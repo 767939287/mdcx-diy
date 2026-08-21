@@ -52,6 +52,152 @@ from ..models.log_buffer import LogBuffer
 from ..utils import get_used_time
 from ..utils.file import write_file_atomic, write_file_atomic_async
 
+_JP_SHINJITAI_TO_SIMPLIFIED = str.maketrans(
+    {
+        "亜": "亚",
+        "亞": "亚",
+        "囲": "围",
+        "圍": "围",
+        "壱": "壹",
+        "円": "圆",
+        "圓": "圆",
+        "厳": "严",
+        "嚴": "严",
+        "拡": "扩",
+        "擴": "扩",
+        "楽": "乐",
+        "樂": "乐",
+        "顕": "显",
+        "顯": "显",
+        "気": "气",
+        "氣": "气",
+        "済": "济",
+        "濟": "济",
+        "桜": "樱",
+        "櫻": "樱",
+        "雑": "杂",
+        "雜": "杂",
+        "粛": "肃",
+        "肅": "肃",
+        "渋": "涩",
+        "澀": "涩",
+        "終": "终",
+        "処": "处",
+        "處": "处",
+        "緒": "绪",
+        "塩": "盐",
+        "鹽": "盐",
+        "弾": "弹",
+        "彈": "弹",
+        "滝": "泷",
+        "瀧": "泷",
+        "単": "单",
+        "單": "单",
+        "諸": "诸",
+        "禅": "禅",
+        "禪": "禅",
+        "姫": "姬",
+        "標": "标",
+        "氷": "冰",
+        "浜": "滨",
+        "濱": "滨",
+        "濵": "滨",
+        "冨": "富",
+        "仏": "佛",
+        "橋": "桥",
+        "樓": "楼",
+        "錦": "锦",
+        "髙": "高",
+        "﨑": "崎",
+        "免": "免",
+        "瀬": "濑",
+        "瀨": "濑",
+        "沢": "泽",
+        "澤": "泽",
+        "恵": "惠",
+        "穂": "穗",
+        "絵": "绘",
+        "繪": "绘",
+        "嶋": "岛",
+        "島": "岛",
+        "嶌": "岛",
+        "鳥": "鸟",
+        "黒": "黑",
+        "歩": "步",
+        "辺": "边",
+        "邊": "边",
+        "変": "变",
+        "變": "变",
+        "応": "应",
+        "應": "应",
+        "栄": "荣",
+        "榮": "荣",
+        "営": "营",
+        "營": "营",
+        "県": "县",
+        "縣": "县",
+        "録": "录",
+        "錄": "录",
+        "難": "难",
+        "渕": "渊",
+        "淵": "渊",
+        "広": "广",
+        "廣": "广",
+        "帰": "归",
+        "歸": "归",
+        "圧": "压",
+        "壓": "压",
+        "華": "华",
+        "紗": "纱",
+        "織": "织",
+        "聖": "圣",
+        "荘": "庄",
+        "莊": "庄",
+        "対": "对",
+        "對": "对",
+        "証": "证",
+        "證": "证",
+        "強": "强",
+        "両": "两",
+        "兩": "两",
+        "専": "专",
+        "專": "专",
+        "様": "样",
+        "樣": "样",
+        "駅": "驿",
+        "驛": "驿",
+        "騒": "骚",
+        "騷": "骚",
+        "髪": "发",
+        "髮": "发",
+        "鶴": "鹤",
+        "鵬": "鹏",
+        "麗": "丽",
+        "齢": "龄",
+        "齡": "龄",
+        "縁": "缘",
+        "緣": "缘",
+        "蝋": "蜡",
+        "蠟": "蜡",
+        "欧": "欧",
+        "歐": "欧",
+        "鴎": "鸥",
+        "鷗": "鸥",
+        "揺": "摇",
+        "搖": "摇",
+        "誉": "誉",
+        "譽": "誉",
+        "謡": "谣",
+        "謠": "谣",
+        "陥": "陷",
+    }
+)
+
+
+def _to_simplified(text: str) -> str:
+    """繁体→简体转换，额外覆盖 zhconv 缺失的日文新字体/异体字。"""
+    return zhconv.convert(text.translate(_JP_SHINJITAI_TO_SIMPLIFIED), "zh-cn")
+
 
 @dataclass
 class ActorDbToolResult:
@@ -271,7 +417,7 @@ async def run(
                             zh_cn = _normalize_translation(translations.get("zh_cn", ""))
                             zh_tw = _normalize_translation(translations.get("zh_tw", ""))
                             if not zh_cn and zh_tw:
-                                zh_cn = zhconv.convert(zh_tw, "zh-cn")
+                                zh_cn = _to_simplified(zh_tw)
                             if not zh_tw and zh_cn:
                                 zh_tw = zhconv.convert(zh_cn, "zh-hant")
                             return zh_cn, zh_tw
@@ -1369,7 +1515,7 @@ async def run_actor_db_xlsx(
                     new_zh_cn = _normalize_translation(translations.get("zh_cn", ""))
                     new_zh_tw = _normalize_translation(translations.get("zh_tw", ""))
                     if not new_zh_cn and new_zh_tw:
-                        new_zh_cn = zhconv.convert(new_zh_tw, "zh-cn")
+                        new_zh_cn = _to_simplified(new_zh_tw)
                     if not new_zh_tw and new_zh_cn:
                         new_zh_tw = zhconv.convert(new_zh_cn, "zh-hant")
 
@@ -1465,11 +1611,11 @@ async def run_actor_db_xlsx(
                         new_zh_cn = ""
                         if candidate_zht:
                             new_zh_tw = candidate_zht
-                            new_zh_cn = zhconv.convert(candidate_zht, "zh-cn")
+                            new_zh_cn = _to_simplified(candidate_zht)
                         elif candidate_name:
                             # name 可能是繁体中文名，转简体；若转换后与原名相同则无效
                             new_zh_tw = candidate_name
-                            new_zh_cn = zhconv.convert(candidate_name, "zh-cn")
+                            new_zh_cn = _to_simplified(candidate_name)
                             if new_zh_cn == jp:
                                 new_zh_tw = ""
                                 new_zh_cn = ""
