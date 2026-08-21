@@ -833,7 +833,7 @@ class DmmCrawler(GenericBaseCrawler[DMMContext]):
         }
 
         if matched := re.search(
-            r"_(sm|dm|dmb|mmb|hmb|mhb|hhb|4k|mmbs|hmbs|mhbs|hhbs|4ks)_[a-z]\.mp4$",
+            r"_(sm|dm|dmb|mmb|hmb|mhb|hhb|4k|mmbs|hmbs|mhbs|hhbs|4ks)_(?:[a-z]|\d{1,2})\.mp4$",
             trailer_url,
             flags=re.IGNORECASE,
         ):
@@ -1104,7 +1104,7 @@ class DmmCrawler(GenericBaseCrawler[DMMContext]):
         return CrawlerData(
             title=str(data.title or ""),
             outline=str(data.description or ""),
-            release=str(data.startDeliveryAt or ""),  # 2025-05-17T20:00:00Z
+            release=str(data.startDeliveryAt or "")[:10],  # 2025-05-17T20:00:00Z -> 2025-05-17
             tags=[genre.name for genre in (data.genres or []) if genre and genre.name],
             runtime=str(int(duration / 60)) if duration else "",
             actors=[a.name for a in (data.actresses or []) if a and a.name],
@@ -1159,7 +1159,7 @@ class DmmCrawler(GenericBaseCrawler[DMMContext]):
             poster=data.packageImage,
             thumb=data.keyVisualImage,
             tags=[name for item in (data.genres or []) if (name := item.name) is not None],
-            release=data.startPublicAt,  # 2025-05-17T20:00:00Z
+            release=str(data.startPublicAt or "")[:10],  # 2025-05-17T20:00:00Z -> 2025-05-17
             year=str(data.productionYear) if data.productionYear is not None else "",
             score=str(data.reviewSummary.averagePoint) if data.reviewSummary else "",
             directors=[item.staffName for item in (data.staffs or []) if item.roleName == "監督"],

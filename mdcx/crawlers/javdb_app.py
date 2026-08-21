@@ -379,8 +379,8 @@ class JavdbAppCrawler(BaseCrawler):
     async def post_process(self, ctx: Context, res: CrawlerResult) -> CrawlerResult:
         if not res.originaltitle:
             res.originaltitle = res.title
-        if res.runtime:
-            res.year = res.release[:4] if res.release else ""
+        if res.release:
+            res.year = res.release[:4]
         res.mosaic = "无码" if self._number_key(res.number or "").startswith("FC2") else "有码"
         if res.mosaic != "无码":
             from mdcx.crawlers.dmm_direct import upgrade_dmm_cover

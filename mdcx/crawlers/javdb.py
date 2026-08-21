@@ -105,7 +105,7 @@ class Parser(DetailPageParser):
     async def score(self, ctx, html: Selector) -> str:
         result = extract_text(html, "//span[@class='score-stars']/../text()")
         try:
-            score_match = re.search(r"(\d{1}\.\d+)(分|,)", result)
+            score_match = re.search(r"(\d{1,2}\.\d+)(分|,)", result)
             return score_match.group(1) if score_match else ""
         except Exception:
             return ""

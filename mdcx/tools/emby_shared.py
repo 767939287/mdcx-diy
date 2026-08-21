@@ -5,7 +5,6 @@
 
 from __future__ import annotations
 
-import base64
 import traceback
 from pathlib import Path
 from urllib.parse import quote, urlencode
@@ -69,7 +68,6 @@ async def _upload_actor_photo(url: str, pic_path: Path) -> tuple[bool, str]:
     try:
         async with aiofiles.open(pic_path, "rb") as f:
             content = await f.read()
-        content = base64.b64encode(content)
         header = {"Content-Type": "image/jpeg" if pic_path.suffix.lower() in (".jpg", ".jpeg") else "image/png"}
         header = _build_jellyfin_headers(header)
         async with manager.acquire_computed() as computed:

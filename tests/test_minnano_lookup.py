@@ -33,21 +33,21 @@ def test_save_cache_row_creates_parent_dir(monkeypatch, tmp_path: Path):
     """打包后 data_folder 可能无 userdata 子目录，写入前应自动创建。"""
     monkeypatch.setattr(manager, "data_folder", tmp_path)
     row = {
-        minnano_crawler.COL_JP: "テスト女優",
-        minnano_crawler.COL_ALIAS: "",
-        minnano_crawler.COL_BIRTHDAY: "1990-01-01",
-        minnano_crawler.COL_HEIGHT: "160cm",
-        minnano_crawler.COL_BUST: "",
-        minnano_crawler.COL_WAIST: "",
-        minnano_crawler.COL_HIP: "",
-        minnano_crawler.COL_CUP: "",
-        minnano_crawler.COL_PLACE: "",
-        minnano_crawler.COL_AGENCY: "",
-        minnano_crawler.COL_TWITTER: "",
-        minnano_crawler.COL_CAREER: "",
-        minnano_crawler.COL_DEBUT: "",
-        minnano_crawler.COL_WIKI: "",
-        minnano_crawler.COL_MINNANO_URL: "https://www.minnano-av.com/actress/12345.html",
+        "jp": "テスト女優",
+        "alias": "",
+        "birthday": "1990-01-01",
+        "height": "160cm",
+        "bust": "",
+        "waist": "",
+        "hip": "",
+        "cup": "",
+        "place": "",
+        "agency": "",
+        "twitter": "",
+        "career": "",
+        "debut": "",
+        "wiki": "",
+        "minnano_url": "https://www.minnano-av.com/actress/12345.html",
     }
     ok = minnano_crawler.save_cache_row(row)
     assert ok

@@ -1,12 +1,21 @@
+import asyncio
 import threading
 import traceback
 from pathlib import Path
 
+from PyQt6.QtCore import QObject, pyqtSignal
 from PyQt6.QtWidgets import QFileDialog, QMessageBox
 
 from mdcx.config.manager import manager
 from mdcx.signals import signal_qt
 from mdcx.utils import executor, get_current_time
+
+
+class _GfriendsSignals(QObject):
+    done = pyqtSignal(bool, str)
+
+
+_gfriends_signal = _GfriendsSignals()
 
 
 def pushButton_cover_backfill_start_clicked(self):
@@ -71,12 +80,30 @@ def pushButton_sync_gfriends_clicked(self):
         return
     from mdcx.tools.sync_gfriends import sync_gfriends as do_sync
 
-    success, msg = do_sync(local_path)
-    if success:
-        signal_qt.show_scrape_info(f"✅ {msg}")
-    else:
-        QMessageBox.warning(self, "更新失败", msg)
-    self.Ui.label_gfriends_update_time.setText(f"最后更新: {get_current_time()}")
+    # git pull 走后台线程，避免同步阻塞 UI（超时最长 5 分钟）
+    self.Ui.pushButton_sync_gfriends.setEnabled(False)
+    self.Ui.pushButton_sync_gfriends.setText("更新中...")
+
+    def _done(success: bool, msg: str):
+        self.Ui.pushButton_sync_gfriends.setEnabled(True)
+        self.Ui.pushButton_sync_gfriends.setText("同步 Gfriends")
+        if success:
+            signal_qt.show_scrape_info(f"✅ {msg}")
+        else:
+            QMessageBox.warning(self, "更新失败", msg)
+        self.Ui.label_gfriends_update_time.setText(f"最后更新: {get_current_time()}")
+
+    try:
+        _gfriends_signal.done.disconnect()
+    except TypeError:
+        pass
+    _gfriends_signal.done.connect(_done)
+
+    async def _run():
+        success, msg = await asyncio.to_thread(do_sync, local_path)
+        _gfriends_signal.done.emit(success, msg)
+
+    executor.submit(_run())
 
 
 def pushButton_select_actor_info_db_clicked(self):

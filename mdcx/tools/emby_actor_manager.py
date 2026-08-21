@@ -33,10 +33,6 @@ from .emby_shared import (  # noqa: F401
 from .minnano_crawler import get_minnano_info
 from .wiki import get_detail, search_wiki
 
-GFRIENDS_REPO = "https://raw.githubusercontent.com/gfriends/gfriends/master"
-GFRIENDS_FILETREE = f"{GFRIENDS_REPO}/Filetree.json"
-GFRIENDS_BASE = f"{GFRIENDS_REPO}/Content"
-
 _BIO_TAG_PATTERNS = (
     (r"身高:\s*([0-9.]+)\s*cm", "身高: {0}cm"),
     (r"罩杯:\s*([^\s/|]+)", "罩杯: {0}"),
@@ -315,6 +311,20 @@ async def fetch_all_actors(
     return [info for _, info in stubs]
 
 
+def _gfriends_cdn_url(gfriends_github) -> str:
+    """把 Gfriends GitHub 仓库地址转为 jsdelivr CDN 地址（@master 分支形式）。
+
+    jsdelivr gh 路由格式为 ``gh/{user}/{repo}@{branch}/path``，把 ``/master/`` 直接
+    拼在路径里会被当作仓库内文件路径导致 404。
+    """
+    repo_path = str(gfriends_github).strip(" /").rstrip("/")
+    if "github.com/" in repo_path:
+        repo_path = repo_path.split("github.com/", 1)[1]
+    if repo_path.endswith(".git"):
+        repo_path = repo_path[:-4]
+    return f"https://cdn.jsdelivr.net/gh/{repo_path}@master"
+
+
 async def get_gfriends_index() -> dict[str, str] | None:
     """加载 Gfriends 头像索引，返回 {filename: url} 字典，失败返回 None。
 
@@ -324,7 +334,8 @@ async def get_gfriends_index() -> dict[str, str] | None:
     gfriends_github = manager.config.gfriends_github
     gfriends_local_path = manager.config.gfriends_local_path
     # 优先使用 jsdelivr CDN（国内可达性优于 raw.githubusercontent.com）
-    raw_url = f"{gfriends_github}".replace("://www.", "://").replace("github.com/", "cdn.jsdelivr.net/gh/")
+    # jsdelivr gh 路由格式为 gh/{user}/{repo}@{branch}/path，/master/ 会被当作仓库内路径导致 404
+    raw_url = _gfriends_cdn_url(gfriends_github)
     gfriends_json_path = resources.u("gfriends.json")
 
     def _expand(data: dict) -> dict[str, str]:
@@ -336,7 +347,7 @@ async def get_gfriends_index() -> dict[str, str] | None:
         for category, items in content.items():
             for filename, filepath in items.items():
                 if filename not in result:
-                    result[filename] = f"{raw_url}/master/Content/{category}/{filepath}"
+                    result[filename] = f"{raw_url}/Content/{category}/{filepath}"
         return result
 
     # 1) 本地仓库优先
@@ -398,7 +409,7 @@ async def get_gfriends_index() -> dict[str, str] | None:
     # 3) 下载并缓存
     if update_data:
         signal.show_log_text("⏳ 开始缓存 Gfriends 最新数据表...")
-        filetree_url = f"{raw_url}/master/Filetree.json"
+        filetree_url = f"{raw_url}/Filetree.json"
         async with manager.acquire_computed() as computed:
             filetree_response, _ = await computed.async_client.get_content(filetree_url)
         if filetree_response is None:

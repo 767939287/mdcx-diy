@@ -23,12 +23,31 @@
 
 ### 修复
 
+- **Gfriends 同步改后台线程**：`tool_handlers.py` 的 `pushButton_sync_gfriends_clicked` 不再同步调用 `do_sync`（内部 `git pull` 最长 5 分钟）阻塞 UI 主线程，改为 `executor.submit` + `asyncio.to_thread` 后台执行，通过新增的 `_gfriends_signals.done`（pyqtSignal）回主线程恢复按钮、提示结果并刷新更新时间
+- **Emby 演员名双击反查**：`emby_actor_manager_ui.py` 的 `_on_table_double_clicked` 改用 `table.item(row, 1).text()` 取演员名后到 `self._actors` 反查数据，不再用过滤后的视觉行索引 `filtered[row]`，修复列表经过筛选后双击错位/越界的问题
+- **Emby 图片上传去掉 base64**：`emby_shared.py` 移除 `base64.b64encode(content)` 与 `import base64`，直接发送原始图片字节流，修复 Emby 收到的图片因二次编码损坏、无法识别的问题
+- **minnano 缓存 key 统一为字符串**：`minnano_crawler.py` 缓存行从数字 `COL_*` key 改为字符串 key（新增 `CACHE_FIELD_KEYS` 常量），`save_cache_row` 新建/追加统一按番号去重更新，`load_cache` 加载前清空内存表，修复缓存读/写 key 错位导致的信息漏填（新爬取结果也受影响）
+- **nfo criticrating 读取修复**：`core/nfo.py` 第二处评分 xpath 从重复的 `//rating/text()` 改为 `//criticrating/text()`，并加 `int/10` 转换与 ValueError 兜底，修复 criticrating 永远读不到、NFO 重写后评分丢失的问题
+- **dmm 番号匹配修复前导零与连字符**：`dmm_api.py` 的 `_match_score` 归一化去除非字母数字后比较，编号段分别 `int` 比较（`ABC-012` 与 `ABC-12` 能匹配），并新增回归测试
+- **javdb 两位数评分 + 镜像轮询修复**：`javdb_api.py`/`javdb.py` 评分正则 `\d{1}\.\d+` → `\d{1,2}\.\d+`（支持 10.0 等）；`javdb_api.py` 重写 `_try_mirrors` 显式遍历 `_MIRRORS` 且每轮设置 `self.base_url`，修复 `base_url` getter 缓存旧成功镜像导致失败镜像被永久锁定的问题
+- **fc2 无修正判定修正**：`fc2.py` 在清洗「無修正」标签前保存原始 `tag`，正确判定无码（原逻辑标签清洗后永远判为有码）
+- **prestige 爬虫字段缺失防护**：`prestige.py` 演员/媒体/标签/标题/简介/时长等字段改用 `.get` + 默认值，站点接口结构变化时不再抛 KeyError
+- **dmm release 截断为日期 + 预告片质量正则兼容数字序号**：`dmm/__init__.py` 的 `startDeliveryAt`/`startPublicAt` 截取前 10 位为日期（去掉 `T20:00:00Z` 尾缀）；`_trailer_quality_rank` 第一正则序号段 `[a-z]` 放宽为 `[a-z]|\d{1,2}`，修复 `{cid}_hhb_1.mp4` 等带数字序号 URL 评不到质量等级的问题
+- **javdb_app year 推导修复**：`javdb_app.py` 的 year 从 `release[:4]` 推导不再依赖 runtime 字段存在与否
+- **fanart 下载失败不再静默忽略**：`core/scraper.py` `_download_images` 消费 `fanart_task.result()`，fanart 复制失败时返回失败
+- **强杀线程加超时保护**：`utils/__init__.py` 的 `_async_raise` 去掉 `while res == 1` 自旋（改为单次注入 + res>1 回滚），`kill_a_thread` 改为限时循环（默认 10 秒）；`main_window.py` 的 `_kill_threads` 外层加 12 秒忙等上限，防止线程无法退出时主进程无限空转
+- **dmm_prefix_learn 加载失败禁落盘**：`dmm_prefix_learn.py` 学习表加载失败（`_load_failed`）时 `_persist` 直接返回，防止空表 + 单条新记录覆盖历史学习结果
+
 - **读取模式不再受断点续刮缓存干扰**：断点续刮（ScrapeStateCache）的跳过逻辑与状态写入原本不区分刮削模式，读取模式（`main_mode==4`）下大量已刮削文件被 `should_skip` 过滤不可见，且读取一次后因标记 done 下次读不到。修复为读取模式跳过 `should_skip` 过滤全部文件入队，成功/失败路径不写 `set_done`/`set_failed`，始终处理全部选中文件
 - **打包脚本补齐 v2.0.6 新增延迟导入模块**：`scripts/build.py` 的 hidden-import 列表补上 `mdcx.crawlers.dmm_prefix_learn`（DMM 厂牌前缀学习表，被 `dmm_direct.py`/`dmm/__init__.py` 函数内延迟导入）与 `mdcx.core.nfo_merger`（NFO 合并策略引擎，被 `nfo.py` 写入前函数内延迟导入）。这两模块 PyInstaller 静态分析收集不到，不显式打包会在 exe 运行期报 ModuleNotFoundError（与 `qt_thread` 同因）
 - **文档与代码同步**：站点数量统一更新为实际注册数 48（README 徽章 Sites-47→48、FEATURES 标题「全部 47 个爬虫」、DEVELOPMENT、UI 帮助文档「当前 47 个」），FEATURES 补上遗漏的 thejavdb_api 爬虫行并标「仅能有码」；dmm_api 数据源描述从误写的「JavDB v1 API」改为「DMM 官方 Affiliate API」；免 CF 通道清单由 3 条补为 4 条（+thejavdb_api）；DMM 兜底描述统一补前缀学习机制（覆盖 USER_GUIDE/FEATURES/UI 帮助文档）；UI 帮助文档与 FEATURES 补 NFO 合并策略（5 种 MergeStrategy）、FEATURES 与 CONFIGURATION 补字段 skip 哨兵说明；CONFIGURATION 走代理网站默认白名单补 missav.live
 - **演员数据库日文异体字简体化**：`actor_db_tool.py` 新增日文新字体/异体字→简体映射表（87 字，覆盖 亜→亚、桜→樱、沢→泽、恵→惠、瀬→濑 等），在 zhconv 繁简转换后额外应用；修复 `fill_zh_javdb` 和 TMDB 翻译模式中因 zhconv 不识别日文汉字导致中文名保留日文原字的问题。一次性修复脚本对现有 xlsx 修复 4569 条中文名 + 2561 条繁体名
 - **演员数据库异常数据清理**：清理 2 条中文名/繁体名包含拉丁字母前缀的异常记录（`Aiko SUZUHARA - 鈴原愛子`、`Chihiro SHIRASAKI - 白崎千尋`）
 - **copytree same-file 防护**：新增 `safe_copytree`/`safe_copytree_async`（`utils/file.py`），在 `shutil.copytree` 前检查 src==dst，命中则直接返回。修复用户把 `extrafanart_folder` 配成 `"extrafanart"` 时，外层 `rmtree(dst)` 先删源目录再 `copytree` 导致 extrafanart 剧照数据丢失的问题。`base/image.py`（`extrafanart_copy2`/`extrafanart_extras_copy`/批量补图）和 `base/video.py`（`add_del_extras`）4 处裸 `shutil.copytree` 已替换
+
+### 工程质量
+
+- 新增 `tests/crawlers/test_dmm_api.py` 回归测试（`test_content_id_leading_zeros_match` 前导零匹配、`test_product_id_with_hyphen_match` 连字符编号匹配）；`tests/test_minnano_lookup.py` 缓存 row 数据同步改为字符串 key；`tests/test_jellyfin_actor_api.py` 图片上传测试断言同步改为原始字节 body（`test_upload_actor_photo_uses_raw_image_body_for_emby`/`_jellyfin`，与 Emby/Jellyfin 图片上传 API 二进制 body 规范一致）；`tests/test_tool_handlers.py` Gfriends 同步测试适配后台化（offscreen QApplication + processEvents 轮询等待异步回调）
 
 ## v2.0.6 (2026-08-19)
 

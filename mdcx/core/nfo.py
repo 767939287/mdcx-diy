@@ -503,9 +503,13 @@ async def get_nfo_data(file_path: Path, movie_number: str) -> tuple[CrawlersResu
     runtime = "".join(xml_nfo.xpath("//runtime/text()"))
     score = "".join(xml_nfo.xpath("//rating/text()"))
     if not score:
-        score = "".join(xml_nfo.xpath("//rating/text()"))
+        # write_nfo 把 10 分制评分写入 <criticrating>（int(score*10)），读回时转回
+        score = "".join(xml_nfo.xpath("//criticrating/text()"))
         if score:
-            score = str(int(score) / 10)
+            try:
+                score = str(int(score) / 10)
+            except ValueError:
+                score = ""
     series = "".join(xml_nfo.xpath("//series/text()"))
     director = ",".join(xml_nfo.xpath("//director/text()"))
     studio = "".join(xml_nfo.xpath("//studio/text()"))

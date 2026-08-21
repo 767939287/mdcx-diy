@@ -213,7 +213,7 @@ class Parser(DetailPageParser):
     async def score(self, ctx, html: Selector) -> str:
         result = extract_text(html, _SELECTOR_SCORE_STARS)
         try:
-            score_match = re.search(r"(\d{1}\.\d+)", result)
+            score_match = re.search(r"(\d{1,2}\.\d+)", result)
             return score_match.group(1) if score_match else ""
         except Exception:
             return ""
@@ -291,27 +291,29 @@ class JavdbApiCrawler(BaseCrawler):
                 await asyncio.sleep(wait_seconds)
         self._last_page_request_at = time.monotonic()
 
-    def _next_mirror(self) -> str:
-        """切换到下一个 mirror"""
-        self._mirror_index = (self._mirror_index + 1) % len(_MIRRORS)
-        return _MIRRORS[self._mirror_index]
-
     async def _try_mirrors(self, ctx, path: str, request_type: str) -> tuple[str | None, str]:
-        """尝试所有 mirror，返回 (html, error)"""
+        """尝试所有 mirror，返回 (html, error)。
+
+        每次先从上次成功的 mirror（或当前索引指向的 mirror）开始，失败后逐个轮换，
+        保证覆盖所有镜像——避免首次成功后 `base_url` getter 固定返回成功镜像，
+        导致后续请求在同一个失败域名上反复重试。
+        """
         last_error = ""
+        if self._successful_mirror and self._successful_mirror in _MIRRORS:
+            self._mirror_index = _MIRRORS.index(self._successful_mirror)
         for _ in range(len(_MIRRORS)):
-            current_url = f"{self.base_url}{path}"
+            base = _MIRRORS[self._mirror_index]
+            self.base_url = base
+            current_url = f"{base}{path}"
             ctx.debug(f"JavdbApi {request_type} 尝试: {current_url}")
             html, error = await self.async_client.get_text(current_url, headers=self._get_headers(ctx), use_proxy=False)
             if html:
-                # 成功后记录 mirror
-                self._successful_mirror = self.base_url
+                self._successful_mirror = base
                 return html, ""
             last_error = error
-            # 切换到下一个 mirror
-            old_url = self.base_url
-            self.base_url = self._next_mirror()
-            ctx.debug(f"JavdbApi {request_type} 失败: {old_url} -> 切换到 {self.base_url}")
+            old = base
+            self._mirror_index = (self._mirror_index + 1) % len(_MIRRORS)
+            ctx.debug(f"JavdbApi {request_type} 失败: {old} -> 切换到 {_MIRRORS[self._mirror_index]}")
         return None, last_error
 
     @override

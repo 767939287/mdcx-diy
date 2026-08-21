@@ -1,6 +1,22 @@
+import os
+import time
 from unittest.mock import patch
 
+import pytest
+
 from mdcx.controllers.main_window import tool_handlers
+
+os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
+
+
+@pytest.fixture(scope="module")
+def qapp():
+    from PyQt6.QtWidgets import QApplication
+
+    app = QApplication.instance()
+    if app is None:
+        app = QApplication([])
+    yield app
 
 
 class _FakeLineEdit:
@@ -17,11 +33,24 @@ class _FakeLineEdit:
         return self._text.strip()
 
 
+class _FakeButton:
+    def __init__(self):
+        self._enabled = True
+        self._text = ""
+
+    def setEnabled(self, enabled):
+        self._enabled = enabled
+
+    def setText(self, text):
+        self._text = text
+
+
 class _FakeUi:
     def __init__(self):
         self.lineEdit_actor_photo_folder = _FakeLineEdit()
         self.lineEdit_gfriends_local_path = _FakeLineEdit()
         self.label_gfriends_update_time = _FakeLineEdit()
+        self.pushButton_sync_gfriends = _FakeButton()
 
 
 class _FakeWindow:
@@ -91,7 +120,7 @@ class TestSyncGfriends:
             tool_handlers.pushButton_sync_gfriends_clicked(win)
             mock_warning.assert_called_once()
 
-    def test_sync_gfriends_success_updates_label(self):
+    def test_sync_gfriends_success_updates_label(self, qapp):
         win = _FakeWindow()
         win.Ui.lineEdit_gfriends_local_path = _FakeLineEdit("/some/path")
 
@@ -101,9 +130,14 @@ class TestSyncGfriends:
             patch.object(tool_handlers, "get_current_time", return_value="2026-01-01"),
         ):
             tool_handlers.pushButton_sync_gfriends_clicked(win)
+            deadline = time.monotonic() + 5
+            while not mock_info.called and time.monotonic() < deadline:
+                qapp.processEvents()
+                time.sleep(0.02)
             mock_info.assert_called_once_with("✅ ok")
+            assert win.Ui.label_gfriends_update_time._text == "最后更新: 2026-01-01"
 
-    def test_sync_gfriends_failure_shows_dialog(self):
+    def test_sync_gfriends_failure_shows_dialog(self, qapp):
         win = _FakeWindow()
         win.Ui.lineEdit_gfriends_local_path = _FakeLineEdit("/some/path")
 
@@ -113,7 +147,12 @@ class TestSyncGfriends:
             patch.object(tool_handlers, "get_current_time", return_value="2026-01-01"),
         ):
             tool_handlers.pushButton_sync_gfriends_clicked(win)
+            deadline = time.monotonic() + 5
+            while not mock_warning.called and time.monotonic() < deadline:
+                qapp.processEvents()
+                time.sleep(0.02)
             mock_warning.assert_called_once()
+            assert win.Ui.label_gfriends_update_time._text == "最后更新: 2026-01-01"
 
 
 class TestActorDbSelect:

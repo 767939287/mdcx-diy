@@ -1085,8 +1085,10 @@ class MyMAinWindow(QMainWindow):
         signal_qt.stop = True
         for each in self.threads_list:  # 线程池的线程
             kill_a_thread(each)
-            while each.is_alive():
-                pass
+            # 外层等待加超时，避免线程阻塞在原生调用时无限忙等
+            wait_deadline = time.monotonic() + 12.0
+            while each.is_alive() and time.monotonic() < wait_deadline:
+                time.sleep(0.05)
 
         self.stop_used_time = get_used_time(start_time)
         signal_qt.show_log_text(f" 🕷 {get_current_time()} 已停止线程：{Flags.total_kills}/{Flags.total_kills}")

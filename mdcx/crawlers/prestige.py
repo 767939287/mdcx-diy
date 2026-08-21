@@ -8,22 +8,28 @@ from .base import BaseCrawler, Context, CrawlerData, CrawlerException, get_year
 
 def get_actor(page_data):
     actor_new_list = []
-    for each in page_data["actress"]:
-        actor_new_list.append(each["name"].replace(" ", ""))
+    for each in page_data.get("actress", []) or []:
+        name = each.get("name", "") if isinstance(each, dict) else ""
+        if name:
+            actor_new_list.append(name.replace(" ", ""))
     return actor_new_list
 
 
 def get_extrafanart(page_data):
     result = []
-    for each in page_data["media"]:
-        result.append("https://www.prestige-av.com/api/media/" + each["path"])
+    for each in page_data.get("media", []) or []:
+        path = each.get("path", "") if isinstance(each, dict) else ""
+        if path:
+            result.append("https://www.prestige-av.com/api/media/" + path)
     return result
 
 
 def get_tag(page_data):
     new_list = []
-    for each in page_data["genre"]:
-        new_list.append(each["name"])
+    for each in page_data.get("genre", []) or []:
+        name = each.get("name", "") if isinstance(each, dict) else ""
+        if name:
+            new_list.append(name)
     return new_list
 
 
@@ -86,7 +92,7 @@ class PrestigeCrawler(BaseCrawler):
         if page_data is None:
             raise CrawlerException(f"网络请求错误: {error}")
 
-        title = page_data["title"].replace("【配信専用】", "")
+        title = page_data.get("title", "").replace("【配信専用】", "")
         if not title:
             raise CrawlerException("数据获取失败: 未获取到 title！")
         release = ""
@@ -120,12 +126,12 @@ class PrestigeCrawler(BaseCrawler):
             title=title,
             originaltitle=title,
             actors=get_actor(page_data),
-            outline=page_data["body"],
-            originalplot=page_data["body"],
+            outline=page_data.get("body", ""),
+            originalplot=page_data.get("body", ""),
             tags=get_tag(page_data),
             release=release,
             year=get_year(release),
-            runtime=str(page_data["playTime"]),
+            runtime=str(page_data.get("playTime", "")),
             score="",
             series=series,
             directors=[director] if director else [],

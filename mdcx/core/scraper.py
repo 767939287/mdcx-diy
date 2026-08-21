@@ -670,7 +670,7 @@ class Scraper:
 
         await asyncio.gather(fanart_task, poster_task)
 
-        if not poster_task.result():
+        if not poster_task.result() or not fanart_task.result():
             return False
 
         await pic_some_deal(res.number, thumb_final_path, fanart_final_path)

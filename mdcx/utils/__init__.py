@@ -275,27 +275,33 @@ def _async_raise(tid, exctype):
     tid = ctypes.c_long(tid)
     if not inspect.isclass(exctype):
         exctype = type(exctype)
-    res = 1
-    while res == 1:
-        res = ctypes.pythonapi.PyThreadState_SetAsyncExc(tid, ctypes.py_object(exctype))
+    # 注入一次即可；原实现 `while res == 1` 会无限重复注入，线程阻塞在
+    # 原生调用（TLS/DNS/文件 IO）时返回 1 造成永久自旋
+    res = ctypes.pythonapi.PyThreadState_SetAsyncExc(tid, ctypes.py_object(exctype))
     if res == 0:
-        # raise ValueError("invalid thread id")
-        pass
-    elif res != 1:
-        # """if it returns a number greater than one, you're in trouble,
-        # and you should call it again with exc=NULL to revert the effect"""
+        # 线程不存在或已退出
+        return
+    if res > 1:
+        # 同时命中多个线程，需要 revert
         ctypes.pythonapi.PyThreadState_SetAsyncExc(tid, None)
         raise SystemError("PyThreadState_SetAsyncExc failed")
 
 
 # todo 同上, 应该优雅的退出线程
-def kill_a_thread(t: Thread):
-    try:
-        while t.is_alive():
+def kill_a_thread(t: Thread, timeout: float = 10.0):
+    """强制终止线程。
+
+    线程阻塞在无法处理异步异常的原生调用（TLS 握手/DNS/文件 IO）时，
+    SystemExit 注入不生效，原实现会无限忙等。这里注入有限次数后超时放弃，
+    避免 CPU 满载与按钮永久卡在「■ 停止中」。
+    """
+    deadline = time.monotonic() + timeout
+    while t.is_alive() and time.monotonic() < deadline:
+        try:
             _async_raise(t.ident, SystemExit)
-    except Exception:
-        print(traceback.format_exc())
-        _async_raise(t.ident, SystemExit)
+        except Exception:
+            print(traceback.format_exc())
+        time.sleep(0.05)
 
 
 def get_random_headers() -> dict:

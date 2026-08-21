@@ -137,20 +137,29 @@ class DmmApiCrawler(DmmCrawler):
 
     @staticmethod
     def _match_score(item: _DmmApiItem, number_clean: str) -> int:
+        """按匹配质量打分，数字段忽略前导零。
+
+        DMM content_id 的编号段 5 位补零（如 sone00244），直接与去横杠后的番号
+        （sone244）比较永远不等，导致 90/80 分分支形同虚设、全部落入包含匹配。
+        """
         cid = (item.content_id or "").lower()
         pid = (item.product_id or "").lower()
+        ncid = re.sub(r"[^a-z0-9]", "", cid)
+        npid = re.sub(r"[^a-z0-9]", "", pid)
+        nnum = re.sub(r"[^a-z0-9]", "", number_clean)
 
-        if cid == number_clean:
+        if ncid == nnum:
             return 100
-        m = re.search(r"([a-z]+\.?\d+)$", cid)
-        if m and m.group(1) == number_clean:
+        m = re.search(r"([a-z]+)(?:\.)?(\d+)$", cid)
+        num_m = re.search(r"([a-z]+)(\d+)$", number_clean)
+        if m and num_m and m.group(1) == num_m.group(1) and int(m.group(2)) == int(num_m.group(2)):
             return 90
-        if number_clean in cid:
+        if nnum in ncid:
             score = 50
-            if cid.startswith("9"):
+            if ncid.startswith("9"):
                 score -= 10
             return score
-        if pid == number_clean:
+        if npid == nnum:
             return 80
         return -1
 

@@ -113,6 +113,16 @@ class TestMatchScore:
         item = _make_api_item(content_id="118abp001")
         assert DmmApiCrawler._match_score(item, "abp001") == 90
 
+    def test_content_id_leading_zeros_match(self):
+        """content_id 编号段 5 位补零（sone00244），番号去横杠（sone244），应命中 90 分支。"""
+        item = _make_api_item(content_id="sone00244", product_id="sone244")
+        assert DmmApiCrawler._match_score(item, "sone244") == 90
+
+    def test_product_id_with_hyphen_match(self):
+        """product_id 带横杠（sone-244）应归一化后命中 80 分支。"""
+        item = _make_api_item(content_id="xx", product_id="sone-244")
+        assert DmmApiCrawler._match_score(item, "sone244") == 80
+
     def test_substring_match_with_bluray_penalty(self):
         """content_id 以 9 开头（蓝光版）且去前缀不匹配时应走子串匹配并扣分。"""
         item = _make_api_item(content_id="9ssis2000")

@@ -837,11 +837,16 @@ class EmbyActorManagerDialog(QDialog):
         self._populate_table(self._actors)
 
     def _on_table_double_clicked(self, row: int, col: int):
-        filtered = self._get_filtered_actors()
-        if row < len(filtered):
-            actor = filtered[row]
-            dialog = ActorDetailDialog(actor, self, on_synced=self._on_detail_synced)
-            dialog.exec()
+        # 表格启用排序后视觉行序 != _get_filtered_actors() 索引，用演员名反查，避免打开错误演员
+        item = self.table.item(row, 1)
+        if item is None:
+            return
+        name = item.text()
+        actor = next((a for a in self._actors if a.name == name), None)
+        if actor is None:
+            return
+        dialog = ActorDetailDialog(actor, self, on_synced=self._on_detail_synced)
+        dialog.exec()
 
     def _on_detail_synced(self, actor: ActorInfo):
         # 同步单个演员后刷新主窗口表格与统计

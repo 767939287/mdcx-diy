@@ -77,6 +77,24 @@ COL_DEBUT = 12
 COL_WIKI = 13
 COL_MINNANO_URL = 14
 
+# 内存缓存 dict 的字段 key（与 load_cache / _build_cache_row / _fill_emby_info 统一使用字符串 key）
+CACHE_FIELD_KEYS = (
+    "alias",
+    "birthday",
+    "height",
+    "bust",
+    "waist",
+    "hip",
+    "cup",
+    "place",
+    "agency",
+    "twitter",
+    "career",
+    "debut",
+    "wiki",
+    "minnano_url",
+)
+
 
 # ============= 缓存读写 =============
 
@@ -92,6 +110,7 @@ def load_cache() -> dict[str, dict]:
     """从 xlsx 加载缓存数据。"""
     global _cache_data
     cache_path = _get_cache_path()
+    _cache_data.clear()
     if not cache_path.exists():
         return {}
 
@@ -157,24 +176,14 @@ def save_cache_row(row: dict) -> bool:
                 wb = openpyxl.load_workbook(cache_path)
                 ws = wb.active
                 new_row = ws.max_row + 1
+                # 按 jp 去重：已存在则更新该行，避免重复追加
+                jp_val = str(row.get("jp", "") or "").strip()
+                for r in range(2, ws.max_row + 1):
+                    if str(ws.cell(row=r, column=COL_JP + 1).value or "").strip() == jp_val:
+                        new_row = r
+                        break
                 # 准备值
-                values = [
-                    row.get(COL_JP, ""),
-                    row.get(COL_ALIAS, ""),
-                    row.get(COL_BIRTHDAY, ""),
-                    row.get(COL_HEIGHT, ""),
-                    row.get(COL_BUST, ""),
-                    row.get(COL_WAIST, ""),
-                    row.get(COL_HIP, ""),
-                    row.get(COL_CUP, ""),
-                    row.get(COL_PLACE, ""),
-                    row.get(COL_AGENCY, ""),
-                    row.get(COL_TWITTER, ""),
-                    row.get(COL_CAREER, ""),
-                    row.get(COL_DEBUT, ""),
-                    row.get(COL_WIKI, ""),
-                    row.get(COL_MINNANO_URL, ""),
-                ]
+                values = [row.get("jp", "")] + [row.get(key, "") for key in CACHE_FIELD_KEYS]
                 # 写入并格式化
                 for col_idx, val in enumerate(values, 1):
                     cell = ws.cell(row=new_row, column=col_idx, value=val)
@@ -187,7 +196,7 @@ def save_cache_row(row: dict) -> bool:
                         cell.font = link_font
                 wb.save(cache_path)
                 wb.close()
-                jp = row.get(COL_JP, "")
+                jp = row.get("jp", "")
                 _cache_data[jp] = row
                 LogBuffer.log().write(f"  ✅ [演员缓存] 已追加: {jp}")
                 return True
@@ -209,23 +218,7 @@ def save_cache_row(row: dict) -> bool:
             # 冻结首行
             ws.freeze_panes = "A2"
 
-            values = [
-                row.get(COL_JP, ""),
-                row.get(COL_ALIAS, ""),
-                row.get(COL_BIRTHDAY, ""),
-                row.get(COL_HEIGHT, ""),
-                row.get(COL_BUST, ""),
-                row.get(COL_WAIST, ""),
-                row.get(COL_HIP, ""),
-                row.get(COL_CUP, ""),
-                row.get(COL_PLACE, ""),
-                row.get(COL_AGENCY, ""),
-                row.get(COL_TWITTER, ""),
-                row.get(COL_CAREER, ""),
-                row.get(COL_DEBUT, ""),
-                row.get(COL_WIKI, ""),
-                row.get(COL_MINNANO_URL, ""),
-            ]
+            values = [row.get("jp", "")] + [row.get(key, "") for key in CACHE_FIELD_KEYS]
             for col_idx, val in enumerate(values, 1):
                 cell = ws.cell(row=2, column=col_idx, value=val)
                 cell.fill = data_fill
@@ -241,7 +234,7 @@ def save_cache_row(row: dict) -> bool:
 
             wb.save(cache_path)
             wb.close()
-            jp = row.get(COL_JP, "")
+            jp = row.get("jp", "")
             _cache_data[jp] = row
             LogBuffer.log().write(f"  ✅ [演员缓存] 已创建并追加: {jp}")
             return True
@@ -590,21 +583,21 @@ def _build_cache_row(parsed: dict) -> dict:
     )
 
     return {
-        COL_JP: parsed.get("name", ""),
-        COL_ALIAS: alias_str,
-        COL_BIRTHDAY: parsed.get("birthday", ""),
-        COL_HEIGHT: parsed.get("height", ""),
-        COL_BUST: parsed.get("bust", ""),
-        COL_WAIST: parsed.get("waist", ""),
-        COL_HIP: parsed.get("hip", ""),
-        COL_CUP: parsed.get("cup", ""),
-        COL_PLACE: parsed.get("place", ""),
-        COL_AGENCY: parsed.get("agency", ""),
-        COL_TWITTER: parsed.get("twitter", ""),
-        COL_CAREER: parsed.get("career", ""),
-        COL_DEBUT: parsed.get("debut", ""),
-        COL_WIKI: parsed.get("wiki", ""),
-        COL_MINNANO_URL: minnano_url,
+        "jp": parsed.get("name", ""),
+        "alias": alias_str,
+        "birthday": parsed.get("birthday", ""),
+        "height": parsed.get("height", ""),
+        "bust": parsed.get("bust", ""),
+        "waist": parsed.get("waist", ""),
+        "hip": parsed.get("hip", ""),
+        "cup": parsed.get("cup", ""),
+        "place": parsed.get("place", ""),
+        "agency": parsed.get("agency", ""),
+        "twitter": parsed.get("twitter", ""),
+        "career": parsed.get("career", ""),
+        "debut": parsed.get("debut", ""),
+        "wiki": parsed.get("wiki", ""),
+        "minnano_url": minnano_url,
     }
 
 

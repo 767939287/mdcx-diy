@@ -100,6 +100,10 @@ def _sanitize_series(value: Any) -> dict[str, Any] | None:
 
 
 def _persist() -> None:
+    if _load_failed:
+        # 历史学习表加载失败时 _learned 为空，若继续写会把"空表+新记录"覆盖回去，
+        # 丢失全部历史学习结果。加载失败期间禁止落盘。
+        return
     path = _cache_path()
     if path is None:
         return
@@ -131,7 +135,7 @@ def _record_success(series: str, prefix: str, code: str) -> None:
         entry["quarantined"].pop(prefix, None)
         verified = entry["verified"]
         if prefix in verified:
-            return  # 已转正，只计数
+            return  # 已转正，成功证据不再重复累加
         # provisional：记录验证过的番号，达到阈值转正
         proven_codes = entry.setdefault("proven_codes", {}).get(prefix, [])
         if code not in proven_codes:

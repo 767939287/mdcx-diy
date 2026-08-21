@@ -217,6 +217,7 @@ class Fc2Crawler(BaseCrawler):
             raise CrawlerException("数据获取失败: 未获取到cover！")
 
         tag = getTag(html_info)
+        tag_mosaic = tag  # 保留原始 tag 用于马赛克判断（"無修正" 在下面会被清理）
         release = getRelease(html_info)
         trailer = await getTrailer(self.async_client, number)
         ctx.debug("预告片: 已获取到带时效参数的临时链接" if trailer else "预告片: 未获取到临时下载链接")
@@ -247,7 +248,7 @@ class Fc2Crawler(BaseCrawler):
             extrafanart=extrafanart,
             trailer=trailer,
             image_download=False,
-            mosaic=getMosaic(tag, title),
+            mosaic=getMosaic(tag_mosaic, title),
             external_id=real_url,
             wanted="",
         )
