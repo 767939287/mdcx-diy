@@ -9,6 +9,7 @@
 - **爬虫文件去 `_new` 后缀**：`dmm_new` → `dmm`、`javdb_new` → `javdb`、`avbase_new` → `avbase`，消除"有旧版"的误导。纯文件重命名 + import 路径更新，无功能变更
 - **JavDB App 爬虫类名统一**：`javdb_app.py` 的 `JavdbAPICrawler` → `JavdbAppCrawler`，与文件名一致且避免与 `javdb_api.py` 的 `JavdbApiCrawler` 同名冲突
 - **love6.py 死代码清理**：删除未调用的 `get_extrafanart` 函数（从 lulubar.py 复制粘贴遗留，拼接了错误的 `lulubar.net` 域名）
+- **JavDB App 签名简化 + 设备参数补全**：`javdb_app.py` 签名算法从运行时 base64 解密（`_decrypt` + `_ENCRYPTED_PART1/2` + `_SECRET`）改为直接硬编码已验证的 prefix/suffix 常量（与 javdb-cli 项目交叉验证值一致），消除 `base64`/`json` 模块依赖；`_build_api_params` 补全 `system_version`/`device_model`/`device_name`/`device_uuid` 四个设备标识参数（与真实 JavDB App 请求一致），降低被风控的概率
 
 ### 修复
 

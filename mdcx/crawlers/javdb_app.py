@@ -1,12 +1,11 @@
 import asyncio
-import base64
 import hashlib
-import json
 import logging
 import random
 import re
 import time
 import unicodedata
+import uuid
 from dataclasses import dataclass
 from typing import override
 
@@ -23,12 +22,12 @@ logger = logging.getLogger(__name__)
 
 # ============================================================
 # 签名算法 - 基于 JavDB 移动端 APK 逆向
+# jdsignature = "{ts}.{suffix}.{md5(ts + prefix)}"
+# prefix/suffix 由 APK 解密得到，值已验证与 javdb-cli 项目一致
 # ============================================================
 
-_SECRET = "30820"
-
-_ENCRYPTED_PART1 = "WzE3OCwyMTksMTI3LDE2MSwxODksMTYyLDEyMywxMDMsMTM3LDIxMCwxMjMsMjE5LDE4OSwxNzksMTIzLDIwMiwxMzksMTUwLDEzMywxNjAsMTI2LDIwNywxNjYsMTUxLDE0NiwxNTksMTg4LDEwMCwxMzgsMTM2LDE3NiwxNjEsMTQyLDEwMywxMzUsMTYwLDE0MiwxNzUsMTYwLDEwNCwxMzAsMTIxLDExOCwxMDYsMTMyLDEyNCwxMzAsMTA0LDEzMSwxMjEsMTI2LDE3MywxNDMsMTQwLDEzOCwxMDQsMTMwLDE1OSwxMTgsMTc1LDE0MiwxNTksMTYxLDE1OSwxNDMsMTI0LDEyMywxNjEsMTMxLDEzNywxMzQsMTAxLDEzMSwxNzUsMTU2LDEwMSwxMzEsMTc1LDE1NywxNTcsMTMwLDEzNywxNjAsMTA2LDE0MywxMzcsMTUzLDE2MCwxMzEsMTQwLDEyMiwxMDMsMTQzLDEzNywxMjMsMTU3LDEzMSwxMzcsMTUyLDEwMywxMzIsMTM3LDEyMiwxNzMsMTMwLDE1OSwxMzEsMTU5LDEzMCwxNDAsMTIyLDEwNiwxMzAsMTc1LDEyMywxNTksMTMwLDEyMSwxMzgsMTA0LDEzMiwxMjEsMTM0LDE3NCwxNDMsMTYyLDEyNiwxMDQsMTMwLDEwMywxMjcsMTU3LDEzMCwxMDMsMTI2LDE3NSwxNDIsMTc1LDE1NiwxNzUsMTQyLDE2MiwxMzEsMTYwLDEzMSwxNTksMTYxLDE1OSwxMzAsMTM3LDE1MywxNTksMTQyLDEwMywxNDIsMTczLDEzMSwxNzUsMTM0LDE3MiwxMzIsMTIxLDEyMywxNjEsMTMwLDEwMywxMzQsMTA1LDE0MiwxNDAsMTIyLDExNF0="
-_ENCRYPTED_PART2 = "WzE5OCwxNjksMTIzLDEwNiwxNzcsMTY2LDE0MCwxNjIsMTQ3LDE4OSwxNjIsMjE5LDE5OSwxMjIsMTE4LDE1OF0="
+_SIG_PREFIX = "71cf27bb3c0bcdf207b64abecddc970098c7421ee7203b9cdae54478478a199e7d5a6e1a57691123c1a931c057842fb73ba3b3c83bcd69c17ccf174081e3d8aa"
+_SIG_SUFFIX = "lpw6vgqzsp"
 
 _API_BASE = "https://apidd.czssdgz.com"
 _API_FALLBACKS = ["https://apidd.spthgb.com", "https://jdforrepam.com"]
@@ -43,22 +42,18 @@ _PLATFORM = "android"
 _APP_CHANNEL = "official"
 _APP_VERSION = "official"
 _APP_VERSION_NUMBER = "1.9.35"
+_SYSTEM_VERSION = "13"
+_DEVICE_MODEL = "Pixel 6"
+_DEVICE_NAME = "Pixel"
 
-
-def _decrypt(b64_encrypted: str) -> str:
-    key_md5 = hashlib.md5(_SECRET.encode()).hexdigest()
-    key_bytes = [ord(c) for c in key_md5]
-    encrypted = json.loads(base64.b64decode(b64_encrypted))
-    raw = "".join(chr(encrypted[i] - key_bytes[min(i, 31)]) for i in range(len(encrypted)))
-    return base64.b64decode(raw).decode()
+# 每个 JavDB App 实例对应一个稳定的 device_uuid，模拟真实设备标识
+_DEVICE_UUID = str(uuid.uuid5(uuid.NAMESPACE_DNS, "mdcx-javdb-app"))
 
 
 def make_signature() -> str:
-    part1 = _decrypt(_ENCRYPTED_PART1)
-    part2 = _decrypt(_ENCRYPTED_PART2)
     ts = int(time.time())
-    md5_hash = hashlib.md5(f"{ts}{part1}".encode()).hexdigest()
-    return f"{ts}.{part2}.{md5_hash}"
+    md5_hash = hashlib.md5(f"{ts}{_SIG_PREFIX}".encode()).hexdigest()
+    return f"{ts}.{_SIG_SUFFIX}.{md5_hash}"
 
 
 def _build_api_params() -> dict:
@@ -67,6 +62,10 @@ def _build_api_params() -> dict:
         "app_channel": _APP_CHANNEL,
         "app_version": _APP_VERSION,
         "app_version_number": _APP_VERSION_NUMBER,
+        "system_version": _SYSTEM_VERSION,
+        "device_model": _DEVICE_MODEL,
+        "device_name": _DEVICE_NAME,
+        "device_uuid": _DEVICE_UUID,
     }
 
 
