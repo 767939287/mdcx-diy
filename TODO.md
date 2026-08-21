@@ -228,4 +228,63 @@
 **成本**：1 天
 **参考**：`/tmp/sakuramediabe/src/common/movie_numbers.py` `MOVIE_NUMBER_PATTERNS`
 
+---
+
+### 14. 404 负面缓存（JavBoss 借鉴）
+
+**目标**：站点返回 404（确认无此番号）时缓存"负面"状态，设定 TTL 期间不再重复请求同一番号，减少无效请求。
+
+**背景**：mdcx 当前 `ScrapeStateCache` 只记录 `done`/`failed`，`failed` 会按 `MAX_RETRY_COUNT=3` 重试。但 404 是确定性失败（站点确实没有这个番号），重试无意义，应像 JavBoss 那样缓存 404 结果并设 TTL（7 天），TTL 过期前直接跳过。
+
+**实现要点**：
+- `ScrapeState` 新增 `failure_reason` 字段（复用 `FailureReason` 枚举：`NOT_FOUND`/`BLOCKED`/`TIMEOUT`/`PARSE_ERROR`/`UNKNOWN`）
+- `set_failed` 写入 `failure_reason`
+- `should_skip` 检查：`status=failed` + `failure_reason=NOT_FOUND` + 未过 TTL → 跳过
+- 404 TTL 默认 7 天，其他失败仍走现有 `MAX_RETRY_COUNT` 重试逻辑
+- UI 工具页「刮削缓存管理」面板显示负面缓存数量
+- 读取模式不受负面缓存影响（始终处理全部选中文件）
+
+**成本**：1-2 天
+**参考**：JavBoss `internal/jav/cache.go` — 404 缓存 7 天 TTL，成功缓存 90 天
+
+---
+
+### 15. 缓存 key 版本化（JavBoss 借鉴）
+
+**目标**：crawler 解析逻辑变更后，旧 `scrape_state.db` 中的 "done" 记录自动失效，无需用户手动清缓存即可重新刮削。
+
+**背景**：mdcx `ScrapeStateCache` 按 `file_path` + `mtime` 判断是否跳过，无版本概念。修复了某个 crawler 的解析 bug 后，旧 "done" 记录仍会跳过，用户必须到工具页手动重置缓存才能看到修复效果。JavBoss 每个 provider 有独立版本号，解析逻辑改了升版本号 → 旧缓存自动失效。
+
+**实现要点**：
+- `core/scrape_cache.py` 新增 `SCRAPE_CACHE_SCHEMA_VERSION = "v2"` 常量
+- `scrape_state` 表新增 `schema_version TEXT NOT NULL DEFAULT ''` 列（`open()` 中 ALTER TABLE 迁移）
+- `ScrapeState` dataclass 新增 `schema_version: str = ""` 字段
+- `set_done` 写入当前版本号；`set_failed` 不写版本号（失败记录不受版本影响）
+- `should_skip` 增加版本检查：`state.schema_version != SCRAPE_CACHE_SCHEMA_VERSION` → 返回 False（需重刮）
+- 旧记录 `schema_version=""` 与 `"v2"` 不匹配，升级后首次刮削自动重刮全部
+- 后续改 crawler 解析逻辑时，开发者只需递增版本号即可让用户缓存自动失效
+
+**成本**：半天
+**参考**：JavBoss `internal/jav/cache.go` `lookupJavCacheKeyVersionByProvider` map
+
+---
+
+### 16. 视频截图工具（JavBoss 借鉴，长期规划）
+
+**目标**：为没有封面的视频自动截取关键帧作为 thumb/poster，替代空白占位。
+
+**背景**：部分小众番号（尤其国产/素人）在所有站点都抓不到封面图，最终 NFO 的 thumb/poster 字段为空。JavBoss 用 ffmpeg/mpv 8 worker 并发截图，从视频中提取多帧选最佳作为封面。
+
+**实现要点**：
+- 新增 `core/video_screenshot.py`，调用 ffmpeg 截取视频 25%/50%/75% 位置的帧
+- 选择最大文件大小的帧作为 poster，其余作为 extrafanart 候选
+- 仅在所有站点均未返回 thumb/poster 时触发
+- 依赖系统 ffmpeg（非 Python 包），需检测可用性
+- 配置项 `video_screenshot_enabled`（默认关闭）、`video_screenshot_ffmpeg_path`
+- 性能控制：并发 worker 数量可配置，大文件跳过（>10GB）
+- 与现有图片下载流程整合：截图后走相同的加水印/命名/移动逻辑
+
+**成本**：3-5 天（ffmpeg 集成 + 帧选择算法 + 配置 UI + 测试）
+**参考**：JavBoss `internal/jav/screenshot_manager.go` — ffmpeg/mpv 8 worker 并发截图
+
 

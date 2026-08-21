@@ -7,7 +7,7 @@ import aiofiles.os
 from ..config.extend import get_movie_path_setting
 from ..config.manager import manager
 from ..signals import signal
-from ..utils.file import copy_file_async
+from ..utils.file import copy_file_async, safe_copytree_async
 from .file import movie_lists
 
 
@@ -39,7 +39,7 @@ async def add_del_extras(mode: str) -> None:
         count += 1
         if mode == "add":
             if not await aiofiles.os.path.exists(extrafanart_copy_folder_path):
-                await asyncio.to_thread(shutil.copytree, extrafanart_folder_path, extrafanart_copy_folder_path)
+                await safe_copytree_async(extrafanart_folder_path, extrafanart_copy_folder_path)
                 filelist = await aiofiles.os.listdir(extrafanart_copy_folder_path)
                 for file in filelist:
                     file_new_name = file.replace("jpg", "mp4")

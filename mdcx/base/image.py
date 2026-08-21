@@ -15,7 +15,7 @@ from ..config.resources import resources
 from ..models.log_buffer import LogBuffer
 from ..signals import signal
 from ..utils import get_used_time
-from ..utils.file import check_pic_async, copy_file_async, move_file_async
+from ..utils.file import check_pic_async, copy_file_async, move_file_async, safe_copytree_async
 from .file import movie_lists
 
 _MARK_IMAGE_CACHE: dict[Path, Image.Image] = {}
@@ -54,7 +54,7 @@ async def extrafanart_copy2(folder_path: Path):
         return
     if await aiofiles.os.path.exists(extrafanart_copy_path):
         await asyncio.to_thread(shutil.rmtree, extrafanart_copy_path, ignore_errors=True)
-    await asyncio.to_thread(shutil.copytree, extrafanart_path, extrafanart_copy_path)
+    await safe_copytree_async(extrafanart_path, extrafanart_copy_path)
     filelist = await aiofiles.os.listdir(extrafanart_copy_path)
     for each in filelist:
         file_new_name = each.replace("fanart", "")
@@ -80,7 +80,7 @@ async def extrafanart_extras_copy(folder_path: Path):
 
     if await aiofiles.os.path.exists(extrafanart_extra_path):
         await asyncio.to_thread(shutil.rmtree, extrafanart_extra_path)
-    await asyncio.to_thread(shutil.copytree, extrafanart_path, extrafanart_extra_path)
+    await safe_copytree_async(extrafanart_path, extrafanart_extra_path)
     filelist = await aiofiles.os.listdir(extrafanart_extra_path)
     for each in filelist:
         file_new_name = each.replace("jpg", "mp4")
@@ -267,7 +267,7 @@ async def add_del_extrafanart_copy(mode: str) -> None:
         count += 1
         if mode == "add":
             if not await aiofiles.os.path.exists(extrafanart_copy_folder_path):
-                await asyncio.to_thread(shutil.copytree, extrafanart_folder_path, extrafanart_copy_folder_path)
+                await safe_copytree_async(extrafanart_folder_path, extrafanart_copy_folder_path)
                 signal.show_log_text(f" {count} new copy: \n  {extrafanart_copy_folder_path}")
                 new_count += 1
             else:

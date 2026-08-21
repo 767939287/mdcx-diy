@@ -304,6 +304,46 @@ async def copy_file_async(old: str | Path, new: str | Path):
     return False, error_info
 
 
+def _is_same_path(a: Path, b: Path) -> bool:
+    """检查两个路径是否指向同一个文件系统对象。
+
+    先做字符串归一化比较（捕获 a==b 的简单情况，且当文件不存在时
+    os.path.samefile 会抛 FileNotFoundError，字符串比较仍能兜底）。
+    如果两侧文件都存在，再 os.path.samefile 做_inode 级判定。
+    """
+    a_str = str(a.resolve())
+    b_str = str(b.resolve())
+    if a_str == b_str:
+        return True
+    try:
+        return os.path.samefile(a_str, b_str)
+    except OSError:
+        return False
+
+
+def safe_copytree(src: str | Path, dst: str | Path, **kwargs) -> None:
+    """shutil.copytree 的安全封装：src==dst 时直接返回，避免先 rmtree 再 copytree 导致数据丢失。
+
+    风险场景：用户把 extrafanart_folder 配成 "extrafanart"，
+    导致 extrafanart_copy_path == extrafanart_path，
+    外层先 rmtree(extrafanart_copy_path) 再 copytree，会把源目录删掉。
+    """
+    src = Path(src)
+    dst = Path(dst)
+    if _is_same_path(src, dst):
+        return
+    shutil.copytree(str(src), str(dst), **kwargs)
+
+
+async def safe_copytree_async(src: str | Path, dst: str | Path, **kwargs) -> None:
+    """safe_copytree 的异步版本，用于 asyncio 上下文。"""
+    src = Path(src)
+    dst = Path(dst)
+    if _is_same_path(src, dst):
+        return
+    await asyncio.to_thread(lambda: shutil.copytree(str(src), str(dst), **kwargs))
+
+
 def _check_pic_blocking(p: str | Path):
     """阻塞版本的图片检查，用于在线程中执行"""
     with Image.open(p) as img:  # 如果文件不是图片，报错
