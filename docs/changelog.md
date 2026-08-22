@@ -23,6 +23,9 @@
 
 ### 修复
 
+- **Emby 同步失败不再标记为已同步**：`emby_actor_manager_ui.py` 的 `_on_sync_finished` 原本无差别清掉全部 `need_update_*` 标记并刷新状态，失败演员也被标成已同步。现改为在 `_on_sync_actor_done`（per-actor 信号）里按演员名反查后仅对成功者调用 `_apply_sync_success` 清标记，失败演员保留待同步状态可在下次重试
+- **Emby 过滤器补齐 backdrop**：`emby_actor_manager_ui.py` 下拉框新增「缺背景」过滤模式（缺 backdrop 但有头像的演员不再只在全部里可见）；「待同步」模式条件补上 `need_update_backdrop`，漏掉待同步背景图的演员现在会出现在过滤结果中
+- **crawl CLI 测试消除 coroutine 警告**：`tests/test_crawl_cli.py` 的 `_FakeExecutor.submit` 接收 `task(c)` 协程后从不消费导致「coroutine never awaited」RuntimeWarning，fake 现对协程调用 `close()` 模拟真实 executor 的调度语义
 - **Gfriends 同步改后台线程**：`tool_handlers.py` 的 `pushButton_sync_gfriends_clicked` 不再同步调用 `do_sync`（内部 `git pull` 最长 5 分钟）阻塞 UI 主线程，改为 `executor.submit` + `asyncio.to_thread` 后台执行，通过新增的 `_gfriends_signals.done`（pyqtSignal）回主线程恢复按钮、提示结果并刷新更新时间
 - **Emby 演员名双击反查**：`emby_actor_manager_ui.py` 的 `_on_table_double_clicked` 改用 `table.item(row, 1).text()` 取演员名后到 `self._actors` 反查数据，不再用过滤后的视觉行索引 `filtered[row]`，修复列表经过筛选后双击错位/越界的问题
 - **Emby 图片上传去掉 base64**：`emby_shared.py` 移除 `base64.b64encode(content)` 与 `import base64`，直接发送原始图片字节流，修复 Emby 收到的图片因二次编码损坏、无法识别的问题

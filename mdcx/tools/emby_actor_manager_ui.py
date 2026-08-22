@@ -432,7 +432,7 @@ class EmbyActorManagerDialog(QDialog):
         filter_layout = QHBoxLayout()
         filter_layout.addWidget(QLabel("筛选:"))
         self.cmb_filter = QComboBox()
-        self.cmb_filter.addItems(["全部", "待同步", "缺头像", "缺简介", "缺头像和简介", "完整"])
+        self.cmb_filter.addItems(["全部", "待同步", "缺头像", "缺背景", "缺简介", "缺头像和简介", "完整"])
         self.cmb_filter.currentTextChanged.connect(self._on_filter_changed)
         filter_layout.addWidget(self.cmb_filter)
         filter_layout.addWidget(QLabel("  搜索:"))
@@ -757,10 +757,30 @@ class EmbyActorManagerDialog(QDialog):
         self.setWindowTitle(f"Emby 演员管理器 - {msg}")
 
     def _on_sync_actor_done(self, name: str, success: bool, msg: str):
+        actor = next((a for a in self._actors if getattr(a, "name", "") == name), None)
         if success:
+            if actor is not None:
+                self._apply_sync_success(actor)
             self.log(f"✅ {name} 同步成功")
         else:
+            # 失败的演员保留 need_update 标记，可在下次同步重试
             self.log(f"❌ {name} 同步失败: {msg}")
+
+    def _apply_sync_success(self, a: ActorInfo):
+        if a.need_update_image:
+            a.has_image = bool(a.new_image_path)
+            a.need_update_image = False
+        if a.need_update_info:
+            a.has_overview = bool(a.new_overview and a.new_overview.strip())
+            a.existing_overview = a.new_overview or a.existing_overview
+            a.existing_taglines = list(a.new_taglines)
+            a.existing_production_year = a.new_production_year
+            a.existing_premiere_date = a.new_premiere_date
+            a.existing_production_locations = list(a.new_production_locations)
+            a.need_update_info = False
+        if a.need_update_backdrop:
+            a.has_backdrop = bool(a.new_backdrop_path)
+            a.need_update_backdrop = False
 
     def _on_sync_finished(self, success: int, fail: int):
         self.progress_bar.setVisible(False)
@@ -769,24 +789,6 @@ class EmbyActorManagerDialog(QDialog):
         self._set_status("同步完成")
         self.log(f"同步完成！成功: {success}, 失败: {fail}")
         QMessageBox.information(self, "同步完成", f"✅ 成功: {success}\n❌ 失败: {fail}")
-        for a in self._actors:
-            if a.need_update_image:
-                if a.new_image_path:
-                    a.has_image = True
-                else:
-                    a.has_image = False
-                a.need_update_image = False
-            if a.need_update_info:
-                a.has_overview = bool(a.new_overview and a.new_overview.strip())
-                a.existing_overview = a.new_overview or a.existing_overview
-                a.existing_taglines = list(a.new_taglines)
-                a.existing_production_year = a.new_production_year
-                a.existing_premiere_date = a.new_premiere_date
-                a.existing_production_locations = list(a.new_production_locations)
-                a.need_update_info = False
-            if a.need_update_backdrop:
-                a.has_backdrop = bool(a.new_backdrop_path)
-                a.need_update_backdrop = False
         self._populate_table(self._actors)
         self._update_statistics(self._actors)
         # 同步完成后 3 秒自动重新获取演员列表，确保与 Emby 完全一致
@@ -862,13 +864,15 @@ class EmbyActorManagerDialog(QDialog):
         for a in self._actors:
             if filter_mode == "缺头像" and a.has_image:
                 continue
+            elif filter_mode == "缺背景" and a.has_backdrop:
+                continue
             elif filter_mode == "缺简介" and a.has_overview:
                 continue
             elif filter_mode == "缺头像和简介" and a.has_image and a.has_overview:
                 continue
             elif filter_mode == "完整" and not (a.has_image and a.has_overview):
                 continue
-            elif filter_mode == "待同步" and not (a.need_update_info or a.need_update_image):
+            elif filter_mode == "待同步" and not (a.need_update_info or a.need_update_image or a.need_update_backdrop):
                 continue
             if search_text and search_text not in a.name.lower():
                 continue

@@ -30,6 +30,8 @@ class _FakeExecutor:
         self.success = success
 
     def submit(self, fn):
+        if hasattr(fn, "close"):
+            fn.close()  # fake 不执行真实任务，关闭协程避免 "coroutine never awaited" 警告
         future = Future()
         res = MagicMock()
         res.debug_info.logs = []
