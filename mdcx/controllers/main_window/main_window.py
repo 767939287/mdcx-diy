@@ -2901,6 +2901,10 @@ class MyMAinWindow(QMainWindow):
             needs_manual = result["needs_manual"]
 
             lines = [f"自动修复完成：{sum(fixed.values())} 项已修复"]
+            save_error = result.get("save_error")
+            if save_error:
+                lines.insert(0, f"<font color='red'>⚠️ 修复结果保存失败：{save_error}</font>")
+                lines.insert(1, "<font color='red'>请关闭 Excel 或其他占用该文件的程序后重试！</font>")
             if fixed:
                 for cat, count in fixed.items():
                     cat_names = {

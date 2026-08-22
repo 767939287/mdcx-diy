@@ -179,17 +179,6 @@ def getStudio(html):
     return result
 
 
-def getRuntime(html):
-    result = html.xpath('//meta[@itemprop="duration"]/@content')
-    if result:
-        result = result[0].strip().split(":")
-        if len(result) == 3:
-            result = int(int(result[0]) * 60 + int(result[1]) + int(result[2]) / 60)
-    else:
-        result = ""
-    return str(result)
-
-
 def get_series(html):
     result = html.xpath('//a[contains(@href, "series")]/text()')
     result = result[0] if result else ""

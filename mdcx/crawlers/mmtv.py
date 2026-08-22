@@ -8,7 +8,7 @@ from parsel import Selector
 from ..config.manager import manager
 from ..config.models import Website
 from ..number import is_uncensored
-from .base import BaseCrawler, CrawlerData, CrawlerException, get_year
+from .base import BaseCrawler, CrawlerData, CrawlerException, get_year, parse_runtime
 from .guochan import get_extra_info
 
 
@@ -82,21 +82,6 @@ def get_release(res):
     return release[0] if release else ""
 
 
-def get_runtime(s):
-    runtime = ""
-    if ":" in s:
-        temp_list = s.split(":")
-        if len(temp_list) == 3:
-            runtime = int(temp_list[0]) * 60 + int(temp_list[1])
-        elif len(temp_list) <= 2:
-            runtime = int(temp_list[0])
-    elif "分" in s or "min" in s:
-        a = re.findall(r"(\d+)(分|min)", s)
-        if a:
-            runtime = a[0][0]
-    return str(runtime)
-
-
 def get_director(html):
     director = ""
     result = html.xpath('//div[@class="col-auto flex-shrink-1 flex-grow-1"]/a[contains(@href,"director")]/text()')
@@ -155,7 +140,7 @@ def get_number(html, number):
     result = html.xpath('//div[@class="d-flex mb-4"]/span/text()')
     number = result[0] if result else number
     release = get_release(result[1]) if len(result) >= 2 else ""
-    runtime = get_runtime(result[2]) if len(result) >= 3 else ""
+    runtime = parse_runtime(result[2]) if len(result) >= 3 else ""
     return number.replace("FC2-PPV ", "FC2-"), release, runtime, number
 
 

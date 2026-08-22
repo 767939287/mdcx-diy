@@ -6,7 +6,7 @@ from lxml import etree
 from parsel import Selector
 
 from ..config.models import Website
-from .base import BaseCrawler, Context, CrawlerData, CrawlerException, get_year
+from .base import BaseCrawler, Context, CrawlerData, CrawlerException, get_year, parse_runtime
 
 seesaawiki_request_fail_flag = False
 
@@ -65,18 +65,6 @@ def get_release(html):
         return result.strip()
     result = html.xpath('//*[contains(@class, "Movie_Detail_date-movie")]//span/text()')
     return result[0].replace("/", "-").strip() if result else ""
-
-
-def get_runtime(html):
-    s = html.xpath('string(//td[@class="movie_table_td" and contains(text(), "再生時間")]/following-sibling::td)')
-    runtime = ""
-    if ":" in s:
-        temp_list = s.split(":")
-        if len(temp_list) == 3:
-            runtime = int(temp_list[0]) * 60 + int(temp_list[1])
-        elif len(temp_list) <= 2:
-            runtime = int(temp_list[0])
-    return str(runtime)
 
 
 def get_extrafanart(html):
@@ -185,7 +173,11 @@ class Kin8Crawler(BaseCrawler):
             tags=tags,
             release=release,
             year=get_year(release),
-            runtime=get_runtime(html_info),
+            runtime=parse_runtime(
+                html_info.xpath(
+                    'string(//td[@class="movie_table_td" and contains(text(), "再生時間")]/following-sibling::td)'
+                )
+            ),
             studio="kin8tengoku",
             publisher="kin8tengoku",
             thumb=cover_url,

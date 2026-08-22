@@ -57,7 +57,7 @@ def show_constants():
 
 
 def _create_application() -> tuple[QApplication, MyMAinWindow]:
-    if os.path.isfile("highdpi_passthrough"):
+    if os.path.isfile(os.path.join(MAIN_PATH, "highdpi_passthrough")):
         # Qt6 默认启用高 DPI，这里仅保留非整数缩放策略开关，避免 150% 缩放被取整。
         QApplication.setHighDpiScaleFactorRoundingPolicy(Qt.HighDpiScaleFactorRoundingPolicy.PassThrough)
 

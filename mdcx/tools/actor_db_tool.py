@@ -1211,8 +1211,9 @@ def auto_fix_actor_db(db_path: Path) -> dict:
     # 孤儿 hyperlink 删除（通过重存消除）
     try:
         wb.save(db_path)
-    except Exception:
-        pass
+    except Exception as e:
+        # 保存失败必须上报：避免用户看到"修复了 N 项"但实际未落盘
+        result["save_error"] = str(e)
     wb.close()
 
     result["fixed"] = fixed_counter

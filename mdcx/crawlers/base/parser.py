@@ -83,6 +83,31 @@ def get_year(release: str) -> str:
     return match.group() if match else release
 
 
+def parse_runtime(text: str) -> str:
+    """从时长文本解析出总分钟数（字符串形式）.
+
+    支持 ``HH:MM:SS`` / ``HH:MM`` / ``MM`` 三种常见写法：
+    - ``1:20`` → ``80``（1 小时 20 分）
+    - ``1:20:30`` → ``80``（忽略秒）
+    - ``95`` / ``95分`` / ``95min`` → ``95``（纯分钟）
+
+    任一段不是纯数字（如 ``未知:xx``）或无法识别时返回空串，
+    避免 ``int()`` 抛 ``ValueError`` 导致整站解析失败.
+    """
+    text = (text or "").strip()
+    if not text:
+        return ""
+    parts = [p.strip() for p in text.split(":")]
+    if not parts or not all(p.isdigit() for p in parts):
+        # 无冒号形式，取首个连续数字作为分钟数（兼容 "95分" / "95min" / "95 分钟"）
+        match = re.search(r"\d+", text)
+        return match.group() if match else ""
+    nums = [int(p) for p in parts]
+    if len(nums) >= 2:
+        return str(nums[0] * 60 + nums[1])
+    return str(nums[0])
+
+
 def re_findall(pattern: str, text: str, flags: int = 0) -> list[tuple[str, ...]]:
     """
     re.findall 的类型安全的封装.

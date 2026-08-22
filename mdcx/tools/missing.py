@@ -89,6 +89,18 @@ async def _show_actor_missing_numbers(actor_name: str, actor_type: str, net_numb
             _log(f"   {each}")
 
 
+async def _try_write_cache_async(p: str | Path, content: str, start_time: float) -> None:
+    """写缓存文件，失败只记录日志，不让整个查询任务中断。
+
+    缺失番号查询已耗时遍历整个资源库，若结尾写缓存失败（磁盘满、
+    目录只读、文件被占用等）导致任务中断，之前的查询结果全部白费。
+    """
+    try:
+        await write_file_atomic_async(p, content)
+    except Exception as e:
+        signal.show_log_text(f"   ⚠️ 缓存文件写入失败（不影响本次查询结果，但下次会重新扫描）：{e}")
+
+
 async def check_missing_number(actor_flag):
     """
     检查缺失番号
@@ -122,7 +134,7 @@ async def check_missing_number(actor_flag):
         signal.show_log_text(
             "   提示：正在生成本地视频的番号信息数据...（第一次较慢，请耐心等待，以后只需要查找新视频，速度很快）"
         )
-        await write_file_atomic_async(local_number_list, "{}")
+        await _try_write_cache_async(local_number_list, "{}", start_time)
     async with aiofiles.open(local_number_list, encoding="utf-8") as data:
         json_data = json.loads(await data.read())
         json_data = cast("dict[str, tuple[str, bool]]", json_data)
@@ -157,16 +169,17 @@ async def check_missing_number(actor_flag):
         if has_sub:
             Flags.local_number_cnword_set.add(number)  # 添加到本地有字幕的番号集合
 
-    await write_file_atomic_async(
-        local_number_list,
-        json.dumps(
-            local_movies,
-            ensure_ascii=False,
-            sort_keys=True,
-            indent=4,
-            separators=(",", ": "),
-        ),
-    )
+        await _try_write_cache_async(
+            local_number_list,
+            json.dumps(
+                local_movies,
+                ensure_ascii=False,
+                sort_keys=True,
+                indent=4,
+                separators=(",", ": "),
+            ),
+            start_time,
+        )
     signal.show_log_text(f"🎉 获取完毕！共获取番号数量（{len(local_movies)}）({get_used_time(start_time_local)}s)")
 
     # 查询演员番号

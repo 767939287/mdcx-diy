@@ -24,6 +24,12 @@
 
 ### 修复
 
+- **get_new_release 日期格式崩溃**：`utils/__init__.py` 的 `get_new_release` 原先对非 `YYYY-MM-DD` 格式的日期直接 `re.findall(...)[0]` 取首个匹配，无匹配时抛 `IndexError` 导致刮削中断；现改为先用 `re.search` 校验、无匹配则原样返回 release，规则替换仅在有匹配时进行
+- **actor 数据库自动修复保存失败静默吞错**：`actor_db_tool.py` 的 `auto_fix_actor_db` 原先 `wb.save` 失败被 `except: pass` 吞掉，界面显示「已修复 N 项」但实际未落盘；现把异常写入返回结果的 `save_error`，主界面弹窗红字提示保存失败并建议关闭占用程序后重试
+- **mmtv/kin8/iqqtv 时长解析崩溃**：三处复制粘贴的 `get_runtime`/`getRuntime` 对非数字时长文本直接 `int()` 抛 `ValueError`；现抽取公共函数 `parse_runtime`（`crawlers/base/parser.py`）统一处理 `HH:MM:SS`/`HH:MM`/`MM`/`95分`/`95min` 等格式，任一段非数字时返回空串而非崩溃；iqqtv 未调用的死代码 `getRuntime` 一并删除
+- **缺失番号查询缓存写失败中断任务**：`tools/missing.py` 扫描完整个资源库后若缓存文件写入失败（磁盘满/目录只读/文件被占用）会抛异常中断整个查询；现写入改为 `_try_write_cache_async` 包裹，失败仅记录日志不影响查询结果
+- **highdpi_passthrough 标记文件相对路径**：`main.py` 与 `load_config.py` 对 `highdpi_passthrough` 文件用相对路径判断，从非项目目录启动时标记文件读写到错误位置、开关失效；现统一改用 `MAIN_PATH` 绝对路径
+- **配置保存读取竞态**：`config/manager.py` 的 `save()` 原先在锁外读取 `self.config`，与 `_replace_config` 热切换并发时可能读到切换中的不一致状态；现读取 config 放入 `_computed_lock` 临界区（写盘仍在锁外，避免持锁做磁盘 IO）
 - **Emby 同步失败不再标记为已同步**：`emby_actor_manager_ui.py` 的 `_on_sync_finished` 原本无差别清掉全部 `need_update_*` 标记并刷新状态，失败演员也被标成已同步。现改为在 `_on_sync_actor_done`（per-actor 信号）里按演员名反查后仅对成功者调用 `_apply_sync_success` 清标记，失败演员保留待同步状态可在下次重试
 - **Emby 过滤器补齐 backdrop**：`emby_actor_manager_ui.py` 下拉框新增「缺背景」过滤模式（缺 backdrop 但有头像的演员不再只在全部里可见）；「待同步」模式条件补上 `need_update_backdrop`，漏掉待同步背景图的演员现在会出现在过滤结果中
 - **crawl CLI 测试消除 coroutine 警告**：`tests/test_crawl_cli.py` 的 `_FakeExecutor.submit` 接收 `task(c)` 协程后从不消费导致「coroutine never awaited」RuntimeWarning，fake 现对协程调用 `close()` 模拟真实 executor 的调度语义

@@ -487,7 +487,11 @@ def get_new_release(release: str, release_rule: str) -> str:
         release = "0000-00-00"
     if release_rule == "YYYY-MM-DD":
         return release
-    year, month, day = re.findall(r"(\d{4})-(\d{2})-(\d{2})", release)[0]
+    # 非 YYYY-MM-DD 格式（如 "2026/01/15"、"未知"）时原样返回，避免 findall 空列表 [0] 越界崩溃
+    matched = re.search(r"(\d{4})-(\d{2})-(\d{2})", release)
+    if not matched:
+        return release
+    year, month, day = matched.groups()
     return release_rule.replace("YYYY", year).replace("YY", year[-2:]).replace("MM", month).replace("DD", day)
 
 

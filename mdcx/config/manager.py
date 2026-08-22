@@ -232,7 +232,10 @@ class ConfigManager:
         os.chmod(path, 0o600)
 
     def save(self):
-        self._write_config_text(self._path, self.config.model_dump_json(indent=2))
+        # 在锁内读取 config，与 _replace_config 的切换互斥，避免读到切换中的不一致状态
+        with self._computed_lock:
+            text = self.config.model_dump_json(indent=2)
+        self._write_config_text(self._path, text)
 
     def reset(self):
         """写入默认配置"""
