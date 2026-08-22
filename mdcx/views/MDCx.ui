@@ -1585,7 +1585,7 @@
                   <x>0</x>
                   <y>0</y>
                   <width>760</width>
-                  <height>2470</height>
+                  <height>2380</height>
                 </rect>
               </property>
               <property name="autoFillBackground">
@@ -1595,7 +1595,7 @@
                 <property name="geometry">
                   <rect>
                     <x>30</x>
-                    <y>655</y>
+                    <y>565</y>
                     <width>701</width>
                     <height>271</height>
                   </rect>
@@ -1728,7 +1728,7 @@
                 <property name="geometry">
                   <rect>
                     <x>30</x>
-                    <y>946</y>
+                    <y>856</y>
                     <width>701</width>
                     <height>141</height>
                   </rect>
@@ -1776,7 +1776,7 @@
                 <property name="geometry">
                   <rect>
                     <x>30</x>
-                    <y>1849</y>
+                    <y>1759</y>
                     <width>701</width>
                     <height>241</height>
                   </rect>
@@ -1949,7 +1949,7 @@
                 <property name="geometry">
                   <rect>
                     <x>30</x>
-                    <y>1658</y>
+                    <y>1568</y>
                     <width>701</width>
                     <height>171</height>
                   </rect>
@@ -2025,7 +2025,7 @@
                 <property name="geometry">
                   <rect>
                     <x>30</x>
-                    <y>1327</y>
+                    <y>1237</y>
                     <width>701</width>
                     <height>311</height>
                   </rect>
@@ -2301,7 +2301,7 @@
                  <property name="geometry">
                    <rect>
                      <x>30</x>
-                     <y>130</y>
+                     <y>40</y>
                      <width>701</width>
                      <height>520</height>
                    </rect>
@@ -2837,7 +2837,7 @@
                 <property name="geometry">
                   <rect>
                     <x>30</x>
-                    <y>1107</y>
+                    <y>1017</y>
                     <width>701</width>
                     <height>200</height>
                   </rect>
@@ -2944,50 +2944,11 @@
                   </property>
                 </widget>
               </widget>
-              <widget class="QGroupBox" name="groupBox_emby_actor_manager">
-                <property name="geometry">
-                  <rect>
-                    <x>30</x>
-                    <y>20</y>
-                    <width>701</width>
-                    <height>90</height>
-                  </rect>
-                </property>
-                <property name="title">
-                  <string>Emby 演员管理</string>
-                </property>
-                <widget class="QPushButton" name="pushButton_emby_actor_manager">
+              <widget class="QGroupBox" name="groupBox_scrape_cache">
                   <property name="geometry">
                     <rect>
                       <x>30</x>
-                      <y>25</y>
-                      <width>641</width>
-                      <height>50</height>
-                    </rect>
-                  </property>
-                  <property name="styleSheet">
-                    <string notr="true">QPushButton{background-color: #1565c0;color: #ffffff;font-size: 15px;font-weight: bold;border-radius: 6px;}QPushButton:hover{background-color: #1976d2;}QPushButton:pressed{background-color: #0d47a1;}</string>
-                  </property>
-                  <property name="text">
-                    <string>🎭 Emby 演员管理器（管理演员头像和简介）</string>
-                  </property>
-                  <property name="toolTip">
-                    <string>使用说明：
-1. 填写 Emby 地址和 API 密钥，点击「连接 Emby」
-2. 点击「获取演员列表」，选择要管理的媒体库
-3. 从下拉框选择获取模式，点击「根据设定获取数据」匹配头像和简介（再次点击可取消）
-4. 绿色行表示有更新，点击「开始全部更新同步」写入 Emby
-5. 「设置」可配置数据源优先级与获取过滤，「数据源测试」可逐源验证结果
-6. 双击行打开演员详情编辑对话框，可编辑简介/信息并单独同步头像/简介
-7. 「清空缓存文件夹」可清理已下载的头像缓存</string>
-                  </property>
-                </widget>
-              </widget>
-                            <widget class="QGroupBox" name="groupBox_scrape_cache">
-                  <property name="geometry">
-                    <rect>
-                      <x>30</x>
-                      <y>2110</y>
+                      <y>2020</y>
                       <width>701</width>
                       <height>340</height>
                     </rect>
@@ -25462,6 +25423,44 @@ p, li { white-space: pre-wrap; }
                   </property>
                   <property name="text">
                     <string> 工具</string>
+                  </property>
+                </widget>
+              </item>
+              <item>
+                <spacer name="verticalSpacer_emby_nav">
+                  <property name="orientation">
+                    <enum>Qt::Vertical</enum>
+                  </property>
+                  <property name="sizeType">
+                    <enum>QSizePolicy::Fixed</enum>
+                  </property>
+                  <property name="sizeHint" stdset="0">
+                    <size>
+                      <width>20</width>
+                      <height>8</height>
+                    </size>
+                  </property>
+                </spacer>
+              </item>
+              <item>
+                <widget class="QPushButton" name="pushButton_emby_manager_nav">
+                  <property name="minimumSize">
+                    <size>
+                      <width>0</width>
+                      <height>40</height>
+                    </size>
+                  </property>
+                  <property name="maximumSize">
+                    <size>
+                      <width>16777215</width>
+                      <height>40</height>
+                    </size>
+                  </property>
+                  <property name="text">
+                    <string> Emby演员管理</string>
+                  </property>
+                  <property name="toolTip">
+                    <string>Emby 演员管理器（管理演员头像和简介）：连接 Emby 后获取演员列表、匹配头像简介、批量同步写入</string>
                   </property>
                 </widget>
               </item>

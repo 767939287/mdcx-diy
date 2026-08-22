@@ -560,11 +560,11 @@ class Ui_MDCx(object):
         self.scrollArea_10.setWidgetResizable(False)
         self.scrollArea_10.setObjectName("scrollArea_10")
         self.scrollAreaWidgetContents_gongju = QtWidgets.QWidget()
-        self.scrollAreaWidgetContents_gongju.setGeometry(QtCore.QRect(0, 0, 760, 2470))
+        self.scrollAreaWidgetContents_gongju.setGeometry(QtCore.QRect(0, 0, 760, 2380))
         self.scrollAreaWidgetContents_gongju.setAutoFillBackground(True)
         self.scrollAreaWidgetContents_gongju.setObjectName("scrollAreaWidgetContents_gongju")
         self.groupBox_7 = QtWidgets.QGroupBox(parent=self.scrollAreaWidgetContents_gongju)
-        self.groupBox_7.setGeometry(QtCore.QRect(30, 655, 701, 271))
+        self.groupBox_7.setGeometry(QtCore.QRect(30, 565, 701, 271))
         self.groupBox_7.setObjectName("groupBox_7")
         self.pushButton_select_file = QtWidgets.QPushButton(parent=self.groupBox_7)
         self.pushButton_select_file.setGeometry(QtCore.QRect(510, 30, 151, 40))
@@ -613,7 +613,7 @@ class Ui_MDCx(object):
         self.pushButton_select_file_clear_info.setGeometry(QtCore.QRect(510, 100, 151, 40))
         self.pushButton_select_file_clear_info.setObjectName("pushButton_select_file_clear_info")
         self.groupBox_13 = QtWidgets.QGroupBox(parent=self.scrollAreaWidgetContents_gongju)
-        self.groupBox_13.setGeometry(QtCore.QRect(30, 946, 701, 141))
+        self.groupBox_13.setGeometry(QtCore.QRect(30, 856, 701, 141))
         self.groupBox_13.setStyleSheet('font:"Courier New";')
         self.groupBox_13.setObjectName("groupBox_13")
         self.pushButton_select_thumb = QtWidgets.QPushButton(parent=self.groupBox_13)
@@ -625,7 +625,7 @@ class Ui_MDCx(object):
         self.label_6.setAlignment(QtCore.Qt.AlignmentFlag.AlignCenter)
         self.label_6.setObjectName("label_6")
         self.groupBox_19 = QtWidgets.QGroupBox(parent=self.scrollAreaWidgetContents_gongju)
-        self.groupBox_19.setGeometry(QtCore.QRect(30, 1849, 701, 241))
+        self.groupBox_19.setGeometry(QtCore.QRect(30, 1759, 701, 241))
         self.groupBox_19.setObjectName("groupBox_19")
         self.gridLayoutWidget_18 = QtWidgets.QWidget(parent=self.groupBox_19)
         self.gridLayoutWidget_18.setGeometry(QtCore.QRect(30, 30, 461, 111))
@@ -709,7 +709,7 @@ class Ui_MDCx(object):
         self.label_62.setStyleSheet("color: rgb(8, 128, 128);")
         self.label_62.setObjectName("label_62")
         self.groupBox_6 = QtWidgets.QGroupBox(parent=self.scrollAreaWidgetContents_gongju)
-        self.groupBox_6.setGeometry(QtCore.QRect(30, 1658, 701, 171))
+        self.groupBox_6.setGeometry(QtCore.QRect(30, 1568, 701, 171))
         self.groupBox_6.setObjectName("groupBox_6")
         self.pushButton_move_mp4 = QtWidgets.QPushButton(parent=self.groupBox_6)
         self.pushButton_move_mp4.setGeometry(QtCore.QRect(140, 110, 351, 40))
@@ -738,7 +738,7 @@ class Ui_MDCx(object):
         )
         self.label_8.setObjectName("label_8")
         self.groupBox_21 = QtWidgets.QGroupBox(parent=self.scrollAreaWidgetContents_gongju)
-        self.groupBox_21.setGeometry(QtCore.QRect(30, 1327, 701, 311))
+        self.groupBox_21.setGeometry(QtCore.QRect(30, 1237, 701, 311))
         self.groupBox_21.setObjectName("groupBox_21")
         self.gridLayoutWidget_36 = QtWidgets.QWidget(parent=self.groupBox_21)
         self.gridLayoutWidget_36.setGeometry(QtCore.QRect(30, 30, 461, 111))
@@ -871,7 +871,7 @@ class Ui_MDCx(object):
         self.checkBox_create_link.setMinimumSize(QtCore.QSize(0, 30))
         self.checkBox_create_link.setObjectName("checkBox_create_link")
         self.groupBox_actor_db_maintenance = QtWidgets.QGroupBox(parent=self.scrollAreaWidgetContents_gongju)
-        self.groupBox_actor_db_maintenance.setGeometry(QtCore.QRect(30, 130, 701, 520))
+        self.groupBox_actor_db_maintenance.setGeometry(QtCore.QRect(30, 40, 701, 520))
         self.groupBox_actor_db_maintenance.setObjectName("groupBox_actor_db_maintenance")
         self.label_actor_db_desc = QtWidgets.QLabel(parent=self.groupBox_actor_db_maintenance)
         self.label_actor_db_desc.setGeometry(QtCore.QRect(40, 30, 621, 40))
@@ -998,7 +998,7 @@ class Ui_MDCx(object):
         self.label_actor_db_sync_aliases_desc.setWordWrap(True)
         self.label_actor_db_sync_aliases_desc.setObjectName("label_actor_db_sync_aliases_desc")
         self.groupBox_cover_backfill = QtWidgets.QGroupBox(parent=self.scrollAreaWidgetContents_gongju)
-        self.groupBox_cover_backfill.setGeometry(QtCore.QRect(30, 1107, 701, 200))
+        self.groupBox_cover_backfill.setGeometry(QtCore.QRect(30, 1017, 701, 200))
         self.groupBox_cover_backfill.setObjectName("groupBox_cover_backfill")
         self.label_cover_backfill_desc = QtWidgets.QLabel(parent=self.groupBox_cover_backfill)
         self.label_cover_backfill_desc.setGeometry(QtCore.QRect(40, 30, 621, 40))
@@ -1026,17 +1026,8 @@ class Ui_MDCx(object):
         self.label_cover_backfill_note.setStyleSheet("color: rgb(200, 100, 0);")
         self.label_cover_backfill_note.setWordWrap(True)
         self.label_cover_backfill_note.setObjectName("label_cover_backfill_note")
-        self.groupBox_emby_actor_manager = QtWidgets.QGroupBox(parent=self.scrollAreaWidgetContents_gongju)
-        self.groupBox_emby_actor_manager.setGeometry(QtCore.QRect(30, 20, 701, 90))
-        self.groupBox_emby_actor_manager.setObjectName("groupBox_emby_actor_manager")
-        self.pushButton_emby_actor_manager = QtWidgets.QPushButton(parent=self.groupBox_emby_actor_manager)
-        self.pushButton_emby_actor_manager.setGeometry(QtCore.QRect(30, 25, 641, 50))
-        self.pushButton_emby_actor_manager.setStyleSheet(
-            "QPushButton{background-color: #1565c0;color: #ffffff;font-size: 15px;font-weight: bold;border-radius: 6px;}QPushButton:hover{background-color: #1976d2;}QPushButton:pressed{background-color: #0d47a1;}"
-        )
-        self.pushButton_emby_actor_manager.setObjectName("pushButton_emby_actor_manager")
         self.groupBox_scrape_cache = QtWidgets.QGroupBox(parent=self.scrollAreaWidgetContents_gongju)
-        self.groupBox_scrape_cache.setGeometry(QtCore.QRect(30, 2110, 701, 340))
+        self.groupBox_scrape_cache.setGeometry(QtCore.QRect(30, 2020, 701, 340))
         self.groupBox_scrape_cache.setObjectName("groupBox_scrape_cache")
         self.label_scrape_cache_done = QtWidgets.QLabel(parent=self.groupBox_scrape_cache)
         self.label_scrape_cache_done.setGeometry(QtCore.QRect(20, 30, 120, 21))
@@ -12042,33 +12033,42 @@ class Ui_MDCx(object):
             20, 8, QtWidgets.QSizePolicy.Policy.Minimum, QtWidgets.QSizePolicy.Policy.Fixed
         )
         self.verticalLayout.addItem(spacerItem4)
+        self.pushButton_emby_manager_nav = QtWidgets.QPushButton(parent=self.layoutWidget6)
+        self.pushButton_emby_manager_nav.setMinimumSize(QtCore.QSize(0, 40))
+        self.pushButton_emby_manager_nav.setMaximumSize(QtCore.QSize(16777215, 40))
+        self.pushButton_emby_manager_nav.setObjectName("pushButton_emby_manager_nav")
+        self.verticalLayout.addWidget(self.pushButton_emby_manager_nav)
+        spacerItem5 = QtWidgets.QSpacerItem(
+            20, 8, QtWidgets.QSizePolicy.Policy.Minimum, QtWidgets.QSizePolicy.Policy.Fixed
+        )
+        self.verticalLayout.addItem(spacerItem5)
         self.pushButton_nfo_library = QtWidgets.QPushButton(parent=self.layoutWidget6)
         self.pushButton_nfo_library.setMinimumSize(QtCore.QSize(0, 40))
         self.pushButton_nfo_library.setMaximumSize(QtCore.QSize(16777215, 40))
         self.pushButton_nfo_library.setObjectName("pushButton_nfo_library")
         self.verticalLayout.addWidget(self.pushButton_nfo_library)
-        spacerItem5 = QtWidgets.QSpacerItem(
+        spacerItem6 = QtWidgets.QSpacerItem(
             20, 8, QtWidgets.QSizePolicy.Policy.Minimum, QtWidgets.QSizePolicy.Policy.Fixed
         )
-        self.verticalLayout.addItem(spacerItem5)
+        self.verticalLayout.addItem(spacerItem6)
         self.pushButton_setting = QtWidgets.QPushButton(parent=self.layoutWidget6)
         self.pushButton_setting.setMinimumSize(QtCore.QSize(0, 40))
         self.pushButton_setting.setMaximumSize(QtCore.QSize(16777215, 40))
         self.pushButton_setting.setObjectName("pushButton_setting")
         self.verticalLayout.addWidget(self.pushButton_setting)
-        spacerItem6 = QtWidgets.QSpacerItem(
+        spacerItem7 = QtWidgets.QSpacerItem(
             20, 8, QtWidgets.QSizePolicy.Policy.Minimum, QtWidgets.QSizePolicy.Policy.Fixed
         )
-        self.verticalLayout.addItem(spacerItem6)
+        self.verticalLayout.addItem(spacerItem7)
         self.pushButton_net = QtWidgets.QPushButton(parent=self.layoutWidget6)
         self.pushButton_net.setMinimumSize(QtCore.QSize(0, 40))
         self.pushButton_net.setMaximumSize(QtCore.QSize(16777215, 40))
         self.pushButton_net.setObjectName("pushButton_net")
         self.verticalLayout.addWidget(self.pushButton_net)
-        spacerItem7 = QtWidgets.QSpacerItem(
+        spacerItem8 = QtWidgets.QSpacerItem(
             20, 8, QtWidgets.QSizePolicy.Policy.Minimum, QtWidgets.QSizePolicy.Policy.Fixed
         )
-        self.verticalLayout.addItem(spacerItem7)
+        self.verticalLayout.addItem(spacerItem8)
         self.pushButton_about = QtWidgets.QPushButton(parent=self.layoutWidget6)
         self.pushButton_about.setMinimumSize(QtCore.QSize(0, 40))
         self.pushButton_about.setMaximumSize(QtCore.QSize(16777215, 40))
@@ -12806,21 +12806,6 @@ class Ui_MDCx(object):
         self.checkBox_cover_backfill_watermark.setText(_translate("MDCx", "添加水印"))
         self.label_cover_backfill_note.setText(
             _translate("MDCx", "提示：补图结果将输出到日志页，可在日志页查看详细进度和错误信息。")
-        )
-        self.groupBox_emby_actor_manager.setTitle(_translate("MDCx", "Emby 演员管理"))
-        self.pushButton_emby_actor_manager.setText(_translate("MDCx", "🎭 Emby 演员管理器（管理演员头像和简介）"))
-        self.pushButton_emby_actor_manager.setToolTip(
-            _translate(
-                "MDCx",
-                "使用说明：\n"
-                "1. 填写 Emby 地址和 API 密钥，点击「连接 Emby」\n"
-                "2. 点击「获取演员列表」，选择要管理的媒体库\n"
-                "3. 从下拉框选择获取模式，点击「根据设定获取数据」匹配头像和简介（再次点击可取消）\n"
-                "4. 绿色行表示有更新，点击「开始全部更新同步」写入 Emby\n"
-                "5. 「设置」可配置数据源优先级与获取过滤，「数据源测试」可逐源验证结果\n"
-                "6. 双击行打开演员详情编辑对话框，可编辑简介/信息并单独同步头像/简介\n"
-                "7. 「清空缓存文件夹」可清理已下载的头像缓存",
-            )
         )
         self.groupBox_scrape_cache.setTitle(
             _translate("MDCx", "刮削缓存管理（断点续刮/失败重试状态，清缓存只影响是否跳过，不删已生成 NFO）")
@@ -14289,6 +14274,12 @@ class Ui_MDCx(object):
         self.pushButton_main.setText(_translate("MDCx", " 主界面"))
         self.pushButton_log.setText(_translate("MDCx", " 日志"))
         self.pushButton_tool.setText(_translate("MDCx", " 工具"))
+        self.pushButton_emby_manager_nav.setText(_translate("MDCx", " Emby演员管理"))
+        self.pushButton_emby_manager_nav.setToolTip(
+            _translate(
+                "MDCx", "Emby 演员管理器（管理演员头像和简介）：连接 Emby 后获取演员列表、匹配头像简介、批量同步写入"
+            )
+        )
         self.pushButton_nfo_library.setText(_translate("MDCx", " NFO库管理"))
         self.pushButton_setting.setText(_translate("MDCx", " 设置"))
         self.pushButton_net.setText(_translate("MDCx", " 检测网络"))

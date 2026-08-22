@@ -20,6 +20,7 @@
 - **love6.py 死代码清理**：删除未调用的 `get_extrafanart` 函数（从 lulubar.py 复制粘贴遗留，拼接了错误的 `lulubar.net` 域名）
 - **JavDB App 签名简化 + 设备参数补全**：`javdb_app.py` 签名算法从运行时 base64 解密（`_decrypt` + `_ENCRYPTED_PART1/2` + `_SECRET`）改为直接硬编码已验证的 prefix/suffix 常量（与 javdb-cli 项目交叉验证值一致），消除 `base64`/`json` 模块依赖；`_build_api_params` 补全 `system_version`/`device_model`/`device_name`/`device_uuid` 四个设备标识参数（与真实 JavDB App 请求一致），降低被风控的概率
 - **移植 sakuramediabe 4 项改进**：① `remove_disturb` 域名干扰预处理——番号清洗时去除附带域名（如 `ABC-123.example.com` → `ABC-123`），去除后为空则保留原值防止整个文件名被吃掉；② jsdelivr CDN 加速——`Content`/`Filetree` 资源 URL 从 github.com 改为 jsdelivr CDN（版本检测保持 github.com）；③ NFKC 归一化匹配——演员名等匹配时先做 NFKC 归一化消除全半角差异（不预构建索引）；④ stale cache 降级——缓存过期时不直接报错而是降级使用旧数据（不替换版本检测逻辑）
+- **Emby 演员管理器入口移到左侧导航**：工具页顶部的 90px「Emby 演员管理」入口 groupBox 删除（下方 8 个 groupBox 连锁上移 90px，滚动区高度同步收缩），改为左侧导航树新增「Emby演员管理」按钮（工具按钮下方，点击弹出原独立对话框，行为不变）。同步清理 init.py 旧按钮 clicked/setText 连接与 main_window.py 失联信号定义，文档更新为「左侧导航 Emby演员管理」
 
 ### 修复
 

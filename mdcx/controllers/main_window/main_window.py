@@ -137,7 +137,6 @@ class MyMAinWindow(QMainWindow):
     pushButton_add_actor_pic = pyqtSignal(str)
     pushButton_add_actor_pic_kodi = pyqtSignal(str)
     pushButton_del_actor_folder = pyqtSignal(str)
-    pushButton_emby_actor_manager = pyqtSignal(str)
     pushButton_check_and_clean_files = pyqtSignal(str)
     pushButton_move_mp4 = pyqtSignal(str)
     pushButton_find_missing_number = pyqtSignal(str)
@@ -732,6 +731,9 @@ class MyMAinWindow(QMainWindow):
                 self.Ui.pushButton_tool.setStyleSheet(
                     "QPushButton:hover#pushButton_tool{color: white;background-color: rgba(160,160,165,40);}"
                 )
+                self.Ui.pushButton_emby_manager_nav.setStyleSheet(
+                    "QPushButton:hover#pushButton_emby_manager_nav{color: white;background-color: rgba(160,160,165,40);}"
+                )
                 self.Ui.pushButton_setting.setStyleSheet(
                     "QPushButton:hover#pushButton_setting{color: white;background-color: rgba(160,160,165,40);}"
                 )
@@ -750,6 +752,9 @@ class MyMAinWindow(QMainWindow):
                 )
                 self.Ui.pushButton_tool.setStyleSheet(
                     "QPushButton:hover#pushButton_tool{color: black;background-color: rgba(160,160,165,40);}"
+                )
+                self.Ui.pushButton_emby_manager_nav.setStyleSheet(
+                    "QPushButton:hover#pushButton_emby_manager_nav{color: black;background-color: rgba(160,160,165,40);}"
                 )
                 self.Ui.pushButton_setting.setStyleSheet(
                     "QPushButton:hover#pushButton_setting{color: black;background-color: rgba(160,160,165,40);}"
