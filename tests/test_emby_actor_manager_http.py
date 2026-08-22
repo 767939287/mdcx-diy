@@ -267,3 +267,48 @@ async def test_concurrent_fetch_all_actors_does_not_duplicate_network_calls(acto
     assert len(result) == 5
     # 每个 name 只被调一次 (N+1 重构后必须)
     assert sorted(call_log) == sorted(actor_names), f"实际调用 {len(call_log)} 次: {call_log}"
+
+
+async def test_fetch_all_actors_reuses_list_fields_when_present(emby_configured):
+    """P1-5 回归：/Persons 列表项已含 detail 字段时，不再逐人 fetch_actor_detail。"""
+    from mdcx.tools.emby_actor_manager import fetch_all_actors
+
+    call_log: list[str] = []
+
+    persons_resp = {
+        "Items": [
+            {
+                "Name": "演员1",
+                "Id": "id-1",
+                "ServerId": "srv",
+                "ImageTags": {},
+                "BackdropImageTags": [],
+                "Overview": "已有简介",
+                "Taglines": ["t"],
+                "ProductionYear": 2020,
+            }
+        ]
+    }
+
+    fake_client = MagicMock()
+
+    async def fake_get_json(url, **kwargs):
+        if "Persons" in url:
+            return persons_resp, ""
+        return {"Items": []}, ""
+
+    fake_client.get_json = fake_get_json
+
+    async def fake_detail(name: str):
+        call_log.append(name)
+        return {"Overview": "detail"}
+
+    with (
+        patch("mdcx.tools.emby_actor_manager.manager.acquire_computed", return_value=_make_lease(fake_client)),
+        patch("mdcx.tools.emby_actor_manager.fetch_actor_detail", side_effect=fake_detail),
+    ):
+        result = await fetch_all_actors(filter_actor_only=False, deduplicate=True, parent_ids=None)
+
+    assert len(result) == 1
+    assert result[0].existing_overview == "已有简介"
+    assert call_log == []

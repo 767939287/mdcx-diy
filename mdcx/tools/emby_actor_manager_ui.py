@@ -302,6 +302,7 @@ class EmbyActorManagerDialog(QDialog):
         self._preview_thread = None
         self._sync_thread = None
         self._fetch_thread = None
+        self._failed_names: set[str] = set()
         self._init_ui()
         self._connect_signals()
 
@@ -757,6 +758,7 @@ class EmbyActorManagerDialog(QDialog):
         self.btn_sync.setText("同步中...")
         self._set_status("同步中...")
         self.log(f"📛 开始同步 {len(to_sync)} 个演员...")
+        self._failed_names.clear()
         self._sync_thread = SyncThread(self)
         self._sync_thread.actors = to_sync
         self._sync_thread.progress.connect(self._on_sync_progress)
@@ -778,6 +780,7 @@ class EmbyActorManagerDialog(QDialog):
             self.log(f"✅ {name} 同步成功")
         else:
             # 失败的演员保留 need_update 标记，可在下次同步重试
+            self._failed_names.add(name)
             self.log(f"❌ {name} 同步失败: {msg}")
 
     def _apply_sync_success(self, a: ActorInfo):
@@ -821,6 +824,25 @@ class EmbyActorManagerDialog(QDialog):
         self._refresh_thread.start()
 
     def _on_auto_refresh_finished(self, actors: list[ActorInfo]):
+        if self._failed_names:
+            failed_old = {a.name: a for a in self._actors if a.name in self._failed_names}
+            if failed_old:
+                merged = []
+                for new in actors:
+                    old = failed_old.get(new.name)
+                    if old is None:
+                        merged.append(new)
+                        continue
+                    # 失败演员保留待同步状态与本地新数据，仅用刷新结果更新服务器侧状态
+                    old.has_image = new.has_image
+                    old.has_overview = new.has_overview
+                    old.has_backdrop = new.has_backdrop
+                    old.existing_overview = new.existing_overview
+                    old.movie_count = new.movie_count
+                    old.movie_titles = new.movie_titles
+                    merged.append(old)
+                actors = merged
+                self.log(f"🔁 已保留 {len(failed_old)} 个同步失败演员的待同步状态，可直接重试")
         self._actors = actors
         self._populate_table(actors)
         self._update_statistics(actors)

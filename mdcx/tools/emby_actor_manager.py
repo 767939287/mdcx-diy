@@ -42,6 +42,9 @@ _BIO_TAG_PATTERNS = (
     (r"血型:\s*([A-O]+型)", "血型: {0}"),
 )
 
+# 同步并发上限：Emby/Jellyfin 无速率压力，但图片上传 body 较大，4 并发平衡带宽
+SYNC_CONCURRENCY = 4
+
 
 def _extract_bio_tags(bio: str) -> list[str]:
     """从 actor_db 简介文本中抽剥结构化字段为 Emby 标签。
@@ -117,7 +120,11 @@ async def get_emby_actor_list(filter_actor_only: bool = True) -> list[dict]:
     headers = _build_jellyfin_headers()
     if "emby" == manager.config.server_type:
         server_name = "Emby"
-        params: dict[str, str | None] = {"userId": manager.config.user_id}
+        params: dict[str, str | None] = {
+            "userId": manager.config.user_id,
+            "fields": "Overview,ProviderIds,ProductionLocations,Taglines,Genres,Tags,PremiereDate,ProductionYear",
+            "enableImages": "true",
+        }
         if filter_actor_only:
             params["personTypes"] = "Actor"
         url = _append_query(base_url + "/emby/Persons", params)
@@ -243,7 +250,7 @@ async def fetch_all_actors(
     )
 
     # 第一遍: 过滤+构建 stub (不发起网络请求)
-    stubs: list[tuple[int, ActorInfo]] = []  # (原索引, actor_stub)
+    stubs: list[tuple[int, ActorInfo, dict]] = []  # (原索引, actor_stub, person_raw)
     skipped_not_in_lib: list[str] = []  # 指定媒体库过滤但不在影片 People 里
     for i, p in enumerate(persons):
         _raise_if_stop_requested()
@@ -270,7 +277,7 @@ async def fetch_all_actors(
         )
         info.movie_count = person_counts.get(name, 0)
         info.movie_titles = person_titles.get(name, [])
-        stubs.append((i, info))
+        stubs.append((i, info, p))
 
     # 透明化跳过原因——小白至少看得见"为什么 XX 没在列表里"
     if skipped_not_in_lib:
@@ -279,16 +286,20 @@ async def fetch_all_actors(
         signal.show_log_text(f"⚠️ 跳过 {len(skipped_not_in_lib)} 个不在所选媒体库影片中的演员: {preview}{more}")
 
     # 第二遍: 并发抓详情 (注意限流——Emby/Jellyfin 一般无速率压力, 8 并发保守)
+    # 列表请求已带 fields 时可直接复用 Item 中的详情字段, 避免逐人二次请求
     total = len(stubs)
     semaphore = asyncio.Semaphore(max(1, concurrency))
     done_count = 0
     done_lock = asyncio.Lock()
 
-    async def _fill(info: ActorInfo) -> None:
+    async def _fill(info: ActorInfo, person: dict) -> None:
         nonlocal done_count
         async with semaphore:
             _raise_if_stop_requested()
-            detail = await fetch_actor_detail(info.name)
+            if any(k in person for k in ("Overview", "Taglines", "ProductionYear")):
+                detail: dict | None = person
+            else:
+                detail = await fetch_actor_detail(info.name)
         if detail:
             overview = detail.get("Overview") or ""
             info.has_overview = bool(overview)
@@ -305,10 +316,10 @@ async def fetch_all_actors(
             if progress_callback:
                 progress_callback(done_count, total, info.name)
 
-    await asyncio.gather(*(_fill(info) for _, info in stubs))
+    await asyncio.gather(*(_fill(info, p) for _, info, p in stubs))
 
     # 按原顺序返回 (稳定性)
-    return [info for _, info in stubs]
+    return [info for _, info, _ in stubs]
 
 
 def _gfriends_cdn_url(gfriends_github) -> str:
@@ -843,57 +854,69 @@ async def search_actor_info(actor: ActorInfo, wiki_intro: str = "") -> bool:
     return False
 
 
-def sync_actor(actor: ActorInfo, sync_type: str = "both") -> tuple[bool, str]:
+async def _sync_actor_async(actor: ActorInfo, sync_type: str = "both") -> tuple[bool, str]:
     logs: list[str] = []
 
-    async def _run() -> None:
-        if sync_type in ("both", "info"):
-            if actor.need_update_info:
-                try:
-                    ok, msg = await update_person_info(actor)
+    if sync_type in ("both", "info"):
+        if actor.need_update_info:
+            try:
+                ok, msg = await update_person_info(actor)
+                logs.append(msg)
+            except Exception as e:
+                logs.append(f"❌ {actor.name} 更新信息异常: {e}")
+    if sync_type in ("both", "image"):
+        if actor.need_update_image:
+            try:
+                if actor.new_image_path:
+                    # 直接覆盖上传 Primary，避免先删后传在上传失败时丢失旧头像
+                    ok, msg = await upload_actor_image(actor, actor.new_image_path)
                     logs.append(msg)
-                except Exception as e:
-                    logs.append(f"❌ {actor.name} 更新信息异常: {e}")
-        if sync_type in ("both", "image"):
-            if actor.need_update_image:
-                try:
-                    if actor.new_image_path:
-                        # 直接覆盖上传 Primary，避免先删后传在上传失败时丢失旧头像
-                        ok, msg = await upload_actor_image(actor, actor.new_image_path)
-                        logs.append(msg)
-                    else:
-                        ok, msg = await delete_actor_image(actor)
-                        logs.append(msg)
-                except Exception as e:
-                    logs.append(f"❌ {actor.name} 头像同步异常: {e}")
-            if actor.need_update_backdrop and actor.new_backdrop_path:
-                try:
-                    # 直接覆盖上传 Backdrop/0，失败时保留旧背景
-                    ok, msg = await upload_actor_backdrop(actor, actor.new_backdrop_path)
+                else:
+                    ok, msg = await delete_actor_image(actor)
                     logs.append(msg)
-                except Exception as e:
-                    logs.append(f"❌ {actor.name} 背景同步异常: {e}")
+            except Exception as e:
+                logs.append(f"❌ {actor.name} 头像同步异常: {e}")
+        if actor.need_update_backdrop and actor.new_backdrop_path:
+            try:
+                # 直接覆盖上传 Backdrop/0，失败时保留旧背景
+                ok, msg = await upload_actor_backdrop(actor, actor.new_backdrop_path)
+                logs.append(msg)
+            except Exception as e:
+                logs.append(f"❌ {actor.name} 背景同步异常: {e}")
 
-    executor.run(_run())
     # 把 delete 失败/skip/异常 视为整体失败 (logs 含 ❌ 或 ⏭️) 以使 UI 标红
     success = not any(("❌" in log or "⏭️" in log) for log in logs) if logs else True
     return success, "\n".join(logs)
 
 
+def sync_actor(actor: ActorInfo, sync_type: str = "both") -> tuple[bool, str]:
+    return executor.run(_sync_actor_async(actor, sync_type))
+
+
 def sync_batch(
     actors: list[ActorInfo], progress_callback: Callable | None = None, actor_callback: Callable | None = None
 ) -> tuple[int, int]:
-    success_count = 0
-    fail_count = 0
     total = len(actors)
-    for i, actor in enumerate(actors):
-        if progress_callback:
-            progress_callback(i + 1, total, f"正在同步: {actor.name} ({i + 1}/{total})")
-        ok, msg = sync_actor(actor)
-        if ok:
-            success_count += 1
-        else:
-            fail_count += 1
-        if actor_callback:
-            actor_callback(actor, ok, msg)
-    return success_count, fail_count
+
+    async def _run_batch() -> tuple[int, int]:
+        if not actors:
+            return 0, 0
+        sem = asyncio.Semaphore(SYNC_CONCURRENCY)
+        completed = 0
+
+        async def _one(actor: ActorInfo) -> bool:
+            nonlocal completed
+            async with sem:
+                ok, msg = await _sync_actor_async(actor)
+            completed += 1
+            if progress_callback:
+                progress_callback(completed, total, f"正在同步: {actor.name} ({completed}/{total})")
+            if actor_callback:
+                actor_callback(actor, ok, msg)
+            return ok
+
+        results = await asyncio.gather(*(_one(a) for a in actors))
+        success = sum(1 for r in results if r)
+        return success, len(results) - success
+
+    return executor.run(_run_batch())

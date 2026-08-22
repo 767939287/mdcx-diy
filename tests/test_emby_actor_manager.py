@@ -258,6 +258,33 @@ def test_sync_actor_image_uploads_directly_without_delete(monkeypatch):
     assert "头像上传成功" in msg
 
 
+def test_sync_batch_concurrency_capped(monkeypatch):
+    """P1-4 回归：sync_batch 并发同步，活跃数不超过 SYNC_CONCURRENCY。"""
+    import asyncio
+
+    import mdcx.tools.emby_actor_manager as em
+
+    state = {"active": 0, "max_active": 0, "started": 0}
+
+    async def _fake_sync(actor, sync_type="both"):
+        state["active"] += 1
+        state["started"] += 1
+        state["max_active"] = max(state["max_active"], state["active"])
+        await asyncio.sleep(0.03)
+        state["active"] -= 1
+        return True, f"✅ {actor.name} 成功"
+
+    monkeypatch.setattr(em, "_sync_actor_async", _fake_sync)
+
+    actors = [ActorInfo(name=f"A{i}", actor_id=str(i), server_id="s") for i in range(12)]
+    success, fail = em.sync_batch(actors)
+
+    assert success == 12
+    assert fail == 0
+    assert state["started"] == 12
+    assert state["max_active"] <= em.SYNC_CONCURRENCY, f"并发超过上限: {state['max_active']}"
+
+
 @pytest.mark.asyncio
 async def test_search_actor_info_reads_dump_pascalcase_keys(monkeypatch: pytest.MonkeyPatch):
     import mdcx.tools.emby_actor_manager as em
