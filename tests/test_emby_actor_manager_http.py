@@ -126,6 +126,32 @@ async def test_upload_actor_image_fails_when_file_missing(actor_stub, tmp_path: 
     assert "不存在" in msg
 
 
+async def test_upload_actor_backdrop_targets_index_zero(actor_stub, tmp_path: Path, emby_configured):
+    """P0-2 回归：背景上传应覆盖 /Backdrop/0，而不是追加到未指定 index 的列表。"""
+    from mdcx.tools.emby_actor_manager import upload_actor_backdrop
+
+    img = tmp_path / "bg.jpg"
+    img.write_bytes(b"\xff\xd8\xff")
+
+    captured: dict[str, str] = {}
+
+    async def _post(url, data, *, headers=None, use_proxy=None, **kwargs):
+        captured["url"] = url
+        return b"", ""
+
+    fake_client = MagicMock()
+    fake_client.post_content = AsyncMock(side_effect=_post)
+
+    with patch(
+        "mdcx.tools.emby_actor_manager.manager.acquire_computed",
+        return_value=_make_lease(fake_client),
+    ):
+        ok, msg = await upload_actor_backdrop(actor_stub, img)
+
+    assert ok, f"上传应成功, 实际: {msg!r}"
+    assert captured["url"].endswith("/Items/actor-001/Images/Backdrop/0")
+
+
 async def test_delete_actor_image_200_is_success(actor_stub):
     """HTTP 200/204 删除成功."""
     from mdcx.tools.emby_actor_manager import delete_actor_image

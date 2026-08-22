@@ -41,6 +41,7 @@
 - **fanart 下载失败不再静默忽略**：`core/scraper.py` `_download_images` 消费 `fanart_task.result()`，fanart 复制失败时返回失败
 - **强杀线程加超时保护**：`utils/__init__.py` 的 `_async_raise` 去掉 `while res == 1` 自旋（改为单次注入 + res>1 回滚），`kill_a_thread` 改为限时循环（默认 10 秒）；`main_window.py` 的 `_kill_threads` 外层加 12 秒忙等上限，防止线程无法退出时主进程无限空转
 - **dmm_prefix_learn 加载失败禁落盘**：`dmm_prefix_learn.py` 学习表加载失败（`_load_failed`）时 `_persist` 直接返回，防止空表 + 单条新记录覆盖历史学习结果
+- **Emby 演员管理器 3 项 P0 修复**：① 连接参数生效——`_on_connect_result` 成功后把 UI 填写的地址/密钥写回全局配置（`manager._replace_config` + `save`），此前仅存于对话框实例导致后续取列表/同步实际使用旧配置；② 头像/背景改为直接覆盖上传——`sync_actor` 不再先 DELETE 再 POST（删除成功但上传失败会丢失旧头像），头像直接 POST 覆盖 `Images/Primary`，背景覆盖 `Images/Backdrop/0`；③ 缓存文件名清洗——新增 `_safe_filename` 替换演员名中的 Windows 非法字符（`\ / : * ? " < > |` 等），`from_gfriends`/`from_graphis`/`from_minnano_image` 三处缓存文件统一走安全名，避免含特殊字符演员名下载/读写失败
 
 - **读取模式不再受断点续刮缓存干扰**：断点续刮（ScrapeStateCache）的跳过逻辑与状态写入原本不区分刮削模式，读取模式（`main_mode==4`）下大量已刮削文件被 `should_skip` 过滤不可见，且读取一次后因标记 done 下次读不到。修复为读取模式跳过 `should_skip` 过滤全部文件入队，成功/失败路径不写 `set_done`/`set_failed`，始终处理全部选中文件
 - **打包脚本补齐 v2.0.6 新增延迟导入模块**：`scripts/build.py` 的 hidden-import 列表补上 `mdcx.crawlers.dmm_prefix_learn`（DMM 厂牌前缀学习表，被 `dmm_direct.py`/`dmm/__init__.py` 函数内延迟导入）与 `mdcx.core.nfo_merger`（NFO 合并策略引擎，被 `nfo.py` 写入前函数内延迟导入）。这两模块 PyInstaller 静态分析收集不到，不显式打包会在 exe 运行期报 ModuleNotFoundError（与 `qt_thread` 同因）

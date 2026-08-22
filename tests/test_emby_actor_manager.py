@@ -212,6 +212,52 @@ def test_actor_info_status_icon_returns_emoji():
     assert missing.status_icon in ("❌", "⬜")
 
 
+def test_safe_filename_cleans_windows_illegal_chars():
+    from mdcx.tools.emby_actor_manager import _safe_filename
+
+    assert _safe_filename('A/B:C*D"E?F<G>H|I', "_x.jpg") == "A_B_C_D_E_F_G_H_I_x.jpg"
+    assert _safe_filename("  三上悠亚  ", "_x.jpg") == "三上悠亚_x.jpg"
+
+
+def test_safe_filename_empty_name_fallback():
+    from mdcx.tools.emby_actor_manager import _safe_filename
+
+    assert _safe_filename("", "_x.jpg") == "unknown_x.jpg"
+    assert _safe_filename(None, "_x.jpg") == "unknown_x.jpg"
+
+
+def test_sync_actor_image_uploads_directly_without_delete(monkeypatch):
+    """P0-2 回归：有 new_image_path 时直接覆盖上传，不再先删后传。"""
+    import mdcx.tools.emby_actor_manager as em
+
+    calls = {"upload": 0, "delete": 0}
+
+    async def _upload(actor, image_path):
+        calls["upload"] += 1
+        return True, "✅ 头像上传成功"
+
+    async def _delete(actor):
+        calls["delete"] += 1
+        return True, "✅ 删除成功"
+
+    monkeypatch.setattr(em, "upload_actor_image", _upload)
+    monkeypatch.setattr(em, "delete_actor_image", _delete)
+
+    actor = ActorInfo(
+        name="Test",
+        actor_id="id1",
+        server_id="srv1",
+        need_update_image=True,
+        new_image_path="/tmp/avatar.jpg",
+    )
+    ok, msg = em.sync_actor(actor, sync_type="image")
+
+    assert ok is True
+    assert calls["upload"] == 1
+    assert calls["delete"] == 0
+    assert "头像上传成功" in msg
+
+
 @pytest.mark.asyncio
 async def test_search_actor_info_reads_dump_pascalcase_keys(monkeypatch: pytest.MonkeyPatch):
     import mdcx.tools.emby_actor_manager as em

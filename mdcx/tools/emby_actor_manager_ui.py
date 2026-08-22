@@ -4,6 +4,7 @@ import asyncio
 import threading
 from pathlib import Path
 
+from pydantic import HttpUrl
 from PyQt6.QtCore import Qt, QThread, QTimer
 from PyQt6.QtCore import pyqtSignal as Signal
 from PyQt6.QtGui import QColor
@@ -600,10 +601,23 @@ class EmbyActorManagerDialog(QDialog):
             self.btn_fetch.setEnabled(True)
             self._set_status("连接成功")
             self.log(f"✅ {msg}")
+            self._persist_connection()
         else:
             self._set_status("连接失败")
             self.log(f"❌ {msg}")
             QMessageBox.critical(self, "连接失败", msg)
+
+    def _persist_connection(self):
+        """把 UI 填写的地址/密钥写回全局配置，保证后续请求与界面一致。"""
+        try:
+            cfg = manager.config.model_copy(deep=True)
+            cfg.api_key = self._emby_key
+            cfg.emby_url = HttpUrl(self._emby_url)
+            manager._replace_config(cfg)
+            manager.save()
+            self.log("💾 已保存连接设置到配置")
+        except Exception as e:
+            self.log(f"🔶 连接设置保存失败，继续使用当前配置: {e}")
 
     def _on_fetch(self):
         if not hasattr(self, "_connected") or not self._connected:

@@ -530,14 +530,14 @@ async def delete_actor_backdrop(actor: ActorInfo) -> tuple[bool, str]:
 
 
 async def upload_actor_backdrop(actor: ActorInfo, image_path: str | Path) -> tuple[bool, str]:
-    _, _, _, backdrop_url, _, _ = _generate_server_url(
+    _, _, _, _, backdrop_url_0, _ = _generate_server_url(
         {"Name": actor.name, "Id": actor.actor_id, "ServerId": actor.server_id}
     )
     img_path = Path(image_path)
     if not img_path.exists():
         return False, f"❌ 背景图片文件不存在: {image_path}"
 
-    ok, err = await _upload_actor_photo(backdrop_url, img_path)
+    ok, err = await _upload_actor_photo(backdrop_url_0, img_path)
     if ok:
         return True, f"✅ {actor.name} 背景上传成功"
     return False, f"❌ {actor.name} 背景上传失败: {err or '服务器返回空响应'}"
@@ -551,6 +551,13 @@ def _normalize_actor_name(name: str) -> str:
     normalized = unicodedata.normalize("NFKC", name or "")
     normalized = re.sub(r"\s+", "", normalized).lower()
     return normalized
+
+
+def _safe_filename(name: str, suffix: str) -> str:
+    """生成安全缓存文件名：清洗演员名中的 Windows 非法字符，避免下载/读写失败。"""
+    cleaned = re.sub(r'[\\/:*?"<>|\x00-\x1f]', "_", name or "")
+    cleaned = cleaned.strip(" .")
+    return (cleaned or "unknown") + suffix
 
 
 def gfriends_find_actor(gfriends_index: dict[str, str], name: str) -> str | None:
@@ -568,7 +575,7 @@ async def from_gfriends(actor: ActorInfo, gfriends_index: dict[str, str], cache_
     url = gfriends_find_actor(gfriends_index, actor.name)
     if not url:
         return None
-    local_path = cache_dir / f"{actor.name}_gf.jpg"
+    local_path = cache_dir / _safe_filename(actor.name, "_gf.jpg")
     if not await download_file_with_filepath(url, local_path, cache_dir):
         return None
     if local_path.exists():
@@ -615,10 +622,10 @@ async def from_graphis(actor: ActorInfo, cache_dir: Path) -> tuple[str, str | No
         if parsed is None:
             continue
         small_pic, big_pic = parsed
-        avatar_path = cache_dir / f"{actor.name}_graphis.jpg"
+        avatar_path = cache_dir / _safe_filename(actor.name, "_graphis.jpg")
         if await download_file_with_filepath(small_pic, avatar_path, cache_dir):
             if avatar_path.exists():
-                backdrop_path = cache_dir / f"{actor.name}_graphis_bg.jpg"
+                backdrop_path = cache_dir / _safe_filename(actor.name, "_graphis_bg.jpg")
                 backdrop_ok = await download_file_with_filepath(big_pic, backdrop_path, cache_dir)
                 backdrop = str(backdrop_path) if backdrop_ok and backdrop_path.exists() else None
                 return str(avatar_path), backdrop
@@ -629,7 +636,7 @@ async def from_minnano_image(actor: ActorInfo, cache_dir: Path) -> str | None:
     info = EMbyActressInfo(name=actor.name, server_id="", id="")
     res, _ = await get_minnano_info(info, "")
     if res and hasattr(info, "avatar_url") and info.avatar_url:
-        local_path = cache_dir / f"{actor.name}_minnano.jpg"
+        local_path = cache_dir / _safe_filename(actor.name, "_minnano.jpg")
         if await download_file_with_filepath(info.avatar_url, local_path, cache_dir):
             if local_path.exists():
                 return str(local_path)
@@ -851,13 +858,9 @@ def sync_actor(actor: ActorInfo, sync_type: str = "both") -> tuple[bool, str]:
             if actor.need_update_image:
                 try:
                     if actor.new_image_path:
-                        delete_ok, delete_msg = await delete_actor_image(actor)
-                        if not delete_ok:
-                            logs.append(delete_msg)
-                            logs.append(f"⏭️ {actor.name} 跳过上传 (因旧头像删除失败)")
-                        else:
-                            ok, msg = await upload_actor_image(actor, actor.new_image_path)
-                            logs.append(msg)
+                        # 直接覆盖上传 Primary，避免先删后传在上传失败时丢失旧头像
+                        ok, msg = await upload_actor_image(actor, actor.new_image_path)
+                        logs.append(msg)
                     else:
                         ok, msg = await delete_actor_image(actor)
                         logs.append(msg)
@@ -865,13 +868,9 @@ def sync_actor(actor: ActorInfo, sync_type: str = "both") -> tuple[bool, str]:
                     logs.append(f"❌ {actor.name} 头像同步异常: {e}")
             if actor.need_update_backdrop and actor.new_backdrop_path:
                 try:
-                    delete_ok, delete_msg = await delete_actor_backdrop(actor)
-                    if not delete_ok:
-                        logs.append(delete_msg)
-                        logs.append(f"⏭️ {actor.name} 跳过上传 (因旧背景删除失败)")
-                    else:
-                        ok, msg = await upload_actor_backdrop(actor, actor.new_backdrop_path)
-                        logs.append(msg)
+                    # 直接覆盖上传 Backdrop/0，失败时保留旧背景
+                    ok, msg = await upload_actor_backdrop(actor, actor.new_backdrop_path)
+                    logs.append(msg)
                 except Exception as e:
                     logs.append(f"❌ {actor.name} 背景同步异常: {e}")
 
