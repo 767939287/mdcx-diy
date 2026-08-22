@@ -285,6 +285,41 @@ def test_sync_batch_concurrency_capped(monkeypatch):
     assert state["max_active"] <= em.SYNC_CONCURRENCY, f"并发超过上限: {state['max_active']}"
 
 
+def test_actress_db_does_not_pollute_javdb_provider_id(tmp_path: Path):
+    """易用性-10 回归：数据库补全不再用演员名污染 ProviderIds['javdb']。"""
+    import sqlite3
+
+    import mdcx.tools.actress_db as adb
+    from mdcx.models.emby import EMbyActressInfo
+
+    db_path = tmp_path / "test.db"
+    conn = sqlite3.connect(db_path)
+    conn.execute("CREATE TABLE Names (Name TEXT, Alias TEXT)")
+    conn.execute(
+        "CREATE TABLE Info (Name TEXT, Href TEXT, Cup TEXT, Height TEXT, Bust TEXT, Waist TEXT, "
+        "Hip TEXT, Birthday TEXT, Birthplace TEXT, Account TEXT, CareerPeriod TEXT)"
+    )
+    conn.execute("INSERT INTO Names VALUES ('三上悠亞', '三上悠亞')")
+    conn.execute(
+        "INSERT INTO Info VALUES ('三上悠亞', 'https://minnano-av.com/actress/1', 'D', '160', '90', "
+        "'60', '88', '1993-08-16', '日本', 'https://twitter.com/mikamiyua', '2015~')"
+    )
+    conn.commit()
+    conn.close()
+
+    adb.ActressDB.DB = sqlite3.connect(db_path, check_same_thread=False)
+    try:
+        info = EMbyActressInfo(name="三上悠亞", server_id="", id="")
+        res, _ = adb.ActressDB.update_actor_info_from_db(info)
+    finally:
+        adb.ActressDB.DB.close()
+        adb.ActressDB.DB = None
+
+    assert res == 1
+    assert "minnano-av" in info.provider_ids
+    assert "javdb" not in info.provider_ids
+
+
 @pytest.mark.asyncio
 async def test_search_actor_info_reads_dump_pascalcase_keys(monkeypatch: pytest.MonkeyPatch):
     import mdcx.tools.emby_actor_manager as em

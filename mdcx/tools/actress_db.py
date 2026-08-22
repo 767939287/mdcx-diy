@@ -89,7 +89,6 @@ class ActressDB:
                 actor_info.provider_ids["Twitter"] = res.group(1)
                 messages.append(f"\t🐦 Twitter ID 已添加: {res.group(1)}")
         actor_info.provider_ids["minnano-av"] = href
-        actor_info.provider_ids["javdb"] = name  # 偷懒, 用名字代替, 对应插件中定义为搜索页
         messages.append(f"\t🌐 minnano-av 链接已添加: {href}")
 
         # 添加其他信息

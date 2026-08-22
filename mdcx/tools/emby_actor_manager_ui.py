@@ -394,10 +394,6 @@ class EmbyActorManagerDialog(QDialog):
         self.btn_sync.setEnabled(False)
         btn_layout.addWidget(self.btn_sync)
         btn_layout.addStretch()
-        self.btn_test = QPushButton("测试连接")
-        btn_layout.addWidget(self.btn_test)
-        self.btn_settings = QPushButton("设置")
-        btn_layout.addWidget(self.btn_settings)
         self.btn_test_source = QPushButton("数据源测试")
         btn_layout.addWidget(self.btn_test_source)
         self.btn_clear_cache = QPushButton("清空缓存文件夹")
@@ -492,7 +488,6 @@ class EmbyActorManagerDialog(QDialog):
         self.btn_fetch.clicked.connect(self._on_fetch)
         self.btn_preview.clicked.connect(self._on_prepare_preview)
         self.btn_sync.clicked.connect(self._on_sync)
-        self.btn_test.clicked.connect(self._on_test_connection)
         self.btn_settings.clicked.connect(self._on_open_settings)
         self.btn_test_source.clicked.connect(self._on_open_test_source)
         self.btn_clear_cache.clicked.connect(self._on_clear_cache)
@@ -550,10 +545,6 @@ class EmbyActorManagerDialog(QDialog):
         self.btn_preview.setEnabled(enabled and len(actors) > 0)
         pending = any(a.need_update_info or a.need_update_image or a.need_update_backdrop for a in actors)
         self.btn_sync.setEnabled(enabled and pending)
-        self.btn_test.setEnabled(enabled)
-
-    def _on_test_connection(self):
-        self._on_connect()
 
     def _on_connect(self):
         url = self.txt_url.text().strip()
@@ -995,6 +986,69 @@ INFO_SOURCE_NAMES = {
 }
 
 
+class _SourceQuickSettingsPanel(QGroupBox):
+    """快速设置面板：头像/信息数据源拖拽排序 + 本地头像目录，改动即自动保存。
+
+    数据源测试窗口与演员详情窗口共用，避免两处重复实现。
+    """
+
+    def __init__(self, parent=None):
+        super().__init__("快速设置", parent)
+        self.setFixedWidth(300)
+        layout = QVBoxLayout(self)
+        layout.addWidget(QLabel("头像数据源（拖拽排序）:"))
+        self.image_list = QListWidget()
+        self.image_list.setDragDropMode(QAbstractItemView.DragDropMode.InternalMove)
+        self._fill_list(self.image_list, manager.config.actor_image_sources, IMAGE_SOURCE_NAMES)
+        layout.addWidget(self.image_list)
+        layout.addWidget(QLabel("信息数据源（拖拽排序）:"))
+        self.info_list = QListWidget()
+        self.info_list.setDragDropMode(QAbstractItemView.DragDropMode.InternalMove)
+        self._fill_list(self.info_list, manager.config.actor_info_sources, INFO_SOURCE_NAMES)
+        layout.addWidget(self.info_list)
+        layout.addWidget(QLabel("本地头像目录:"))
+        folder_row = QHBoxLayout()
+        self.folder_edit = QLineEdit(manager.config.actor_photo_folder)
+        browse_btn = QPushButton("浏览")
+        browse_btn.clicked.connect(self._browse_folder)
+        folder_row.addWidget(self.folder_edit)
+        folder_row.addWidget(browse_btn)
+        layout.addLayout(folder_row)
+
+        img_model = self.image_list.model()
+        if img_model:
+            img_model.rowsMoved.connect(self._save)
+        info_model = self.info_list.model()
+        if info_model:
+            info_model.rowsMoved.connect(self._save)
+        self.folder_edit.textChanged.connect(self._save)
+
+    @staticmethod
+    def _fill_list(list_widget: QListWidget, sources: list[str], names: dict[str, str]):
+        list_widget.clear()
+        for src in sources:
+            item = QListWidgetItem(f"{src}（{names.get(src, src)}）")
+            item.setData(Qt.ItemDataRole.UserRole, src)
+            list_widget.addItem(item)
+
+    def _browse_folder(self):
+        path = QFileDialog.getExistingDirectory(self, "选择本地头像目录", self.folder_edit.text())
+        if path:
+            self.folder_edit.setText(path)
+
+    def _save(self, *args):
+        cfg = manager.config.model_copy(deep=True)
+        cfg.actor_image_sources = [
+            self.image_list.item(i).data(Qt.ItemDataRole.UserRole) for i in range(self.image_list.count())
+        ]
+        cfg.actor_info_sources = [
+            self.info_list.item(i).data(Qt.ItemDataRole.UserRole) for i in range(self.info_list.count())
+        ]
+        cfg.actor_photo_folder = self.folder_edit.text().strip()
+        manager._replace_config(cfg)
+        manager.save()
+
+
 class EmbyActorSettingsDialog(QDialog):
     """Emby 演员数据源设置：数据源优先级排序 + 本地目录 + Gfriends + 数据库开关。"""
 
@@ -1223,28 +1277,8 @@ class ActorSourceTestDialog(QDialog):
         info_col.addWidget(self.btn_info)
         main_row.addLayout(info_col, stretch=1)
 
-        # 右列：快速设置面板（固定宽度，改即自动保存）
-        panel = QGroupBox("快速设置")
-        panel.setFixedWidth(300)
-        panel_layout = QVBoxLayout(panel)
-        panel_layout.addWidget(QLabel("头像数据源（拖拽排序）:"))
-        self.panel_image_list = QListWidget()
-        self.panel_image_list.setDragDropMode(QAbstractItemView.DragDropMode.InternalMove)
-        self._fill_source_list(self.panel_image_list, manager.config.actor_image_sources, IMAGE_SOURCE_NAMES)
-        panel_layout.addWidget(self.panel_image_list)
-        panel_layout.addWidget(QLabel("信息数据源（拖拽排序）:"))
-        self.panel_info_list = QListWidget()
-        self.panel_info_list.setDragDropMode(QAbstractItemView.DragDropMode.InternalMove)
-        self._fill_source_list(self.panel_info_list, manager.config.actor_info_sources, INFO_SOURCE_NAMES)
-        panel_layout.addWidget(self.panel_info_list)
-        panel_layout.addWidget(QLabel("本地头像目录:"))
-        folder_row = QHBoxLayout()
-        self.panel_folder_edit = QLineEdit(manager.config.actor_photo_folder)
-        browse_btn = QPushButton("浏览")
-        browse_btn.clicked.connect(self._browse_folder)
-        folder_row.addWidget(self.panel_folder_edit)
-        folder_row.addWidget(browse_btn)
-        panel_layout.addLayout(folder_row)
+        # 右列：快速设置面板（改即自动保存）
+        panel = _SourceQuickSettingsPanel(self)
         main_row.addWidget(panel)
 
         root.addLayout(main_row)
@@ -1281,36 +1315,6 @@ class ActorSourceTestDialog(QDialog):
 
     def _on_error(self, msg: str):
         self.result_text.append(f"❌ 错误: {msg}")
-
-        # 快速面板改动即自动保存
-        img_model = self.panel_image_list.model()
-        if img_model:
-            img_model.rowsMoved.connect(self._save_quick_settings)
-        info_model = self.panel_info_list.model()
-        if info_model:
-            info_model.rowsMoved.connect(self._save_quick_settings)
-        self.panel_folder_edit.textChanged.connect(self._save_quick_settings)
-
-    @staticmethod
-    def _fill_source_list(list_widget: QListWidget, sources: list[str], names: dict[str, str]):
-        list_widget.clear()
-        for src in sources:
-            item = QListWidgetItem(f"{src}（{names.get(src, src)}）")
-            item.setData(Qt.ItemDataRole.UserRole, src)
-            list_widget.addItem(item)
-
-    def _browse_folder(self):
-        path = QFileDialog.getExistingDirectory(self, "选择本地头像目录", self.panel_folder_edit.text())
-        if path:
-            self.panel_folder_edit.setText(path)
-
-    def _save_quick_settings(self, *args):
-        cfg = manager.config.model_copy(deep=True)
-        cfg.actor_image_sources = [item.data(Qt.ItemDataRole.UserRole) for item in self.panel_image_list]
-        cfg.actor_info_sources = [item.data(Qt.ItemDataRole.UserRole) for item in self.panel_info_list]
-        cfg.actor_photo_folder = self.panel_folder_edit.text().strip()
-        manager._replace_config(cfg)
-        manager.save()
 
     def _populate_info_table(self, info: object):
         from ..models.emby import EMbyActressInfo
@@ -1419,27 +1423,7 @@ class ActorDetailDialog(QDialog):
         root.addWidget(right, stretch=1)
 
         # 右侧快速设置面板（改即保存）
-        panel = QGroupBox("快速设置")
-        panel.setFixedWidth(300)
-        panel_layout = QVBoxLayout(panel)
-        panel_layout.addWidget(QLabel("头像数据源（拖拽排序）:"))
-        self.panel_image_list = QListWidget()
-        self.panel_image_list.setDragDropMode(QAbstractItemView.DragDropMode.InternalMove)
-        self._fill_source_list(self.panel_image_list, manager.config.actor_image_sources, IMAGE_SOURCE_NAMES)
-        panel_layout.addWidget(self.panel_image_list)
-        panel_layout.addWidget(QLabel("信息数据源（拖拽排序）:"))
-        self.panel_info_list = QListWidget()
-        self.panel_info_list.setDragDropMode(QAbstractItemView.DragDropMode.InternalMove)
-        self._fill_source_list(self.panel_info_list, manager.config.actor_info_sources, INFO_SOURCE_NAMES)
-        panel_layout.addWidget(self.panel_info_list)
-        panel_layout.addWidget(QLabel("本地头像目录:"))
-        folder_row = QHBoxLayout()
-        self.panel_folder_edit = QLineEdit(manager.config.actor_photo_folder)
-        detail_browse_btn = QPushButton("浏览")
-        detail_browse_btn.clicked.connect(self._browse_folder)
-        folder_row.addWidget(self.panel_folder_edit)
-        folder_row.addWidget(detail_browse_btn)
-        panel_layout.addLayout(folder_row)
+        panel = _SourceQuickSettingsPanel(self)
         root.addWidget(panel)
 
         self.btn_fetch_image.clicked.connect(lambda: self._run_fetch_image())
@@ -1447,47 +1431,21 @@ class ActorDetailDialog(QDialog):
         self.btn_sync_both.clicked.connect(lambda: self._run_sync("both"))
         self.btn_sync_image.clicked.connect(lambda: self._run_sync("image"))
         self.btn_sync_info.clicked.connect(lambda: self._run_sync("info"))
-        img_model = self.panel_image_list.model()
-        if img_model:
-            img_model.rowsMoved.connect(self._save_quick_settings)
-        info_model = self.panel_info_list.model()
-        if info_model:
-            info_model.rowsMoved.connect(self._save_quick_settings)
-        self.panel_folder_edit.textChanged.connect(self._save_quick_settings)
 
         self._detail_done.connect(self._on_detail_done)
         self._load_existing_avatar()
         if actor.new_image_path:
             self._show_new_avatar(actor.new_image_path)
 
-    @staticmethod
-    def _fill_source_list(list_widget: QListWidget, sources: list[str], names: dict[str, str]):
-        list_widget.clear()
-        for src in sources:
-            item = QListWidgetItem(f"{src}（{names.get(src, src)}）")
-            item.setData(Qt.ItemDataRole.UserRole, src)
-            list_widget.addItem(item)
-
-    def _save_quick_settings(self, *args):
-        cfg = manager.config.model_copy(deep=True)
-        cfg.actor_image_sources = [item.data(Qt.ItemDataRole.UserRole) for item in self.panel_image_list]
-        cfg.actor_info_sources = [item.data(Qt.ItemDataRole.UserRole) for item in self.panel_info_list]
-        cfg.actor_photo_folder = self.panel_folder_edit.text().strip()
-        manager._replace_config(cfg)
-        manager.save()
-
-    def _browse_folder(self):
-        path = QFileDialog.getExistingDirectory(self, "选择本地头像目录", self.panel_folder_edit.text())
-        if path:
-            self.panel_folder_edit.setText(path)
-
     def _populate_info_table(self):
         actor = self.actor
+        provider_ids = ", ".join(f"{k}:{v}" for k, v in actor.new_provider_ids.items())
         rows = [
             ("标签", ", ".join(actor.new_taglines)),
             ("年份", str(actor.new_production_year) if actor.new_production_year else ""),
             ("生日", actor.new_premiere_date),
             ("出生地", ", ".join(actor.new_production_locations)),
+            ("外部ID", provider_ids),
         ]
         self.info_table.setRowCount(len(rows))
         for r, (field, value) in enumerate(rows):
@@ -1650,7 +1608,23 @@ class ActorDetailDialog(QDialog):
                 actor.new_premiere_date = value
             elif field == "出生地":
                 actor.new_production_locations = [x.strip() for x in value.split(",") if x.strip()]
-        if actor.new_overview or actor.new_taglines or actor.new_production_year or actor.new_premiere_date:
+            elif field == "外部ID":
+                provider_ids: dict[str, str] = {}
+                for part in value.split(","):
+                    part = part.strip()
+                    if not part:
+                        continue
+                    if ":" in part:
+                        k, v = part.split(":", 1)
+                        provider_ids[k.strip()] = v.strip()
+                actor.new_provider_ids = provider_ids
+        if (
+            actor.new_overview
+            or actor.new_taglines
+            or actor.new_production_year
+            or actor.new_premiere_date
+            or actor.new_provider_ids
+        ):
             actor.need_update_info = True
 
     def _show_new_avatar(self, path: str):
