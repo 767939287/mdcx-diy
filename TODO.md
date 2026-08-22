@@ -328,3 +328,14 @@ crawler 解析逻辑修复后，旧 done 记录自动失效，无需手动清缓
 **价值场景**：库里 10 部片其实是同一资源的不同压制版（改过名），指纹查重找出来合并。定位偏媒体库，mdcx 是刮削工具，可不做。
 **成本**：3-5 天
 **参考**：cm_collectors_3 `processors/videoFingerprint.processors.go`
+
+---
+
+### 20. amazon 搜索 URL 双重 quote_plus 待真实请求验证
+
+**背景**：`core/amazon.py:1032` 的 `search_amazon` 对标题做了双重 `quote_plus`（`quote_plus(quote_plus(title.replace("&", " ")))`）拼进 `returnUrl=/s?k=`。
+
+**待确认**：Amazon 是否会对 `returnUrl` 参数二次解码，导致当前双重编码反而是正确的；还是只需单次编码即可。
+
+**验证方式**：用真实请求对比单次/双重编码下的搜索结果命中率；或直接查 returnUrl 参数解码行为。
+**标记**：需真实请求验证，暂缓处理，非阻塞。
