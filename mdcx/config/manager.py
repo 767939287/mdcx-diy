@@ -1,3 +1,5 @@
+import concurrent.futures
+import contextlib
 import json
 import logging
 import os
@@ -14,6 +16,12 @@ from .models import Config
 from .v1 import ConfigV1, load_v1
 
 logger = logging.getLogger(__name__)
+
+
+def _consume_result(fut: concurrent.futures.Future) -> None:
+    """消费后台任务结果，避免未取回的异常告警。"""
+    with contextlib.suppress(Exception):
+        fut.result()
 
 
 def _write_windows(path: Path, text: str) -> None:
@@ -59,8 +67,13 @@ class ConfigManager:
         if not MARK_FILE.is_file():  # 标记文件不存在
             self.path = MAIN_PATH / "config.json"  # 默认配置文件路径
         else:
-            self._path = Path(self.read_mark_file())
-            self.data_folder, self.file = self._path.parent, self._path.name
+            mark_path = self.read_mark_file()
+            if not mark_path or "\x00" in mark_path:
+                logger.error("标记文件内容无效，回退默认配置路径: %r", mark_path)
+                self.path = MAIN_PATH / "config.json"
+            else:
+                self._path = Path(mark_path)
+                self.data_folder, self.file = self._path.parent, self._path.name
         if not os.path.exists(self._path):  # 配置文件不存在, 写入默认值
             if self._path.suffix == ".ini":
                 self.path = self._path.with_suffix(".json")
@@ -295,7 +308,8 @@ class ComputedLease:
         computed = self._computed
         if computed is not None:
             self._computed = None
-            executor.run(computed.release())
+            future = executor.submit(computed.release())
+            future.add_done_callback(_consume_result)
 
     async def __aenter__(self) -> Computed:
         return self._enter()

@@ -411,7 +411,7 @@ async def get_file_info_v2(file_path: Path, copy_sub: bool = True) -> FileInfo:
     # 软链接时，获取原身路径(用来查询原身文件目录是否有字幕)
     file_ori_path = None
     if await aiofiles.os.path.islink(file_path):
-        file_ori_path = file_path.resolve()
+        file_ori_path = Path(await asyncio.to_thread(os.path.realpath, file_path))
     try:
         # 清除防屏蔽字符
         prevent_char = manager.config.prevent_char

@@ -690,7 +690,7 @@ class MyMAinWindow(QMainWindow):
         if hasattr(self, "tray_icon"):
             self.tray_icon.hide()
         signal_qt.show_traceback_log("\n\n\n\n************ 程序正常退出！************\n")
-        os._exit(0)
+        QApplication.quit()
 
     # endregion
 

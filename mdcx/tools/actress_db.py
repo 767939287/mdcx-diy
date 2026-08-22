@@ -1,6 +1,7 @@
 import datetime
 import re
 import sqlite3
+import threading
 import traceback
 from pathlib import Path
 
@@ -11,18 +12,22 @@ from ..signals import signal
 
 class ActressDB:
     DB = None
+    _db_lock = threading.Lock()
 
     @classmethod
     def init_db(cls):
-        try:
-            #  https://ricardoanderegg.com/posts/python-sqlite-thread-safety/
-            cls.DB = sqlite3.connect(Path(manager.config.info_database_path), check_same_thread=False)
-            info_count = cls.DB.execute("select count(*) from Info").fetchone()  # 必须实际执行查询才能判断是否连接成功
-            signal.show_log_text(f" ✅ 数据库连接成功, 共有 {info_count[0]} 条女优信息")
-        except Exception:
-            signal.show_traceback_log(traceback.format_exc())
-            signal.show_log_text(" ❌ 数据库连接失败, 请检查数据库设置")
-            cls.DB = None
+        with cls._db_lock:
+            try:
+                #  https://ricardoanderegg.com/posts/python-sqlite-thread-safety/
+                cls.DB = sqlite3.connect(Path(manager.config.info_database_path), check_same_thread=False)
+                info_count = cls.DB.execute(
+                    "select count(*) from Info"
+                ).fetchone()  # 必须实际执行查询才能判断是否连接成功
+                signal.show_log_text(f" ✅ 数据库连接成功, 共有 {info_count[0]} 条女优信息")
+            except Exception:
+                signal.show_traceback_log(traceback.format_exc())
+                signal.show_log_text(" ❌ 数据库连接失败, 请检查数据库设置")
+                cls.DB = None
 
     @classmethod
     def update_actor_info_from_db(cls, actor_info: EMbyActressInfo) -> tuple[int, str]:
@@ -30,27 +35,28 @@ class ActressDB:
             return 0, "❌ 数据库连接失败, 请检查数据库设置"
 
         keyword = actor_info.name
-        cur = cls.DB.cursor()
-        try:
-            if s := cur.execute("select Name, Alias from Names where Alias = ?", (keyword,)).fetchone():
-                name, alias = s
-            else:
-                s = cur.execute("select Name, Alias from Names where Alias like ?", (f"{keyword}%",)).fetchone()
-                if not s:
-                    return 0, f"🔴 数据库中未找到姓名: {keyword}"
-                name, alias = s
+        with cls._db_lock:
+            cur = cls.DB.cursor()
+            try:
+                if s := cur.execute("select Name, Alias from Names where Alias = ?", (keyword,)).fetchone():
+                    name, alias = s
+                else:
+                    s = cur.execute("select Name, Alias from Names where Alias like ?", (f"{keyword}%",)).fetchone()
+                    if not s:
+                        return 0, f"🔴 数据库中未找到姓名: {keyword}"
+                    name, alias = s
 
-            res = cur.execute(
-                "select Href,Cup,Height,Bust,Waist,Hip,Birthday,Birthplace,Account,CareerPeriod "
-                "from Info where Name = ?",
-                (name,),
-            )
-            row = res.fetchone()
-            if row is None:
-                return 0, f"🔴 数据库中未找到信息: {name}"
-            href, cup, height, bust, waist, hip, birthday, birthplace, account, career_period = row
-        finally:
-            cur.close()
+                res = cur.execute(
+                    "select Href,Cup,Height,Bust,Waist,Hip,Birthday,Birthplace,Account,CareerPeriod "
+                    "from Info where Name = ?",
+                    (name,),
+                )
+                row = res.fetchone()
+                if row is None:
+                    return 0, f"🔴 数据库中未找到信息: {name}"
+                href, cup, height, bust, waist, hip, birthday, birthplace, account, career_period = row
+            finally:
+                cur.close()
 
         # 收集处理结果信息
         messages = []

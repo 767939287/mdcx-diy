@@ -56,6 +56,10 @@ _TMDB_QUERY_INFLIGHT: dict[str, asyncio.Task[dict | None]] = {}
 _TMDB_QUERY_STATE_LOCK = asyncio.Lock()
 _TMDB_QUERY_CACHE_IO_LOCK = asyncio.Lock()
 
+# 串行化演员库 xlsx 的读改写批次（load_workbook → await 查询 → save 跨越 await 点，
+# 并发刮削多个影片时若不互斥，后落盘者会覆盖先前写入的行）。
+_TMDB_ACTOR_FETCH_LOCK = asyncio.Lock()
+
 # (jp_name) -> row_index 的懒加载索引，避免每次 update_actor_db_row 全表扫描
 _ACTOR_DB_ROW_INDEX: dict[str, int] = {}
 _ACTOR_DB_ROW_INDEX_LOCK = threading.Lock()
@@ -1012,6 +1016,14 @@ def _resolve_tmdb_config() -> tuple[str, str]:
 
 
 async def fetch_actor_tmdb_ids(actors: list[str], client: Any) -> dict[str, int]:
+    if not actors:
+        return {}
+
+    async with _TMDB_ACTOR_FETCH_LOCK:
+        return await _fetch_actor_tmdb_ids_locked(actors, client)
+
+
+async def _fetch_actor_tmdb_ids_locked(actors: list[str], client: Any) -> dict[str, int]:
     if not actors:
         return {}
 

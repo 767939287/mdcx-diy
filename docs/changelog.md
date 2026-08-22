@@ -47,6 +47,12 @@
 - **演员数据库日文异体字简体化**：`actor_db_tool.py` 新增日文新字体/异体字→简体映射表（87 字，覆盖 亜→亚、桜→樱、沢→泽、恵→惠、瀬→濑 等），在 zhconv 繁简转换后额外应用；修复 `fill_zh_javdb` 和 TMDB 翻译模式中因 zhconv 不识别日文汉字导致中文名保留日文原字的问题。一次性修复脚本对现有 xlsx 修复 4569 条中文名 + 2561 条繁体名
 - **演员数据库异常数据清理**：清理 2 条中文名/繁体名包含拉丁字母前缀的异常记录（`Aiko SUZUHARA - 鈴原愛子`、`Chihiro SHIRASAKI - 白崎千尋`）
 - **copytree same-file 防护**：新增 `safe_copytree`/`safe_copytree_async`（`utils/file.py`），在 `shutil.copytree` 前检查 src==dst，命中则直接返回。修复用户把 `extrafanart_folder` 配成 `"extrafanart"` 时，外层 `rmtree(dst)` 先删源目录再 `copytree` 导致 extrafanart 剧照数据丢失的问题。`base/image.py`（`extrafanart_copy2`/`extrafanart_extras_copy`/批量补图）和 `base/video.py`（`add_del_extras`）4 处裸 `shutil.copytree` 已替换
+- **程序退出改优雅退出**：`main_window.py` `exit_app` 不再 `os._exit(0)` 强杀进程（跳过 Python/atexit/Qt 资源清理，PyInstaller bootloader 也收不到正常退出信号），改为 `QApplication.quit()` 让 `app.exec()` 自然返回、主流程正常清理后退出（executor 后台线程为 daemon，不会挂起退出）
+- **ComputedLease 释放改非阻塞**：`config/manager.py` `ComputedLease.__exit__` 不再主线程 `executor.run(computed.release())` 阻塞等待，改为 `executor.submit` 后台释放并消费结果（release 通常为 O(1) 计数递减，仅关闭请求时才清理连接池），保存配置等路径不再卡 UI
+- **TMDB 演员库并发覆盖写防护**：`core/tmdb_actor.py` `fetch_actor_tmdb_ids` 的预加载 workbook → await 查询 → 落盘跨 await 点，多影片并发刮削时后落盘者覆盖先前写入行。新增模块级 `asyncio.Lock` 串行化整个读改写批次（独立路径 `update_actor_db_row` 原有 `_actor_db_write_lock` 已全程保护）
+- **标记文件路径校验**：`config/manager.py` `__init__` 读取 MARK_FILE 内容后校验空值/空字节，无效时回退默认配置路径，防止标记文件被破坏时 `Path("")` 指向当前目录或 NUL 字节触发启动崩溃
+- **软链接原身路径解析不再阻塞事件循环**：`core/file.py` 软链接分支的同步 `Path.resolve()` 改为 `asyncio.to_thread(os.path.realpath)`，避免网络路径解析卡住整个异步循环
+- **女优信息库并发访问加锁**：`actress_db.py` 单例 SQLite 连接（`check_same_thread=False`）的 `init_db` 与查询用模块级 `threading.Lock` 串行化，消除多线程并发读写同一连接的隐患
 
 ### 工程质量
 
