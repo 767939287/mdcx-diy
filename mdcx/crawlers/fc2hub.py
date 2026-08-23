@@ -12,10 +12,13 @@ from .base import BaseCrawler, Context, CrawlerData, CrawlerException
 from .base.types import split_csv
 
 
+def _xpath_joined_text(html, xpath: str) -> str:
+    return ",".join(text.strip() for text in html.xpath(xpath) if text and text.strip())
+
+
 def getTitle(html):  # 获取标题
     result = html.xpath("//h1/text()")
-    result = result[1] if result else ""
-    return result
+    return result[1].strip() if len(result) > 1 else ""
 
 
 def getNum(html):  # 获取番号
@@ -39,28 +42,17 @@ def getExtraFanart(html):  # 获取剧照
 
 def getStudio(html):  # 使用卖家作为厂家
     result = html.xpath('//div[@class="col-8"]/text()')
-    if result:
-        result = result[0].strip()
-    return result
+    return result[0].strip() if result else ""
 
 
 def getTag(html):  # 获取标签
-    result = html.xpath('//p[@class="card-text"]/a[contains(@href, "/tag/")]/text()')
-    result = str(result).strip(" []").replace(", ", ",").replace("'", "").strip() if result else ""
-    return result
+    return _xpath_joined_text(html, '//p[@class="card-text"]/a[contains(@href, "/tag/")]/text()')
 
 
 def getOutline(html):  # 获取简介
-    result = (
-        "".join(html.xpath('//div[@class="col des"]//text()'))
-        .strip("[]")
-        .replace("',", "")
-        .replace("\\n", "")
-        .replace("'", "")
-        .replace("・", "")
-        .strip()
-    )
-    return result
+    return "".join(
+        text.strip() for text in html.xpath('//div[@class="col des"]//text()') if text and text.strip()
+    ).replace("・", "")
 
 
 def getMosaic(tag, title):  # 获取马赛克

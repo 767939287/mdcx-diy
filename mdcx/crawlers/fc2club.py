@@ -10,6 +10,10 @@ from .base import BaseCrawler, Context, CrawlerData, CrawlerException
 from .base.types import split_csv
 
 
+def _xpath_joined_text(html, xpath: str) -> str:
+    return ",".join(text.strip() for text in html.xpath(xpath) if text and text.strip())
+
+
 def getTitle(html, number):  # 获取标题
     result = html.xpath("//h3/text()")
     result = result[0].replace(f"FC2-{number} ", "") if result else ""
@@ -50,31 +54,18 @@ def getScore(html):  # 获取评分
 
 
 def getActor(html, studio):  # 获取演员
-    result = html.xpath('//strong[contains(text(), "女优名字")]/../a/text()')
-    if result:
-        result = str(result).strip(" []").replace('"', "").replace("'", "").replace(", ", ",")
-    else:
-        result = studio if "fc2_seller" in manager.config.fields_rule else ""
-    return result
+    result = _xpath_joined_text(html, '//strong[contains(text(), "女优名字")]/../a/text()')
+    return result or (studio if "fc2_seller" in manager.config.fields_rule else "")
 
 
 def getTag(html):  # 获取标签
-    result = html.xpath('//strong[contains(text(), "影片标签")]/../a/text()')
-    result = str(result).strip(" []").replace('"', "").replace("'", "").replace(", ", ",")
-    return result
+    return _xpath_joined_text(html, '//strong[contains(text(), "影片标签")]/../a/text()')
 
 
 def getOutline(html):  # 获取简介
-    result = (
-        str(html.xpath('//div[@class="col des"]/text()'))
-        .strip("[]")
-        .replace("',", "")
-        .replace("\\n", "")
-        .replace("'", "")
-        .replace("・", "")
-        .strip()
-    )
-    return result
+    return "".join(
+        text.strip() for text in html.xpath('//div[@class="col des"]//text()') if text and text.strip()
+    ).replace("・", "")
 
 
 def getMosaic(html):  # 获取马赛克

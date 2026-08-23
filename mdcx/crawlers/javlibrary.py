@@ -14,6 +14,10 @@ from .base import BaseCrawler, Context, CrawlerData, CrawlerException, get_year
 from .base.types import split_csv
 
 
+def _xpath_joined_text(html, xpath: str) -> str:
+    return ",".join(text.strip() for text in html.xpath(xpath) if text and text.strip())
+
+
 def get_real_url(html, number, domain_2):
     real_url = ""
     origin = urllib.parse.urlsplit(domain_2)._replace(path="", query="", fragment="").geturl()
@@ -52,8 +56,7 @@ def get_number(html, number):
 
 
 def get_actor(html):
-    result = html.xpath('//div[@id="video_cast"]//span[@class="star"]/a/text()')
-    return str(result).strip(" []").replace("'", "").replace(", ", ",") if result else ""
+    return _xpath_joined_text(html, '//div[@id="video_cast"]//span[@class="star"]/a/text()')
 
 
 def get_cover(html):
@@ -62,13 +65,11 @@ def get_cover(html):
 
 
 def get_tag(html):
-    result = html.xpath('//div[@id="video_genres"]//td[@class="text"]//span/a/text()')
-    return str(result).strip(" []").replace("'", "").replace(", ", ",") if result else ""
+    return _xpath_joined_text(html, '//div[@id="video_genres"]//td[@class="text"]//span/a/text()')
 
 
 def get_release(html):
-    result = html.xpath('//div[@id="video_date"]//td[@class="text"]/text()')
-    return str(result).strip(" []").replace("'", "").replace(", ", ",") if result else ""
+    return _xpath_joined_text(html, '//div[@id="video_date"]//td[@class="text"]/text()')
 
 
 def get_studio(html):
