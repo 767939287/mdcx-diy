@@ -76,22 +76,36 @@ def move_file_sync(old: str | Path, new: str | Path):
     return False, error_info
 
 
+def _copy_file_atomic_sync(old: Path, new: Path) -> None:
+    fd, tmp_name = tempfile.mkstemp(dir=new.parent, prefix=f".{new.name}.", suffix=".tmp")
+    tmp = Path(tmp_name)
+    try:
+        os.close(fd)
+        shutil.copy(old, tmp)
+        os.replace(tmp, new)
+    except BaseException:
+        try:
+            tmp.unlink(missing_ok=True)
+        except OSError:
+            pass
+        raise
+
+
 def copy_file_sync(old: Path | str, new: Path | str):
     old = Path(old)
     new = Path(new)
+    if not old.exists():
+        return False, f"不存在: {old}"
     try:
-        if not old.exists():
-            return False, f"不存在: {old}"
         if new.exists() and old.samefile(new):
             return True, ""
-        delete_file_sync(new)
-        shutil.copy(old, new)
+        _copy_file_atomic_sync(old, new)
         return True, ""
     except Exception as e:
         error_info = f" 复制文件: {old}\n 目标: {new} \n 错误: {e}\n{traceback.format_exc()}"
         signal.add_log(error_info)
         print(error_info)
-    return False, error_info
+        return False, error_info
 
 
 def read_link_sync(p: str | Path) -> str:
@@ -306,18 +320,18 @@ async def copy_file_async(old: str | Path, new: str | Path):
     """异步复制文件"""
     old = Path(old)
     new = Path(new)
+    if not await aiofiles.os.path.exists(old):
+        return False, f"不存在: {old}"
     try:
-        if not await aiofiles.os.path.exists(old):
-            return False, f"不存在: {old}"
-        if str(old).lower() != str(new).lower():
-            await delete_file_async(new)
-        await asyncio.to_thread(shutil.copy, old, new)
+        if await aiofiles.os.path.exists(new) and await asyncio.to_thread(os.path.samefile, old, new):
+            return True, ""
+        await asyncio.to_thread(_copy_file_atomic_sync, old, new)
         return True, ""
     except Exception as e:
         error_info = f" 复制文件: {old}\n 目标: {new} \n 错误: {e}\n{traceback.format_exc()}"
         signal.add_log(error_info)
         print(error_info)
-    return False, error_info
+        return False, error_info
 
 
 def _is_same_path(a: Path, b: Path) -> bool:
