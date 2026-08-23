@@ -16,7 +16,7 @@ import sys
 COMMANDS = [
     ["ruff", "format", "--check"],
     ["ruff", "check"],
-    ["mypy", "mdcx/"],
+    [sys.executable, "-m", "mypy", "mdcx/"],
 ]
 
 
