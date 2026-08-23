@@ -111,43 +111,44 @@ def load_cache() -> dict[str, dict]:
     """从 xlsx 加载缓存数据。"""
     global _cache_data
     cache_path = _get_cache_path()
-    _cache_data.clear()
-    if not cache_path.exists():
-        return {}
+    with _cache_lock:  # 与 save_cache_row 并发写 _cache_data 时避免清空/覆盖错乱
+        _cache_data.clear()
+        if not cache_path.exists():
+            return {}
 
-    try:
-        import openpyxl
+        try:
+            import openpyxl
 
-        wb = openpyxl.load_workbook(cache_path, read_only=True, data_only=True)
-        ws = wb.active
-        for row in ws.iter_rows(min_row=2, values_only=True):
-            if len(row) < COL_JP + 1:
-                continue
-            jp = str(row[COL_JP] or "").strip()
-            if not jp:
-                continue
-            _cache_data[jp] = {
-                "alias": str(row[COL_ALIAS] or "").strip() if len(row) > COL_ALIAS else "",
-                "birthday": str(row[COL_BIRTHDAY] or "").strip() if len(row) > COL_BIRTHDAY else "",
-                "height": str(row[COL_HEIGHT] or "").strip() if len(row) > COL_HEIGHT else "",
-                "bust": str(row[COL_BUST] or "").strip() if len(row) > COL_BUST else "",
-                "waist": str(row[COL_WAIST] or "").strip() if len(row) > COL_WAIST else "",
-                "hip": str(row[COL_HIP] or "").strip() if len(row) > COL_HIP else "",
-                "cup": str(row[COL_CUP] or "").strip() if len(row) > COL_CUP else "",
-                "place": str(row[COL_PLACE] or "").strip() if len(row) > COL_PLACE else "",
-                "agency": str(row[COL_AGENCY] or "").strip() if len(row) > COL_AGENCY else "",
-                "twitter": str(row[COL_TWITTER] or "").strip() if len(row) > COL_TWITTER else "",
-                "career": str(row[COL_CAREER] or "").strip() if len(row) > COL_CAREER else "",
-                "debut": str(row[COL_DEBUT] or "").strip() if len(row) > COL_DEBUT else "",
-                "wiki": str(row[COL_WIKI] or "").strip() if len(row) > COL_WIKI else "",
-                "minnano_url": str(row[COL_MINNANO_URL] or "").strip() if len(row) > COL_MINNANO_URL else "",
-            }
-        wb.close()
-        LogBuffer.log().write(f"  ℹ️ [演员缓存] 已加载 {_cache_data.__len__()} 条缓存记录")
-    except ImportError:
-        LogBuffer.log().write("  ⚠️ [演员缓存] 缺少 openpyxl，无法读取缓存")
-    except Exception as e:
-        LogBuffer.log().write(f"  ⚠️ [演员缓存] 读取失败: {e}")
+            wb = openpyxl.load_workbook(cache_path, read_only=True, data_only=True)
+            ws = wb.active
+            for row in ws.iter_rows(min_row=2, values_only=True):
+                if len(row) < COL_JP + 1:
+                    continue
+                jp = str(row[COL_JP] or "").strip()
+                if not jp:
+                    continue
+                _cache_data[jp] = {
+                    "alias": str(row[COL_ALIAS] or "").strip() if len(row) > COL_ALIAS else "",
+                    "birthday": str(row[COL_BIRTHDAY] or "").strip() if len(row) > COL_BIRTHDAY else "",
+                    "height": str(row[COL_HEIGHT] or "").strip() if len(row) > COL_HEIGHT else "",
+                    "bust": str(row[COL_BUST] or "").strip() if len(row) > COL_BUST else "",
+                    "waist": str(row[COL_WAIST] or "").strip() if len(row) > COL_WAIST else "",
+                    "hip": str(row[COL_HIP] or "").strip() if len(row) > COL_HIP else "",
+                    "cup": str(row[COL_CUP] or "").strip() if len(row) > COL_CUP else "",
+                    "place": str(row[COL_PLACE] or "").strip() if len(row) > COL_PLACE else "",
+                    "agency": str(row[COL_AGENCY] or "").strip() if len(row) > COL_AGENCY else "",
+                    "twitter": str(row[COL_TWITTER] or "").strip() if len(row) > COL_TWITTER else "",
+                    "career": str(row[COL_CAREER] or "").strip() if len(row) > COL_CAREER else "",
+                    "debut": str(row[COL_DEBUT] or "").strip() if len(row) > COL_DEBUT else "",
+                    "wiki": str(row[COL_WIKI] or "").strip() if len(row) > COL_WIKI else "",
+                    "minnano_url": str(row[COL_MINNANO_URL] or "").strip() if len(row) > COL_MINNANO_URL else "",
+                }
+            wb.close()
+            LogBuffer.log().write(f"  ℹ️ [演员缓存] 已加载 {len(_cache_data)} 条缓存记录")
+        except ImportError:
+            LogBuffer.log().write("  ⚠️ [演员缓存] 缺少 openpyxl，无法读取缓存")
+        except Exception as e:
+            LogBuffer.log().write(f"  ⚠️ [演员缓存] 读取失败: {e}")
 
     return _cache_data
 
@@ -246,13 +247,14 @@ def save_cache_row(row: dict) -> bool:
 
 def get_cached_actor(name: str) -> dict | None:
     """按日文名查找缓存。"""
-    if name in _cache_data:
-        return _cache_data[name]
-    # 模糊匹配：别名中包含
-    for jp, data in _cache_data.items():
-        alias = data.get("alias", "")
-        if name in alias:
-            return data
+    with _cache_lock:  # 与 save_cache_row/load_cache 并发时保证 _cache_data 一致
+        if name in _cache_data:
+            return _cache_data[name]
+        # 模糊匹配：别名中包含
+        for jp, data in _cache_data.items():
+            alias = data.get("alias", "")
+            if name in alias:
+                return data
     return None
 
 

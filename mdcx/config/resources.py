@@ -262,10 +262,14 @@ class Resources:
         }
 
         # 查询信息映射数据库 xlsx，索引在加载时建立，查询保持 O(1)。
+        # 加锁防并发 reload_info_db 置 None 导致 _build_info_db_index(None) 抛 TypeError
         info_db_index = self.info_db_index
-        if info_db_index is None and self.info_db is not None:
-            info_db_index = _build_info_db_index(self.info_db)
-            self.info_db_index = info_db_index
+        if info_db_index is None:
+            with self._data_load_lock:
+                info_db_index = self.info_db_index
+                if info_db_index is None and self.info_db is not None:
+                    info_db_index = _build_info_db_index(self.info_db)
+                    self.info_db_index = info_db_index
         if info_db_index is not None:
             row = info_db_index.get(_normalize_info_key(info))
             if row is not None:

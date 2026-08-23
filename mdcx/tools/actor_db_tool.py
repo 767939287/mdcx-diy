@@ -385,6 +385,21 @@ async def run(
     start_time = time.time()
     _log_line(f" 🎬 [演员库维护] 开始处理 {len(names)} 个演员 (翻译={translate}, 链接={link})")
 
+    # 确保行索引与 _wb 快照同源：若索引是更早磁盘状态遗留，与快照错位会并发写错行
+    if _wb is not None:
+        try:
+            from mdcx.core.tmdb_actor import (
+                _ACTOR_DB_ROW_INDEX,
+                _ACTOR_DB_ROW_INDEX_LOCK,
+                _rebuild_actor_db_row_index,
+            )
+
+            with _ACTOR_DB_ROW_INDEX_LOCK:
+                _ACTOR_DB_ROW_INDEX.clear()
+                _rebuild_actor_db_row_index(get_actor_db_sheet(_wb))
+        except Exception as e:
+            _log_line(f" ⚠️ [演员库维护] 行索引重建失败: {e}")
+
     async with aiohttp.ClientSession() as client:
         semaphore = asyncio.Semaphore(3)
 

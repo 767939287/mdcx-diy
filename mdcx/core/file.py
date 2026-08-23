@@ -763,20 +763,25 @@ async def _migrate_picture_resource(
             done_path_copy = False
         elif await aiofiles.os.path.exists(final_path):
             pass
-        elif new_path_with_filename != final_path and await aiofiles.os.path.exists(new_path_with_filename):
-            moved, _ = await move_file_async(new_path_with_filename, final_path)
-            if not moved:
-                exists = False
-        elif old_path_with_filename != final_path and await aiofiles.os.path.exists(old_path_with_filename):
-            moved, _ = await move_file_async(old_path_with_filename, final_path)
-            if not moved:
-                exists = False
-        elif old_path_no_filename != final_path and await aiofiles.os.path.exists(old_path_no_filename):
-            moved, _ = await move_file_async(old_path_no_filename, final_path)
-            if not moved:
-                exists = False
         else:
-            exists = False
+            # 同 final_path 的并发迁移（多 CD 分集共用 poster/thumb/fanart.jpg）串行化，
+            # 避免"检查不存在→移动"的 TOCTOU 竞态导致后写覆盖先写；锁内复查 final_path，先到先得
+            async with Flags._pic_catch_lock:
+                if not await aiofiles.os.path.exists(final_path):
+                    if new_path_with_filename != final_path and await aiofiles.os.path.exists(new_path_with_filename):
+                        moved, _ = await move_file_async(new_path_with_filename, final_path)
+                        if not moved:
+                            exists = False
+                    elif old_path_with_filename != final_path and await aiofiles.os.path.exists(old_path_with_filename):
+                        moved, _ = await move_file_async(old_path_with_filename, final_path)
+                        if not moved:
+                            exists = False
+                    elif old_path_no_filename != final_path and await aiofiles.os.path.exists(old_path_no_filename):
+                        moved, _ = await move_file_async(old_path_no_filename, final_path)
+                        if not moved:
+                            exists = False
+                    else:
+                        exists = False
 
         if exists and number in Flags.file_done_dic:
             cast(dict[str, Path | None], Flags.file_done_dic[number])[local_key] = final_path

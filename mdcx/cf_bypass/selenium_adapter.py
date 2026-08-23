@@ -20,6 +20,7 @@ import os
 import shutil
 import subprocess
 import sys
+import threading
 import time
 
 logger = logging.getLogger(__name__)
@@ -43,6 +44,7 @@ _consecutive_failures = 0
 _cooldown_until = 0.0
 _selenium_checked = False
 _selenium_available = False
+_selenium_state_lock = threading.Lock()  # 保护并发 to_thread 下的计数器
 
 
 def is_cf_html(html: str) -> bool:
@@ -148,15 +150,13 @@ def _get_html_sync(url: str, timeout: int = 90) -> str | None:
         html = _wait_cf_pass(driver)
         if is_cf_html(html):
             logger.warning("Selenium bypass: CF 挑战未通过")
-            _consecutive_failures += 1
-            _check_cooldown()
+            _incr_failures()
             return None
-        _consecutive_failures = 0
+        _reset_failures()
         return html
     except Exception as e:
         logger.warning("Selenium bypass 异常: %s", e)
-        _consecutive_failures += 1
-        _check_cooldown()
+        _incr_failures()
         return None
     finally:
         if driver is not None:
@@ -166,16 +166,25 @@ def _get_html_sync(url: str, timeout: int = 90) -> str | None:
                 pass
 
 
-def _check_cooldown() -> None:
-    """连续失败达到阈值时进入冷却期。"""
-    global _cooldown_until
-    if _consecutive_failures >= _MAX_CONSECUTIVE_FAILURES:
-        _cooldown_until = time.monotonic() + _COOLDOWN_SECONDS
-        logger.warning(
-            "Selenium bypass 连续失败 %d 次，进入 %.0f 秒冷却期",
-            _consecutive_failures,
-            _COOLDOWN_SECONDS,
-        )
+def _incr_failures() -> None:
+    """记录一次失败；达到阈值进入冷却（并发安全）。"""
+    global _consecutive_failures, _cooldown_until
+    with _selenium_state_lock:
+        _consecutive_failures += 1
+        if _consecutive_failures >= _MAX_CONSECUTIVE_FAILURES:
+            _cooldown_until = time.monotonic() + _COOLDOWN_SECONDS
+            logger.warning(
+                "Selenium bypass 连续失败 %d 次，进入 %.0f 秒冷却期",
+                _consecutive_failures,
+                _COOLDOWN_SECONDS,
+            )
+
+
+def _reset_failures() -> None:
+    """成功时清零失败计数（并发安全）。"""
+    global _consecutive_failures
+    with _selenium_state_lock:
+        _consecutive_failures = 0
 
 
 async def get_html(url: str, timeout: int = 90) -> str | None:
