@@ -48,6 +48,7 @@
 - **其他**：DMM 9 前缀番号识别、CF 指纹轮换（safari17_2_ios）、读取模式不受断点缓存干扰、打包 hidden-import 补齐、配置保存竞态/重试链、优雅退出、ComputedLease 非阻塞
 - **网络设置说明文字截断/未左对齐**：label_103 高度写死 70px 且未开自动换行，5 行青色说明文字底部被裁、缩在滑块列下方未与「重试次数」对齐；改为跨两列（colspan=2）+ wordWrap + 由内容撑高，内部网格高度 500→540 防下方控件被挤出框外
 - **NFO 设置页勾选项文字截断**：groupBox 锁宽 739 + 内容区仅 ~580px，3~4 个带英文括号的 CheckBox 挤不下被硬截断（如「发行日期（re」「国家（countr」「片商（st」）；scrollArea widgetResizable 改 true、groupBox 放宽至 860、26 个超长 CheckBox 统一 sizePolicy 为 Minimum 去掉 150 硬限按文本比例分配宽度，字段名完整显示
+- **NFO 库管理页布局半成品**：三栏写死宽度不自适应（列表/表单/预览都不随窗口撑开）；给 nfo_lib_content_layout 三栏设 stretch（2/3/0）表单优先吃空间、表单 minimumSize 300→380、内容区 width 298→360；列表 minimumHeight 320 防被批量操作压扁、批量操作 GroupBox 改默认折叠（checkable+unchecked）；预览 QLabel 加 StyledPanel 边框 + 浅色背景成为「图片框」；列表为空时加不可选占位提示（"请先选择目录"/"未找到 NFO 文件"）
 
 ### 工程质量
 

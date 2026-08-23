@@ -24663,7 +24663,7 @@ p, li { white-space: pre-wrap; }
                             <property name="minimumSize">
                               <size>
                                 <width>280</width>
-                                <height>0</height>
+                                <height>320</height>
                               </size>
                             </property>
                             <property name="selectionMode">
@@ -24678,6 +24678,12 @@ p, li { white-space: pre-wrap; }
 <widget class="QGroupBox" name="groupBox_nfo_lib_batch">
                             <property name="title">
                               <string>批量操作（选中多条后使用）</string>
+                            </property>
+                            <property name="checkable">
+                              <bool>true</bool>
+                            </property>
+                            <property name="checked">
+                              <bool>false</bool>
                             </property>
                             <layout class="QGridLayout" name="gridLayout_nfo_lib_batch">
                               <item row="0" column="0">
@@ -24788,7 +24794,7 @@ p, li { white-space: pre-wrap; }
                       </property>
                       <property name="minimumSize">
                         <size>
-                          <width>300</width>
+                          <width>380</width>
                           <height>0</height>
                         </size>
                       </property>
@@ -24797,7 +24803,7 @@ p, li { white-space: pre-wrap; }
                           <rect>
                             <x>0</x>
                             <y>0</y>
-                            <width>298</width>
+                            <width>360</width>
                             <height>560</height>
                           </rect>
                         </property>
@@ -25018,6 +25024,12 @@ p, li { white-space: pre-wrap; }
                                 <height>280</height>
                               </size>
                             </property>
+                            <property name="frameShape">
+                              <enum>QFrame::StyledPanel</enum>
+                            </property>
+                            <property name="styleSheet">
+                              <string notr="true">background-color: rgb(245, 245, 245);</string>
+                            </property>
                             <property name="text">
                               <string>海报预览</string>
                             </property>
@@ -25033,6 +25045,12 @@ p, li { white-space: pre-wrap; }
                                 <width>200</width>
                                 <height>120</height>
                               </size>
+                            </property>
+                            <property name="frameShape">
+                              <enum>QFrame::StyledPanel</enum>
+                            </property>
+                            <property name="styleSheet">
+                              <string notr="true">background-color: rgb(245, 245, 245);</string>
                             </property>
                             <property name="text">
                               <string>缩略图预览</string>

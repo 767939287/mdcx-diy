@@ -103,6 +103,8 @@ def pushButton_nfo_library_clicked(self: MyMAinWindow) -> None:
     self.Ui.stackedWidget.setCurrentIndex(6)
     self.set_left_button_style()
     self.Ui.pushButton_nfo_library.setStyleSheet("font-weight: bold; background-color: rgba(160,160,165,60);")
+    if self.Ui.listWidget_nfo_lib.count() == 0:
+        _add_empty_hint(self, "请先选择上方目录加载 NFO")
 
 
 def pushButton_nfo_lib_select_dir_clicked(self: MyMAinWindow) -> None:
@@ -140,7 +142,18 @@ def _scan_nfo_directory(self: MyMAinWindow, folder: Path) -> None:
         count += 1
 
     self.Ui.label_nfo_lib_count.setText(f"共 {count} 个")
-    signal_qt.show_log_text(f"NFO 库管理: 扫描到 {count} 个 NFO 文件") if count else None
+    if count == 0:
+        _add_empty_hint(self, "该目录下未找到 NFO 文件")
+    else:
+        signal_qt.show_log_text(f"NFO 库管理: 扫描到 {count} 个 NFO 文件")
+
+
+def _add_empty_hint(self: MyMAinWindow, text: str) -> None:
+    """列表为空时添加一行不可选的占位提示。"""
+    item = QListWidgetItem(text)
+    item.setFlags(item.flags() & ~Qt.ItemFlag.ItemIsSelectable & ~Qt.ItemFlag.ItemIsEnabled)
+    item.setData(NFO_PATH_ROLE, "")
+    self.Ui.listWidget_nfo_lib.addItem(item)
 
 
 def listWidget_nfo_lib_item_clicked(self: MyMAinWindow) -> None:
