@@ -63,10 +63,8 @@ def move_file_sync(old: str | Path, new: str | Path):
     try:
         if _is_same_path(old, new):
             return True, ""  # 同一路径（含不同写法），无需移动，避免误删源文件
-        # 目标为目录时需先移除（shutil.move 会把源移入目录而非覆盖）；
-        # 目标为文件时由 shutil.move 覆盖，不先删，避免移动失败时目标丢失
         if new.is_dir() and not new.is_symlink():
-            delete_file_sync(new)
+            return False, f"目标是目录，无法覆盖文件: {new}"
         shutil.move(old, new)
         return True, ""
     except Exception as e:
@@ -301,19 +299,17 @@ async def move_file_async(old: str | Path, new: str | Path):
     old = Path(old)
     new = Path(new)
     try:
-        if str(old).lower() != str(new).lower():
-            # 目标为目录时需先移除（shutil.move 会把源移入目录而非覆盖）；
-            # 目标为文件时由 shutil.move 内部 os.replace 原子覆盖，不先删，
-            # 避免"先删后移"在移动失败时目标文件丢失
-            if new.exists() and new.is_dir() and not new.is_symlink():
-                await delete_file_async(new)
+        if _is_same_path(old, new):
+            return True, ""
+        if await aiofiles.os.path.isdir(new) and not await aiofiles.os.path.islink(new):
+            return False, f"目标是目录，无法覆盖文件: {new}"
         await asyncio.to_thread(shutil.move, str(old), str(new))
         return True, ""
     except Exception as e:
         error_info = f" 移动文件: {old}\n 目标: {new} \n 错误: {e}\n{traceback.format_exc()}"
         signal.add_log(error_info)
         print(error_info)
-    return False, error_info
+        return False, error_info
 
 
 async def copy_file_async(old: str | Path, new: str | Path):
