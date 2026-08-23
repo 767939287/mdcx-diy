@@ -482,18 +482,6 @@ async def get_aio_domain(site: str) -> str:
     return fallback
 
 
-async def get_avsox_domain() -> str:
-    return await get_aio_domain("avsox")
-
-
-async def get_avmoo_domain() -> str:
-    return await get_aio_domain("avmoo")
-
-
-async def get_avheat_domain() -> str:
-    return await get_aio_domain("avheat")
-
-
 # javlibrary 最新直连地址的内存缓存（避免每次刮削都抓 GitHub）
 _JAVLIBRARY_DOMAIN_CACHE: dict[str, tuple[str, float]] = {}
 _JAVLIBRARY_DOMAIN_CACHE_LOCK = threading.Lock()
