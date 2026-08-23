@@ -41,7 +41,7 @@
 - **网络检测增强 6 项**：代理故障提示、镜像抽样、单厂牌提示、重试失败项/复制结果按钮、DMM 误报修复
 - **翻译修复**：Bing 端点改 cn.bing.com（原返回空响应体）；百度翻译 appid/key strip 修复签名错误
 - **CLI 修复**：crawl 代理白名单失效、失败退出码、javdb_api 搜索 q 参数丢失
-- **爬虫修复**：dmm 双重重试/番号匹配/评分/日期截断、javbus 搜索镜像轮换、minnano 标题校验/缓存 key、fc2 无修正判定、prestige 字段防护、javdb_app year 推导
+- **爬虫修复**：dmm 双重重试/番号匹配/评分/日期截断、javbus 搜索镜像轮换、minnano 标题校验/缓存 key、MGStage/Jav321/FC2 字段直接解析保留引号与方括号、fc2 无修正判定、prestige 字段防护、javdb_app year 推导
 - **下载/文件修复**：分块下载断点续传（.part + .part.meta）、断点元数据句柄关闭、文件复制原子替换保留旧目标、图片流式下载 50MB 限制与同 URL 并发复用、extrafanart 目录替换原子化、相对符号链接解析与跨目录重复链接跳过、网络检测取消任务回收、move_file 先删目标、成功列表记录新路径、fanart 失败不再静默忽略
 - **崩溃容错**：get_new_release 日期格式、parse_runtime 时长解析、hdouban 秒数、强杀线程超时保护
 - **并发/性能**：is_proxy_host O(1) 映射、镜像轮询重试去重、AVdb 并发预热、连接池锁外清理、TMDB 演员库并发写保护、女优信息库加锁

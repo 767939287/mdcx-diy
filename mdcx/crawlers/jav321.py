@@ -18,30 +18,39 @@ from .base import BaseCrawler, CrawlerData, CrawlerException
 type ImageLogFn = Callable[[str], None] | None
 
 
+def _first_match(pattern: str, response: str) -> str:
+    return next(iter(re.findall(pattern, response)), "").strip()
+
+
+def _xpath_first_text(html, xpath: str) -> str:
+    return next((text.strip() for text in html.xpath(xpath) if text and text.strip()), "")
+
+
 def getTitle(response):
-    return str(re.findall(r"<h3>(.+) <small>", response)).strip(" ['']")
+    return _first_match(r"<h3>(.+) <small>", response)
 
 
 def getActor(response):
-    if re.search(r'<a href="/star/\S+">(\S+)</a> &nbsp;', response):
-        return str(re.findall(r'<a href="/star/\S+">(\S+)</a> &nbsp;', response)).strip(" [',']").replace("'", "")
-    if re.search(r'<a href="/heyzo_star/\S+">(\S+)</a> &nbsp;', response):
-        return str(re.findall(r'<a href="/heyzo_star/\S+">(\S+)</a> &nbsp;', response)).strip(" [',']").replace("'", "")
-    return str(re.findall(r"<b>出演者</b>: ([^<]+) &nbsp; <br>", response)).strip(" [',']").replace("'", "")
+    for pattern in (
+        r'<a href="/star/\S+">(\S+)</a> &nbsp;',
+        r'<a href="/heyzo_star/\S+">(\S+)</a> &nbsp;',
+        r"<b>出演者</b>: ([^<]+) &nbsp; <br>",
+    ):
+        if actor := _first_match(pattern, response):
+            return actor
+    return ""
 
 
 def getStudio(html):
-    result = str(html.xpath('//div[@class="col-md-9"]/a[contains(@href,"/company/")]/text()')).strip(" ['']")
-    return result
+    return _xpath_first_text(html, '//div[@class="col-md-9"]/a[contains(@href,"/company/")]/text()')
 
 
 def getRuntime(response):
-    return str(re.findall(r"<b>収録時間</b>: (\d+) \S+<br>", response)).strip(" ['']")
+    return _first_match(r"<b>収録時間</b>: (\d+) \S+<br>", response)
 
 
 def getSeries(html):
-    result = str(html.xpath('//div[@class="col-md-9"]/a[contains(@href,"/series/")]/text()')).strip(" ['']")
-    return result
+    return _xpath_first_text(html, '//div[@class="col-md-9"]/a[contains(@href,"/series/")]/text()')
 
 
 def getWebsite(detail_page):
@@ -58,7 +67,7 @@ def getScore(response):
     if re.search(r'<b>平均評価</b>: <img data-original="/img/(\d+).gif" />', response):
         score = re.findall(r'<b>平均評価</b>: <img data-original="/img/(\d+).gif" />', response)[0]
         return str(float(score) / 10.0)
-    return str(re.findall(r"<b>平均評価</b>: ([^<]+)<br>", response)).strip(" [',']").replace("'", "")
+    return _first_match(r"<b>平均評価</b>: ([^<]+)<br>", response)
 
 
 def getYear(release):
@@ -70,17 +79,16 @@ def getYear(release):
 
 
 def getRelease(response):
-    return str(re.findall(r"<b>配信開始日</b>: (\d+-\d+-\d+)<br>", response)).strip(" ['']").replace("0000-00-00", "")
+    return _first_match(r"<b>配信開始日</b>: (\d+-\d+-\d+)<br>", response).replace("0000-00-00", "")
 
 
 def getCover(detail_page):
-    cover_url = str(
-        detail_page.xpath(
-            "/html/body/div[@class='row'][2]/div[@class='col-md-3']/div[@class='col-xs-12 col-md-12'][1]/p/a/img[@class='img-responsive']/@src"
-        )
-    ).strip(" ['']")
+    cover_url = _xpath_first_text(
+        detail_page,
+        "/html/body/div[@class='row'][2]/div[@class='col-md-3']/div[@class='col-xs-12 col-md-12'][1]/p/a/img[@class='img-responsive']/@src",
+    )
     if cover_url == "":
-        cover_url = str(detail_page.xpath("//*[@id='vjs_sample_player']/@poster")).strip(" ['']")
+        cover_url = _xpath_first_text(detail_page, "//*[@id='vjs_sample_player']/@poster")
     return cover_url
 
 

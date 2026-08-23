@@ -9,63 +9,56 @@ from ..config.models import Website
 from .base import BaseCrawler, Context, CrawlerData, CrawlerException
 
 
+def _xpath_texts(html, xpath: str) -> list[str]:
+    return [text.strip() for text in html.xpath(xpath) if text and text.strip()]
+
+
+def _xpath_joined_text(html, xpath: str) -> str:
+    return ",".join(_xpath_texts(html, xpath)).replace("/", ",").replace(" ", "").replace("\\n", "")
+
+
 def getTitle(html):
     try:
-        result = str(html.xpath('//*[@id="center_column"]/div[1]/h1/text()')).strip(" ['']")
-        return result.replace("/", ",")
+        return ",".join(_xpath_texts(html, '//*[@id="center_column"]/div[1]/h1/text()')).replace("/", ",")
     except Exception:
         return ""
 
 
 def getActor(html):
-    result = (
-        str(html.xpath('//th[contains(text(),"出演")]/../td/a/text()'))
-        .replace("\\n", "")
-        .strip(" ['']")
-        .replace("/", ",")
-        .replace("'", "")
-        .replace(" ", "")
-    )
+    result = _xpath_joined_text(html, '//th[contains(text(),"出演")]/../td/a/text()')
     if not result:
-        result = (
-            str(html.xpath('//th[contains(text(),"出演")]/../td/text()'))
-            .replace("\\n", "")
-            .strip(" ['']")
-            .replace("/", ",")
-            .replace("'", "")
-            .replace(" ", "")
-        )
+        result = _xpath_joined_text(html, '//th[contains(text(),"出演")]/../td/text()')
     return result
 
 
 def getStudio(html):
-    result1 = str(html.xpath('//th[contains(text(),"メーカー：")]/../td/a/text()')).strip(" ['']")
-    result2 = str(html.xpath('//th[contains(text(),"メーカー：")]/../td/text()')).strip(" ['']")
-    return str(result1 + result2).replace("'", "").replace(" ", "").replace("\\n", "")
+    return _xpath_joined_text(html, '//th[contains(text(),"メーカー：")]/../td/a/text()') or _xpath_joined_text(
+        html, '//th[contains(text(),"メーカー：")]/../td/text()'
+    )
 
 
 def getPublisher(html):
-    result1 = str(html.xpath('//th[contains(text(),"レーベル：")]/../td/a/text()')).strip(" ['']")
-    result2 = str(html.xpath('//th[contains(text(),"レーベル：")]/../td/text()')).strip(" ['']")
-    return str(result1 + result2).replace("'", "").replace(" ", "").replace("\\n", "")
+    return _xpath_joined_text(html, '//th[contains(text(),"レーベル：")]/../td/a/text()') or _xpath_joined_text(
+        html, '//th[contains(text(),"レーベル：")]/../td/text()'
+    )
 
 
 def getRuntime(html):
-    result1 = str(html.xpath('//th[contains(text(),"収録時間：")]/../td/a/text()')).strip(" ['']")
-    result2 = str(html.xpath('//th[contains(text(),"収録時間：")]/../td/text()')).strip(" ['']")
-    return str(result1 + result2).rstrip("min").replace("'", "").replace(" ", "").replace("\\n", "")
+    return _xpath_joined_text(html, '//th[contains(text(),"収録時間：")]/../td/a/text()').rstrip(
+        "min"
+    ) or _xpath_joined_text(html, '//th[contains(text(),"収録時間：")]/../td/text()').rstrip("min")
 
 
 def getSeries(html):
-    result1 = str(html.xpath('//th[contains(text(),"シリーズ：")]/../td/a/text()')).strip(" ['']")
-    result2 = str(html.xpath('//th[contains(text(),"シリーズ：")]/../td/text()')).strip(" ['']")
-    return str(result1 + result2).replace("'", "").replace(" ", "").replace("\\n", "")
+    return _xpath_joined_text(html, '//th[contains(text(),"シリーズ：")]/../td/a/text()') or _xpath_joined_text(
+        html, '//th[contains(text(),"シリーズ：")]/../td/text()'
+    )
 
 
 def getNum(html):
-    result1 = str(html.xpath('//th[contains(text(),"品番：")]/../td/a/text()')).strip(" ['']")
-    result2 = str(html.xpath('//th[contains(text(),"品番：")]/../td/text()')).strip(" ['']")
-    return str(result1 + result2).replace("'", "").replace(" ", "").replace("\\n", "")
+    return _xpath_joined_text(html, '//th[contains(text(),"品番：")]/../td/a/text()') or _xpath_joined_text(
+        html, '//th[contains(text(),"品番：")]/../td/text()'
+    )
 
 
 def getYear(getRelease):
@@ -77,15 +70,15 @@ def getYear(getRelease):
 
 
 def getRelease(html):
-    result1 = str(html.xpath('//th[contains(text(),"配信開始日：")]/../td/a/text()')).strip(" ['']")
-    result2 = str(html.xpath('//th[contains(text(),"配信開始日：")]/../td/text()')).strip(" ['']")
-    return str(result1 + result2).replace("'", "").replace(" ", "").replace("\\n", "")
+    return _xpath_joined_text(html, '//th[contains(text(),"配信開始日：")]/../td/a/text()') or _xpath_joined_text(
+        html, '//th[contains(text(),"配信開始日：")]/../td/text()'
+    )
 
 
 def getTag(html):
-    result1 = str(html.xpath('//th[contains(text(),"ジャンル：")]/../td/a/text()')).strip(" ['']")
-    result2 = str(html.xpath('//th[contains(text(),"ジャンル：")]/../td/text()')).strip(" ['']")
-    return str(result1 + result2).replace("'", "").replace(" ", "").replace("\\n", "")
+    return _xpath_joined_text(html, '//th[contains(text(),"ジャンル：")]/../td/a/text()') or _xpath_joined_text(
+        html, '//th[contains(text(),"ジャンル：")]/../td/text()'
+    )
 
 
 def getCoverSmall(cover_url):
@@ -94,8 +87,7 @@ def getCoverSmall(cover_url):
 
 
 def getCover(html):
-    result = str(html.xpath('//a[@id="EnlargeImage"]/@href')).strip(" ['']")
-    return result
+    return next(iter(_xpath_texts(html, '//a[@id="EnlargeImage"]/@href')), "")
 
 
 def getExtraFanart(html):
@@ -119,7 +111,7 @@ async def get_trailer(client, html):
 
 
 def getOutline(html):
-    result = str(html.xpath('//*[@id="introduction"]/dd/p[1]/text()')).strip(" ['']")
+    result = next(iter(_xpath_texts(html, '//*[@id="introduction"]/dd/p[1]/text()')), "")
     if not result:
         temp = html.xpath('//*[@id="introduction"]/dd')
         result = temp[0].xpath("string(.)").replace(" ", "").strip() if temp else ""

@@ -75,8 +75,7 @@ def getStudio(html):  # 使用卖家作为厂家
 
 def getTag(html):  # 获取标签
     result = html.xpath('//a[@class="tag tagTag"]/text()')
-    result = str(result).strip(" ['']").replace("', '", ",")
-    return result
+    return ",".join(tag.strip() for tag in result if tag and tag.strip())
 
 
 def getOutline(html):  # 获取简介
