@@ -47,6 +47,28 @@ except ImportError:
     TrawlAdapterServer = None  # type: ignore[assignment, misc]
 
 
+_PROXY_TLDS = (".com", ".net", ".org", ".co", ".jp", ".io")
+_WEB_DIC_DOMAINS_BY_VALUE: dict[str, frozenset[str]] | None = None
+
+
+def _web_dic_domains_by_value() -> dict[str, frozenset[str]]:
+    """构建 WEB_DIC 站点值 → 已知域名集合（含 TLD 变体）映射，供 is_proxy_host 快速反查。
+
+    原实现每匹配一个 proxy_site 就遍历整个 WEB_DIC（O(m)）；预构建后 O(1) 取集合。
+    """
+    global _WEB_DIC_DOMAINS_BY_VALUE
+    if _WEB_DIC_DOMAINS_BY_VALUE is None:
+        mapping: dict[str, set[str]] = {}
+        for domain_key, website_enum in ManualConfig.WEB_DIC.items():
+            value = website_enum.value
+            domains = {domain_key}
+            for tld in _PROXY_TLDS:
+                domains.add(domain_key + tld)
+            mapping.setdefault(value, set()).update(domains)
+        _WEB_DIC_DOMAINS_BY_VALUE = {k: frozenset(v) for k, v in mapping.items()}
+    return _WEB_DIC_DOMAINS_BY_VALUE
+
+
 def is_proxy_host(host: str, proxy_sites: list[str] | tuple[str, ...] | None) -> bool:
     """判断目标 host 是否应使用代理, 基于用户配置的 proxy_sites 列表.
 
@@ -67,32 +89,29 @@ def is_proxy_host(host: str, proxy_sites: list[str] | tuple[str, ...] | None) ->
     if not host:
         return False
 
+    domains_by_value = _web_dic_domains_by_value()
     for raw in proxy_sites:
         proxy_site = raw.strip().lower()
         if not proxy_site:
             continue
 
-        # 1. 直接匹配
-        if host == proxy_site:
+        # 1. 直接匹配 + 4. 子域后缀
+        if host == proxy_site or host.endswith("." + proxy_site):
             return True
 
-        # 2. WEB_DIC 反查：站点值对应多个域名（如 "javdb" 对应 javdb.com / javdb.net）
-        for domain_key, website_enum in ManualConfig.WEB_DIC.items():
-            if website_enum.value == proxy_site:
-                if host == domain_key or host.endswith("." + domain_key):
+        # 2. WEB_DIC 反查：站点值对应的所有已知域名（含 TLD 变体）精确或子域命中
+        known = domains_by_value.get(proxy_site)
+        if known:
+            if host in known:
+                return True
+            for base in known:
+                if host.endswith("." + base):
                     return True
-                for tld in (".com", ".net", ".org", ".co", ".jp", ".io"):
-                    if host == domain_key + tld or host.endswith("." + domain_key + tld):
-                        return True
 
         # 3. 通用 TLD 兜底（libredmm / avwikidb / minnano 等未进 WEB_DIC 的站点）
-        for tld in (".com", ".net", ".org", ".co", ".jp", ".io"):
+        for tld in _PROXY_TLDS:
             if host == proxy_site + tld or host.endswith("." + proxy_site + tld):
                 return True
-
-        # 4. 子域后缀
-        if host.endswith("." + proxy_site):
-            return True
 
     return False
 

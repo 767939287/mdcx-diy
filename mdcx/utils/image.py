@@ -42,7 +42,8 @@ def _encode_image(image: Image.Image, save_format: str, quality: int = IMAGE_QUA
         if save_format == "JPEG":
             save_kwargs["optimize"] = True
     else:
-        save_kwargs.update({"optimize": True, "compress_level": 9})
+        # PNG 无损压缩：9 级与 6 级压缩比差异极小但耗时数倍，用 PIL 默认 6 提速
+        save_kwargs.update({"optimize": True, "compress_level": 6})
     image.save(output, **save_kwargs)  # type: ignore[arg-type]
     return output.getvalue()
 

@@ -1330,8 +1330,20 @@ async def extrafanart_download(extrafanart: list[str], extrafanart_from: str, fo
                 extrafanart_count_succ += 1
         if extrafanart_count_succ == extrafanart_count:
             if extrafanart_folder_path_temp != extrafanart_folder_path:
-                await to_thread(shutil.rmtree, extrafanart_folder_path)
-                await aiofiles.os.rename(extrafanart_folder_path_temp, extrafanart_folder_path)
+                # 非原子替换：先删旧目录再改名，若改名失败（跨卷/被占用）旧数据已丢。
+                # 改为先把旧目录移到备份名，rename 成功后再清理备份，失败可回滚。
+                backup_path = extrafanart_folder_path.with_name(extrafanart_folder_path.name + ".old")
+                if extrafanart_folder_path.exists():
+                    await to_thread(shutil.rmtree, backup_path, ignore_errors=True)
+                    await aiofiles.os.rename(extrafanart_folder_path, backup_path)
+                try:
+                    await aiofiles.os.rename(extrafanart_folder_path_temp, extrafanart_folder_path)
+                except Exception:
+                    # 新目录落地失败：回滚旧目录，保留 temp 供下次重试
+                    if backup_path.exists() and not extrafanart_folder_path.exists():
+                        await aiofiles.os.rename(backup_path, extrafanart_folder_path)
+                    raise
+                await to_thread(shutil.rmtree, backup_path, ignore_errors=True)
             LogBuffer.log().write(
                 f"\n 🍀 ExtraFanart done! ({extrafanart_from} {extrafanart_count_succ}/{extrafanart_count})({get_used_time(start_time)}s)"
             )

@@ -44,16 +44,16 @@ def _write_windows(path: Path, text: str) -> None:
         except PermissionError as e:
             last_err = e
             if attempt == 0:
-                time.sleep(0.05)  # 杀软实时扫描瞬时占用
+                time.sleep(0.02)  # 杀软实时扫描瞬时占用（缩短等待降低主线程卡顿）
             elif attempt == 1:
-                time.sleep(0.1)
+                time.sleep(0.05)
             elif attempt == 2:
                 try:
                     os.chmod(str(path), stat.S_IWRITE)  # 打包资源文件可能带只读位
                 except Exception:
                     pass
             elif attempt == 3:
-                time.sleep(0.3)
+                time.sleep(0.15)
     raise PermissionError(
         f"配置文件写入被拒绝访问（可能被其它程序占用或目录无写权限）：{path}\n"
         "请关闭打开该文件的程序（编辑器/资源管理器预览/杀毒软件实时扫描）后重试；"
@@ -188,8 +188,9 @@ class ConfigManager:
 
             replaced = False
             # 1. 重试：应对杀毒软件实时扫描 .tmp 产生的瞬时占用 (Windows 上最常见)
-            for _ in range(6):
-                time.sleep(0.05)
+            #    缩短等待间隔，降低主线程阻塞（写失败本身是异常场景）
+            for _ in range(4):
+                time.sleep(0.02)
                 try:
                     os.replace(str(tmp), str(path))
                     replaced = True

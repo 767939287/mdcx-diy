@@ -24,6 +24,13 @@
 
 ### 修复
 
+- **extrafanart 目录替换非原子**：`core/web.py` 原先先 `rmtree` 旧目录再 `rename` 新目录，改名失败（跨卷/被占用）时旧数据已丢；现先把旧目录移到备份名、rename 成功后清理备份，失败自动回滚旧目录
+- **read_link_sync 符号链接环死循环**：`utils/file.py` 的 `read_link_sync` 对成环链接（A→B→A）会无限循环；现用 seen 集合检测环，命中时返回当前路径
+- **xdg-open -R 无效参数**：`utils/file.py` `open_file_thread` 在 Linux 目录分支的兜底用了 macOS 专属的 `-R` 参数，xdg-open 不支持；现改为直接打开目录
+- **move_file_async 先删目标**：`utils/file.py` 移动前无条件删除目标文件，若移动失败目标已丢失；现仅当目标为目录时先删（`shutil.move` 会把源移入目录而非覆盖），文件目标由 `shutil.move` 内部原子覆盖
+- **hdouban 时长秒数解析崩溃**：`crawlers/hdouban.py` 的 `int(int(runtime)/3600)` 遇非数字内容抛 `ValueError` 中断解析；现 try/except 容错，非数字时返回空时长
+- **is_proxy_host O(n×m) 优化**：`web_async.py` 的 `is_proxy_host` 每匹配一个 proxy_site 就遍历整个 `ManualConfig.WEB_DIC`（O(n×m)），该函数每次请求都调用；现预构建「站点值 → 已知域名集合（含 TLD 变体）」映射（`_web_dic_domains_by_value`），反查降为 O(1) 集合命中，语义与原逻辑逐分支核对等价
+- **配置保存 sleep 重试链缩短**：`config/manager.py` 写配置失败时的重试等待从 0.45s/0.3s 降至 0.22s/0.08s，减少主线程保存配置时的卡顿（写失败为异常场景，正常路径无影响）
 - **成功列表记录旧路径**：`core/scraper.py` 非视频模式的完成路径 `save_success_list(file_path, file_path)` 把移动前的旧路径写入成功列表，与视频模式分支 `save_success_list(file_path, file_new_path)` 不一致；现统一传 `file_new_path`，改名/移动后成功列表指向实际新路径
 - **连接池空闲清理持锁阻塞**：`web_async.py` 的 `_cleanup_idle_locked` 在 `_lock` 临界区内 `await pool.close()`（网络关闭操作），会阻塞其它 `get`/`reset`；现该方法只在锁内做内存操作（检测空闲 + 从字典移除）并返回待关闭列表，`get()` 在锁外统一关闭，消除持锁等待
 - **分块下载支持断点续传**：`web_async.py` 的 `_download_chunks` 原先任意分块失败即删除 `.part` 临时文件，重试从头下载；现失败时保留 `.part` 与新增的 `.part.meta` 进度文件（记录 url/大小/分块划分/已完成分块），下次下载同一 url 时校验 meta 匹配则跳过已完成分块续传，全部完成后才替换目标文件并清理进度文件；file_size 变化时旧进度自动失效全量重下
@@ -71,6 +78,8 @@
 
 ### 工程质量
 
+- **PNG 压缩级别降为默认 6**：`utils/image.py` `_encode_image` 的 PNG `compress_level` 从 9 降到 6（PIL 默认），无损压缩压缩比差异极小但耗时数倍，图片压缩/保存提速
+- 新增 `tests/test_save_success_list.py` 回归测试（save_success_list 非软链接记 new_path / 软链接记 old_path / 未开启不记录）
 - **冗余代码清理**：`core/scraper.py` 删除 tag 过滤列表中 8 条注释掉的死代码与从不读取的 `_read_mode_error_count` 死变量；`main_window.py` `_write_main_logs_to_file` 覆盖新日志句柄前先关闭旧句柄（修复句柄泄漏）；`crawlers/base/types.py` 删除零调用者的 `r()` 函数及其死导入
 - **UA 池版本更新**：`utils/__init__.py` `get_random_headers` 的 UA 池过时（Chrome 100-130、Firefox 90-120、Safari 14-17/iOS 15），2026 年部分站点会识别为旧版浏览器；现更新为 Chrome 115-135、Firefox 110-135、Safari 16-18/iOS 17；Safari 模板占位符改为 3 段，让原本被丢弃的主版本号生效
 - **convert_half 改用翻译表**：`utils/__init__.py` `convert_half` 的全角→半角从逐字符 `str.replace`（97 对映射）改为模块级 `str.maketrans` 一次性翻译表 + `str.translate`，热点函数（文件名清洗）大幅提速，输出与原逻辑逐字符对比一致

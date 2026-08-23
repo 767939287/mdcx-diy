@@ -91,8 +91,12 @@ def copy_file_sync(old: Path | str, new: Path | str):
 
 
 def read_link_sync(p: str):
-    # 获取符号链接的真实路径
+    # 获取符号链接的真实路径；seen 集合防符号链接成环（A→B→A）导致死循环
+    seen: set[str] = set()
     while os.path.islink(p):
+        if p in seen:
+            return p
+        seen.add(p)
         p = os.readlink(p)
     return p
 
@@ -206,7 +210,8 @@ def open_file_thread(p: Path, is_dir: bool) -> None:
             try:
                 subprocess.Popen(["dolphin", "--select", p])
             except Exception:
-                subprocess.Popen(["xdg-open", "-R", p])
+                # xdg-open 不支持 -R（那是 macOS open 的参数），打开目录本身
+                subprocess.Popen(["xdg-open", str(p)])
         else:
             subprocess.Popen(["xdg-open", p])
 
@@ -276,7 +281,11 @@ async def move_file_async(old: str | Path, new: str | Path):
     new = Path(new)
     try:
         if str(old).lower() != str(new).lower():
-            await delete_file_async(new)
+            # 目标为目录时需先移除（shutil.move 会把源移入目录而非覆盖）；
+            # 目标为文件时由 shutil.move 内部 os.replace 原子覆盖，不先删，
+            # 避免"先删后移"在移动失败时目标文件丢失
+            if new.exists() and new.is_dir() and not new.is_symlink():
+                await delete_file_async(new)
         await asyncio.to_thread(shutil.move, str(old), str(new))
         return True, ""
     except Exception as e:

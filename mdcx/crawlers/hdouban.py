@@ -248,7 +248,14 @@ class HdoubanCrawler(BaseCrawler):
         series = res["series"][0]["name"] if res["series"] else ""
         release = res["release_time"].replace(" 00:00:00", "")
         runtime = res["time"]
-        runtime = str(int(int(runtime) / 3600)) if runtime else ""
+        # time 为秒数（如 "7200" → 2 小时）；非数字/None 时容错为空，避免 int() 崩溃
+        if runtime:
+            try:
+                runtime = str(int(int(runtime) / 3600))
+            except (TypeError, ValueError):
+                runtime = ""
+        else:
+            runtime = ""
         tag_text = ",".join(tags)
         mosaic = get_mosaic(title, studio, tag_text, mosaic)
 
