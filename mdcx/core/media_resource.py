@@ -67,6 +67,9 @@ class MediaResourceContext:
 
     def close(self) -> None:
         self._images.clear()
+        for task in self._image_fetch_tasks.values():
+            if not task.done():
+                task.cancel()
         self._image_fetch_tasks.clear()
         self._image_sizes.clear()
         self._content_lengths.clear()
@@ -88,11 +91,12 @@ class MediaResourceContext:
         if task is None:
             task = asyncio.create_task(self._fetch_image(normalized_url), name=f"fetch-image:{normalized_url}")
             self._image_fetch_tasks[normalized_url] = task
-        try:
-            return await asyncio.shield(task)
-        finally:
-            if task.done() and self._image_fetch_tasks.get(normalized_url) is task:
-                self._image_fetch_tasks.pop(normalized_url, None)
+            task.add_done_callback(lambda completed: self._discard_fetch_task(normalized_url, completed))
+        return await asyncio.shield(task)
+
+    def _discard_fetch_task(self, url: str, task: asyncio.Task[FetchedImage | None]) -> None:
+        if self._image_fetch_tasks.get(url) is task:
+            self._image_fetch_tasks.pop(url, None)
 
     async def _fetch_image(self, normalized_url: str) -> FetchedImage | None:
         # 完整下载不能使用 DMM 探测参数，否则会把 120x90 探测图写入封面缓存。

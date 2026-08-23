@@ -115,6 +115,32 @@ async def test_media_resource_context_reuses_inflight_image_request(monkeypatch:
 
 
 @pytest.mark.asyncio
+async def test_media_resource_context_close_cancels_inflight_image_request(monkeypatch: pytest.MonkeyPatch):
+    request_started = asyncio.Event()
+    request_cancelled = asyncio.Event()
+
+    async def fake_request(method: str, url: str, **kwargs):
+        request_started.set()
+        try:
+            await asyncio.Event().wait()
+        except asyncio.CancelledError:
+            request_cancelled.set()
+            raise
+
+    monkeypatch.setattr(manager.computed.async_client, "request", fake_request)
+
+    context = MediaResourceContext()
+    fetch_task = asyncio.create_task(context.fetch_bytes("https://example.test/cover.jpg"))
+    await request_started.wait()
+    context.close()
+
+    with pytest.raises(asyncio.CancelledError):
+        await fetch_task
+    assert request_cancelled.is_set()
+    assert context._image_fetch_tasks == {}
+
+
+@pytest.mark.asyncio
 async def test_media_resource_context_rejects_oversized_image(monkeypatch: pytest.MonkeyPatch):
     async def fake_request(method: str, url: str, **kwargs):
         return _FakeResponse(url, _jpeg_bytes(), headers={"Content-Length": "11"}), ""
