@@ -48,6 +48,7 @@ except ImportError:
 
 
 _PROXY_TLDS = (".com", ".net", ".org", ".co", ".jp", ".io")
+_CHUNK_DOWNLOAD_CONCURRENCY = 6  # 分块下载并发数（可调，权衡速度与服务器压力）
 _WEB_DIC_DOMAINS_BY_VALUE: dict[str, frozenset[str]] | None = None
 
 
@@ -1989,7 +1990,7 @@ class AsyncWebClient:
 
         try:
             # 创建下载任务
-            semaphore = asyncio.Semaphore(6)  # 限制并发数
+            semaphore = asyncio.Semaphore(_CHUNK_DOWNLOAD_CONCURRENCY)  # 限制并发数
             if 0 not in done:
                 # 分块 0 同时承担 Range 支持探测（续传已含 0 说明上次已验证，跳过探测）
                 first_error = await self._download_chunk(

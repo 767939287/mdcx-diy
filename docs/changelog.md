@@ -78,6 +78,8 @@
 
 ### 工程质量
 
+- **qt_thread 表达式语句改 if**：`utils/qt_thread.py` 的 `signal_qt.show_log_text(...) if log_prefix else None` 是丢弃结果的表达式语句，改为显式 `if log_prefix:` 判断
+- **分块并发数提取常量**：`web_async.py` 分块下载的 `asyncio.Semaphore(6)` 硬编码并发数提取为模块级常量 `_CHUNK_DOWNLOAD_CONCURRENCY`，便于统一调整
 - **PNG 压缩级别降为默认 6**：`utils/image.py` `_encode_image` 的 PNG `compress_level` 从 9 降到 6（PIL 默认），无损压缩压缩比差异极小但耗时数倍，图片压缩/保存提速
 - 新增 `tests/test_save_success_list.py` 回归测试（save_success_list 非软链接记 new_path / 软链接记 old_path / 未开启不记录）
 - **冗余代码清理**：`core/scraper.py` 删除 tag 过滤列表中 8 条注释掉的死代码与从不读取的 `_read_mode_error_count` 死变量；`main_window.py` `_write_main_logs_to_file` 覆盖新日志句柄前先关闭旧句柄（修复句柄泄漏）；`crawlers/base/types.py` 删除零调用者的 `r()` 函数及其死导入

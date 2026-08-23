@@ -56,7 +56,8 @@ def run_in_background(
         try:
             await coro_factory()
         except Exception as e:
-            signal_qt.show_log_text(f"🔴 {log_prefix}异常: {e}") if log_prefix else None
+            if log_prefix:
+                signal_qt.show_log_text(f"🔴 {log_prefix}异常: {e}")
             import traceback as tb
 
             signal_qt.show_log_text(tb.format_exc())
