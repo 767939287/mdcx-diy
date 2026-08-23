@@ -3,7 +3,7 @@ import pytest
 import mdcx.crawlers.jav321 as jav321_module
 from mdcx.config.enums import DownloadableFile
 from mdcx.config.models import Language
-from mdcx.models.types import CrawlerInput
+from mdcx.models.model_types import CrawlerInput
 
 
 @pytest.mark.asyncio

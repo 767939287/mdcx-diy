@@ -8,7 +8,7 @@ import mdcx.base.web as base_web
 from mdcx.config.enums import FixedScrapingType
 from mdcx.config.manager import manager
 from mdcx.core.image import cut_thumb_to_poster
-from mdcx.models.types import CrawlersResult
+from mdcx.models.model_types import CrawlersResult
 from mdcx.utils.image import compress_image, compress_images_in_folder_async
 
 

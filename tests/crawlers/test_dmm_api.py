@@ -1,7 +1,7 @@
 import re
 
 from mdcx.crawlers.dmm_api import DmmApiCrawler, _DmmApiItem
-from mdcx.models.types import CrawlerInput
+from mdcx.models.model_types import CrawlerInput
 
 
 def _make_api_item(**overrides) -> _DmmApiItem:

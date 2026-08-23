@@ -13,7 +13,7 @@
 import copy
 
 from ..config.enums import NfoMergeStrategy
-from ..models.types import CrawlersResult
+from ..models.model_types import CrawlersResult
 
 # 关键字段：两源都为空时也不允许空，回退到另一源
 _CRITICAL_FIELDS = {"number", "title"}

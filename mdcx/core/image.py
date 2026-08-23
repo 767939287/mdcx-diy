@@ -14,7 +14,7 @@ from ..base.image import add_mark_thread
 from ..config.enums import DownloadableFile, FixedScrapingType, MarkType
 from ..config.manager import manager
 from ..models.log_buffer import LogBuffer
-from ..models.types import CrawlersResult, FileInfo, OtherInfo
+from ..models.model_types import CrawlersResult, FileInfo, OtherInfo
 from ..signals import signal
 from ..utils import executor, get_used_time
 from ..utils.file import check_pic_async, copy_file_sync, delete_file_sync

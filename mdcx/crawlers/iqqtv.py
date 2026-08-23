@@ -8,7 +8,7 @@ from ..config.enums import Website
 from ..config.manager import manager
 from ..number import match_number
 from .base import BaseCrawler, Context, CrawlerData, CrawlerException
-from .base.types import split_csv
+from .base.base_types import split_csv
 from .official_uncensored import route_uncensored_official
 
 _SUPPORTED_LANGUAGES = {"zh_cn", "zh_tw", "jp"}

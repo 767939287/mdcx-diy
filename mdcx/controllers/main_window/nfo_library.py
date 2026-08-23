@@ -24,7 +24,7 @@ from PyQt6.QtWidgets import (
 )
 
 from mdcx.core.nfo import get_nfo_data, write_nfo
-from mdcx.models.types import CrawlersResult, FileInfo
+from mdcx.models.model_types import CrawlersResult, FileInfo
 from mdcx.signals import signal_qt
 from mdcx.utils import executor, get_current_time
 from mdcx.utils.file import delete_file_sync, open_file_thread

@@ -16,7 +16,7 @@ from ..manual import ManualConfig
 from ..models.enums import FileMode
 from ..models.flags import Flags
 from ..models.log_buffer import LogBuffer
-from ..models.types import CrawlerInput, CrawlerResponse, CrawlerResult, CrawlersResult, CrawlTask, FailureReason
+from ..models.model_types import CrawlerInput, CrawlerResponse, CrawlerResult, CrawlersResult, CrawlTask, FailureReason
 from ..number import is_uncensored
 from ..utils.dataclass import update
 from ..utils.xml import XML_TEXT_FIELDS, normalize_xml_text

@@ -9,7 +9,7 @@ from ..config.enums import Website
 from ..config.manager import manager
 from ..core.mosaic import is_plain_uncensored_mosaic
 from .base import BaseCrawler, Context, CrawlerData, CrawlerException
-from .base.types import split_csv
+from .base.base_types import split_csv
 
 # javbus 镜像域名列表（主站 + 备用，按可用性排列；用户配置 custom_url 时优先使用）
 _JAVBUS_DOMAINS = [

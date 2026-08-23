@@ -2,7 +2,7 @@ import pytest
 
 import mdcx.crawlers.avbase as avbase_module
 from mdcx.crawlers.avbase import AvbaseCrawler
-from mdcx.models.types import CrawlerInput
+from mdcx.models.model_types import CrawlerInput
 
 
 @pytest.mark.parametrize(

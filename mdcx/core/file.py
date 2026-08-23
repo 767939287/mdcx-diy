@@ -16,7 +16,7 @@ from ..consts import IS_MAC, IS_WINDOWS
 from ..models.enums import FileMode
 from ..models.flags import FileDoneDict, Flags
 from ..models.log_buffer import LogBuffer
-from ..models.types import BaseCrawlerResult, CrawlersResult, FileInfo, OtherInfo
+from ..models.model_types import BaseCrawlerResult, CrawlersResult, FileInfo, OtherInfo
 from ..number import get_file_number, get_number_letters, is_uncensored
 from ..signals import signal
 from ..utils import split_path

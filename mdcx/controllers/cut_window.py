@@ -20,7 +20,7 @@ from ..views.posterCutTool import Ui_Dialog_cut_poster
 from .main_window.style import get_theme_tokens
 
 if TYPE_CHECKING:
-    from ..models.types import FileInfo
+    from ..models.model_types import FileInfo
     from .main_window.main_window import MyMAinWindow
 
 

@@ -2,7 +2,7 @@ import pytest
 
 from mdcx.config.models import Language
 from mdcx.crawlers.base import GenericBaseCrawler
-from mdcx.crawlers.base.types import Context
+from mdcx.crawlers.base.base_types import Context
 from mdcx.crawlers.javlibrary import language_path, normalize_language
 
 

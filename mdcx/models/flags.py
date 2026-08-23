@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any, TypedDict
 
 from .enums import FileMode
-from .types import ScrapeResult
+from .model_types import ScrapeResult
 
 
 class FileDoneDict(TypedDict):

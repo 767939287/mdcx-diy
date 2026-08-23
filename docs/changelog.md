@@ -46,6 +46,7 @@
 - **崩溃容错**：get_new_release 日期格式、parse_runtime 时长解析、hdouban 秒数、强杀线程单次注入与全局停止超时保护
 - **并发/性能**：is_proxy_host O(1) 映射、镜像轮询重试去重、AVdb 并发预热、连接池锁外清理、Flags 重置保持异步锁身份稳定、TMDB 演员库并发写保护、女优信息库加锁
 - **其他**：DMM 9 前缀番号识别、CF 指纹轮换（safari17_2_ios）、读取模式不受断点缓存干扰、打包 hidden-import 补齐、配置保存竞态/重试链、优雅退出、ComputedLease 非阻塞
+- **网络设置说明文字截断/未左对齐**：label_103 高度写死 70px 且未开自动换行，5 行青色说明文字底部被裁、缩在滑块列下方未与「重试次数」对齐；改为跨两列（colspan=2）+ wordWrap + 由内容撑高，内部网格高度 500→540 防下方控件被挤出框外
 
 ### 工程质量
 
@@ -55,6 +56,7 @@
 - **版本元数据统一**：Python 包版本同步 GUI 展示版本，并用回归测试防止再次分裂
 - **静态质量收口**：清理 B005/B007/B904 等高价值 Ruff 告警，异常链保留根因，补目录删除安全测试
 - **性能优化**：PNG 压缩级别降为默认 6、convert_half 改翻译表、分块并发数提取常量、UA 池更新至 Chrome 115-135
+- **mypy 类型检查启用修复**：quick_check 改用 `sys.executable -m mypy` 调用（mypy.exe 入口脚本未绑定 venv 致 ModuleNotFoundError）；重命名与标准库冲突的 types 模块（`mdcx/models/types.py`→`model_types.py`、`mdcx/crawlers/base/types.py`→`base_types.py`，108 处引用同步改写）消除 mypy shadowing 硬错误，mypy 现可完整检查全部 151 个源文件
 
 ### 文档
 

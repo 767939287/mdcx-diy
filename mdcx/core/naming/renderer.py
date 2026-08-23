@@ -3,7 +3,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any
 
-from ...models.types import CrawlersResult, FileInfo
+from ...models.model_types import CrawlersResult, FileInfo
 from .fields import TRUNCATE_PRIORITY, NamingContext, build_naming_context
 from .sanitize import cleanup_rendered_text, sanitize_name
 from .template import render_template

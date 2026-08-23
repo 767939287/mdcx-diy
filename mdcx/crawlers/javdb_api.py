@@ -9,7 +9,7 @@ from parsel import Selector
 
 from ..config.manager import manager
 from ..config.models import Website
-from ..models.types import CrawlerResult
+from ..models.model_types import CrawlerResult
 from ..number import match_number
 from .base import BaseCrawler, CrawlerData, CrawlerException, DetailPageParser, extract_all_texts, extract_text
 

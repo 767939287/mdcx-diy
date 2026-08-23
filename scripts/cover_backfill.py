@@ -26,7 +26,7 @@ from mdcx.core.web import poster_download
 from mdcx.crawler import CrawlerProvider
 from mdcx.models.enums import FileMode
 from mdcx.models.log_buffer import LogBuffer
-from mdcx.models.types import CrawlersResult, FileInfo, OtherInfo
+from mdcx.models.model_types import CrawlersResult, FileInfo, OtherInfo
 from mdcx.number import get_file_number, get_number_letters
 from mdcx.utils.file import check_pic_async, copy_file_async, delete_file_async, move_file_async
 
@@ -198,7 +198,7 @@ def _is_usable_dmm_landscape(size: tuple[int, int]) -> bool:
 async def _try_dmm_direct_backfill(number: str, output_dir: Path, *, overwrite: bool) -> BackfillResult | None:
     from mdcx.core.image import cut_thumb_to_poster
     from mdcx.crawlers.dmm_direct import generate_image_candidates
-    from mdcx.models.types import CrawlersResult
+    from mdcx.models.model_types import CrawlersResult
 
     output_dir.mkdir(parents=True, exist_ok=True)
     base = output_dir / _safe_basename(number)

@@ -14,7 +14,7 @@ from ..config.manager import manager
 from ..config.resources import resources
 from ..gen.field_enums import CrawlerResultFields
 from ..models.log_buffer import LogBuffer
-from ..models.types import CrawlersResult
+from ..models.model_types import CrawlersResult
 from ..number import get_number_letters
 from ..utils import clean_list, get_used_time
 from ..utils.language import is_japanese, is_probably_english_for_translation

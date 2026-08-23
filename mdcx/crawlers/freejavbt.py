@@ -10,7 +10,7 @@ from ..base.web import get_dmm_trailer
 from ..config.manager import manager
 from ..config.models import Website
 from .base import BaseCrawler, Context, CrawlerData, CrawlerException, get_year
-from .base.types import split_csv
+from .base.base_types import split_csv
 
 # freejavbt 镜像域名（主站 + 备用；用户配置 custom_url 时优先使用）
 _FREEJAVBT_DOMAINS = [

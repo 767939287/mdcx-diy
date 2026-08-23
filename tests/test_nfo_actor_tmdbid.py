@@ -3,7 +3,7 @@ from lxml import etree
 
 from mdcx.config.enums import NfoInclude
 from mdcx.core import nfo as nfo_module
-from mdcx.models.types import CrawlersResult, FileInfo
+from mdcx.models.model_types import CrawlersResult, FileInfo
 
 
 class _RenderedTitle:

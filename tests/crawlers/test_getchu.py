@@ -11,7 +11,7 @@ from mdcx.crawlers.getchu import (
     normalize_detail_url,
 )
 from mdcx.crawlers.getchu_dmm import GetchuDmmCrawler
-from mdcx.models.types import CrawlerInput
+from mdcx.models.model_types import CrawlerInput
 
 
 class FakeGetchuClient:

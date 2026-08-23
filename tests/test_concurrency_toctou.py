@@ -192,7 +192,7 @@ def test_flags_reset_keeps_async_locks_stable():
 @pytest.mark.asyncio
 async def test_crawl_cache_concurrent_put_eviction():
     """并发写入 _crawl_cache 触发淘汰逻辑时不触发 RuntimeError。"""
-    from mdcx.models.types import CrawlersResult
+    from mdcx.models.model_types import CrawlersResult
 
     cache = _fc._crawl_cache
     cache.clear()

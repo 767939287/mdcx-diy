@@ -4,7 +4,7 @@ from typing import TypedDict, Unpack
 
 from parsel import Selector
 
-from .types import NOT_SUPPORT, Context, CrawlerData, CSSSelector, FieldRes, FieldValue, SelectorType
+from .base_types import NOT_SUPPORT, Context, CrawlerData, CSSSelector, FieldRes, FieldValue, SelectorType
 
 
 def extract_text(html: Selector, *selector: SelectorType) -> str:

@@ -40,7 +40,7 @@ from ..crawler import CrawlerProvider
 from ..models.enums import FileMode
 from ..models.flags import JSON_DATA_CACHE_MAX_ENTRIES, FileDoneDict, Flags
 from ..models.log_buffer import LogBuffer
-from ..models.types import CrawlersResult, FileInfo, OtherInfo, ScrapeResult, ShowData
+from ..models.model_types import CrawlersResult, FileInfo, OtherInfo, ScrapeResult, ShowData
 from ..signals import signal
 from ..tools.emby_actor_image import update_emby_actor_photo
 from ..tools.emby_actor_info import creat_kodi_actors

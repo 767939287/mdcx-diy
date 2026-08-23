@@ -5,7 +5,7 @@ from typing import Literal
 
 from PyQt6.QtCore import QObject, pyqtSignal
 
-from .models.types import ShowData
+from .models.model_types import ShowData
 from .utils import singleton
 
 

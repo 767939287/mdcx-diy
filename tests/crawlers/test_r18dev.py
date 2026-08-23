@@ -2,7 +2,7 @@ import pytest
 
 from mdcx.config.models import Website
 from mdcx.crawlers.r18dev import R18devCrawler, _generate_content_id_variations, _normalize_id, _series_number
-from mdcx.models.types import CrawlerInput
+from mdcx.models.model_types import CrawlerInput
 
 
 def test_normalize_id():
@@ -304,7 +304,7 @@ async def test_run_with_content_id_fallback(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_post_process_fixes_trailer():
-    from mdcx.crawlers.base.types import CrawlerData
+    from mdcx.crawlers.base.base_types import CrawlerData
 
     crawler = R18devCrawler(client=None)
     data = CrawlerData(
@@ -320,7 +320,7 @@ async def test_post_process_fixes_trailer():
 
 @pytest.mark.asyncio
 async def test_post_process_fills_originaltitle():
-    from mdcx.crawlers.base.types import CrawlerData
+    from mdcx.crawlers.base.base_types import CrawlerData
 
     crawler = R18devCrawler(client=None)
     data = CrawlerData(
@@ -386,7 +386,7 @@ async def _fail(url: str) -> None:
 
 @pytest.mark.asyncio
 async def test_upgrade_dmm_cover_success(monkeypatch):
-    from mdcx.crawlers.base.types import CrawlerData
+    from mdcx.crawlers.base.base_types import CrawlerData
     from mdcx.crawlers.r18dev import _upgrade_dmm_cover
 
     async def _hd_size(url):
@@ -403,7 +403,7 @@ async def test_upgrade_dmm_cover_success(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_upgrade_dmm_cover_fail_keeps_original(monkeypatch):
-    from mdcx.crawlers.base.types import CrawlerData
+    from mdcx.crawlers.base.base_types import CrawlerData
     from mdcx.crawlers.r18dev import _upgrade_dmm_cover
 
     monkeypatch.setattr("mdcx.base.web.check_url", _fail)
@@ -416,7 +416,7 @@ async def test_upgrade_dmm_cover_fail_keeps_original(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_upgrade_dmm_cover_uses_data_number(monkeypatch):
-    from mdcx.crawlers.base.types import CrawlerData
+    from mdcx.crawlers.base.base_types import CrawlerData
     from mdcx.crawlers.r18dev import _upgrade_dmm_cover
 
     async def _hd_size(url):

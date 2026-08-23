@@ -14,7 +14,7 @@ import typer
 
 from mdcx.cmd import crawl as crawl_module
 from mdcx.config.models import Website
-from mdcx.models.types import CrawlerInput
+from mdcx.models.model_types import CrawlerInput
 
 
 @dataclass

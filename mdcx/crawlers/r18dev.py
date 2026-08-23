@@ -4,7 +4,7 @@ from typing import override
 
 from ..config.manager import manager
 from ..config.models import Website
-from ..models.types import CrawlerResult
+from ..models.model_types import CrawlerResult
 from .base import BaseCrawler, CrawlerData
 
 _API_BASE = "https://r18.dev"

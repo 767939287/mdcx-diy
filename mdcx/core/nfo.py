@@ -23,7 +23,7 @@ from ..config.resource_policy import resource_policy
 from ..gen.field_enums import CrawlerResultFields
 from ..manual import ManualConfig
 from ..models.log_buffer import LogBuffer
-from ..models.types import CrawlersResult, FileInfo, OtherInfo
+from ..models.model_types import CrawlersResult, FileInfo, OtherInfo
 from ..number import get_number_letters
 from ..signals import signal
 from ..utils import get_used_time

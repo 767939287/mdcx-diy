@@ -3,7 +3,7 @@ import pytest
 from mdcx.crawlers.avheat import AvheatCrawler
 from mdcx.crawlers.avmoo import AvmooCrawler
 from mdcx.crawlers.avsox import AvsoxCrawler
-from mdcx.models.types import CrawlerInput
+from mdcx.models.model_types import CrawlerInput
 
 SEARCH_RESPONSE = {
     "code": 200,

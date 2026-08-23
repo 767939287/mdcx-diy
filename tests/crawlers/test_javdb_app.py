@@ -2,7 +2,7 @@ import pytest
 
 from mdcx.config.models import Website
 from mdcx.crawlers.javdb_app import JavdbAppCrawler
-from mdcx.models.types import CrawlerInput
+from mdcx.models.model_types import CrawlerInput
 
 
 def test_normalize_image_url_rewrites_legacy_host():

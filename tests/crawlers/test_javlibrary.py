@@ -5,7 +5,7 @@ from mdcx.config.manager import manager
 from mdcx.crawlers.base import get_crawler
 from mdcx.crawlers.javlibrary import JavlibraryCrawler
 from mdcx.gen.field_enums import CrawlerResultFields
-from mdcx.models.types import CrawlerInput
+from mdcx.models.model_types import CrawlerInput
 
 
 class FakeJavlibraryClient:
@@ -301,7 +301,7 @@ async def test_post_process_upgrades_dmm_cover(monkeypatch):
     monkeypatch.setattr("mdcx.crawlers.dmm_direct.upgrade_dmm_cover", fake_upgrade)
     monkeypatch.setattr("mdcx.crawlers.dmm_direct.is_uncensored_number", lambda n: False)
 
-    from mdcx.models.types import CrawlerResult
+    from mdcx.models.model_types import CrawlerResult
 
     res = CrawlerResult(
         number="SSNI-804",

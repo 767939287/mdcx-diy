@@ -6,10 +6,10 @@ from typing import TYPE_CHECKING, Any, Never
 from parsel import Selector
 
 from mdcx.config.models import Website
-from mdcx.models.types import CrawlerInput, CrawlerResponse, CrawlerResult
+from mdcx.models.model_types import CrawlerInput, CrawlerResponse, CrawlerResult
 from mdcx.utils.domain_rotate import DomainRotator
 
-from .types import Context, CrawlerData, CrawlerException
+from .base_types import Context, CrawlerData, CrawlerException
 
 if TYPE_CHECKING:
     from mdcx.web_async import AsyncWebClient

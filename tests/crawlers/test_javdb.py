@@ -3,7 +3,7 @@ from parsel import Selector
 
 from mdcx.config.models import Website
 from mdcx.crawlers.javdb import JavdbCrawler
-from mdcx.models.types import CrawlerInput
+from mdcx.models.model_types import CrawlerInput
 
 
 def _load_html(name: str) -> Selector:
@@ -20,7 +20,7 @@ def test_site_enum():
 async def test_parse_search_page_matches_exact():
     crawler = JavdbCrawler(client=None)
     html = _load_html("search_list.html")
-    from mdcx.crawlers.base.types import Context
+    from mdcx.crawlers.base.base_types import Context
 
     ctx = Context(input=CrawlerInput.empty())
     ctx.input.number = "IPX-535"
@@ -33,7 +33,7 @@ async def test_parse_search_page_matches_exact():
 async def test_parse_search_page_bf_not_matched_by_abf():
     crawler = JavdbCrawler(client=None)
     html = _load_html("search_list.html")
-    from mdcx.crawlers.base.types import Context
+    from mdcx.crawlers.base.base_types import Context
 
     ctx = Context(input=CrawlerInput.empty())
     ctx.input.number = "BF-030"
@@ -45,7 +45,7 @@ async def test_parse_search_page_bf_not_matched_by_abf():
 async def test_parse_search_page_abf_still_matches():
     crawler = JavdbCrawler(client=None)
     html = _load_html("search_list.html")
-    from mdcx.crawlers.base.types import Context
+    from mdcx.crawlers.base.base_types import Context
 
     ctx = Context(input=CrawlerInput.empty())
     ctx.input.number = "ABF-030"

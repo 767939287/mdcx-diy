@@ -14,7 +14,7 @@ from zhconv import convert as zhconv_convert
 
 from ..config.manager import manager
 from ..config.models import Website
-from ..models.types import CrawlerResult
+from ..models.model_types import CrawlerResult
 from ..number import match_number
 from .base import BaseCrawler, Context, CrawlerData, CrawlerException
 

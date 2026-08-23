@@ -9,7 +9,7 @@ from aiofiles import open as aio_open
 from parsel import Selector
 
 from mdcx.crawlers.base import Context, CrawlerData, DetailPageParser, NotSupport
-from mdcx.models.types import CrawlerInput, Language
+from mdcx.models.model_types import CrawlerInput, Language
 
 
 class TestCase(TypedDict):

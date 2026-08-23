@@ -6,7 +6,7 @@ import pytest
 
 from mdcx.models.enums import FileMode
 from mdcx.models.flags import Flags
-from mdcx.models.types import FileInfo
+from mdcx.models.model_types import FileInfo
 
 
 def _build_file_info(number: str) -> FileInfo:

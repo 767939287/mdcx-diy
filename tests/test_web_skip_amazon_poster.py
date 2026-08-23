@@ -1,7 +1,7 @@
 import pytest
 
 from mdcx.core.web import _should_skip_amazon_for_existing_poster
-from mdcx.models.types import CrawlersResult
+from mdcx.models.model_types import CrawlersResult
 
 DMM_HD_PS = "https://awsimgsrc.dmm.co.jp/pics_dig/digital/video/ssis00001/ssis00001ps.jpg"
 DMM_THUMB_PS = "https://awsimgsrc.dmm.co.jp/pics_dig/digital/video/ipx00001/ipx00001ps.jpg"

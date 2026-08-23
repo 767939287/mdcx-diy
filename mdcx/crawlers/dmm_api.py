@@ -7,7 +7,7 @@ from pydantic import BaseModel, ConfigDict
 from mdcx.config.enums import DownloadableFile
 from mdcx.config.manager import manager
 from mdcx.config.models import Website
-from mdcx.models.types import CrawlerResult
+from mdcx.models.model_types import CrawlerResult
 from mdcx.signals import signal
 
 from .base import CrawlerData, CrawlerException

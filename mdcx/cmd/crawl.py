@@ -16,7 +16,7 @@ from ..config.models import Language, Website
 from ..crawler import Never
 from ..crawlers.base import GenericBaseCrawler, get_crawler
 from ..manual import ManualConfig
-from ..models.types import CrawlerInput
+from ..models.model_types import CrawlerInput
 from ..utils import executor
 from ..web_async import AsyncWebClient
 

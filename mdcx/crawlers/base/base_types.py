@@ -2,7 +2,7 @@ from dataclasses import dataclass, field
 from re import Pattern
 
 from mdcx.core.mosaic import normalize_mosaic
-from mdcx.models.types import CrawlerDebugInfo, CrawlerInput, CrawlerResult
+from mdcx.models.model_types import CrawlerDebugInfo, CrawlerInput, CrawlerResult
 from mdcx.utils.dataclass import update_valid
 
 

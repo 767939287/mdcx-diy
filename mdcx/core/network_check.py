@@ -282,8 +282,8 @@ async def _probe_crawler_capability(
 
         from mdcx.config.enums import Language
         from mdcx.crawlers import get_crawler
-        from mdcx.crawlers.base.types import CrawlerException
-        from mdcx.models.types import CrawlerInput
+        from mdcx.crawlers.base.base_types import CrawlerException
+        from mdcx.models.model_types import CrawlerInput
     except Exception:
         return None, ""
 

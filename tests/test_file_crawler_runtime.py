@@ -16,7 +16,14 @@ from mdcx.gen.field_enums import CrawlerResultFields
 from mdcx.manual import ManualConfig
 from mdcx.models.enums import FileMode
 from mdcx.models.log_buffer import LogBuffer
-from mdcx.models.types import CrawlerDebugInfo, CrawlerInput, CrawlerResponse, CrawlerResult, CrawlersResult, CrawlTask
+from mdcx.models.model_types import (
+    CrawlerDebugInfo,
+    CrawlerInput,
+    CrawlerResponse,
+    CrawlerResult,
+    CrawlersResult,
+    CrawlTask,
+)
 
 
 class _FakeCrawler:

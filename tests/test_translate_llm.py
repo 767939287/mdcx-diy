@@ -3,7 +3,7 @@ import pytest
 from mdcx.base.translate import TranslateResult
 from mdcx.config.enums import Language, Translator
 from mdcx.config.models import Config
-from mdcx.models.types import CrawlersResult
+from mdcx.models.model_types import CrawlersResult
 
 
 def test_config_update_migrate_legacy_llm_prompt_in_translate_config():

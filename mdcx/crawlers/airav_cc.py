@@ -11,7 +11,7 @@ from ..config.manager import manager
 from ..number import match_number
 from ..signals import signal
 from .base import BaseCrawler, Context, CrawlerData, CrawlerException, get_year
-from .base.types import split_csv
+from .base.base_types import split_csv
 
 
 def get_web_number(html):

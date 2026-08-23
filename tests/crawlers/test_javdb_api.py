@@ -5,7 +5,7 @@ from parsel import Selector
 
 from mdcx.config.models import Website
 from mdcx.crawlers.javdb_api import JavdbApiCrawler, normalize_actor_name
-from mdcx.models.types import CrawlerInput
+from mdcx.models.model_types import CrawlerInput
 
 
 def _load_html(name: str) -> Selector:
@@ -68,7 +68,7 @@ def test_parse_search_list():
 async def test_parse_search_page_matches_exact():
     crawler = JavdbApiCrawler(client=None)
     html = _load_html("search_list.html")
-    from mdcx.crawlers.base.types import Context
+    from mdcx.crawlers.base.base_types import Context
 
     ctx = Context(input=CrawlerInput.empty())
     ctx.input.number = "IPX-535"
@@ -81,7 +81,7 @@ async def test_parse_search_page_matches_exact():
 async def test_parse_search_page_matches_fuzzy():
     crawler = JavdbApiCrawler(client=None)
     html = _load_html("search_single.html")
-    from mdcx.crawlers.base.types import Context
+    from mdcx.crawlers.base.base_types import Context
 
     ctx = Context(input=CrawlerInput.empty())
     ctx.input.number = "URE-018"
@@ -94,7 +94,7 @@ async def test_parse_search_page_matches_fuzzy():
 async def test_parse_search_page_no_match():
     crawler = JavdbApiCrawler(client=None)
     html = _load_html("search_single.html")
-    from mdcx.crawlers.base.types import Context
+    from mdcx.crawlers.base.base_types import Context
 
     ctx = Context(input=CrawlerInput.empty())
     ctx.input.number = "ZZZ-999"
@@ -106,7 +106,7 @@ async def test_parse_search_page_no_match():
 async def test_parse_search_page_bf_not_matched_by_abf():
     crawler = JavdbApiCrawler(client=None)
     html = _load_html("search_list.html")
-    from mdcx.crawlers.base.types import Context
+    from mdcx.crawlers.base.base_types import Context
 
     ctx = Context(input=CrawlerInput.empty())
     ctx.input.number = "BF-030"
@@ -118,7 +118,7 @@ async def test_parse_search_page_bf_not_matched_by_abf():
 async def test_parse_search_page_abf_still_matches():
     crawler = JavdbApiCrawler(client=None)
     html = _load_html("search_list.html")
-    from mdcx.crawlers.base.types import Context
+    from mdcx.crawlers.base.base_types import Context
 
     ctx = Context(input=CrawlerInput.empty())
     ctx.input.number = "ABF-030"
@@ -130,7 +130,7 @@ async def test_parse_search_page_abf_still_matches():
 @pytest.mark.asyncio
 async def test_generate_search_url():
     crawler = JavdbApiCrawler(client=None)
-    from mdcx.crawlers.base.types import Context
+    from mdcx.crawlers.base.base_types import Context
 
     ctx = Context(input=CrawlerInput.empty())
     ctx.input.number = "IPX-535"
@@ -154,7 +154,7 @@ async def test_fetch_search_preserves_q_param(monkeypatch):
     monkeypatch.setattr(crawler, "_try_mirrors", fake_try_mirrors)
     monkeypatch.setattr(crawler, "_throttle_page_request", lambda *a, **k: __import__("asyncio").sleep(0))
 
-    from mdcx.crawlers.base.types import Context
+    from mdcx.crawlers.base.base_types import Context
 
     ctx = Context(input=CrawlerInput.empty())
     search_url = "https://mirror/search?f=all&q=IPX-535&page=1"
@@ -170,7 +170,7 @@ async def test_fetch_search_preserves_q_param(monkeypatch):
 async def test_parse_detail_full():
     html = _load_html("detail_full.html")
     crawler = JavdbApiCrawler(client=None)
-    from mdcx.crawlers.base.types import Context
+    from mdcx.crawlers.base.base_types import Context
 
     ctx = Context(input=CrawlerInput.empty())
 
@@ -202,7 +202,7 @@ async def test_parse_detail_full():
 async def test_parse_detail_minimal():
     html = _load_html("detail_minimal.html")
     crawler = JavdbApiCrawler(client=None)
-    from mdcx.crawlers.base.types import Context
+    from mdcx.crawlers.base.base_types import Context
 
     ctx = Context(input=CrawlerInput.empty())
     ctx.input.number = "MIDV-512"
@@ -224,7 +224,7 @@ async def test_parse_detail_minimal():
 
 @pytest.mark.asyncio
 async def test_post_process_fixes():
-    from mdcx.crawlers.base.types import CrawlerData
+    from mdcx.crawlers.base.base_types import CrawlerData
 
     crawler = JavdbApiCrawler(client=None)
     data = CrawlerData(
@@ -234,7 +234,7 @@ async def test_post_process_fixes():
         trailer="//example.com/trailer.mp4",
     )
     result = data.to_result()
-    from mdcx.crawlers.base.types import Context
+    from mdcx.crawlers.base.base_types import Context
 
     ctx = Context(input=CrawlerInput.empty())
     result = await crawler.post_process(ctx, result)
@@ -247,7 +247,7 @@ async def test_post_process_fixes():
 
 @pytest.mark.asyncio
 async def test_post_process_uncensored():
-    from mdcx.crawlers.base.types import CrawlerData
+    from mdcx.crawlers.base.base_types import CrawlerData
 
     crawler = JavdbApiCrawler(client=None)
     data = CrawlerData(
@@ -256,7 +256,7 @@ async def test_post_process_uncensored():
         thumb="https://c0.jdbstatic.com/covers/xx/test.jpg",
     )
     result = data.to_result()
-    from mdcx.crawlers.base.types import Context
+    from mdcx.crawlers.base.base_types import Context
 
     ctx = Context(input=CrawlerInput.empty())
     result = await crawler.post_process(ctx, result)

@@ -9,7 +9,7 @@ from ..config.manager import manager
 from ..config.models import Website
 from ..signals import signal
 from .base import BaseCrawler, CrawlerData, CrawlerException
-from .base.types import NOT_SUPPORT, Context
+from .base.base_types import NOT_SUPPORT, Context
 
 
 class MissavApiCrawler(BaseCrawler):

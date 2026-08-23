@@ -12,7 +12,7 @@ from ..base.web import check_url, is_dmm_image_url, normalize_media_url
 from ..config.enums import DownloadableFile
 from ..config.manager import manager
 from ..config.models import Website
-from ..models.types import CrawlerResult
+from ..models.model_types import CrawlerResult
 from .base import BaseCrawler, CrawlerData, CrawlerException
 
 type ImageLogFn = Callable[[str], None] | None

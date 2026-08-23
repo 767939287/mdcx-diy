@@ -9,8 +9,8 @@ from ..config.enums import FieldRule, Website
 from ..config.manager import manager
 from ..signals import signal
 from .base import BaseCrawler, Context, CrawlerData, CrawlerException
+from .base.base_types import split_csv
 from .base.parser import parse_runtime
-from .base.types import split_csv
 
 
 def getTitle(html):  # 获取标题

@@ -10,7 +10,7 @@ from mdcx.core.mosaic import (
     has_uncensored_mark,
     normalize_mosaic,
 )
-from mdcx.models.types import FileInfo, OtherInfo
+from mdcx.models.model_types import FileInfo, OtherInfo
 
 
 @pytest.mark.parametrize(

@@ -2,7 +2,7 @@ import pytest
 
 from mdcx.config.enums import Language
 from mdcx.crawlers.freejavbt import FreejavbtCrawler
-from mdcx.models.types import CrawlerInput
+from mdcx.models.model_types import CrawlerInput
 
 
 class FakeFreejavbtClient:

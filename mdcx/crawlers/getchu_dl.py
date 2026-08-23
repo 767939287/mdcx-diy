@@ -7,7 +7,7 @@ import urllib.parse
 from lxml import etree
 
 from .base import Context, CrawlerData, CrawlerException, get_year
-from .base.types import split_csv
+from .base.base_types import split_csv
 
 
 def get_title(html):

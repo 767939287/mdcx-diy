@@ -5,7 +5,7 @@ import pytest
 from mdcx.config.enums import Language, NfoInclude, OutlineShow, ReadMode
 from mdcx.core import nfo as nfo_module
 from mdcx.gen.field_enums import CrawlerResultFields
-from mdcx.models.types import CrawlersResult, FileInfo
+from mdcx.models.model_types import CrawlersResult, FileInfo
 
 
 class _RenderedTitle:

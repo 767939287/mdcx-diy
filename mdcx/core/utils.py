@@ -10,7 +10,7 @@ from ..config.resources import resources
 from ..gen.field_enums import CrawlerResultFields
 from ..manual import ManualConfig
 from ..models.log_buffer import LogBuffer
-from ..models.types import BaseCrawlerResult, CrawlersResult, FileInfo
+from ..models.model_types import BaseCrawlerResult, CrawlersResult, FileInfo
 from ..number import get_number_letters, strip_escape_strings
 from ..signals import signal
 from ..utils import get_used_time

@@ -8,7 +8,7 @@ from urllib.parse import urljoin
 from parsel import Selector
 
 from ..config.models import Website
-from ..models.types import CrawlerInput
+from ..models.model_types import CrawlerInput
 from .base import (
     Context,
     CrawlerData,

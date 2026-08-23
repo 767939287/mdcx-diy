@@ -4,7 +4,7 @@ from lxml import etree
 from mdcx.config.enums import Language
 from mdcx.config.manager import manager
 from mdcx.crawlers.fc2 import Fc2Crawler, getRuntime
-from mdcx.models.types import CrawlerInput
+from mdcx.models.model_types import CrawlerInput
 
 
 class FakeFc2Client:

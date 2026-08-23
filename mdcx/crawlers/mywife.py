@@ -7,7 +7,7 @@ from lxml import etree
 from ..base.web import check_url
 from ..config.enums import Website
 from .base import BaseCrawler, Context, CrawlerData, CrawlerException
-from .base.types import split_csv
+from .base.base_types import split_csv
 
 seesaawiki_request_fail_flag = False
 

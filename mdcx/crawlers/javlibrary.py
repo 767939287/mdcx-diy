@@ -9,9 +9,9 @@ from ..cf_bypass.selenium_adapter import is_cf_html as is_selenium_cf_html
 from ..config.enums import Language, Website
 from ..config.manager import manager
 from ..gen.field_enums import CrawlerResultFields
-from ..models.types import CrawlerResult
+from ..models.model_types import CrawlerResult
 from .base import BaseCrawler, Context, CrawlerData, CrawlerException, get_year
-from .base.types import split_csv
+from .base.base_types import split_csv
 
 
 def _xpath_joined_text(html, xpath: str) -> str:

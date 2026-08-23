@@ -3,7 +3,7 @@ from dataclasses import dataclass
 
 from ...base.number import deal_actor_more
 from ...config.manager import manager
-from ...models.types import CrawlersResult, FileInfo
+from ...models.model_types import CrawlersResult, FileInfo
 from ...number import get_number_first_letter
 from ...utils import get_new_release, split_path
 

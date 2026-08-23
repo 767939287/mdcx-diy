@@ -3,7 +3,7 @@ import pytest
 from mdcx.config.enums import Language
 from mdcx.config.manager import manager
 from mdcx.crawlers.fc2club import Fc2clubCrawler
-from mdcx.models.types import CrawlerInput
+from mdcx.models.model_types import CrawlerInput
 
 
 class FakeFc2clubClient:

@@ -17,7 +17,7 @@ from PIL import Image
 from ..base.web import get_amazon_data, get_imgsize
 from ..config.manager import manager
 from ..models.log_buffer import LogBuffer
-from ..models.types import CrawlersResult
+from ..models.model_types import CrawlersResult
 from ..utils import convert_half
 from . import amazon_database
 from .amazon_match import (

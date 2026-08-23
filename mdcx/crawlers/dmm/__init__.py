@@ -15,7 +15,7 @@ from mdcx.base.web import check_url, get_url_content_length, normalize_media_url
 from mdcx.config.enums import DownloadableFile
 from mdcx.config.manager import manager
 from mdcx.config.models import Website
-from mdcx.models.types import CrawlerInput
+from mdcx.models.model_types import CrawlerInput
 from mdcx.signals import signal
 from mdcx.utils import collapse_inline_script_splits
 from mdcx.utils.dataclass import update_valid

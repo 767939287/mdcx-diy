@@ -7,7 +7,7 @@ from lxml import etree
 from ..config.manager import manager
 from ..config.models import Website
 from .base import BaseCrawler, Context, CrawlerData, CrawlerException
-from .base.types import split_csv
+from .base.base_types import split_csv
 
 
 def _xpath_joined_text(html, xpath: str) -> str:

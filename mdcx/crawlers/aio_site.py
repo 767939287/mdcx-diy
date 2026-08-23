@@ -4,7 +4,7 @@ from typing import override
 
 from ..base.web import get_aio_domain
 from .base import BaseCrawler, Context, CrawlerData, CrawlerException, get_year
-from .base.types import NOT_SUPPORT
+from .base.base_types import NOT_SUPPORT
 
 
 class AioSiteCrawler(BaseCrawler):

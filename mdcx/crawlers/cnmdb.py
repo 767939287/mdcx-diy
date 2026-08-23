@@ -6,7 +6,7 @@ from urllib.parse import unquote
 from lxml import etree
 
 from ..config.models import Website
-from ..models.types import CrawlerResult
+from ..models.model_types import CrawlerResult
 from ..number import match_number
 from .base import BaseCrawler, CrawlerData, CrawlerException
 from .guochan import get_number_list

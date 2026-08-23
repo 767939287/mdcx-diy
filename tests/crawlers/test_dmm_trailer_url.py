@@ -4,10 +4,10 @@ from parsel import Selector
 import mdcx.crawlers.dmm as dmm_module
 from mdcx.config.enums import DownloadableFile
 from mdcx.config.manager import manager
-from mdcx.crawlers.base.types import NOT_SUPPORT, Context, CrawlerData
+from mdcx.crawlers.base.base_types import NOT_SUPPORT, Context, CrawlerData
 from mdcx.crawlers.dmm import Category, DMMContext, DmmCrawler
 from mdcx.crawlers.dmm.parsers import MediaVariant, parse_media_variant
-from mdcx.models.types import CrawlerInput
+from mdcx.models.model_types import CrawlerInput
 from mdcx.web_async import AsyncWebClient
 
 

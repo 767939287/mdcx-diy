@@ -11,7 +11,7 @@ from lxml import etree
 from ..config.enums import Website
 from . import getchu_dl
 from .base import BaseCrawler, Context, CrawlerData, CrawlerException, get_year
-from .base.types import split_csv
+from .base.base_types import split_csv
 
 
 def normalize_detail_url(url: str) -> str:

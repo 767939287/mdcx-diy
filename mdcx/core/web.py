@@ -31,7 +31,7 @@ from ..config.resource_policy import resource_policy
 from ..manual import ManualConfig
 from ..models.flags import FileDoneDict, Flags
 from ..models.log_buffer import LogBuffer
-from ..models.types import CrawlersResult, OtherInfo
+from ..models.model_types import CrawlersResult, OtherInfo
 from ..signals import signal
 from ..utils import get_used_time, split_path
 from ..utils.file import check_pic_async, copy_file_async, delete_file_async, move_file_async

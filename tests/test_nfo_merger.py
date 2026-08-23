@@ -4,7 +4,7 @@ import pytest
 
 from mdcx.config.enums import NfoMergeStrategy
 from mdcx.core.nfo_merger import _is_empty, _merge_array, _merge_scalar, merge_nfo_fields
-from mdcx.models.types import CrawlersResult
+from mdcx.models.model_types import CrawlersResult
 
 
 def _make_result(**kwargs) -> CrawlersResult:

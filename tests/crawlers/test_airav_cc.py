@@ -4,7 +4,7 @@ from lxml import etree
 from mdcx.config.enums import Language, Website
 from mdcx.crawlers.airav_cc import AiravCcCrawler, get_real_url
 from mdcx.crawlers.base import get_crawler
-from mdcx.models.types import CrawlerInput
+from mdcx.models.model_types import CrawlerInput
 
 
 class FakeAiravCcClient:

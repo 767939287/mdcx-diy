@@ -3,7 +3,7 @@ import pytest
 from mdcx.config.enums import Language, Website
 from mdcx.crawlers.base import get_crawler
 from mdcx.crawlers.mywife import MywifeCrawler
-from mdcx.models.types import CrawlerInput
+from mdcx.models.model_types import CrawlerInput
 
 
 class FakeMywifeClient:

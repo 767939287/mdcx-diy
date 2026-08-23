@@ -5,7 +5,7 @@ from mdcx.config.enums import DownloadableFile
 from mdcx.config.manager import manager
 from mdcx.config.models import Website
 from mdcx.crawlers.thejavdb_api import TheJavdbApiCrawler, TheJavdbMovie
-from mdcx.models.types import CrawlerInput
+from mdcx.models.model_types import CrawlerInput
 
 
 def test_to_crawler_data_maps_api_response():

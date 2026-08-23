@@ -4,7 +4,7 @@ os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 from PyQt6.QtWidgets import QApplication
 
-from mdcx.models.types import CrawlersResult, ScrapeResult
+from mdcx.models.model_types import CrawlersResult, ScrapeResult
 from mdcx.views.similar_window import SimilarDialog
 
 _app = None

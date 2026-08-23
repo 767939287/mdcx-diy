@@ -8,7 +8,7 @@ from parsel import Selector
 
 from ..base.web import get_imgsize
 from ..config.models import Website
-from ..models.types import CrawlerInput
+from ..models.model_types import CrawlerInput
 from .base import Context, CrawlerData, CrawlerException, GenericBaseCrawler, get_year
 
 

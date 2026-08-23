@@ -5,7 +5,7 @@ import pytest
 from mdcx.config.manager import manager
 from mdcx.core.file import _generate_file_name, _get_folder_path
 from mdcx.core.naming import NameRenderOptions, NamingTarget, render_name
-from mdcx.models.types import CrawlersResult, FileInfo
+from mdcx.models.model_types import CrawlersResult, FileInfo
 
 
 def _build_file_info() -> FileInfo:

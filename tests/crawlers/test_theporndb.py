@@ -5,7 +5,7 @@ from mdcx.config.enums import Language, Switch, Website
 from mdcx.config.manager import manager
 from mdcx.crawlers.base import get_crawler
 from mdcx.crawlers.theporndb import TheporndbCrawler
-from mdcx.models.types import CrawlerInput
+from mdcx.models.model_types import CrawlerInput
 
 
 class FakeTheporndbClient:

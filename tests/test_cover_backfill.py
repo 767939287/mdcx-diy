@@ -5,7 +5,7 @@ import pytest
 
 from mdcx.config.enums import FixedScrapingType, Website
 from mdcx.core import file_crawler
-from mdcx.models.types import FileInfo
+from mdcx.models.model_types import FileInfo
 from scripts import cover_backfill as cb
 
 

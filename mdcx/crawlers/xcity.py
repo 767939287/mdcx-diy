@@ -4,7 +4,7 @@ from typing import Any, override
 
 from ..config.manager import manager
 from ..config.models import Website
-from ..models.types import CrawlerInput
+from ..models.model_types import CrawlerInput
 from .base import BaseCrawler, Context, CrawlerData, CrawlerException
 
 _JP_ACTOR_CACHE: dict[str, str] = {}

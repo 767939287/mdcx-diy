@@ -57,7 +57,7 @@ from mdcx.crawlers.fc2ppvdb import (
 from mdcx.image import PreviewImageLoader
 from mdcx.models.enums import FileMode
 from mdcx.models.flags import Flags
-from mdcx.models.types import CrawlersResult, FileInfo, OtherInfo, ShowData
+from mdcx.models.model_types import CrawlersResult, FileInfo, OtherInfo, ShowData
 from mdcx.signals import signal_qt
 from mdcx.tools.actress_db import ActressDB
 from mdcx.tools.missing import check_missing_number

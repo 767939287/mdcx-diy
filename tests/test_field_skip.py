@@ -7,7 +7,7 @@ from mdcx.config.models import Config, FieldConfig, FieldPriorityConfig
 from mdcx.core.file_crawler import FileScraper
 from mdcx.gen.field_enums import CrawlerResultFields
 from mdcx.manual import ManualConfig
-from mdcx.models.types import (
+from mdcx.models.model_types import (
     CrawlerInput,
 )
 from tests.test_file_crawler_runtime import (

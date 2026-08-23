@@ -3,7 +3,7 @@ from lxml import etree
 
 from mdcx.config.enums import Language
 from mdcx.crawlers.iqqtv import IqqtvCrawler, get_real_url
-from mdcx.models.types import CrawlerInput
+from mdcx.models.model_types import CrawlerInput
 
 
 class FakeIqqtvClient:
