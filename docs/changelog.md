@@ -52,6 +52,7 @@
 - **新增 quick-check 快速检查命令**（ruff + mypy 秒级自检）
 - **死代码清理**：删零调用函数/死变量（A 类 4 项、avsex get_poster、域名壳函数、冗余代码）及无引用的 ping3 依赖
 - **回归测试**：新增 review_regressions/save_success_list/UI 几何/avsox 系/Amazon 匹配等多批测试
+- **版本元数据统一**：Python 包版本同步 GUI 展示版本，并用回归测试防止再次分裂
 - **性能优化**：PNG 压缩级别降为默认 6、convert_half 改翻译表、分块并发数提取常量、UA 池更新至 Chrome 115-135
 
 ### 文档
