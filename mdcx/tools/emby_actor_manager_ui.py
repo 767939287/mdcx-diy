@@ -1637,8 +1637,3 @@ class ActorDetailDialog(QDialog):
         pix = QPixmap(path)
         if not pix.isNull():
             label.setPixmap(pix.scaled(label.size(), Qt.AspectRatioMode.KeepAspectRatio))
-
-
-def open_emby_actor_manager(parent=None):
-    dialog = EmbyActorManagerDialog(parent)
-    dialog.show()

@@ -14,7 +14,6 @@ import aiofiles.os
 import httpx
 from lxml import etree
 from PIL import Image
-from ping3 import ping
 
 from ..config.manager import manager
 from ..consts import GITHUB_RELEASES_API_LATEST
@@ -822,29 +821,6 @@ async def get_dmm_trailer(trailer_url: str) -> str:
             signal.add_log(f"🎬 DMM trailer 保持原质量(新格式): {quality_level} {trailer_url}")
 
     return trailer_url
-
-
-def _ping_host_thread(host_address: str, result_list: list[int | None], i: int) -> None:
-    response = ping(host_address, timeout=1)
-    result_list[i] = int(response * 1000) if response else 0
-
-
-# todo 可以移除 ping, 仅靠 http request 检测网络连通性
-def ping_host(host_address: str) -> str:
-    count = manager.config.retry
-    result_list: list[int | None] = [None] * count
-    thread_list: list[threading.Thread] = [None] * count  # type: ignore
-    for i in range(count):
-        thread_list[i] = threading.Thread(target=_ping_host_thread, args=(host_address, result_list, i))
-        thread_list[i].start()
-    for i in range(count):
-        thread_list[i].join()
-    new_list = [each for each in result_list if each]
-    return (
-        f"  ⏱ Ping {int(sum(new_list) / len(new_list))} ms ({len(new_list)}/{count})"
-        if new_list
-        else f"  🔴 Ping - ms (0/{count})"
-    )
 
 
 def check_version() -> int | None:

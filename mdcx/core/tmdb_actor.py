@@ -54,7 +54,6 @@ _TMDB_QUERY_CACHE_ERROR = "__tmdb_query_cache_error__"
 _TMDB_QUERY_CACHE: dict[str, tuple[float, dict | str]] = {}
 _TMDB_QUERY_INFLIGHT: dict[str, asyncio.Task[dict | None]] = {}
 _TMDB_QUERY_STATE_LOCK = asyncio.Lock()
-_TMDB_QUERY_CACHE_IO_LOCK = asyncio.Lock()
 
 # 串行化演员库 xlsx 的读改写批次（load_workbook → await 查询 → save 跨越 await 点，
 # 并发刮削多个影片时若不互斥，后落盘者会覆盖先前写入的行）。
@@ -287,11 +286,6 @@ def _tmdb_query_cache_load() -> None:
 
         _TMDB_QUERY_CACHE[name] = (float(ts), value)
     _tmdb_query_cache_sanitize(now=now)
-
-
-async def _tmdb_query_cache_persist_async() -> None:
-    async with _TMDB_QUERY_CACHE_IO_LOCK:
-        _tmdb_query_cache_persist_sync()
 
 
 def _tmdb_query_cache_persist_sync() -> None:

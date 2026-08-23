@@ -15,7 +15,6 @@ from ..number import get_number_letters, strip_escape_strings
 from ..signals import signal
 from ..utils import get_used_time
 from ..utils.video import get_video_metadata
-from .naming import NameRenderOptions, NamingTarget, render_name
 
 
 def replace_word(json_data: BaseCrawlerResult):
@@ -282,39 +281,3 @@ def show_result(res: CrawlersResult, start_time: float):
     if manager.config.show_from_log and res.field_log:  # 字段来源信息
         LogBuffer.log().write("\n\n 📒 字段来源\n\n" + res.field_log.strip(" ").strip("\n"))
     LogBuffer.log().write(f"\n 🍀 Data done!({get_used_time(start_time)}s)")
-
-
-def render_name_template(
-    template: str,
-    file_info: FileInfo,
-    json_data: CrawlersResult,
-    show_4k: bool,
-    show_cnword: bool,
-    show_moword: bool,
-    should_escape_result: bool,
-) -> tuple[str, str, str, str, str, str]:
-    """
-    将命名模板渲染成实际值。
-
-    旧调用点仍使用这个函数，内部已切换到 mdcx.core.naming 的统一渲染器。
-    """
-    target = NamingTarget.FILE if should_escape_result else NamingTarget.NFO_TITLE
-    result = render_name(
-        template,
-        file_info,
-        json_data,
-        NameRenderOptions(
-            target=target,
-            show_definition_suffix=show_4k,
-            show_cnword_suffix=show_cnword,
-            show_moword_suffix=show_moword,
-        ),
-    )
-    return (
-        result.text,
-        result.template,
-        result.value("number"),
-        result.value("originaltitle"),
-        result.value("outline"),
-        result.value("title"),
-    )
