@@ -591,7 +591,7 @@ class Scraper:
                     )
                 else:
                     signal.show_log_text(scrape_info_begin + scrape_info_after)
-            remain_count = Flags.scrape_started - count
+            remain_count = max(0, Flags.scrape_started - count)  # 避免瞬时负数显示"刮削中：-1"
             if Flags.scrape_started == count_all:
                 signal.show_log_text(f" 🕷 剩余正在刮削的线程：{remain_count}")
             signal.label_result.emit(f" 刮削中：{remain_count} 成功：{Flags.succ_count} 失败：{Flags.fail_count}")
@@ -672,9 +672,17 @@ class Scraper:
             else None
         )
 
-        await asyncio.gather(fanart_task, poster_task)
+        try:
+            await asyncio.gather(fanart_task, poster_task)
+        except Exception:
+            # fanart/poster 下载异常时取消 extrafanart 后台任务，避免任务泄漏到批次结束
+            if extrafanart_task is not None and not extrafanart_task.done():
+                extrafanart_task.cancel()
+            raise
 
         if not poster_task.result() or not fanart_task.result():
+            if extrafanart_task is not None and not extrafanart_task.done():
+                extrafanart_task.cancel()
             return False
 
         await pic_some_deal(res.number, thumb_final_path, fanart_final_path)

@@ -321,26 +321,26 @@ async def write_nfo(
             if data.score:
                 score = float(data.score)
                 if NfoInclude.SCORE in nfo_include_new:
-                    print("  <rating>" + str(score) + "</rating>", file=code)
+                    write_text_element(code, "rating", str(score), indent="  ")
                 if NfoInclude.CRITICRATING in nfo_include_new:
-                    print("  <criticrating>" + str(int(score * 10)) + "</criticrating>", file=code)
+                    write_text_element(code, "criticrating", str(int(score * 10)), indent="  ")
         except Exception:
             LogBuffer.log().write(traceback.format_exc())
 
         # 输出我想看人数
         try:
             if data.wanted and NfoInclude.WANTED in nfo_include_new:
-                print("  <votes>" + data.wanted + "</votes>", file=code)
+                write_text_element(code, "votes", data.wanted, indent="  ")
         except Exception:
             LogBuffer.log().write(traceback.format_exc())
 
         # 输出年代
         if str(year) and NfoInclude.YEAR in nfo_include_new:
-            print("  <year>" + str(year) + "</year>", file=code)
+            write_text_element(code, "year", str(year), indent="  ")
 
         # 输出时长
         if str(runtime) and NfoInclude.RUNTIME in nfo_include_new:
-            print("  <runtime>" + str(runtime).replace(" ", "") + "</runtime>", file=code)
+            write_text_element(code, "runtime", str(runtime).replace(" ", ""), indent="  ")
 
         # 输出合集(使用演员)
         if NfoInclude.ACTOR_SET in nfo_include_new:
@@ -451,7 +451,8 @@ async def get_nfo_data(file_path: Path, movie_number: str) -> tuple[CrawlersResu
         json_data.outline = file_path.name
         json_data.tag = str(file_path)
         return None, None
-    title = re.sub(r" (CD)?\d{1}$", "", title)
+    # 剥离 CD 编号后缀（CD1/CD2/.../CD10+，兼容大小写/空格）；不剥离无 CD 前缀的结尾数字（避免误删"系列 5"）
+    title = re.sub(r"\s*CD\s*\d+$", "", title, flags=re.IGNORECASE)
 
     # 获取其他数据
     originaltitle = "".join(xml_nfo.xpath("//originaltitle/text()"))

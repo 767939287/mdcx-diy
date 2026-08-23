@@ -30,7 +30,6 @@ _SCALAR_FIELDS = (
     "series",
     "studio",
     "publisher",
-    "director",
     "trailer",
     "wanted",
     "year",

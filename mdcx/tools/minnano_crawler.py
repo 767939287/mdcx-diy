@@ -23,6 +23,7 @@
 """
 # mypy: ignore-errors
 
+import asyncio
 import re
 import threading
 import traceback
@@ -855,9 +856,9 @@ async def get_minnano_info(actor_info: EMbyActressInfo, wiki_intro: str = "") ->
     if not parsed or not parsed.get("name"):
         return False, f"🔴 {actor_name}: みんなのAV 页面解析失败"
 
-    # 5. 写入缓存
+    # 5. 写入缓存（openpyxl load/save 为同步阻塞 IO，移后台线程避免阻塞事件循环）
     cache_row = _build_cache_row(parsed)
-    save_cache_row(cache_row)
+    await asyncio.to_thread(save_cache_row, cache_row)
 
     # 6. 填充 actor_info
     _fill_emby_info(actor_info, cache_row, wiki_intro)

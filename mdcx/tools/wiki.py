@@ -386,9 +386,9 @@ def _process_personal_profile(
     att_values = actor_profile.find_all("td", style="", colspan=False)
 
     if len(att_keys) != len(att_values):
-        raise ValueError(
-            f"个人资料表格列数不匹配，可能是页面格式变更或数据不完整，列数: {len(att_keys)} - {len(att_values)}, 页面地址: {url}"
-        )
+        # 页面格式变化时降级：保留已提取内容，跳过表格解析（原 raise 导致整页失败、已提取内容也丢弃）
+        signal.show_log_text(f"⚠️ wiki 个人资料表格列数不匹配，跳过表格解析: {url}")
+        return overview
 
     if not att_keys or not att_values:
         return overview

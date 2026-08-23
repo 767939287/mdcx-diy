@@ -1217,10 +1217,16 @@ def auto_fix_actor_db(db_path: Path) -> dict:
     wb.close()
 
     result["fixed"] = fixed_counter
+    # 删除行后需人工处理的行号会偏移：减去该行之前被删除的行数（jp_empty 删除 + jp 重复合并删除）
+    all_deleted = sorted(delete_rows | set(dup_rows_to_delete))
+
+    def _adjust_row(row_idx: int) -> int:
+        return row_idx - sum(1 for r in all_deleted if r < row_idx)
+
     # 需要人工处理
     for row_idx, msg, cat in issues["errors"]:
         if cat in ("tmdb_no_id", "tmdb_dup", "tmdb_dup_url"):
-            result["needs_manual"].append((row_idx, msg, cat))
+            result["needs_manual"].append((_adjust_row(row_idx), msg, cat))
     return result
 
 

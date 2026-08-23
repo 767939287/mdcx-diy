@@ -913,8 +913,7 @@ async def get_big_pic_by_amazon(
     def append_split_keyword(base_title: str):
         for each_name in base_title.split(" "):
             if each_name not in search_keyword_set and (
-                len(each_name) > 8
-                or (not each_name.encode("utf-8").isalnum() and len(each_name) > 4)
+                (len(each_name) > 8 or (not each_name.encode("utf-8").isalnum() and len(each_name) > 4))
                 and each_name not in actor_keywords
             ):
                 append_search_keyword(each_name)

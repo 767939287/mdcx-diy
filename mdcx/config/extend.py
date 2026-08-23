@@ -152,9 +152,10 @@ def need_clean(file_path: Path, file_name: str, file_ext: str) -> bool:
 
 
 def deal_url(url: str) -> tuple[str | None, str]:
+    # 先 strip 再补 scheme，避免带首尾空格的 URL 补成 "https:// example.com"（中间含空格失效）
+    url = url.strip()
     if "://" not in url:
         url = "https://" + url
-    url = url.strip()
     for key, site in ManualConfig.WEB_DIC.items():
         if key.lower() in url.lower():
             return site.value, url
