@@ -13,6 +13,7 @@ import aiofiles.os
 from PIL import Image
 
 from ..base.web import (
+    _IMAGE_DOWNLOAD_MAX_BYTES,
     _build_dmm_probe_url,
     _is_invalid_image_redirect_url,
     _parse_content_length,
@@ -59,12 +60,14 @@ class MediaResourceContext:
 
     def __init__(self):
         self._images: dict[str, FetchedImage] = {}
+        self._image_fetch_tasks: dict[str, asyncio.Task[FetchedImage | None]] = {}
         self._image_sizes: dict[tuple[str, bool], tuple[int, int]] = {}
         self._content_lengths: dict[str, int | None] = {}
         self._validated_image_urls: dict[str, str | None] = {}
 
     def close(self) -> None:
         self._images.clear()
+        self._image_fetch_tasks.clear()
         self._image_sizes.clear()
         self._content_lengths.clear()
         self._validated_image_urls.clear()
@@ -81,27 +84,49 @@ class MediaResourceContext:
         if cached is not None:
             return cached
 
+        task = self._image_fetch_tasks.get(normalized_url)
+        if task is None:
+            task = asyncio.create_task(self._fetch_image(normalized_url), name=f"fetch-image:{normalized_url}")
+            self._image_fetch_tasks[normalized_url] = task
+        try:
+            return await asyncio.shield(task)
+        finally:
+            if task.done() and self._image_fetch_tasks.get(normalized_url) is task:
+                self._image_fetch_tasks.pop(normalized_url, None)
+
+    async def _fetch_image(self, normalized_url: str) -> FetchedImage | None:
         # 完整下载不能使用 DMM 探测参数，否则会把 120x90 探测图写入封面缓存。
         request_url, added_probe = normalized_url, False
         headers = build_jdbstatic_headers(request_url) if is_jdbstatic_image_url(request_url) else None
         log_jdbstatic_request_headers(request_url, headers)
         async with manager.acquire_computed() as computed:
-            response, error = await computed.async_client.request("GET", request_url, headers=headers)
-        if response is None:
-            if error:
-                LogBuffer.log().write(f"\n 🟡 图片读取失败: {error}")
+            client = computed.async_client
+            response, error = await client.request("GET", request_url, stream=True, headers=headers)
+            if response is None:
+                if error:
+                    LogBuffer.log().write(f"\n 🟡 图片读取失败: {error}")
+                return None
+
+            true_url = normalize_media_url(str(response.url), strip_dmm_probe_params=added_probe)
+            try:
+                if self._is_invalid_image_url(normalized_url, true_url):
+                    LogBuffer.log().write(f"\n 💡 图片已失效: {true_url}")
+                    return None
+
+                declared_size = _parse_content_length(_get_header(response.headers, "Content-Length"))
+                if declared_size is not None and declared_size > _IMAGE_DOWNLOAD_MAX_BYTES:
+                    LogBuffer.log().write(f"\n 🟡 图片过大，已跳过: {true_url} ({declared_size} bytes)")
+                    return None
+
+                content = await self._read_stream_content(response)
+            finally:
+                await client._close_response(response)
+
+        if content is None:
+            LogBuffer.log().write(f"\n 🟡 图片过大或读取失败: {true_url}")
             return None
 
-        true_url = normalize_media_url(str(response.url), strip_dmm_probe_params=added_probe)
-        if self._is_invalid_image_url(normalized_url, true_url):
-            LogBuffer.log().write(f"\n 💡 图片已失效: {true_url}")
-            return None
-
-        if not response.content:
-            LogBuffer.log().write(f"\n 🟡 图片读取失败: empty content {true_url}")
-            return None
-
-        image = FetchedImage(true_url, response.content, await self._read_size(response.content))
+        image = FetchedImage(true_url, content, await self._read_size(content))
         self._images[normalized_url] = image
         self._image_sizes[(normalized_url, False)] = image.size
         if true_url != normalized_url:
@@ -378,6 +403,18 @@ class MediaResourceContext:
         except Exception:
             return 0, 0
         return 0, 0
+
+    @staticmethod
+    async def _read_stream_content(response: Any) -> bytes | None:
+        content = BytesIO()
+        try:
+            async for chunk in response.aiter_content(64 * 1024):
+                content.write(chunk)
+                if content.tell() > _IMAGE_DOWNLOAD_MAX_BYTES:
+                    return None
+            return content.getvalue() or None
+        except Exception:
+            return None
 
     @staticmethod
     def _should_convert_to_jpg(url: str, file_path: Path) -> bool:

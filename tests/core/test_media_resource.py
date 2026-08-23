@@ -1,3 +1,4 @@
+import asyncio
 from io import BytesIO
 from pathlib import Path
 
@@ -5,6 +6,7 @@ import pytest
 from PIL import Image
 
 from mdcx.config.manager import manager
+from mdcx.core import media_resource
 from mdcx.core.media_resource import MediaResourceContext
 
 
@@ -16,9 +18,8 @@ class _FakeResponse:
         self.status_code = 200
 
     async def aiter_content(self, chunk_size: int):
-        content = self.content
-        if content:
-            yield content[:chunk_size]
+        for start in range(0, len(self.content), chunk_size):
+            yield self.content[start : start + chunk_size]
 
     async def aclose(self):
         return None
@@ -82,6 +83,50 @@ async def test_media_resource_context_reuses_image_bytes_for_open_and_save(
         context.close()
 
     assert calls == ["https://example.test/poster.jpg"]
+
+
+@pytest.mark.asyncio
+async def test_media_resource_context_reuses_inflight_image_request(monkeypatch: pytest.MonkeyPatch):
+    calls: list[str] = []
+    request_started = asyncio.Event()
+    release_request = asyncio.Event()
+
+    async def fake_request(method: str, url: str, **kwargs):
+        calls.append(url)
+        request_started.set()
+        await release_request.wait()
+        return _FakeResponse(url, _jpeg_bytes()), ""
+
+    monkeypatch.setattr(manager.computed.async_client, "request", fake_request)
+
+    context = MediaResourceContext()
+    try:
+        first = asyncio.create_task(context.fetch_bytes("https://example.test/cover.jpg"))
+        await request_started.wait()
+        second = asyncio.create_task(context.fetch_bytes("https://example.test/cover.jpg"))
+        await asyncio.sleep(0)
+        release_request.set()
+
+        assert await first == await second
+    finally:
+        context.close()
+
+    assert calls == ["https://example.test/cover.jpg"]
+
+
+@pytest.mark.asyncio
+async def test_media_resource_context_rejects_oversized_image(monkeypatch: pytest.MonkeyPatch):
+    async def fake_request(method: str, url: str, **kwargs):
+        return _FakeResponse(url, _jpeg_bytes(), headers={"Content-Length": "11"}), ""
+
+    monkeypatch.setattr(manager.computed.async_client, "request", fake_request)
+    monkeypatch.setattr(media_resource, "_IMAGE_DOWNLOAD_MAX_BYTES", 10)
+
+    context = MediaResourceContext()
+    try:
+        assert await context.fetch_bytes("https://example.test/cover.jpg") is None
+    finally:
+        context.close()
 
 
 @pytest.mark.asyncio
@@ -261,7 +306,7 @@ async def test_media_resource_context_saves_original_dmm_image_after_probe(
 
     assert calls == [
         ("https://awsimgsrc.dmm.co.jp/pics_dig/mono/movie/cjod499/cjod499ps.jpg?w=120&h=90", True),
-        ("https://awsimgsrc.dmm.co.jp/pics_dig/mono/movie/cjod499/cjod499ps.jpg", False),
+        ("https://awsimgsrc.dmm.co.jp/pics_dig/mono/movie/cjod499/cjod499ps.jpg", True),
     ]
 
 
@@ -290,7 +335,7 @@ async def test_media_resource_context_probe_size_does_not_cache_full_image(
 
     assert calls == [
         ("https://example.test/probe.jpg", True),
-        ("https://example.test/probe.jpg", False),
+        ("https://example.test/probe.jpg", True),
     ]
 
 
@@ -472,7 +517,7 @@ async def test_media_resource_context_reuses_dmm_image_validation_without_cachin
 
     assert calls == [
         ("https://awsimgsrc.dmm.co.jp/pics_dig/mono/movie/cjod499/cjod499ps.jpg?w=120&h=90", False),
-        ("https://awsimgsrc.dmm.co.jp/pics_dig/mono/movie/cjod499/cjod499ps.jpg", False),
+        ("https://awsimgsrc.dmm.co.jp/pics_dig/mono/movie/cjod499/cjod499ps.jpg", True),
     ]
 
 
