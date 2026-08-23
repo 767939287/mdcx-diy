@@ -14226,7 +14226,7 @@ class Ui_MDCx(object):
                 '<p>在"设置 → 网络"中配置：</p>\n'
                 "<ul>\n"
                 "<li><b>启用代理</b>：开启后填写 HTTP / HTTPS 或 SOCKS5 代理地址（如 http://127.0.0.1:7890）。</li>\n"
-                "<li><b>走代理网站</b>：仅指定域名走代理，其余直连。默认包含 amazon.co.jp、m.media-amazon.com、xcity.jp、minnano-av.com、avbase.net、javbus.com、javdb.com、javlibrary.com、r18.dev、mgstage.com、prestige-av.com、seesaawiki.jp、avsox.click、avsox.com、avmoo.shop、avmoo.com、avheat.shop、avheat.com、kin8tengoku.com、github.com、raw.githubusercontent.com、google.com、missav.ws、missav.ai。可按需增删。</li>\n"
+                "<li><b>走代理网站</b>：仅指定域名走代理，其余直连。默认包含 amazon.co.jp、m.media-amazon.com、xcity.jp、minnano-av.com、avbase.net、javbus.com、javdb.com、javlibrary.com、r18.dev、mgstage.com、prestige-av.com、seesaawiki.jp、avsox.click、avsox.com、avmoo.shop、avmoo.com、avheat.shop、avheat.com、kin8tengoku.com、github.com、raw.githubusercontent.com、google.com、missav.ws、missav.ai、missav.live。可按需增删。</li>\n"
                 "<li><b>CF Bypass 代理</b>：为绕过 Cloudflare 的请求单独设置代理。</li>\n"
                 "</ul>\n"
                 "<p>如持续提示网络 / 代理错误，请检查地址与端口、确认代理软件处于全局模式，或尝试重启代理与网卡。</p>\n"
@@ -14250,7 +14250,7 @@ class Ui_MDCx(object):
                 "<li><b>排除目录 / 字符 / 字符串</b>：多层目录刮削时跳过指定目录；命名单据时剔除指定字符；提取番号前先删除指定字符串以提高识别率（多项用逗号分隔）。</li>\n"
                 "<li><b>失败后移动</b>：刮削不到信息时，可选择不移动，或自动移入失败输出目录。</li>\n"
                 "<li><b>保存日志</b>：开启后日志写入程序目录下的 Log 文件夹（每次运行一个 txt），可随时删除，不影响运行。</li>\n"
-                "<li><b>下载高清图（DMM 兜底）</b>：勾选后当所有图源站点均无法获取封面时，程序按番号直构 DMM 官方 CDN 高清封面兜底，并自动学习各厂牌的前缀规则（学习数据保存在 userdata/dmm_prefix_learned.json，仅记录已验证成功的证据）。所有图片下载统一设 50MB 大小上限，防止异常大文件占用磁盘。</li>\n"
+                "<li><b>下载高清图（官方图源兜底）</b>：勾选后当所有图源站点均无法获取封面时，程序按番号直构官方 CDN 高清图兜底——DMM 高清封面（自动学习各厂牌前缀规则，学习数据保存在 userdata/dmm_prefix_learned.json）+ MGStage 素人高清海报（LUXU/OTIM 等 8 个系列）。所有图片下载统一设 50MB 大小上限，防止异常大文件占用磁盘。</li>\n"
                 "</ul>\n"
                 "\n"
                 "<h4>九、工具页面</h4>\n"

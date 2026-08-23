@@ -56,7 +56,7 @@
 - 勾选需要下载的内容：海报、缩略图、背景图、剧照、预告片
 - 人脸裁剪：开启后自动检测人脸位置裁剪海报
 - Amazon 高清封面：从 Amazon 搜索高清图
-- DMM 兜底（默认开启）：图源全部失败时直构 DMM 官方高清封面，自动学习厂牌前缀
+- 官方图源兜底（默认开启）：图源全部失败时直构官方 CDN 高清图——DMM 高清封面（自动学习厂牌前缀）+ MGStage 素人高清海报
 
 ### 5. 翻译（可选）
 
@@ -152,7 +152,7 @@ export QT_QPA_PLATFORM=xcb
 3. 在设置里申请 API Key
 4. 填到 MDCx 设置里
 
-**配置代理**：设置 → 网络 → 代理，支持 HTTP/HTTPS/SOCKS5。只对"走代理网站"域名列表中的站点走代理，其他默认直连；默认列表包含 `amazon.co.jp, m.media-amazon.com, xcity.jp, minnano-av.com, avbase.net, javbus.com, javdb.com, javlibrary.com, r18.dev, mgstage.com, prestige-av.com, seesaawiki.jp, avsox.click, avsox.com, avmoo.shop, avmoo.com, avheat.shop, avheat.com, kin8tengoku.com, github.com, raw.githubusercontent.com, google.com, missav.ws, missav.ai`，可按需追加。
+**配置代理**：设置 → 网络 → 代理，支持 HTTP/HTTPS/SOCKS5。只对"走代理网站"域名列表中的站点走代理，其他默认直连；默认列表包含 `amazon.co.jp, m.media-amazon.com, xcity.jp, minnano-av.com, avbase.net, javbus.com, javdb.com, javlibrary.com, r18.dev, mgstage.com, prestige-av.com, seesaawiki.jp, avsox.click, avsox.com, avmoo.shop, avmoo.com, avheat.shop, avheat.com, kin8tengoku.com, github.com, raw.githubusercontent.com, google.com, missav.ws, missav.ai, missav.live`，可按需追加。
 
 **CF Bypass 落地白名单**：设置 → 网络 →「Bypass落地白名单」可填写可信落地域名（逗号分隔，支持 `*.example.com` 子域通配，如 `javbus.com,*.javdb.com`）。用于校验 Bypass 服务落地/重定向后的最终域名，防止第三方 Bypass 服务被劫持时把恶意页面当数据写入 NFO；留空表示不校验（默认）。
 
@@ -209,7 +209,7 @@ export QT_QPA_PLATFORM=xcb
 
 推荐基于全部历史刮削结果（含上次会话），刮削的影片越多推荐越准，全程本地计算无需联网。
 
-所有爬虫站点都拿不到图时，会自动走 **DMM 官方高清直链兜底**：按番号直构 DMM 官方 CDN 高清封面，内置约 110 个主流系列前缀表并自动学习未收录厂牌的前缀（学习数据保存在 `userdata/dmm_prefix_learned.json`）；优先下载 DMM 高清竖版图作海报，竖版不存在时下横版高清图并自动裁剪成海报；无码番号（FC2/HEYZO 等）不会命中 DMM 兜底。默认开启，可在设置 → 下载「下载高清图」组关闭。
+所有爬虫站点都拿不到图时，会自动走 **官方图源直链兜底**：① **DMM**：按番号直构 DMM 官方 CDN 高清封面，内置约 110 个主流系列前缀表并自动学习未收录厂牌的前缀（学习数据保存在 `userdata/dmm_prefix_learned.json`）；优先下载 DMM 高清竖版图作海报，竖版不存在时下横版高清图并自动裁剪成海报；无码番号（FC2/HEYZO 等）不会命中 DMM 兜底。② **MGStage**：DMM 不收录的素人番号（LUXU/OTIM 等）直构 MGStage 官方 CDN——横版大图作封面、竖版图作海报。默认开启，可在设置 → 下载「下载高清图」组关闭。
 
 ### 场景：管理 Emby 演员头像和简介
 
