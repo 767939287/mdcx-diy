@@ -93,7 +93,7 @@ def translate_info(json_data: CrawlersResult, has_sub: bool):
         for each_info in tag_list:
             if each_info:  # 为空时会多出来一个
                 info_data = resources.get_info_data(each_info)
-                each_info = info_data.get(tag_language)
+                each_info = info_data.get(tag_language.value)
                 if each_info and each_info not in tag_new:
                     tag_new.append(each_info)
         tag = ",".join(tag_new)
@@ -144,7 +144,7 @@ def translate_info(json_data: CrawlersResult, has_sub: bool):
     if series:  # 为空时会匹配所有
         if series_translate:  # 映射
             info_data = resources.get_info_data(series)
-            series = info_data.get(series_language, "")
+            series = info_data.get(series_language.value, "")
         if series and TagInclude.SERIES in tag_include:  # 写nfo
             nfo_tag_series = manager.config.nfo_tag_series.replace("series", series)
             if nfo_tag_series:
@@ -154,7 +154,7 @@ def translate_info(json_data: CrawlersResult, has_sub: bool):
     if studio:
         if studio_translate:
             info_data = resources.get_info_data(studio)
-            studio = info_data.get(studio_language, "")
+            studio = info_data.get(studio_language.value, "")
         if studio and TagInclude.STUDIO in tag_include:
             nfo_tag_studio = manager.config.nfo_tag_studio.replace("studio", studio)
             if nfo_tag_studio:
@@ -164,7 +164,7 @@ def translate_info(json_data: CrawlersResult, has_sub: bool):
     if publisher:
         if publisher_translate:
             info_data = resources.get_info_data(publisher)
-            publisher = info_data.get(publisher_language, "")
+            publisher = info_data.get(publisher_language.value, "")
         if publisher and TagInclude.PUBLISHER in tag_include:
             nfo_tag_publisher = manager.config.nfo_tag_publisher.replace("publisher", publisher)
             if nfo_tag_publisher:
@@ -173,7 +173,7 @@ def translate_info(json_data: CrawlersResult, has_sub: bool):
     # 导演
     if director and director_translate:
         info_data = resources.get_info_data(director)
-        director = info_data.get(director_language, "")
+        director = info_data.get(director_language.value, "")
 
     if tag_language == Language.ZH_CN:
         tag = zhconv.convert(tag, "zh-cn")
@@ -353,21 +353,23 @@ async def translate_title_outline(json_data: CrawlersResult, cd_part: str, movie
                     )
 
     # 简繁转换
-    if title_language == "zh_cn" and (not trans_title or title_translation_applied or not (title_is_jp or title_is_en)):
+    if title_language == Language.ZH_CN and (
+        not trans_title or title_translation_applied or not (title_is_jp or title_is_en)
+    ):
         json_data.title = zhconv.convert(json_data.title, "zh-cn")
-    elif title_language == "zh_tw" and (
+    elif title_language == Language.ZH_TW and (
         not trans_title or title_translation_applied or not (title_is_jp or title_is_en)
     ):
         json_data.title = zhconv.convert(json_data.title, "zh-hant")
         json_data.mosaic = zhconv.convert(json_data.mosaic, "zh-hant")
 
-    if outline_language == "zh_cn" and (
+    if outline_language == Language.ZH_CN and (
         not trans_outline
         or outline_translation_applied
         or not (is_japanese(json_data.outline) or is_probably_english_for_translation(json_data.outline))
     ):
         json_data.outline = zhconv.convert(json_data.outline, "zh-cn")
-    elif outline_language == "zh_tw" and (
+    elif outline_language == Language.ZH_TW and (
         not trans_outline
         or outline_translation_applied
         or not (is_japanese(json_data.outline) or is_probably_english_for_translation(json_data.outline))

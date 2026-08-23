@@ -764,11 +764,17 @@ async def _migrate_picture_resource(
         elif await aiofiles.os.path.exists(final_path):
             pass
         elif new_path_with_filename != final_path and await aiofiles.os.path.exists(new_path_with_filename):
-            await move_file_async(new_path_with_filename, final_path)
+            moved, _ = await move_file_async(new_path_with_filename, final_path)
+            if not moved:
+                exists = False
         elif old_path_with_filename != final_path and await aiofiles.os.path.exists(old_path_with_filename):
-            await move_file_async(old_path_with_filename, final_path)
+            moved, _ = await move_file_async(old_path_with_filename, final_path)
+            if not moved:
+                exists = False
         elif old_path_no_filename != final_path and await aiofiles.os.path.exists(old_path_no_filename):
-            await move_file_async(old_path_no_filename, final_path)
+            moved, _ = await move_file_async(old_path_no_filename, final_path)
+            if not moved:
+                exists = False
         else:
             exists = False
 

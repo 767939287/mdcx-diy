@@ -131,6 +131,29 @@ def _merge_array(
             return list(nfo_val), "nfo"
 
 
+def _sync_original_actors(scraped: CrawlersResult, nfo: CrawlersResult, merged: CrawlersResult) -> None:
+    """合并后同步 original_actors，使其与 actors 保持位置对应。
+
+    nfo.py 写 `<actor>` 的 tmdbid 时按位置配对 original_actors[i] ↔ actors[i]；
+    若合并只改 actors 不改 original_actors（原缺陷），两者错位会把 A 演员的 tmdbid
+    写到 B 演员身上。这里按 actors 结果来源对齐 original_actors：
+    - actors 完全来自 scraped → original_actors 用 scraped 的
+    - actors 完全来自 nfo → original_actors 用 nfo 的（若 nfo 有）
+    - 其余（merge 去重等）长度不一致时清空 original_actors，tmdbid 走名字匹配兜底
+    """
+    merged_actors = merged.actors
+    scraped_actors = getattr(scraped, "actors", None) or []
+    nfo_actors = getattr(nfo, "actors", None) or []
+    scraped_orig = getattr(scraped, "original_actors", None) or []
+    nfo_orig = getattr(nfo, "original_actors", None) or []
+    if merged_actors == scraped_actors and scraped_orig:
+        merged.original_actors = list(scraped_orig)
+    elif merged_actors == nfo_actors and nfo_orig:
+        merged.original_actors = list(nfo_orig)
+    elif len(merged_actors) != len(getattr(merged, "original_actors", None) or []):
+        merged.original_actors = []
+
+
 def merge_nfo_fields(
     scraped: CrawlersResult,
     nfo: CrawlersResult,
@@ -164,6 +187,9 @@ def merge_nfo_fields(
         result_val, source = _merge_array(field_name, scraped_val, nfo_val, strategy)
         setattr(merged, field_name, result_val)
         stats[source] = stats.get(source, 0) + 1
+
+    # actors 合并后同步 original_actors，避免写入时按位置配对 tmdbid 错配
+    _sync_original_actors(scraped, nfo, merged)
 
     # 合并 actor_tmdb_ids
     if nfo.actor_tmdb_ids:
