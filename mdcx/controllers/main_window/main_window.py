@@ -1756,8 +1756,10 @@ class MyMAinWindow(QMainWindow):
         try:
             index_json = str(item.text(0))
             self.set_main_info(self.json_array[index_json])
+            # 收起 NFO 编辑器覆盖面板，避免遮挡主界面操作按钮（播放/打开文件夹/编辑NFO 等）
             if not self.Ui.widget_nfo.isHidden():
-                self._show_nfo_info()
+                self.Ui.widget_nfo.hide()
+            self._show_nfo_info()
         except Exception:
             signal_qt.show_traceback_log(item.text(0) + ": No info!")
 
