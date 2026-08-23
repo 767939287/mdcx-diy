@@ -17,11 +17,13 @@
   - **死代码删除要谨慎核实**：用户"不是为删而删，前提不影响功能"，倾向保守保留存疑项。删除前必须亲自运行时核实（动态 import 全模块 + gc 引用扫描 + 字符串字面量扫描），不轻信 docstring/静态扫描；删除前反复确认。探讨与执行分离，探讨阶段不改代码。
 
 [提交推送与质量把关]
-- Date: 2026-07-18（2026-08-03、2026-08-16、2026-08-18、2026-08-21 更新）
+- Date: 2026-07-18（2026-08-03、2026-08-16、2026-08-18、2026-08-21、2026-08-23 更新）
 - Context: 改动/推送前必须征得同意，推送前自动跑测试；pre-commit 钩子无需安装；不开新分支直接推当前分支；changelog 随改动更新；功能改动同步 UI/文档
 - Category: 工作流协作
 - Instructions:
   - 所有代码改动和提交推送必须先说明内容与原因，获得同意后再执行。本指令优先级高于所有"自动执行"类指令。
+  - **不要随便主动提交推送**（2026-08-23 用户明确强调）：只有用户明确指示"提交/推送"时才做。每次提交推送都要跑完整 check（约 2 分钟）很慢，用户视为"折磨"，避免不必要的等待。做完改动先停，报告待办，等用户发话。
+  - **日常快速自检**：改完代码用 `uv run quick-check`（ruff+mypy 秒级），通过即可继续改；只有用户要求提交/推送前才跑完整 `uv run check --skip-hook-install`。
   - **直接在当前分支提交推送，不另开新分支**（覆盖 auto-create-branch 规则）。用户指示开分支时才开。
   - **check 按需运行**：最后一次代码改动后运行一次 `uv run check --skip-hook-install`（ruff format --check + ruff check + mypy mdcx/ + pytest + check_actor_db + check_info_db + check_thread_safety），全绿后如代码再无改动，push 前不重跑。改 .ui 后必须重编译 MDCx.py + ruff format 再 check。**看结果必须确认退出码（`echo $?`）或看完整输出尾部，禁止只 grep 关键词过滤**——grep 模式漏掉"违规"等词会把 check_thread_safety 失败输出滤掉造成全绿假象（2026-08-21 CI 拦截实测）。
   - **不安装 pre-commit 钩子**：`.pre-commit-config.yaml` 钩子 stages 为 `pre-merge-commit, pre-push`，普通 commit 不触发；`uv run check` 已覆盖。
