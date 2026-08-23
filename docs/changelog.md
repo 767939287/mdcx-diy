@@ -1,198 +1,71 @@
 # Changelog
 
-## 未发布
+## v2.0.6 (2026-08-23)
 
 ### 功能
 
-- **missav 爬虫 3 域名轮询**：missav 支持 `missav.ai`/`missav.ws`/`missav.live` 三域名自动轮询，请求失败时自动切换镜像重试（404 不轮询直接返回）；missav.ai 排第一（当前网络环境最稳定）。默认代理站点列表加入 `missav.live`。`missav_api` 不需要轮询（走 Recombee API + fourhoi 图床，无 CF 无镜像）
-- **NFO 库管理页面（左侧导航新页）**：左侧导航新增「NFO库管理」，三栏布局——目录 `.nfo` 文件列表（多选+筛选）、15 字段编辑表单（番号/标题/演员/发行日/导演/制作商/系列/评分/简介/标签/封面/海报等）、封面预览。支持字段级 diff 预览（保存前对比改动）、批量操作（替换演员/加删标签/统一系列）、列表右键（重新刮削/打开目录/删除 NFO）。后台线程读写 + 信号回主线程
-- **字段 skip 哨兵（字段级跳过抓取）**：新增 `FieldConfig.skip`，勾选后该字段不从任何来源抓取；字段优先级对话框每字段行新增「跳过」复选框，清空/重置时同步清除 skip
-- **NFO 合并策略（5 种 MergeStrategy）**：新增 `NfoMergeStrategy` 枚举（prefer_scraper/prefer_nfo/merge_arrays/keep_existing/fill_missing_only），`write_nfo()` 写入前按策略与现有 NFO 合并，关键字段（number/title）双重保护；UI「读取模式」区域新增「NFO合并策略」下拉框
-- **图片下载大小上限**：`AsyncWebClient.download` 新增 `max_bytes`（Content-Length 预检 + 事后校验），图片链路统一 50MB 上限，trailer 等大文件链路不限
-- **MGStage 官方图源直构双兜底**：站点图源全部失败时，按番号直构 MGStage 官方 CDN 高清图——`pb_e` 横版大图（840~980 宽）作封面兜底、`pf_e` 竖版小图（~422×600）作海报兜底（`crawlers/mgstage_direct.py`，系列映射表来自 JavDB 高清图替换油猴脚本实测 + 多番号实测验证：LUXU/OTIM/CHUC/GERK/ONEZ/ONEX/MFC/ARA），补上 DMM 不收录的素人番号场景（素人番号天然跳过 Amazon 搜索，本兜底替代 Amazon 位置）；`check_url` 验存在 + 分辨率过滤小图，随「官方图源兜底（DMM / MGStage）」开关一起启用
+- **NFO 库管理页面**：左侧导航新增「NFO库管理」，目录 `.nfo` 批量编辑（15 字段）+ 字段级 diff 预览 + 批量操作（替换演员/加删标签/统一系列）+ 右键重新刮削/打开目录/删除
+- **字段级跳过抓取**：字段优先级对话框每字段可勾选「跳过」，该字段不从任何来源抓取
+- **NFO 合并策略（5 种）**：写入前按策略（prefer_scraper/prefer_nfo/merge_arrays/keep_existing/fill_missing_only）与现有 NFO 合并，关键字段双重保护
+- **爬虫镜像/域名轮询**：新增通用 DomainRotator，javbus（12 镜像）/freejavbt/7mmtv/xcity/IQQTV/missav（3 域名）请求失败自动切换；javlibrary 动态获取最新直连地址
+- **avmoo/avheat 新增爬虫 + avsox 改 API**：三站同属 tellme.pw AIO 平台（Vue SPA + JSON API），新增共享基类 AioSiteCrawler 统一封装；tellme.pw 动态地址统一获取
+- **dmm_api 换 DMM 官方 Affiliate API + 新增 thejavdb_api**：dmm_api 由 JavDB 第三方 API 换为官方 API（老配置零迁移）；原 JavDB API 独立为 thejavdb_api 爬虫（默认未启用）
+- **MGStage 官方图源直构双兜底**：站点图源全失败时按番号直构 MGStage 官方 CDN 高清图（`pb_e` 横版作封面、`pf_e` 竖版作海报，系列映射表实测 8 系列），补 DMM 不收录的素人番号
+- **JavLibrary CF bypass + DMM 高清升级 + xpath 兼容**：新增 Selenium+Edge headless 过 CF JS 挑战（可选依赖自动安装）；刮削后自动升级 DMM 高清封面；xpath 兼容 Selenium tbody
+- **TRAWL/FlareSolverr 外部 CF 服务适配层**：适配层暴露 cookies/mirror/html 端点统一调用 TRAWL `/scrape` 或 FlareSolverr `/v1`；便携版内置 Redis 并自动跟随上游版本
+- **移除内置 CF Bypass 服务**：删除 cloakbrowser + cf_bypasser 内置服务，过 CF 统一走外部服务，打包体积与内存显著减小
+- **演员库增强**：JavDB 中文名补全（免 TMDB Key）、补全别名新增 JavDB 数据源（NFKC 归一化 + 繁简转换 + 异体字统一）、cleanup_aliases 别名清洗、剔除男优支持别名匹配
+- **检查演员缺失番号多数据源重写**：按演员类型分四路数据源（有码 libredmm / 无码 avsox / 欧美 avheat / 国产 iqqtv），支持括号标注类型
+- **站点定位说明**：全部 47 个爬虫新增 description 定位说明，站点列表悬停展示 tooltip
+- **图片下载大小上限**：图片链路统一 50MB 上限，防异常大文件拖死磁盘
 
 ### 重构
 
-- **dmm_api 爬虫底层替换为 DMM 官方 Affiliate API**：原 `dmm_api` 实际走 JavDB 第三方 API，现替换为 DMM 官方 Affiliate API（枚举值不变，老配置零迁移）。直连无需日本节点，单请求获取完整元数据 + HTML5 player 预告片直链；新增 `dmm_api_id`/`dmm_affiliate_id` 配置项（留空用内置默认值）
-- **新增 thejavdb_api 爬虫**：保留原有 thejavdb.net API 数据源为独立爬虫 `thejavdb_api`（`crawlers/thejavdb_api.py`），枚举值 `thejavdb_api`，默认未启用，需手动添加到网站列表。修复原 `dmm_api` 未设置 `ctx.number_00`/`ctx.number_no_00` 导致 DMM 高清封面升级（AWS CDN `pl.jpg`）部分失效的问题
-- **爬虫文件去 `_new` 后缀**：`dmm_new` → `dmm`、`javdb_new` → `javdb`、`avbase_new` → `avbase`，消除"有旧版"的误导。纯文件重命名 + import 路径更新，无功能变更
-- **JavDB App 爬虫类名统一**：`javdb_app.py` 的 `JavdbAPICrawler` → `JavdbAppCrawler`，与文件名一致且避免与 `javdb_api.py` 的 `JavdbApiCrawler` 同名冲突
-- **love6.py 死代码清理**：删除未调用的 `get_extrafanart` 函数（从 lulubar.py 复制粘贴遗留，拼接了错误的 `lulubar.net` 域名）
-- **JavDB App 签名简化 + 设备参数补全**：签名算法从运行时 base64 解密改为硬编码已验证常量，补全 `system_version`/`device_model`/`device_name`/`device_uuid` 设备参数（降低被风控概率）
-- **移植 sakuramediabe 4 项改进**：番号清洗去附带域名干扰、jsdelivr CDN 加速、NFKC 归一化匹配、stale 缓存降级
-- **Emby 演员管理器入口移到左侧导航**：工具页顶部入口删除，改为左侧导航「Emby演员管理」按钮（弹出原对话框）
+- **爬虫文件去 `_new` 后缀**：`dmm_new`→`dmm`、`javdb_new`→`javdb`、`avbase_new`→`avbase`；JavDB App 类名统一
+- **JavDB App 签名简化 + 设备参数补全**：硬编码已验证签名常量，补全设备标识参数降低风控概率
+- **移植 sakuramediabe 4 项改进**：番号清洗去域名干扰、jsdelivr CDN 加速、NFKC 归一化匹配、stale 缓存降级
+- **Emby 演员管理器入口移到左侧导航**
+- **Amazon 标题匹配函数抽为模块级**（`core/amazon_match.py`，可被批量采集脚本复用）
 
 ### 修复
 
-- **死代码与冗余依赖清理**：删除 4 项零调用死代码（`WholeField`/`NoneField` 枚举、`actor_sources._normalize_number`、amazon 单数壳 `try_get_amazon_barcode_from_covers`、`_save_asin_record` 死参数，均运行时核实零调用）；移除无引用的 `ping3` 依赖（`pyproject.toml`/`uv.lock`）
-- **全模块审查修复（35 项）**：
-  - **数据损坏级（6 项）**：翻译映射字段被清空、简繁转换失效、NFO 合并演员 tmdbid 错配、图片迁移移动失败删源、`move_file_sync` 同路径误删、写入路径删除全角空格
-  - **功能失效级（7 项）**：断点续刮失效、间歇刮削状态机颠倒、共享番号释放不完整、演员数据源可靠性（libredmm/avmoo/javbus/getMovie）、wiki provider_ids 提取、minnano 缓存超链接与星座解析、相似推荐自推荐
-  - **性能健壮性 + 并发安全（22 项）**：网络请求并发化、水印合并保存、批量事务、解析异常保护、NFO 编辑跳过合并、密钥递归掩码、并发加锁（行索引/缓存/info 索引/selenium 计数/图片迁移 TOCTOU）、后台任务取消、XML 转义、行号偏移修正、缓存写 to_thread、URL 处理、正则优先级等
-- **Emby 演员管理器 6 项修复/优化**：同步后自动刷新复用媒体库过滤、背景图补齐不被头像源阻断、连接写盘后台化、详情 TTL 缓存、上传图片 Content-Type 按实际格式、同步回调按 actor_id 匹配
-- **网络检测增强（6 项）**：代理故障醒目提示、镜像抽样、单厂牌探测提示、新增「重试失败项」「复制结果」按钮、DMM 误报"无固定检测入口"修复
-- **DMM 预约版 9 前缀番号识别**：`9ssis01` → `SSIS-001`（编号补零到 3 位，lookbehind 防误伤）
-- **Cloudflare 拦截强制轮换指纹**：默认指纹池新增 `safari17_2_ios`，CF 挑战页时强制轮换连接池指纹重试，missav 等站点可恢复刮削；amazon 指纹池改独立纯桌面池
-- **extrafanart 目录替换非原子**：先移旧目录到备份名、rename 成功后清理，失败自动回滚
-- **read_link_sync 符号链接环死循环**：seen 集合检测环，命中返回当前路径
-- **xdg-open -R 无效参数**：Linux 目录兜底改为直接打开目录
-- **move_file_async 先删目标**：仅目录目标先删，文件目标由 shutil.move 原子覆盖
-- **hdouban 时长秒数解析崩溃**：try/except 容错
-- **is_proxy_host O(n×m) 优化**：预构建域名映射，反查 O(1)
-- **配置保存 sleep 重试链缩短**：减少主线程卡顿
-- **成功列表记录旧路径**：统一记移动后新路径
-- **连接池空闲清理持锁阻塞**：清理移出锁外
-- **分块下载支持断点续传**：`.part` + `.part.meta` 进度文件，重试跳过已完成分块
-- **镜像轮询重试相乘放大**：轮询路径传 `retry_count=1`，总请求从 3N 降到 N
-- **AVdb 同步 tmdbid 身份校验并发化**：Semaphore 并发预热
-- **get_new_release 日期格式崩溃**：非标准格式原样返回不崩溃
-- **actor 数据库自动修复保存失败静默吞错**：`save_error` 上报并 UI 红字提示
-- **mmtv/kin8/iqqtv 时长解析崩溃**：抽取公共 `parse_runtime` 容错
-- **缺失番号查询缓存写失败中断任务**：失败仅记录日志
-- **highdpi_passthrough 标记文件相对路径**：统一 `MAIN_PATH` 绝对路径
-- **配置保存读取竞态**：读 config 移入锁临界区
-- **Emby 同步失败不再标记为已同步**：per-actor 信号仅成功者清标记
-- **Emby 过滤器补齐 backdrop**：新增「缺背景」过滤
-- **crawl CLI 测试消除 coroutine 警告**：fake executor 消费协程
-- **Gfriends 同步改后台线程**：不阻塞 UI
-- **Emby 演员名双击反查**：按名字反查不依赖视觉行索引
-- **Emby 图片上传去掉 base64**：直接发原始字节
-- **minnano 缓存 key 统一为字符串**：修复缓存读写 key 错位
-- **nfo criticrating 读取修复**：修复评分丢失
-- **dmm 番号匹配前导零与连字符**：归一化比较
-- **javdb 两位数评分 + 镜像轮询修复**：支持 10.0，重写镜像轮询
-- **fc2 无修正判定修正**：清洗前保存原始 tag
-- **prestige 爬虫字段缺失防护**：`.get` + 默认值
-- **dmm release 截断 + 预告片质量正则**：修复日期尾缀与数字序号
-- **javdb_app year 推导修复**：不依赖 runtime
-- **fanart 下载失败不再静默忽略**：消费 result 判失败
-- **强杀线程加超时保护**：限时循环防无限空转
-- **dmm_prefix_learn 加载失败禁落盘**：防空表覆盖学习结果
-- **Emby 演员管理器 3 项 P0 修复**：连接参数生效、头像/背景直接覆盖上传、缓存文件名清洗
-- **Emby 演员管理器 3 项 P1 优化**：并发同步、取列表带 fields、失败演员可重试
-- **Emby 演员管理器 3 项易用性优化**：移除冗余测试连接、外部ID 可编辑、抽取共用快速设置面板
-- **读取模式不再受断点续刮缓存干扰**：读取模式跳过缓存过滤、不写 done
-- **打包脚本补齐延迟导入模块**：hidden-import 补 dmm_prefix_learn / nfo_merger
-- **文档与代码同步**：站点数量统一 48，补 thejavdb_api/免 CF/DMM 兜底/NFO 合并/字段 skip 等描述
-- **演员数据库日文异体字简体化**：新增 87 字映射表
-- **演员数据库异常数据清理**：清理 2 条异常记录
-- **copytree same-file 防护**：`safe_copytree` 检查 src==dst
-- **程序退出改优雅退出**：`QApplication.quit()` 替代 `os._exit`
-- **ComputedLease 释放改非阻塞**：后台释放不卡 UI
-- **TMDB 演员库并发覆盖写防护**：模块级锁串行化
-- **标记文件路径校验**：无效回退默认路径
-- **软链接原身路径解析不阻塞**：`asyncio.to_thread`
-- **女优信息库并发访问加锁**：SQLite 连接加锁
+- **全模块审查修复（35 项）**：数据损坏级 6 项（翻译映射清空/简繁失效/tmdbid 错配/迁移丢图/同路径误删/字符清洗）、功能失效级 7 项（断点续刮/间歇刮削/共享番号/数据源/wiki/minnano/相似自推荐）、性能健壮性与并发安全 22 项
+- **Emby 演员管理器 15 项修复/优化**：连接/同步/上传/缓存/背景图/过滤器/详情 TTL 等
+- **网络检测增强 6 项**：代理故障提示、镜像抽样、单厂牌提示、重试失败项/复制结果按钮、DMM 误报修复
+- **翻译修复**：Bing 端点改 cn.bing.com（原返回空响应体）；百度翻译 appid/key strip 修复签名错误
+- **CLI 修复**：crawl 代理白名单失效、失败退出码、javdb_api 搜索 q 参数丢失
+- **爬虫修复**：dmm 双重重试/番号匹配/评分/日期截断、javbus 搜索镜像轮换、minnano 标题校验/缓存 key、fc2 无修正判定、prestige 字段防护、javdb_app year 推导
+- **下载/文件修复**：分块下载断点续传（.part + .part.meta）、extrafanart 目录替换原子化、符号链接环防护、move_file 先删目标、成功列表记录新路径、fanart 失败不再静默忽略
+- **崩溃容错**：get_new_release 日期格式、parse_runtime 时长解析、hdouban 秒数、强杀线程超时保护
+- **并发/性能**：is_proxy_host O(1) 映射、镜像轮询重试去重、AVdb 并发预热、连接池锁外清理、TMDB 演员库并发写保护、女优信息库加锁
+- **其他**：DMM 9 前缀番号识别、CF 指纹轮换（safari17_2_ios）、读取模式不受断点缓存干扰、打包 hidden-import 补齐、配置保存竞态/重试链、优雅退出、ComputedLease 非阻塞
 
 ### 工程质量
 
-- **新增 quick-check 快速检查命令**：`scripts/quick_check.py` + pyproject 注册 `uv run quick-check`，只跑 ruff format --check / ruff check / mypy（秒级），供日常改完代码快速自检；完整 check（含全量测试）仍留给提交前跑一次 `uv run check --skip-hook-install`
-- **avsox/avmoo/avheat 域名壳函数清理**：`base/web.py` 删除零调用的 `get_avsox_domain`/`get_avmoo_domain`/`get_avheat_domain` 三个薄壳（各只是 `get_aio_domain("xx")` 的包一层）。三个爬虫继承 `AioSiteCrawler`，动态域名直接走通用 `get_aio_domain(domain_site)`，不受影响
-- **废弃死代码清理（A 类）**：删除 `ping_host`/`_ping_host_thread`（含 `ping3` 依赖）、`render_name_template`、`_tmdb_query_cache_persist_async`、`open_emby_actor_manager` 入口，均经运行时核实零引用
-- **avsex 死代码清理**：`crawlers/avsex.py` 删除零调用者的 `get_poster` 函数，移除其中硬编码的 `9sex.tv` 域名残留（实际海报走搜索页 `ctx.poster_url`；搜索/列表本就默认走 `avsex.cc`）
-- **extrafanart 目录替换提取辅助函数**：`core/web.py` 的备份式原子替换逻辑提取为模块级 `_replace_dir_atomic`（行为不变，便于复用与测试）
-- 新增 `tests/test_review_regressions.py` 回归测试（16 例）：覆盖 `get_new_release` 非标准日期容错、`parse_runtime` 各格式分支、`read_link_sync` 符号链接环防护、`is_proxy_host` 各匹配分支、`_replace_dir_atomic` 成功替换与失败回滚
-- **qt_thread 表达式语句改 if**：`utils/qt_thread.py` 的 `signal_qt.show_log_text(...) if log_prefix else None` 是丢弃结果的表达式语句，改为显式 `if log_prefix:` 判断
-- **分块并发数提取常量**：`web_async.py` 分块下载的 `asyncio.Semaphore(6)` 硬编码并发数提取为模块级常量 `_CHUNK_DOWNLOAD_CONCURRENCY`，便于统一调整
-- **PNG 压缩级别降为默认 6**：`utils/image.py` `_encode_image` 的 PNG `compress_level` 从 9 降到 6（PIL 默认），无损压缩压缩比差异极小但耗时数倍，图片压缩/保存提速
-- 新增 `tests/test_save_success_list.py` 回归测试（save_success_list 非软链接记 new_path / 软链接记 old_path / 未开启不记录）
-- **冗余代码清理**：`core/scraper.py` 删除 tag 过滤列表中 8 条注释掉的死代码与从不读取的 `_read_mode_error_count` 死变量；`main_window.py` `_write_main_logs_to_file` 覆盖新日志句柄前先关闭旧句柄（修复句柄泄漏）；`crawlers/base/types.py` 删除零调用者的 `r()` 函数及其死导入
-- **UA 池版本更新**：`utils/__init__.py` `get_random_headers` 的 UA 池过时（Chrome 100-130、Firefox 90-120、Safari 14-17/iOS 15），2026 年部分站点会识别为旧版浏览器；现更新为 Chrome 115-135、Firefox 110-135、Safari 16-18/iOS 17；Safari 模板占位符改为 3 段，让原本被丢弃的主版本号生效
-- **convert_half 改用翻译表**：`utils/__init__.py` `convert_half` 的全角→半角从逐字符 `str.replace`（97 对映射）改为模块级 `str.maketrans` 一次性翻译表 + `str.translate`，热点函数（文件名清洗）大幅提速，输出与原逻辑逐字符对比一致
-- 新增 `tests/crawlers/test_dmm_api.py` 回归测试（`test_content_id_leading_zeros_match` 前导零匹配、`test_product_id_with_hyphen_match` 连字符编号匹配）；`tests/test_minnano_lookup.py` 缓存 row 数据同步改为字符串 key；`tests/test_jellyfin_actor_api.py` 图片上传测试断言同步改为原始字节 body（`test_upload_actor_photo_uses_raw_image_body_for_emby`/`_jellyfin`，与 Emby/Jellyfin 图片上传 API 二进制 body 规范一致）；`tests/test_tool_handlers.py` Gfriends 同步测试适配后台化（offscreen QApplication + processEvents 轮询等待异步回调）
-
-## v2.0.6 (2026-08-19)
-
-### 修复
-
-- **Bing 翻译引擎不可用修复**：`mdcx/base/translate.py` 将翻译页面与 API 端点从 `www.bing.com` 改为 `cn.bing.com`。`www.bing.com` 当前对爬虫式翻译接口返回 `HTTP 200` 但响应体为空（`Content-Length: 0`），疑似地区/风控限制；`cn.bing.com` 同样免 Key 免配置，参数提取逻辑（IG/key/token/path/IID）保持不变，实测中文、英文、日文互译全部正常
-
-### 功能
-
-- **JavDB 中文名补全**：演员数据管理工具新增「JavDB 中文名」按钮（`fill_zh_javdb` 模式），对 `actor_database.xlsx` 中「中文名为空」或「中文名 == 日文原名」的条目（约 15000 行未做中文化的含汉字姓名 + 11 行完全空名），通过 JavDB 移动端 API 查询演员详情的 `name_zht`/`name` 字段，拿到正式中文名后用 zhconv 转简体写入「中文名」列、繁体写入「繁体名」列；无需 TMDB API Key（按日文原名搜索），与原「补全中文名」（translate，走 TMDB 需 tmdbid）互补不冲突；`javdb_app.py` 新增 `fetch_javdb_actor_info` 函数返回完整 `{name, name_zht, other_name}`，原 `fetch_javdb_aliases` 改为调用该函数后拆分别名（消除重复代码）；支持「起始行/限量」分片续跑，连续失败降并发、连续成功恢复
-
-- **JavLibrary Selenium CF bypass**：新增 `mdcx/cf_bypass/selenium_adapter.py`——当普通 HTTP 请求遇 Cloudflare JS challenge 时，自动 fallback 到 Selenium+Edge headless 获取页面 HTML，通过真实浏览器引擎绕过 CF 挑战；selenium 作为可选依赖首次使用自动安装，driver 由 Selenium Manager 4.6+ 自动匹配；新增 `cf_selenium_bypass` 配置开关（默认开启），无 Edge 环境优雅降级，连续失败 3 次进入 5 分钟冷却
-- **JavLibrary DMM 高清封面升级**：javlibrary 爬虫新增 `post_process`，刮削成功后调用 `upgrade_dmm_cover` 将低清/水印封面升级为 DMM 高清版本（pl.jpg/ps.jpg），与 JavBus/JavDB 对齐
-- **JavLibrary xpath 兼容 Selenium**：`javlibrary.py` 所有字段 xpath 从 `/table/tr/` 改为 `//`，兼容普通 HTTP（无 tbody）和 Selenium page_source（浏览器自动补全 tbody）两种 HTML 来源
-- **IQQTV 域名轮询**：新增镜像 `https://iqqk4.quest`，IQQTV 爬虫接入 `_domains` + `_init_rotator` + `_get_text_with_rotate`，搜索和详情请求失败自动切换镜像域名重试；网络检测自动返回多地址
-- **JavDB 演员别名补全**：演员数据管理工具「补全别名」新增 JavDB 数据源（与 TMDB、minnano 并列），通过 JavDB 移动端 API（`/api/v1/actors/{id}`）获取 `other_name` 字段拆分别名，无需 cookie 走签名 API；演员名匹配支持 NFKC 归一化 + zhconv 繁简转换 + 日文异体字统一（亜/亞 等），兼容搜索名与数据库名写法差异；纯假名短名（≤2字）不做子串包含匹配避免误匹配（如「りな」→「新ありな」）；`_split_aliases` 过滤组合名（A・B 格式双人名）；`sync_aliases` 合并去重改为 casefold 大小写不敏感避免重复词
-- **别名清洗模式 cleanup_aliases**：`run_actor_db_xlsx` 新增 `cleanup_aliases` 模式，清洗 keyword 列中带括号后缀的别名——去括号保留名字，去括号后与主名或其他别名重复的整条删除（如「佐伯晴香(熟女)」整条删除）；`(注)` 开头的注释说明整条删除；括号在中间的（如「しいなうしお SIR(...)」）整条删除；嵌套括号取括号前名字；出厂库 1494 行已清洗，含括号别名归零
-- **剔除男优支持别名匹配 + JavDB 充实名单**：`clean_male_actors` 扫描时增加 keyword 别名列判断，任意别名命中男优名单即标记删除（原仅检查日文原名/中文名）；通过 JavDB gender 字段验证 719 个男优（382 个 gender=1 确认），从 other_name 提取 9 个新别名补充 `male_actors.txt`（鮫島健介、黒田稔彦、赤木陽太、中沢真、中沢栄司、綠汁男、岡田敦斗、卓哥、セツネヒデユキ井口）
-- **TRAWL 外部 CF 服务协议适配层**：新增 `mdcx/cf_bypass/trawl_adapter.py`——TRAWL（FlareSolverr 风格，POST /v1）与 mdcx 所需的 cf_bypasser 协议（/cookies /mirror /html）不兼容，直接填 /v1 无法工作，适配层暴露三端点并内部调用 TRAWL `/scrape` 原生 API（/v1 的 solution.headers 为空，拿不到状态码/响应头/二进制），支持 x-hostname/x-proxy/x-bypass-cache 控制头与 Set-Cookie 还原；`TrawlAdapterServer` 随机端口 + uvicorn 启动，配置 `cf_bypass_trawl_url` 后由 AsyncWebClient 自动拉起
-- **适配层支持 FlareSolverr 后端**：`_call_trawl` 重构为统一 `_call_backend`，按后端类型分流——trawl 走 `/scrape` 原生 API、flaresolverr 走 POST /v1（cmd=request.get/post），三端点共用归一化响应；新增 `cf_bypass_trawl_backend` 配置（默认 trawl）；UI 外部 CF 服务行加后端类型下拉框；network_check 健康检查按后端选端点
-- **TRAWL 稳定性优化**：适配层不再把 bypassCookieCache/x-bypass-cache 映射为 TRAWL skipHttp，恢复 Tier1 直连快速路径（已解 cookie 的域名直连命中）；新增 `trawl-goto-timeout.patch`（Tier3/4 页面加载超时 30s→90s），start-trawl.bat 与 package-trawl.yml 在 clone 后自动应用
-- **TRAWL 便携版内置 Redis 并自动跟随上游版本**：package-trawl.yml version 输入可空（默认 latest，git ls-remote 取最新 tag），新增 Redis 8.10.1 打入包内；start-trawl.bat 自动启动内置 Redis（端口 6380）启用 Tier2 会话缓存，浏览器池默认 2；check-trawl-update.yml CURRENT 改从本仓库 trawl-* release tag 提取
-- **域名轮询并修正站点域名**：新增 `mdcx/utils/domain_rotate.py`（DomainRotator 轮询切换 + rebuild_url + 用户自定义 URL 优先），爬虫基类接入 `_domains`/`_init_rotator`/`_get_text_with_rotate`，请求失败自动切下一镜像域名；javbus 12 个镜像（默认 dmmsee.cyou）、freejavbt（freejavbt22.cc）、7mmtv（7mmtv.sx）、xcity（tc.xcity.jp）；javday 默认域名 .tv → .app（实测 .tv 不可达）
-- **javlibrary 动态获取最新直连地址**：新增 `get_javlibrary_domain()`，抓取 github.com/javlibcom 主页 `rel="nofollow me"` 链接提取最新地址（当前 f101w.com），带 1 天缓存，失败回退已知镜像逐个探测；javlibrary 爬虫未指定 base_url 且未配 custom_url 时 `_run` 开头动态获取
-- **新增 avmoo / avheat 爬虫**：avmoo（有码，jav.data 命名空间）、avheat（欧美，wav.data 命名空间）。这两个站点与 avsox 同属 tellme.pw AIO 平台，已改为 Vue SPA + JSON API，页面 HTML 只是壳，数据全部走 API：search（POST JSON 数组 body）+ getMovie（movieId）两步。新增共享基类 `AioSiteCrawler` 封装统一流程
-- **avsox 爬虫改为 API 方式**：旧 HTML 解析（#waterfall）因站点改版已失效，改用 javu.data 命名空间的 API 流程并补充简介字段
-- **tellme.pw 动态地址统一获取**：新增 `get_aio_domain()` 从 `tellme.pw/{site}` 导航页解析 `__AIO_SITE_URLS__`，带 1 天缓存、三站互相兜底，修复 avsox 旧地址源（tellme.pw/avsox 已 403）
-- **检测网络适配动态域名/镜像/API 类爬虫**：新增 `check_urls()` 支持镜像与动态域名站点多地址检测（主站 + 镜像）；重写 `_run` 的 API 类爬虫（avmoo/avheat/avsox/missav_api）改走真实刮削探测，不再误报"无法自动探测"；javlibrary 检测改用动态直连地址，不再打已失效的 javlibrary.com；avsox/avheat 指定各自探针番号
-- **移除内置 CF Bypass 服务**：删除 cloakbrowser + cf_bypasser 内置服务（local_server.py），过 CF 统一走外部服务（TRAWL `/scrape` 或 FlareSolverr `/v1`）；移除 `cf_bypass_auto` 配置与 UI 开关，移除 Chromium 下载/预热/随包逻辑，打包体积与运行内存显著减小
-- **站点定位说明**：为全部 47 个爬虫新增 `description` 定位说明（综合站/免 CF 通道/仅覆盖本厂/类型），站点下拉框与优先级弹窗列表项悬停展示 tooltip，帮助选站时快速了解站点定位
-- **检查演员缺失番号多数据源重写**：「检查演员缺失番号」工具从单一 JAVBus 改为按演员类型分四路数据源——有码（libredmm xlsx href → fuzzy 搜索 → javbus searchstar 兜底）、无码（avsox getFilterMovies → javbus uncensored 兜底）、欧美（avheat getFilterMovies）、国产（iqqtv 演员页 num 分页 + title 提取番号）；演员名支持括号标注类型（如「水菜麗(无码)」「Angela White(欧美)」），不标注默认有码；javbus 使用 12 镜像轮询（与 JavbusCrawler 一致，DomainRotator 自动切换）；新增 `mdcx/tools/actor_sources.py` 封装各数据源的演员定位+番号拉取逻辑；UI 输入框增加 placeholder 与 tooltip 提示
-
-### 重构
-
-- **Amazon 标题匹配函数抽为模块级**：`get_big_pic_by_amazon` 内 11 个嵌套匹配函数（build_number_regex / clean_amazon_title_for_compare / normalize_title_for_compare / calculate_title_confidence / get_media_priority / is_supported_pic_ver / strip_trailing_media_noise / count_actor_group_matches / text_has_target_number / build_expected_titles / get_best_title_confidence）抽为 `mdcx/core/amazon_match.py` 模块级函数，闭包变量改为显式参数，可被批量采集脚本直接 import 复用；用 git HEAD 版本逐函数对比验证行为一致
-
-### 工程质量
-
-- 新增 `tests/crawlers/test_javlibrary.py` xpath 兼容性测试（含/不含 tbody 双场景）、Selenium CF 检测测试、配置关闭降级测试、DMM 封面升级 post_process 测试
-- 新增 `tests/crawlers/test_javdb_app.py` 的 `fetch_javdb_aliases` 测试（9 个用例：正常返回别名、name_zht 并入、other_name 为空、搜索无结果、演员未匹配、日文异体字匹配、空输入、名字归一化、匹配逻辑）+ `fetch_javdb_actor_info` 测试（5 个用例：完整字段、null 字段、无匹配、空输入、dataclass 默认值）
-- 新增 `tests/crawlers/test_aio_sites.py`（avmoo/avheat/avsox 三站 API 流程与请求格式）与 `tests/core/test_amazon_match.py`（匹配函数单元测试）
-- 更新 `tests/test_network_check.py` 的爬虫探测测试（重写 `_run` 爬虫走真实刮削探测）
-- 新增 TRAWL 适配层测试（`test_trawl_adapter.py`，含 FlareSolverr 后端 cookies/html/mirror/URL 重建/错误处理）、域名轮询测试（javbus/freejavbt）、javlibrary 动态地址解析与缓存测试
+- **新增 quick-check 快速检查命令**（ruff + mypy 秒级自检）
+- **死代码清理**：删零调用函数/死变量（A 类 4 项、avsex get_poster、域名壳函数、冗余代码）及无引用的 ping3 依赖
+- **回归测试**：新增 review_regressions/save_success_list/UI 几何/avsox 系/Amazon 匹配等多批测试
+- **性能优化**：PNG 压缩级别降为默认 6、convert_half 改翻译表、分块并发数提取常量、UA 池更新至 Chrome 115-135
 
 ### 文档
 
-- 更新 README / FEATURES / USER_GUIDE / CONFIGURATION / DEVELOPMENT：网站数量 45→47（新增 avmoo/avheat）、CF 说明改为外部服务（TRAWL/FlareSolverr）、移除内置 Bypass 相关描述、更新默认代理站点列表
-- 同步 UI 使用说明页（`MDCx.ui` textBrowser_about）与仓库文档：刮削模式从 5 项修正为 4 种实际模式（正常/整理/更新/读取），软链接与调试模式标注为设置项/日志页选项；CF Bypass 补充 Selenium CF Bypass（JavLibrary 专用）与免 CF 通道说明；代理默认列表加入 missav.ws/missav.ai（完整 24 域名）；断点续刮补充「读取模式不受缓存干扰」与「刮削缓存管理」重置方式；工具页演员库维护新增「JavDB 中文名」按钮说明与「刮削缓存管理」条目；FAQ.md 引用修正为实际存在的 USER_GUIDE.md/CONFIGURATION.md/FEATURES.md；README Sites badge 40+→47
-- **UI 文字全面修正**：(1) 输入网址弹窗支持网站列表改为从 `WEB_DIC` 动态生成，修复遗漏 missav/avmoo/avheat/cableav/love6/hsck/fc2ppvdb 共 7 个站点；(2) 帮助文档「调试模式」位置从"日志页面"修正为"设置→高级"；(3) CF Bypass tooltip 修正"为空=关闭"误导，补充外部 CF 服务自动启用适配层说明；(4) CF Bypass placeholder 移除已废弃的旧内置服务端口 8000；(5) init.py tooltip "免翻网址"修正为"走代理网站"，路径"设置-代理"统一为"设置→网络"，全量替换 `「设置」-「` 为 `「设置→`
-
-### 修复
-
-- **build-windows 工作流 upload-artifact 版本不存在**：`.github/workflows/build-windows.yml` 使用 `actions/upload-artifact@v7`，该 action 最高版本为 v4，v7 不存在导致构建上传产物步骤失败；改为 v4（与 package-trawl.yml 一致）
-- **移除过时的 playwright dev 依赖**：内置 CF Bypass 服务移除后 `playwright` 不再被任何代码引用（仅 `scripts/build.py` 的 `EXCLUDED_MODULES` 排除它），`pyproject.toml` 的 dev group 仍保留且注释写着"构建期下载并随包打入 CF Bypass 所需的 Chromium"；移除 playwright 依赖与 build.py 的 exclude 项，同步更新 uv.lock
-
-- **网络检测取消崩溃**：`run_network_check` 取消时调用不存在的 `asyncio.Task.close()` 抛 AttributeError，改为 `pending.cancel()` 且跳过已完成任务，优雅终止
-- **详情页候选浪费**：基类 `_detail` 首个详情 URL 解析为 None 时直接返回，不尝试后续候选；改为解析失败继续尝试下一个
-- **dmm 双重重试叠加**：外层重试循环 + 底层 `retry_count=1` 相乘放大请求次数，底层改 `retry_count=0`（外层承担重试）
-- **javbus 搜索不走镜像轮换**：`get_real_url` 搜索请求用首个镜像且 us 类型硬编码 `javbus.hair`，改为镜像轮换重试
-- **Amazon 高清宽度空隙**：`is_hd_candidate_width` 区间 `[1750,1770)` 误判标准大图，改为 `width >= 600`
-- **minnano 标题校验失效**：精确匹配时详情页标题不含演员名仅告警仍返回，改为拒绝该候选继续尝试
-- **crawl CLI 代理白名单失效**：`mdcx/cmd/crawl.py` 构造 `AsyncWebClient` 时漏传 `proxy_sites`，导致 `--proxy` 参数实际不生效。两处调用补传 `proxy_sites`，与 GUI 路径一致；新增回归测试
-- **crawl CLI 失败仍返回 exit 0**：`_crawl` 与 `_fetch_async` 业务失败时不控制退出码。任一失败抛 `typer.Exit(1)`；新增退出码回归测试
-- **javdb_api 搜索 q 参数丢失**：`_fetch_search` 硬编码 `/search?all=1&page=1` 丢弃番号，改为透传 URL 的 path+query；新增回归测试
-- **dmm 图片校验 zip(strict=True) 脆弱耦合**：`_sanitize_image_list` 中 `remaining_candidates` 与 `remaining_results` 配对依赖 `asyncio.gather` 默认不返回异常保证长度一致，若协程被取消或 gather 签名改变会抛 ValueError 崩溃。改为非 strict，不足时自动截断
-- **TRAWL 便携版路径/补丁打包缺陷**：`start-trawl.bat` 检测的 `bun\bun.exe`/`redis\redis-server.exe` 与实际嵌套路径（`bun\bun-windows-x64\bun.exe`、`redis\Redis-*\redis-server.exe`）不符，导致 Bun/Redis 检测失败静默跳过；`package-trawl.yml` 打包时漏复制 `trawl-goto-timeout.patch`，运行时兜底应用分支永不触发。start-trawl.bat 改用通配查找定位实际 exe 路径（兼容扁平与嵌套两种结构），download-bun.bat 解压后扁平化到 `bun/` 根目录，package-trawl.yml 打包时同步扁平化 Bun/Redis 目录并补复制 patch 文件
-- **百度翻译 appid/key 未 strip 导致签名错误**：`_baidu_translate_message` 直接用原始 `baidu_appid`/`baidu_key` 计算签名，用户复制粘贴时可能带入前后空格/换行，导致 MD5 签名不匹配返回 `54001`。DeepL/DeepLX 使用前均 `.strip()`，百度翻译遗漏。修复为使用前 strip appid 和 key，`get_translator_skip_reason` 检测空值时同步 strip
+- 同步 README/FEATURES/USER_GUIDE/CONFIGURATION/DEVELOPMENT 与 UI 使用说明页（网站数量、CF 外部服务、代理列表、刮削模式修正）；UI 文字全面修正（输入网址弹窗网站动态生成、调试模式位置、tooltip 等）
 
 ### 清理
 
-- **删除 AVWikiDB 别名查询死代码**：`tmdb_actor.fetch_avwiki_aliases` 全站被 Cloudflare 拦截（403）已不可达，UI 补别名入口早已改走 minnano，该函数无业务调用方（仅测试引用）。删除函数及配套 `_avwiki_rate_limiter`/`_avwiki_session` 模块级对象、`tests/test_avwiki_aliases.py`
-- **文件移动冗余分支**：`file.py` "are the same file" 两分支代码相同，合并
-- **Gfriends 缓存重复写入**：`emby_actor_manager` 先 wb 写原始字节再原子写展开 JSON，去掉首次写入直接解析展开
-- **CF 后退避死分支**：`web_async` `sleep_after_cf_bypass` 恒为 False 的日志分支，删除
-- **javdb_api 不可达代码**：`_try_mirrors` return 后不可达的 `_last_page_request_at` 赋值，删除
-- **避免使用不支持的状态表情**：UI 中部分状态展示使用了某些环境不支持渲染的 emoji，替换为通用字符避免显示异常
-- **Windows 保存配置时黑色控制台窗口一闪而过**：保存/加载配置的日志调用 `platform.platform()`，在 Windows 上会执行 `cmd /c ver` 启动子进程，windowed 打包下每次闪黑色控制台窗口。`consts.py` 新增 `SYSTEM_INFO`（platform.uname()，无子进程，启动时算一次），save_config/load_config 改用之；local_server/trawl_adapter 的 uvicorn 子进程与 sync_gfriends 的 git pull 加 `CREATE_NO_WINDOW`
-- **翻译引擎说明文字重影**：v2.0.5 新建的 `label_baidu_hint`（百度提示）被放到 `gridLayout_32` col0（标签列，仅 ~130px），长说明不换行向右溢出进入 col1，被 col1 的 `label_60` 不透明背景遮挡，露出前半截产生重影。改为 `label_baidu_hint` 跨整行（col0-1）+ `setWordWrap(True)`，合并两段文案为一句综合说明，移除/隐藏 `label_60`
-- **配置保存 Windows 拒绝访问**：`_write_config_text` 的 `os.replace` 一次失败即抛异常，对 Windows 上常见的瞬时占用（杀软实时扫描 `.tmp`）/只读属性/权限不足零容错，导致「配置保存失败，软件已保持运行」。改为多级回退：重试 6 次（瞬时锁）→ 去只读属性 → 删目标改名 → 直接覆盖写，最后仍失败抛带中文操作指引的 `PermissionError`，所有走 `manager.save()` 的配置/资源文件（不止 `studios.json`）均受益
-- **修复 Emby 演员管理器窗口遮挡主窗口 + 按钮无反应（issue #38）**：`open_emby_actor_manager`/`tool_handlers.pushButton_emby_actor_manager_clicked` 由模态 `dialog.exec()` 改为 `dialog.show()` 非模态，并给 `EmbyActorManagerDialog` 加 `WindowMinimizeButtonHint`，窗口可最小化、不再盖死主窗口。修复 GUI 主线程直接 `executor.run()` 同步阻塞（全局单 loop 被长任务占满 + 网络慢时主窗口整个卡死）：`_on_connect`/`_on_fetch` 的 `get_media_folders`/`_on_fetch_finished` 的 `get_gfriends_index` 改 `executor.submit` + 自定义信号回传结果，`ActorDetailDialog` 的加载现有头像/获取头像/获取简介/单演员同步 4 处改后台执行 + `_detail_done` 信号回主线程更新 UI（并消除协程内直接碰 QWidget 的跨线程违规），统一 `_future_result_or` 兜底 Future 异常
+- **死代码/冗余清理**：AVWikiDB 别名查询、文件移动冗余分支、Gfriends 缓存重复写入、CF 后退避死分支、javdb_api 不可达代码
+- **Windows 体验**：保存配置黑色控制台窗口（SYSTEM_INFO 替代 platform()）、配置保存拒绝访问多级回退、翻译说明文字重影修复
+- **Emby 窗口遮挡修复（issue #38）**：模态改非模态 + 主线程阻塞改后台执行
+
 ### 工程/文档
-- 更新默认代理站点列表与使用说明文档
-- **DEVELOPMENT/FEATURES 补全近期架构**：DEVELOPMENT 新增镜像域名轮询、API 类爬虫（AioSiteCrawler）、check_urls 网络检测、TRAWL/FlareSolverr 适配层、动态域名、网络检测章节；FEATURES 补网络连通性检测功能点
-- **UI 几何回归测试**：新增 `tests/test_ui_geometry.py`，offscreen 实例化 `Ui_MDCx`，遍历所有 `QGridLayout` 并强制激活布局（切换各 tab + 祖先链 setVisible），断言同 layout 内任意两个可见直接子控件包围盒无交集，挡住「同行同列多 item / 跨列长 label 溢出被邻列遮挡」类重影回归（与既有 XML 静态结构测试互补）
-- **百度翻译控件收口到 .ui**：`checkBox_baidu`/`label_baidu_appid`/`lineEdit_baidu_appid`/`label_baidu_key`/`lineEdit_baidu_key`/`label_baidu_hint` 从 `main_window.py::_setup_baidu_translate_ui` 运行时注入改为直接写进 `MDCx.ui`（`gridLayout_32` row4-6 + `horizontalLayout_20`），删除动态注入方法与运行时增高逻辑（增高固化到 .ui：`groupBox_trans`/`layoutWidget_2`/`scrollAreaWidgetContents_fanyi` +70、9 个兄弟 groupBox y+70）。`.ui` 成为唯一权威源，几何回归测试从此覆盖这些控件
-- **网站优先级按钮收口到 .ui**：`gridLayout_36` 内 6 个刮削类型（有码/无码/素人/FC2/欧美/国产）的「编辑网站」「字段优先级」共 12 个按钮从 `setup_site_priority_ui` 运行时 `_make_inline_button` 创建+`addWidget` 改为直接写进 `MDCx.ui`（row 0/2/4/6/8/10 col 2/3，objectName `pushButton_edit_website_{type}`/`pushButton_priority_website_{type}`），运行时只 `getattr` 赋值 + `connect` 信号 + `apply_site_priority_theme` 上主题样式；删除 `_make_inline_button` 工厂
-- **UI 几何回归测试扩展（绝对定位子控件）**：`test_ui_geometry` 新增 `test_absolutely_positioned_children_no_overlap`，检查 `layout() is None` 的父 widget（如 `groupBox_10`、`scrollAreaWidgetContents_wangluo`、`widget_setting`）内绝对定位子控件包围盒不重叠。覆盖三处收口后固化的绝对坐标控件（`label_75`/`label_get_cookie_url`/`label_7`、`groupBox_44`/`groupBox_14` 下移后的位置等），防止增高/下移固化时绝对定位控件互相压叠。排除 `centralwidget`/`page_*`（offscreen 下几何退化或含运行时切换控件）
-- **跨线程 Qt 安全收口（阶段 A+B）**：提取 `mdcx/utils/qt_thread.py::run_in_background(button=, coro_factory=, busy_signal=, busy_text=, finished_signal=, finished_arg=, log_prefix=)` 通用工具，固化「防重入 + setEnabled(False) + busy_signal + submit + finally 发 finished_signal + 异常 show_log」正确模式（后台协程只发 `pyqtSignal`，主线程槽恢复 UI）；`_run_actor_db_async` 改为调用它作样板。新增 `scripts/check_thread_safety.py` AST 扫描 `async def` 体内直接操作 QWidget setter（setEnabled/setText/setGeometry 等）的违规，当前 0 违规，作为防回归工具
-- **刮削缓存管理 UI**：工具页新增「刮削缓存管理」groupBox，把已有的 SQLite 状态缓存暴露给用户。缓存层 `ScrapeStateCache` 补 3 个 API：`stats()`（SQL 聚合返回 done/failed/failed_exhausted/total 计数 + db 路径/大小）、`list_failed_detail(limit)`（返回失败详情含 error/fail_count）、`delete_state(file_path)`（单文件重置，强制下次重刮）。UI 含统计区（4 计数 + db 路径/大小 + 刷新）、失败列表表格（QTableWidget 5 列）、导出失败列表 CSV（标准库 csv，utf-8-sig 兼容 Excel）、重置选中记录、清空全部缓存（带二次确认）。清缓存只影响是否跳过，不删已生成 NFO，零数据风险
-- **性能优化批次**：剩余任务列表改为快照后后台线程写入，避免 1.5 秒 QTimer 在主线程全量写盘；水印源图缓存打开和 RGBA 转换，重复处理时减少磁盘 IO；同番号等待由 1 秒轮询改为 `asyncio.Event` 即时唤醒，并保留停止/超时兜底。ActressDB 改为参数化 SQL；信息映射库加载时建立规范化索引，查询从全表扫描降为 O(1)；刮削状态缓存启用 WAL + `synchronous=NORMAL`，刮削写入按 32 条批量提交并在关闭时 flush；`json_data_dic` 限制为最近 2000 条，防止长批次内存无界增长。新增缓存批提交和内存上限测试，专项 40 个测试通过
-- **启动性能：本地数据库延迟加载**：`Resources` 构造阶段移除演员库、信息映射库和相关 XLSX 迁移/合并的同步阻塞，新增 `ResourcesDataLoader` 后台线程、`start_data_loading()` 和 `ensure_data_ready()` 就绪屏障。主窗口基础 UI 初始化后启动资源加载；演员库、信息映射库、翻译和标签优先级入口首次使用时安全等待资源完成，加载异常保留日志和错误传播。资源与翻译专项 74 个测试通过
-- **fc2ppvdb Cookie 控件收口到 .ui**：`label_fc2ppvdb_cookie`/`plainTextEdit_cookie_fc2ppvdb`/`horizontalLayout_fc2ppvdb_cookie`（含 `pushButton_check_fc2ppvdb_cookie`+`label_fc2ppvdb_cookie_result`）从 `main_window._setup_fc2ppvdb_cookie_ui` 运行时注入改为直接写进 `MDCx.ui`（`gridLayout_10` row4-5，仿 javdb/javbus 同模式）。运行时增高/下移逻辑一并固化到 .ui：`groupBox_10` height +140、`gridLayoutWidget_10` height→400、`label_75`/`label_get_cookie_url`/`label_7` y+120、`scrollAreaWidgetContents_wangluo` height +140、`groupBox_44`/`groupBox_14` y+140 下移。删除 `_setup_fc2ppvdb_cookie_ui` 方法与调用，清理未用 import
-- **启动健康自检**：新增 `mdcx/controllers/main_window/health_check.py`，在窗口启动「显示信息」阶段调用 `run_startup_health_checks()`，只读检查 3 项环境前提并把结果写入网络页日志（`signal_qt.show_net_info`），不弹模态弹窗、不自动改配置：1) 配置目录可写性（写测试文件再删，不可写提示检查权限，呼应此前 `_write_config_text` 多级回退修复）；2) TMDB API Key 是否配置（空则提示演员/封面受限）；3) 代理可达性（`use_proxy=True` 时解析 proxy 取 host:port，`socket.create_connection` 2s 超时探测 TCP 连通，不可达提示确认代理软件已启动或临时禁用）。代理探测走 `threading.Thread(daemon=True)` 后台 + 信号，不阻塞启动；目录/key 检查毫秒级同步。8 个单元测试覆盖三项判定分支
+
+- **UI 收口到 .ui**：百度翻译、网站优先级按钮、fc2ppvdb Cookie 控件从运行时注入改为写进 MDCx.ui（.ui 成为唯一权威源）
+- **跨线程 Qt 安全收口**：提取 `run_in_background` 通用工具 + `check_thread_safety` AST 扫描（当前 0 违规）
+- **UI 几何回归测试**：offscreen 遍历布局断言控件无重叠，防重影回归
+- **刮削缓存管理 UI**：工具页新增缓存统计/失败列表/导出 CSV/重置/清空
+- **性能优化批次**：剩余任务快照写盘、水印缓存、asyncio.Event 唤醒、ActressDB 参数化、缓存 WAL+批量提交、内存上限
+- **启动性能**：本地数据库延迟加载（ResourcesDataLoader 后台线程 + 就绪屏障）
+- **启动健康自检**：检查配置目录可写/TMDB Key/代理可达性，不阻塞启动
 
 ## v2.0.5 (2026-08-15)
 
