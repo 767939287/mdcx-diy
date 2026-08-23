@@ -47,6 +47,7 @@ build = "scripts.build:main"
 bump = "scripts.bump:app"
 changelog = "scripts.changelog:app"
 check = "scripts.check:main"
+quick-check = "scripts.quick_check:main"
 dmm-probe = "scripts.dmm_prefix_probe:main"
 
 [dependency-groups]

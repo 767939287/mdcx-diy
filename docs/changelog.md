@@ -78,6 +78,7 @@
 
 ### 工程质量
 
+- **新增 quick-check 快速检查命令**：`scripts/quick_check.py` + pyproject 注册 `uv run quick-check`，只跑 ruff format --check / ruff check / mypy（秒级），供日常改完代码快速自检；完整 check（含全量测试）仍留给提交前跑一次 `uv run check --skip-hook-install`
 - **avsox/avmoo/avheat 域名壳函数清理**：`base/web.py` 删除零调用的 `get_avsox_domain`/`get_avmoo_domain`/`get_avheat_domain` 三个薄壳（各只是 `get_aio_domain("xx")` 的包一层）。三个爬虫继承 `AioSiteCrawler`，动态域名直接走通用 `get_aio_domain(domain_site)`，不受影响
 - **废弃死代码清理（A 类）**：`base/web.py` 删除零调用且有 todo 标记的 `ping_host`/`_ping_host_thread` 及 `ping3` 依赖（网络检测已改为 http 请求）；`core/utils.py` 删除被 `render_name` 替代的 `render_name_template` 及死 import；`core/tmdb_actor.py` 删除被 sync 版替代的 `_tmdb_query_cache_persist_async` 与死变量 `_TMDB_QUERY_CACHE_IO_LOCK`；`tools/emby_actor_manager_ui.py` 删除被 `tool_handlers` 直接实例化替代的 `open_emby_actor_manager` 入口。以上均经运行时核实（动态加载全模块 + gc 引用扫描 + 字符串字面量扫描）确认零引用
 - **avsex 死代码清理**：`crawlers/avsex.py` 删除零调用者的 `get_poster` 函数，移除其中硬编码的 `9sex.tv` 域名残留（实际海报走搜索页 `ctx.poster_url`；搜索/列表本就默认走 `avsex.cc`）
