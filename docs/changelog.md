@@ -43,7 +43,7 @@
 - **CLI 修复**：crawl 代理白名单失效、失败退出码、javdb_api 搜索 q 参数丢失
 - **爬虫修复**：dmm 双重重试/番号匹配/评分/日期截断、javbus 搜索镜像轮换、minnano 标题校验/缓存 key、MGStage/Jav321/FC2Club/FC2Hub/JavLibrary 字段直接解析保留引号与方括号、FC2Hub 缺失标题或厂商节点容错、FC2 时长异常格式容错、fc2 无修正判定、prestige 字段防护、javdb_app year 推导
 - **下载/文件修复**：分块下载断点续传（.part + .part.meta）、断点元数据句柄关闭、文件复制原子替换保留旧目标、移动文件拒绝目录目标避免意外落点、图片流式下载 50MB 限制与同 URL 并发复用、图片共享任务完成回收与上下文关闭取消、extrafanart 目录替换原子化、相对符号链接解析与跨目录重复链接跳过、网络检测取消任务回收、move_file 先删目标、成功列表记录新路径、fanart 失败不再静默忽略
-- **崩溃容错**：get_new_release 日期格式、parse_runtime 时长解析、hdouban 秒数、强杀线程超时保护
+- **崩溃容错**：get_new_release 日期格式、parse_runtime 时长解析、hdouban 秒数、强杀线程单次注入与全局停止超时保护
 - **并发/性能**：is_proxy_host O(1) 映射、镜像轮询重试去重、AVdb 并发预热、连接池锁外清理、Flags 重置保持异步锁身份稳定、TMDB 演员库并发写保护、女优信息库加锁
 - **其他**：DMM 9 前缀番号识别、CF 指纹轮换（safari17_2_ios）、读取模式不受断点缓存干扰、打包 hidden-import 补齐、配置保存竞态/重试链、优雅退出、ComputedLease 非阻塞
 

@@ -295,12 +295,15 @@ def kill_a_thread(t: Thread, timeout: float = 10.0):
     SystemExit 注入不生效，原实现会无限忙等。这里注入有限次数后超时放弃，
     避免 CPU 满载与按钮永久卡在「■ 停止中」。
     """
+    if not t.is_alive():
+        return
+    try:
+        _async_raise(t.ident, SystemExit)
+    except Exception:
+        print(traceback.format_exc())
+        return
     deadline = time.monotonic() + timeout
     while t.is_alive() and time.monotonic() < deadline:
-        try:
-            _async_raise(t.ident, SystemExit)
-        except Exception:
-            print(traceback.format_exc())
         time.sleep(0.05)
 
 

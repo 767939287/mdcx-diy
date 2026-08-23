@@ -1095,16 +1095,23 @@ class MyMAinWindow(QMainWindow):
         )
         signal_qt.stop = True
         for each in self.threads_list:  # 线程池的线程
-            kill_a_thread(each)
-            # 外层等待加超时，避免线程阻塞在原生调用时无限忙等
-            wait_deadline = time.monotonic() + 12.0
-            while each.is_alive() and time.monotonic() < wait_deadline:
-                time.sleep(0.05)
+            kill_a_thread(each, timeout=0.0)
+
+        # 对全部线程使用一个总等待窗口，避免线程数量放大停止耗时。
+        wait_deadline = time.monotonic() + 12.0
+        while any(each.is_alive() for each in self.threads_list) and time.monotonic() < wait_deadline:
+            time.sleep(0.05)
 
         self.stop_used_time = get_used_time(start_time)
-        signal_qt.show_log_text(f" 🕷 {get_current_time()} 已停止线程：{Flags.total_kills}/{Flags.total_kills}")
-        signal_qt.show_traceback_log(f"所有线程已停止！！！({self.stop_used_time}s)\n ⛔️ 刮削已手动停止！\n")
-        signal_qt.show_log_text(f" ⛔️ {get_current_time()} 所有线程已停止！({self.stop_used_time}s)")
+        stopped_count = sum(not each.is_alive() for each in self.threads_list)
+        signal_qt.show_log_text(f" 🕷 已停止线程：{stopped_count}/{Flags.total_kills}")
+        if stopped_count == Flags.total_kills:
+            signal_qt.show_traceback_log(f"所有线程已停止！！！({self.stop_used_time}s)\n ⛔️ 刮削已手动停止！\n")
+            signal_qt.show_log_text(f" ⛔️ {get_current_time()} 所有线程已停止！({self.stop_used_time}s)")
+        else:
+            remaining = ", ".join(each.name for each in self.threads_list if each.is_alive())
+            signal_qt.show_traceback_log(f"线程停止超时({self.stop_used_time}s)：{remaining}")
+            signal_qt.show_log_text(f" ⚠️ {get_current_time()} 线程停止超时：{remaining}")
         thread_remain_list = []
         [thread_remain_list.append(t.name) for t in threading.enumerate()]  # 剩余线程名字列表
         thread_remain = ", ".join(thread_remain_list)
