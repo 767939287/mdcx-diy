@@ -14,6 +14,7 @@
   - 默认从全方位、多角度、深层次的角度审查和改进代码；面向小白解释问题，给出细致、可执行、易落地的建议；在发现风险、缺陷、遗漏时主动指出并给出修复方案和验证。
   - **面向小白解释的举例**：用户问「为什么海报下载不下来？」，应回答「海报是从日文网站抓的，该网站反爬把程序拦了，所以只能显示占位图。你可以：① 隔几分钟重试一次；② 在设置→刮削里换一个图源网站；③ 打开代理再试」，而不是只甩技术结论「连接超时被反爬拦截」。原则：先说现象和后果，再用大白话讲原因，最后给 2-3 条用户能直接照做的步骤。
   - **排查中发现的所有问题必须全量报告**：包括已修复的、暂不修复的、仅记录的，不能因"已修复"或"太小"而遗漏。按严重程度排序，每条含文件路径+行号、当前内容、问题描述、建议。判定不改的也要列出并说明原因，让用户自行决定。主动给修复方案、优先级和潜在影响评估。
+  - **死代码删除要谨慎核实**：用户"不是为删而删，前提不影响功能"，倾向保守保留存疑项。删除前必须亲自运行时核实（动态 import 全模块 + gc 引用扫描 + 字符串字面量扫描），不轻信 docstring/静态扫描；删除前反复确认。探讨与执行分离，探讨阶段不改代码。
 
 [提交推送与质量把关]
 - Date: 2026-07-18（2026-08-03、2026-08-16、2026-08-18、2026-08-21 更新）
@@ -60,6 +61,9 @@
   - **openpyxl delete_rows 空行残留**：历史脏库上 `delete_rows` 后 `max_row` 不变、空行残留（样式残留导致行号错乱）。可靠方案：重建工作簿——`iter_rows` 过滤空行，`Workbook()` 新建 append 表头+数据、重设样式。`check_actor_db` 报大量"jp 为空"即空行残留信号。
   - **zhconv 不覆盖日文新字体/异体字**：`zhconv.convert("zh-cn")` 只做标准繁简映射，不识别 亜→亚、桜→樱、沢→泽、恵→惠、瀬→濑 等日文新字体。`actor_db_tool.py` 中 `_to_simplified()` 在 zhconv 前额外应用 `_JP_SHINJITAI_TO_SIMPLIFIED` 映射表（87 字）补救。zhconv 还会误转某些日文汉字（如 栞→刊），因此对 info_database 的 zh_cn 列只做 `.translate()` 不调 zhconv。
   - **str.maketrans 返回 dict 的 key 是 int 不是 str**：`str.maketrans({"亜":"亚"})` 返回的 dict key 是 `ord("亜")`=int。用 `ch in mapping`（ch 是 str）检查永远 False，但 `"亜".translate(mapping)` 能正常工作。统计映射覆盖字时必须用 `ord(ch) in mapping` 而非 `ch in mapping`。
+  - **死代码核实（勿信 docstring/静态扫描）**：AST 扫 Name.id+Attr.attr 会漏掉装饰器注册(typer `@app.command`)、字符串类型注解(`"Name"`)、延迟 import、字符串工厂路径(`"mod:func"`)，把活代码误判为死代码；docstring 会过时。运行时核实用三件套：动态 import 全模块+`gc.get_referrers` 查持有者(排除定义模块 dict 与脚本自身 func 变量)、AST 扫全库字符串字面量(动态 getattr/globals 必以字符串写函数名)、git 历史常只有导入提交难回溯。删死函数后其私有辅助级联变死，删后重扫零引用确认。
+  - **edit 删除函数安全**：oldString 用「函数全文+下一函数定义行」唯一锚点、newString 用「下一函数定义行」；oldString 为空会替换整个文件(曾致 core/utils.py 286 行丢失)；删除后查死 import(ruff F401)/死变量；误操作用 `git checkout -- <file>` 恢复。
+  - **DMM 高清 4 套机制**：①继承 DmmCrawler(dmm/dmm_api/thejavdb_api，post_process 升级用 number_00/no_00 构 pl.jpg，TheJavdbApiCrawler 继承才有高清)②upgrade_dmm_cover(javdb/javdb_api/javdb_app/javbus/javlibrary/r18dev)③build_aws 候选优先(libredmm/avbase)④core/web.py 全局层(poster 选优竖 ps + thumb 兜底横 pl，所有爬虫生效)。pl.jpg 横→封面、ps.jpg 竖→海报，分工不重复。下架→升级回退原图(图仍可用)、兜底失效(窄场景)；无码跳过。
 
 [executor.submit 与跨线程 Qt 安全]
 - Date: 2026-08-03（2026-08-16 更新）
@@ -142,3 +146,4 @@
   - **分批处理**：单批 200 条，`count_pending(offset)` 每轮统计剩余避免空跑。
   - **并发踩坑**：JavDB API 高并发（15/8）反而被限流降吞吐，实测并发 5 是天花板（~1 条/s）。临时脚本放 `scripts/` 并在 `.gitignore` 排除。
   - **内存预算**：background_terminal_create 前先 `background_terminal_list` 检查现有终端，新增 memory_percent + 既有总额不超环境总内存 85%。
+
