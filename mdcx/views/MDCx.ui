@@ -1611,7 +1611,7 @@
                   <x>0</x>
                   <y>0</y>
                   <width>760</width>
-                  <height>2455</height>
+                  <height>2475</height>
                 </rect>
               </property>
               <property name="autoFillBackground">
@@ -1621,7 +1621,7 @@
                 <property name="geometry">
                   <rect>
                     <x>30</x>
-                    <y>640</y>
+                    <y>660</y>
                     <width>701</width>
                     <height>271</height>
                   </rect>
@@ -1754,7 +1754,7 @@
                 <property name="geometry">
                   <rect>
                     <x>30</x>
-                    <y>931</y>
+                    <y>951</y>
                     <width>701</width>
                     <height>141</height>
                   </rect>
@@ -1802,7 +1802,7 @@
                 <property name="geometry">
                   <rect>
                     <x>30</x>
-                    <y>1834</y>
+                    <y>1854</y>
                     <width>701</width>
                     <height>241</height>
                   </rect>
@@ -1975,7 +1975,7 @@
                 <property name="geometry">
                   <rect>
                     <x>30</x>
-                    <y>1643</y>
+                    <y>1663</y>
                     <width>701</width>
                     <height>171</height>
                   </rect>
@@ -2051,7 +2051,7 @@
                 <property name="geometry">
                   <rect>
                     <x>30</x>
-                    <y>1312</y>
+                    <y>1332</y>
                     <width>701</width>
                     <height>311</height>
                   </rect>
@@ -2242,7 +2242,7 @@
                   <property name="geometry">
                     <rect>
                       <x>140</x>
-                      <y>170</y>
+                      <y>1289</y>
                       <width>521</width>
                       <height>57</height>
                     </rect>
@@ -2329,7 +2329,7 @@
                      <x>30</x>
                      <y>40</y>
                      <width>701</width>
-                     <height>580</height>
+                     <height>600</height>
                    </rect>
                  </property>
                 <property name="title">
@@ -2345,7 +2345,7 @@
                     </rect>
                   </property>
                   <property name="styleSheet">
-                    <string notr="true">color: rgb(8, 128, 128);</string>
+                    <string notr="true">color: rgb(8, 128, 128);font-size: 12px;</string>
                   </property>
                   <property name="text">
                     <string>以下操作均直接读写 actor_database.xlsx 文件，无需输入演员名单。</string>
@@ -2390,7 +2390,7 @@
                     </rect>
                   </property>
                   <property name="styleSheet">
-                    <string notr="true">color: rgb(160, 160, 160); font-size: 11px;</string>
+                    <string notr="true">color: rgb(160, 160, 160); font-size: 12px;</string>
                   </property>
                   <property name="text">
                     <string>扫描已有 TMDB ID 缺中文名的条目</string>
@@ -2406,7 +2406,7 @@
                     </rect>
                   </property>
                   <property name="styleSheet">
-                    <string notr="true">color: rgb(160, 160, 160); font-size: 11px;</string>
+                    <string notr="true">color: rgb(160, 160, 160); font-size: 12px;</string>
                   </property>
                   <property name="text">
                     <string>扫描已有 TMDB ID 缺链接的条目</string>
@@ -2448,7 +2448,7 @@
                     </rect>
                   </property>
                   <property name="styleSheet">
-                    <string notr="true">color: rgb(160, 160, 160); font-size: 11px;</string>
+                    <string notr="true">color: rgb(160, 160, 160); font-size: 12px;</string>
                   </property>
                   <property name="text">
                     <string>用默认程序打开 xlsx 供查看与手工编辑</string>
@@ -2460,11 +2460,11 @@
                       <x>40</x>
                       <y>176</y>
                       <width>621</width>
-                      <height>20</height>
+                      <height>28</height>
                     </rect>
                   </property>
                   <property name="styleSheet">
-                    <string notr="true">color: rgb(200, 100, 0);</string>
+                    <string notr="true">color: rgb(200, 100, 0);font-size: 12px;</string>
                   </property>
                   <property name="text">
                     <string>提示：补全结果将输出到日志页。所有按钮均防重入，运行中按钮禁用。</string>
@@ -2512,7 +2512,7 @@
                     </rect>
                   </property>
                   <property name="styleSheet">
-                    <string notr="true">color: rgb(160, 160, 160); font-size: 11px;</string>
+                    <string notr="true">color: rgb(160, 160, 160); font-size: 12px;</string>
                   </property>
                    <property name="text">
                      <string>从 minnano-av 补全缺生日/简介，日文字段自动翻译</string>
@@ -2543,11 +2543,11 @@
                       <x>260</x>
                       <y>246</y>
                       <width>381</width>
-                      <height>22</height>
+                      <height>28</height>
                     </rect>
                   </property>
                   <property name="styleSheet">
-                    <string notr="true">color: rgb(160, 160, 160); font-size: 11px;</string>
+                    <string notr="true">color: rgb(160, 160, 160); font-size: 12px;</string>
                   </property>
                   <property name="text">
                     <string>失效 id 清除后自动按名字重搜补回新 id（搜不到则保持无 id，刮削兜底）</string>
@@ -2576,13 +2576,13 @@
                   <property name="geometry">
                     <rect>
                       <x>260</x>
-                      <y>284</y>
+                      <y>280</y>
                       <width>381</width>
-                      <height>22</height>
+                      <height>42</height>
                     </rect>
                   </property>
                   <property name="styleSheet">
-                    <string notr="true">color: rgb(160, 160, 160); font-size: 11px;</string>
+                    <string notr="true">color: rgb(160, 160, 160); font-size: 12px;</string>
                   </property>
                   <property name="text">
                     <string>检查格式错误、数据异常，安全项自动修复，tmdb 项给人工修复步骤</string>
@@ -2595,7 +2595,7 @@
                   <property name="geometry">
                     <rect>
                       <x>40</x>
-                      <y>510</y>
+                      <y>530</y>
                       <width>200</width>
                       <height>30</height>
                     </rect>
@@ -2611,13 +2611,13 @@
                   <property name="geometry">
                     <rect>
                       <x>260</x>
-                      <y>514</y>
+                      <y>534</y>
                       <width>421</width>
                       <height>30</height>
                     </rect>
                   </property>
                   <property name="styleSheet">
-                    <string notr="true">color: rgb(160, 160, 160); font-size: 11px;</string>
+                    <string notr="true">color: rgb(160, 160, 160); font-size: 12px;</string>
                   </property>
                   <property name="text">
                     <string>JavDB 的 name_zht 转简体补全中文名；仅处理「中文==日文原名」的行</string>
@@ -2674,11 +2674,11 @@
                       <x>40</x>
                       <y>360</y>
                       <width>621</width>
-                      <height>20</height>
+                      <height>28</height>
                     </rect>
                   </property>
                   <property name="styleSheet">
-                    <string notr="true">color: rgb(160, 160, 160); font-size: 11px;</string>
+                    <string notr="true">color: rgb(160, 160, 160); font-size: 12px;</string>
                   </property>
                   <property name="text">
                     <string>用本地库新 id 覆盖 nfo 旧 id；原本没有的补上（nfo 是持久源，改这里 Emby 重扫才一致）</string>
@@ -2691,7 +2691,7 @@
                   <property name="geometry">
                     <rect>
                       <x>40</x>
-                      <y>380</y>
+                      <y>388</y>
                       <width>200</width>
                       <height>32</height>
                     </rect>
@@ -2707,7 +2707,7 @@
                   <property name="geometry">
                     <rect>
                       <x>260</x>
-                      <y>380</y>
+                      <y>388</y>
                       <width>140</width>
                       <height>32</height>
                     </rect>
@@ -2732,7 +2732,7 @@
                   <property name="geometry">
                     <rect>
                       <x>420</x>
-                      <y>380</y>
+                      <y>388</y>
                       <width>180</width>
                       <height>32</height>
                     </rect>
@@ -2753,6 +2753,7 @@
                       <height>28</height>
                     </rect>
                   </property>
+<property name="styleSheet"><string notr="true">font-size: 12px;</string></property>
                   <property name="text">
                     <string>起始行</string>
                   </property>
@@ -2788,6 +2789,7 @@
                       <height>28</height>
                     </rect>
                   </property>
+<property name="styleSheet"><string notr="true">font-size: 12px;</string></property>
                   <property name="text">
                     <string>限量</string>
                   </property>
@@ -2830,7 +2832,7 @@
                     </rect>
                   </property>
                   <property name="styleSheet">
-                    <string notr="true">color: rgb(160, 160, 160); font-size: 11px;</string>
+                    <string notr="true">color: rgb(160, 160, 160); font-size: 12px;</string>
                   </property>
                   <property name="text">
                     <string>0 起始行+5000 限量 = 默认行为</string>
@@ -2845,11 +2847,11 @@
                       <x>40</x>
                       <y>480</y>
                       <width>621</width>
-                      <height>20</height>
+                      <height>42</height>
                     </rect>
                   </property>
                   <property name="styleSheet">
-                    <string notr="true">color: rgb(160, 160, 160); font-size: 11px;</string>
+                    <string notr="true">color: rgb(160, 160, 160); font-size: 12px;</string>
                   </property>
                   <property name="text">
                     <string>来源 TMDB 需配置 API Key；minnano 直接抓取みんなのAV。默认仅补缺别名的行，勾选「全量更新」则并入全部行；用「起始行/限量」可分片续跑</string>
@@ -2863,7 +2865,7 @@
                 <property name="geometry">
                   <rect>
                     <x>30</x>
-                    <y>1092</y>
+                    <y>1112</y>
                     <width>701</width>
                     <height>200</height>
                   </rect>
@@ -2974,7 +2976,7 @@
                   <property name="geometry">
                     <rect>
                       <x>30</x>
-                      <y>2095</y>
+                      <y>2115</y>
                       <width>701</width>
                       <height>340</height>
                     </rect>
@@ -7598,7 +7600,7 @@
                             </property>
                           </widget>
                         </item>
-                        <item row="11" column="1">
+                        <item row="11" column="1" colspan="3">
                           <widget class="QLabel" name="label_232">
                             <property name="sizePolicy">
                               <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
@@ -7612,7 +7614,7 @@
                             <property name="maximumSize">
                               <size>
                                 <width>16777215</width>
-                                <height>42</height>
+                                <height>60</height>
                               </size>
                             </property>
                             <property name="text">
@@ -7762,7 +7764,7 @@
                             </property>
                           </widget>
                         </item>
-                        <item row="12" column="1">
+                        <item row="12" column="1" colspan="3">
                           <widget class="QLabel" name="label_318">
                             <property name="sizePolicy">
                               <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
@@ -7787,7 +7789,7 @@
                             </property>
                           </widget>
                         </item>
-                        <item row="13" column="1">
+                        <item row="13" column="1" colspan="3">
                           <widget class="QLabel" name="label_323">
                             <property name="sizePolicy">
                               <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
@@ -8324,91 +8326,7 @@
                             </property>
                           </widget>
                         </item>
-                        <item>
-                          <widget class="QGroupBox" name="groupBox_nfo_lib_batch">
-                            <property name="title">
-                              <string>批量操作（选中多条后使用）</string>
-                            </property>
-                            <layout class="QGridLayout" name="gridLayout_nfo_lib_batch">
-                              <item row="0" column="0">
-                                <widget class="QPushButton" name="pushButton_nfo_lib_batch_actor">
-                                  <property name="text">
-                                    <string>替换演员名</string>
-                                  </property>
-                                </widget>
-                              </item>
-                              <item row="0" column="1">
-                                <widget class="QLineEdit" name="lineEdit_nfo_lib_batch_actor">
-                                  <property name="placeholderText">
-                                    <string>新演员名（逗号分隔）</string>
-                                  </property>
-                                </widget>
-                              </item>
-                              <item row="1" column="0">
-                                <widget class="QPushButton" name="pushButton_nfo_lib_batch_add_tag">
-                                  <property name="text">
-                                    <string>加标签</string>
-                                  </property>
-                                </widget>
-                              </item>
-                              <item row="1" column="1">
-                                <widget class="QLineEdit" name="lineEdit_nfo_lib_batch_add_tag">
-                                  <property name="placeholderText">
-                                    <string>标签（逗号分隔）</string>
-                                  </property>
-                                </widget>
-                              </item>
-                              <item row="2" column="0">
-                                <widget class="QPushButton" name="pushButton_nfo_lib_batch_del_tag">
-                                  <property name="text">
-                                    <string>删标签</string>
-                                  </property>
-                                </widget>
-                              </item>
-                              <item row="2" column="1">
-                                <widget class="QLineEdit" name="lineEdit_nfo_lib_batch_del_tag">
-                                  <property name="placeholderText">
-                                    <string>标签（逗号分隔）</string>
-                                  </property>
-                                </widget>
-                              </item>
-                              <item row="3" column="0">
-                                <widget class="QPushButton" name="pushButton_nfo_lib_batch_series">
-                                  <property name="text">
-                                    <string>统一系列名</string>
-                                  </property>
-                                </widget>
-                              </item>
-                              <item row="3" column="1">
-                                <widget class="QLineEdit" name="lineEdit_nfo_lib_batch_series">
-                                  <property name="placeholderText">
-                                    <string>系列名</string>
-                                  </property>
-                                </widget>
-                              </item>
-                              <item row="4" column="0" colspan="2">
-                                <widget class="QPushButton" name="pushButton_nfo_lib_batch_save">
-                                  <property name="minimumSize">
-                                    <size>
-                                      <width>0</width>
-                                      <height>36</height>
-                                    </size>
-                                  </property>
-                                  <property name="text">
-                                    <string>批量保存</string>
-                                  </property>
-                                </widget>
-                              </item>
-                              <item row="5" column="0" colspan="2">
-                                <widget class="QLabel" name="label_nfo_lib_batch_status">
-                                  <property name="text">
-                                    <string/>
-                                  </property>
-                                </widget>
-                              </item>
-                            </layout>
-                          </widget>
-                        </item>
+                        
                       </layout>
                     </widget>
                   </widget>
@@ -9950,7 +9868,7 @@
                         <item>
                           <widget class="QCheckBox" name="checkBox_compress_downloaded_images">
                             <property name="toolTip">
-                              <string>下载后压缩图片；关闭后不执行图片压缩和缩放</string>
+                              <string>刮削完成后压缩输出文件夹里的所有图片（封面/海报/缩略图/剧照）：长边超过 1100px 缩放到 1100px，JPEG/WEBP 质量 80，PNG 无损压缩，减小图片体积；关闭则保留原图不压缩</string>
                             </property>
                             <property name="text">
                               <string>压缩</string>
@@ -19644,6 +19562,25 @@
                             </property>
                           </widget>
                         </item>
+                        <item row="22" column="2">
+                          <widget class="QLabel" name="label_nfo_tag_actor_whitelist_hint">
+                            <property name="sizePolicy">
+                              <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
+                                <horstretch>0</horstretch>
+                                <verstretch>0</verstretch>
+                              </sizepolicy>
+                            </property>
+                            <property name="styleSheet">
+                              <string notr="true">color: rgb(8, 128, 128);</string>
+                            </property>
+                            <property name="text">
+                              <string>用途：限制 NFO 标签里出现哪些演员名——只把白名单中的演员写入「演员」标签，留空 = 全部演员都写入。适用于不想把某位演员放进标签的场景。</string>
+                            </property>
+                            <property name="wordWrap">
+                              <bool>true</bool>
+                            </property>
+                          </widget>
+                        </item>
                         <item row="23" column="1">
                           <widget class="QLabel" name="label_428">
                             <property name="sizePolicy">
@@ -21505,14 +21442,14 @@
                       <x>0</x>
                       <y>0</y>
                       <width>760</width>
-                      <height>1820</height>
+                      <height>1880</height>
                     </rect>
                   </property>
                   <widget class="QGroupBox" name="groupBox_10">
                     <property name="geometry">
                       <rect>
                         <x>30</x>
-                        <y>515</y>
+                        <y>605</y>
                         <width>701</width>
                         <height>671</height>
                       </rect>
@@ -21930,7 +21867,7 @@
                         <x>30</x>
                         <y>20</y>
                         <width>701</width>
-                        <height>480</height>
+                        <height>570</height>
                       </rect>
                     </property>
                     <property name="styleSheet">
@@ -21945,17 +21882,23 @@
                           <x>20</x>
                           <y>30</y>
                           <width>661</width>
-                          <height>370</height>
+                          <height>500</height>
                         </rect>
                       </property>
                       <layout class="QGridLayout" name="gridLayout_9">
                         <item row="8" column="1">
                           <widget class="QLabel" name="label_103">
                             <property name="sizePolicy">
-                              <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
+                              <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
                                 <horstretch>0</horstretch>
                                 <verstretch>0</verstretch>
                               </sizepolicy>
+                            </property>
+                            <property name="minimumSize">
+                              <size>
+                                <width>0</width>
+                                <height>70</height>
+                              </size>
                             </property>
                             <property name="styleSheet">
                               <string notr="true">color: rgb(8, 128, 128);</string>
@@ -22373,7 +22316,7 @@
                             </property>
                           </widget>
                         </item>
-                        <item row="6" column="0">
+                        <item row="4" column="0">
                           <widget class="QLabel" name="label_cf_bypass_trawl">
                             <property name="sizePolicy">
                               <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
@@ -22398,7 +22341,7 @@
                             </property>
                           </widget>
                         </item>
-                        <item row="6" column="1">
+                        <item row="4" column="1">
                           <layout class="QHBoxLayout" name="horizontalLayout_trawl">
                             <item>
                               <widget class="QLineEdit" name="lineEdit_cf_bypass_trawl_url">
@@ -22509,6 +22452,25 @@
                             </property>
                           </widget>
                         </item>
+                        <item row="11" column="1" colspan="3">
+                          <widget class="QLabel" name="label_cf_bypass_trusted_hosts_desc">
+                            <property name="sizePolicy">
+                              <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
+                                <horstretch>0</horstretch>
+                                <verstretch>0</verstretch>
+                              </sizepolicy>
+                            </property>
+                            <property name="styleSheet">
+                              <string notr="true">color: rgb(8, 128, 128);</string>
+                            </property>
+                            <property name="text">
+                              <string>用途：校验 Bypass 服务落地/重定向后的最终域名，防止第三方服务被劫持时把恶意页面当数据。支持 *.example.com 子域通配，逗号分隔；留空表示不校验（默认）。一般无需配置。</string>
+                            </property>
+                            <property name="wordWrap">
+                              <bool>true</bool>
+                            </property>
+                          </widget>
+                        </item>
                         <item row="7" column="0">
                           <widget class="QLabel" name="label_65">
                             <property name="sizePolicy">
@@ -22610,7 +22572,7 @@
                     <property name="geometry">
                       <rect>
                         <x>30</x>
-                        <y>1446</y>
+                        <y>1536</y>
                         <width>701</width>
                         <height>301</height>
                       </rect>
@@ -22801,7 +22763,7 @@
                     <property name="geometry">
                       <rect>
                         <x>30</x>
-                        <y>1201</y>
+                        <y>1291</y>
                         <width>701</width>
                         <height>230</height>
                       </rect>
@@ -24960,6 +24922,110 @@ p, li { white-space: pre-wrap; }
                             <property name="sortingEnabled">
                               <bool>true</bool>
                             </property>
+                          </widget>
+                        </item>
+                        <item>
+<widget class="QGroupBox" name="groupBox_nfo_lib_batch">
+                            <property name="title">
+                              <string>批量操作（选中多条后使用）</string>
+                            </property>
+                            <layout class="QGridLayout" name="gridLayout_nfo_lib_batch">
+                              <item row="0" column="0">
+                                <widget class="QPushButton" name="pushButton_nfo_lib_batch_actor">
+                                  <property name="text">
+                                    <string>替换演员名</string>
+                                  </property>
+                                </widget>
+                              </item>
+                              <item row="0" column="1">
+                                <widget class="QLineEdit" name="lineEdit_nfo_lib_batch_actor">
+                                  <property name="placeholderText">
+                                    <string>新演员名（逗号分隔）</string>
+                                  </property>
+                                </widget>
+                              </item>
+                              <item row="1" column="0">
+                                <widget class="QPushButton" name="pushButton_nfo_lib_batch_add_tag">
+                                  <property name="text">
+                                    <string>加标签</string>
+                                  </property>
+                                </widget>
+                              </item>
+                              <item row="1" column="1">
+                                <widget class="QLineEdit" name="lineEdit_nfo_lib_batch_add_tag">
+                                  <property name="placeholderText">
+                                    <string>标签（逗号分隔）</string>
+                                  </property>
+                                </widget>
+                              </item>
+                              <item row="2" column="0">
+                                <widget class="QPushButton" name="pushButton_nfo_lib_batch_del_tag">
+                                  <property name="text">
+                                    <string>删标签</string>
+                                  </property>
+                                </widget>
+                              </item>
+                              <item row="2" column="1">
+                                <widget class="QLineEdit" name="lineEdit_nfo_lib_batch_del_tag">
+                                  <property name="placeholderText">
+                                    <string>标签（逗号分隔）</string>
+                                  </property>
+                                </widget>
+                              </item>
+                              <item row="3" column="0">
+                                <widget class="QPushButton" name="pushButton_nfo_lib_batch_series">
+                                  <property name="text">
+                                    <string>统一系列名</string>
+                                  </property>
+                                </widget>
+                              </item>
+                              <item row="3" column="1">
+                                <widget class="QLineEdit" name="lineEdit_nfo_lib_batch_series">
+                                  <property name="placeholderText">
+                                    <string>系列名</string>
+                                  </property>
+                                </widget>
+                              </item>
+                              <item row="4" column="0" colspan="2">
+                                <widget class="QPushButton" name="pushButton_nfo_lib_batch_save">
+                                  <property name="minimumSize">
+                                    <size>
+                                      <width>0</width>
+                                      <height>36</height>
+                                    </size>
+                                  </property>
+                                  <property name="text">
+                                    <string>批量保存</string>
+                                  </property>
+                                </widget>
+                              </item>
+                              <item row="5" column="0" colspan="2">
+                                <widget class="QLabel" name="label_nfo_lib_batch_status">
+                                  <property name="text">
+                                    <string/>
+                                  </property>
+                                </widget>
+                              </item>
+                              <item row="6" column="0" colspan="2">
+                                <widget class="QLabel" name="label_nfo_lib_batch_hint">
+                                  <property name="minimumSize">
+                                    <size>
+                                      <width>0</width>
+                                      <height>42</height>
+                                    </size>
+                                  </property>
+                                  <property name="styleSheet">
+                                    <string notr="true">color: rgb(8, 128, 128);</string>
+                                  </property>
+                                  <property name="text">
+                                    <string>用法：先在左侧 NFO 列表选中多条记录，再填写内容点对应按钮（替换演员名/加标签/删标签/统一系列名），最后点「批量保存」统一写盘生效。</string>
+                                  </property>
+                                  <property name="wordWrap">
+                                    <bool>true</bool>
+                                  </property>
+                                </widget>
+                              </item>
+                            </layout>
                           </widget>
                         </item>
                       </layout>
