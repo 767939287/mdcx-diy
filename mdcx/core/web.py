@@ -41,7 +41,6 @@ from .amazon import (
     _get_amazon_barcode_detector_skip_reason,
     get_big_pic_by_amazon,
     is_amazon_hard_match,
-    try_get_amazon_barcode_from_covers,
     try_get_amazon_barcodes_from_covers,
 )
 from .image import cut_thumb_to_poster
@@ -84,7 +83,6 @@ __all__ = [
     "_extract_amazon_barcode_label_roi",
     "_get_amazon_barcode_detector_skip_reason",
     "get_big_pic_by_amazon",
-    "try_get_amazon_barcode_from_covers",
     "try_get_amazon_barcodes_from_covers",
 ]
 

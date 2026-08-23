@@ -96,7 +96,6 @@ async def _save_asin_record(
     title: str,
     poster_url: str,
     search_keyword: str,
-    detail_url: str = "",
 ):
     """保存或更新 ASIN 记录到数据库
 
@@ -706,14 +705,6 @@ async def try_get_amazon_barcodes_from_covers(
 
     LogBuffer.log().write("\n 🟡 Amazon条码快路径：封面未识别到可用 EAN/JAN，回退标题搜索")
     return []
-
-
-async def try_get_amazon_barcode_from_covers(
-    result: CrawlersResult,
-    media_context: MediaResourceContext | None = None,
-) -> str:
-    barcodes = await try_get_amazon_barcodes_from_covers(result, media_context)
-    return barcodes[0] if barcodes else ""
 
 
 async def get_big_pic_by_amazon(
@@ -1460,7 +1451,6 @@ async def get_big_pic_by_amazon(
                 if candidate is None:
                     barcode_candidates[each_key] = create_candidate(
                         url=url,
-                        detail_url=normalized_detail_url,
                         pic_title=pic_title,
                         pic_ver=pic_ver,
                         media_priority=media_priority,
@@ -1537,7 +1527,6 @@ async def get_big_pic_by_amazon(
                         title=str(best_candidate["pic_title"]),
                         poster_url=str(best_candidate["url"]),
                         search_keyword=barcode,
-                        detail_url=detail_url_str,
                     )
                     return str(best_candidate["url"])
                 result.poster = str(best_candidate["url"])
@@ -1551,7 +1540,6 @@ async def get_big_pic_by_amazon(
                     title=str(best_candidate["pic_title"]),
                     poster_url=str(best_candidate["url"]),
                     search_keyword=barcode,
-                    detail_url=detail_url_str,
                 )
                 LogBuffer.log().write(
                     f"\n 🟡 Amazon 条码快路径命中低清图：EAN/JAN({barcode}) "
@@ -1581,7 +1569,6 @@ async def get_big_pic_by_amazon(
                         title=str(best_candidate["pic_title"]),
                         poster_url=str(best_candidate["url"]),
                         search_keyword=barcode,
-                        detail_url=detail_url_str,
                     )
                     return str(best_candidate["url"])
                 result.poster = str(best_candidate["url"])
@@ -1600,7 +1587,6 @@ async def get_big_pic_by_amazon(
                     title=str(best_candidate["pic_title"]),
                     poster_url=str(best_candidate["url"]),
                     search_keyword=barcode,
-                    detail_url=detail_url_str,
                 )
                 LogBuffer.log().write(
                     f"\n 🟡 Amazon 条码快路径弱确认低清图：标题置信度 ({float(best_candidate['title_confidence']):.2f}) "
@@ -1679,7 +1665,6 @@ async def get_big_pic_by_amazon(
                 if candidate is None:
                     candidate_pool[each_key] = create_candidate(
                         url=url,
-                        detail_url=normalized_detail_url,
                         pic_title=pic_title,
                         pic_ver=pic_ver,
                         media_priority=media_priority,
@@ -1763,7 +1748,6 @@ async def get_big_pic_by_amazon(
                         title=str(each_candidate["pic_title"]),
                         poster_url=str(each_candidate["url"]),
                         search_keyword=str(current_title if "current_title" in locals() else ""),
-                        detail_url=detail_url_str,
                     )
                     return str(each_candidate["url"])
             if best_fallback_candidate:
@@ -1783,7 +1767,6 @@ async def get_big_pic_by_amazon(
                     title=str(best_fallback_candidate["pic_title"]),
                     poster_url=str(best_fallback_candidate["url"]),
                     search_keyword=str(current_title if "current_title" in locals() else ""),
-                    detail_url=detail_url_str,
                 )
                 LogBuffer.log().write(
                     f"\n 🟡 Amazon命中低清图：标题置信度 ({float(best_fallback_candidate['title_confidence']):.2f}) "
