@@ -191,8 +191,6 @@ def migrate_config_data(data: dict[str, Any]) -> list[str]:
         r = r.strip().lower()
         data["cf_bypass_trawl_backend"] = r if r in ("trawl", "flaresolverr") else "trawl"
 
-    if isinstance(r := data.get("nfo_tag_actor_contains"), str):
-        data["nfo_tag_actor_contains"] = _str_to_list(r, "|")
     if isinstance(r := data.get("use_database"), int):
         data["use_database"] = bool(r)
     if isinstance(r := data.get("local_library"), str):

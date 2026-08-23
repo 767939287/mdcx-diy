@@ -361,7 +361,6 @@ def load_config(self: "MyMAinWindow"):
         self.Ui.lineEdit_nfo_tag_studio.setText(manager.config.nfo_tag_studio)
         self.Ui.lineEdit_nfo_tag_publisher.setText(manager.config.nfo_tag_publisher)
         self.Ui.lineEdit_nfo_tag_actor.setText(manager.config.nfo_tag_actor)
-        self.Ui.lineEdit_nfo_tag_actor_contains.setText("|".join(manager.config.nfo_tag_actor_contains))
 
         # 写入nfo的字段 - 新配置直接使用枚举列表，不需要版本兼容性检查
         nfo_include_new = manager.config.nfo_include_new

@@ -35,7 +35,7 @@
 - **演员库维护 group 修复**：内容超出固定高度致底部按钮裁剪、5 处说明 label 高度不足被上下裁剪且字体过小（11px/9px）；统一 12px、补齐高度、连锁调整布局
 - **网络设置 group 重影**：长说明 label 垂直策略 Fixed 锁高度致文字溢出被遮挡；并修复 grid row 6 超时滑块与 TRAWL 输入重复占位重叠
 - **批量操作面板迁移**：grid item 缺 row 定位退化为 100×30 与说明文字重叠，且面板被放错页面（操作对象 NFO 列表在 NFO 库页）；迁移到 NFO 库页左栏列表下方并补用法说明
-- **配置项说明补齐**：Bypass 落地白名单、演员名白名单、压缩均补常驻/清晰说明（tooltip 或 teal 文字）
+- **配置项说明补齐**：Bypass 落地白名单、压缩均补常驻/清晰说明（tooltip 或 teal 文字）
 - **类型刮削网站说明空白**：国产/动漫里番/Mywife 说明 label colspan 3 利用右侧空白
 - **UI 与文档一致性检查**：网站数量 48 全一致；代理列表补 missav.live；兜底描述补 MGStage；弹窗有码列表补 thejavdb_api
 - **网络检测增强 6 项**：代理故障提示、镜像抽样、单厂牌提示、重试失败项/复制结果按钮、DMM 误报修复
@@ -47,6 +47,7 @@
 - **并发/性能**：is_proxy_host O(1) 映射、镜像轮询重试去重、AVdb 并发预热、连接池锁外清理、Flags 重置保持异步锁身份稳定、TMDB 演员库并发写保护、女优信息库加锁
 - **其他**：DMM 9 前缀番号识别、CF 指纹轮换（safari17_2_ios）、读取模式不受断点缓存干扰、打包 hidden-import 补齐、配置保存竞态/重试链、优雅退出、ComputedLease 非阻塞
 - **网络设置说明文字截断/未左对齐**：label_103 高度写死 70px 且未开自动换行，5 行青色说明文字底部被裁、缩在滑块列下方未与「重试次数」对齐；改为跨两列（colspan=2）+ wordWrap + 由内容撑高，内部网格高度 500→540 防下方控件被挤出框外
+- **NFO 设置页勾选项文字截断**：groupBox 锁宽 739 + 内容区仅 ~580px，3~4 个带英文括号的 CheckBox 挤不下被硬截断（如「发行日期（re」「国家（countr」「片商（st」）；scrollArea widgetResizable 改 true、groupBox 放宽至 860、26 个超长 CheckBox 统一 sizePolicy 为 Minimum 去掉 150 硬限按文本比例分配宽度，字段名完整显示
 
 ### 工程质量
 
@@ -64,6 +65,7 @@
 
 ### 清理
 
+- **移除「演员名白名单」功能**：实用性极低，删除 UI（5 个 item 含输入框/说明）+ 配置字段 `nfo_tag_actor_contains`（models/v1/default_config）+ 读写（save/load_config）+ 迁移逻辑 + translate 白名单过滤；刮削后全部演员均写入「演员」标签
 - **死代码/冗余清理**：AVWikiDB 别名查询、文件移动冗余分支、Gfriends 缓存重复写入、CF 后退避死分支、javdb_api 不可达代码
 - **Windows 体验**：保存配置黑色控制台窗口（SYSTEM_INFO 替代 platform()）、配置保存拒绝访问多级回退、翻译说明文字重影修复
 - **Emby 窗口遮挡修复（issue #38）**：模态改非模态 + 主线程阻塞改后台执行

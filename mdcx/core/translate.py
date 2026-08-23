@@ -103,11 +103,9 @@ def translate_info(json_data: CrawlersResult, has_sub: bool):
 
     # 添加演员
     if TagInclude.ACTOR in tag_include:
-        whitelist = manager.config.nfo_tag_actor_contains
         for actor in json_data.actors:
-            if not whitelist or actor in whitelist:
-                nfo_tag_actor = manager.config.nfo_tag_actor.replace("actor", actor)
-                tag = nfo_tag_actor + "," + tag
+            nfo_tag_actor = manager.config.nfo_tag_actor.replace("actor", actor)
+            tag = nfo_tag_actor + "," + tag
 
     # 添加番号前缀
     letters = json_data.letters

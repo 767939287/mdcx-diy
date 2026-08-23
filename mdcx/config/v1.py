@@ -206,7 +206,6 @@ class ConfigV1:
     nfo_tag_studio: str = r"片商: studio"
     nfo_tag_publisher: str = r"发行: publisher"
     nfo_tag_actor: str = r"actor"
-    nfo_tag_actor_contains: str = r""
 
     # name
     folder_name: str = r"{{ actor }}/{{ number }} {{ actor }}"

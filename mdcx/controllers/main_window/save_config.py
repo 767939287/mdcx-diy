@@ -255,8 +255,6 @@ def save_config(self: "MyMAinWindow"):
     manager.config.nfo_tag_studio = self.Ui.lineEdit_nfo_tag_studio.text()  # nfo_tag_studio 格式
     manager.config.nfo_tag_publisher = self.Ui.lineEdit_nfo_tag_publisher.text()  # nfo_tag_publisher 格式
     manager.config.nfo_tag_actor = self.Ui.lineEdit_nfo_tag_actor.text()  # nfo_tag_actor 格式
-    nfo_tag_actor_contains_text = self.Ui.lineEdit_nfo_tag_actor_contains.text()
-    manager.config.nfo_tag_actor_contains = str_to_list(nfo_tag_actor_contains_text, "|")
 
     # 注意：whole_fields 和 none_fields 已弃用，不再设置这些字段
     # 它们的功能已经通过新的字段配置API来实现

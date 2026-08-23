@@ -17874,7 +17874,7 @@
                   <enum>Qt::ScrollBarAlwaysOff</enum>
                 </property>
                 <property name="widgetResizable">
-                  <bool>false</bool>
+                  <bool>true</bool>
                 </property>
                 <widget class="QWidget" name="scrollAreaWidgetContents_nfo">
                   <property name="geometry">
@@ -17890,7 +17890,7 @@
                       <rect>
                         <x>30</x>
                         <y>20</y>
-                        <width>741</width>
+                        <width>860</width>
                         <height>1071</height>
                       </rect>
                     </property>
@@ -17902,7 +17902,7 @@
                     </property>
                     <property name="maximumSize">
                       <size>
-                        <width>739</width>
+                        <width>860</width>
                         <height>16777215</height>
                       </size>
                     </property>
@@ -17914,7 +17914,7 @@
                         <rect>
                           <x>20</x>
                           <y>30</y>
-                          <width>721</width>
+                          <width>820</width>
                           <height>1018</height>
                         </rect>
                       </property>
@@ -18120,16 +18120,10 @@
                             <item>
                               <widget class="QCheckBox" name="checkBox_nfo_genre">
                                 <property name="sizePolicy">
-                                  <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+                                  <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
                                     <horstretch>0</horstretch>
                                     <verstretch>0</verstretch>
                                   </sizepolicy>
-                                </property>
-                                <property name="minimumSize">
-                                  <size>
-                                    <width>150</width>
-                                    <height>0</height>
-                                  </size>
                                 </property>
                                 <property name="text">
                                   <string>风格（使用标签字段）</string>
@@ -18139,16 +18133,10 @@
                             <item>
                               <widget class="QCheckBox" name="checkBox_nfo_actor_set">
                                 <property name="sizePolicy">
-                                  <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+                                  <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
                                     <horstretch>0</horstretch>
                                     <verstretch>0</verstretch>
                                   </sizepolicy>
-                                </property>
-                                <property name="minimumSize">
-                                  <size>
-                                    <width>150</width>
-                                    <height>0</height>
-                                  </size>
                                 </property>
                                 <property name="text">
                                   <string>合集（使用演员字段）</string>
@@ -18584,16 +18572,10 @@
                             <item>
                               <widget class="QCheckBox" name="checkBox_nfo_score">
                                 <property name="sizePolicy">
-                                  <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+                                  <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
                                     <horstretch>0</horstretch>
                                     <verstretch>0</verstretch>
                                   </sizepolicy>
-                                </property>
-                                <property name="minimumSize">
-                                  <size>
-                                    <width>150</width>
-                                    <height>0</height>
-                                  </size>
                                 </property>
                                 <property name="text">
                                   <string>公众评分（score）</string>
@@ -18607,12 +18589,6 @@
                                     <horstretch>0</horstretch>
                                     <verstretch>0</verstretch>
                                   </sizepolicy>
-                                </property>
-                                <property name="minimumSize">
-                                  <size>
-                                    <width>150</width>
-                                    <height>0</height>
-                                  </size>
                                 </property>
                                 <property name="text">
                                   <string>影评人评分（criticrating）</string>
@@ -18631,12 +18607,6 @@
                                     <verstretch>0</verstretch>
                                   </sizepolicy>
                                 </property>
-                                <property name="minimumSize">
-                                  <size>
-                                    <width>0</width>
-                                    <height>0</height>
-                                  </size>
-                                </property>
                                 <property name="text">
                                   <string>片商（studio）</string>
                                 </property>
@@ -18649,12 +18619,6 @@
                                     <horstretch>0</horstretch>
                                     <verstretch>0</verstretch>
                                   </sizepolicy>
-                                </property>
-                                <property name="minimumSize">
-                                  <size>
-                                    <width>0</width>
-                                    <height>0</height>
-                                  </size>
                                 </property>
                                 <property name="text">
                                   <string>片商（maker）</string>
@@ -18681,12 +18645,6 @@
                                     <horstretch>0</horstretch>
                                     <verstretch>0</verstretch>
                                   </sizepolicy>
-                                </property>
-                                <property name="minimumSize">
-                                  <size>
-                                    <width>0</width>
-                                    <height>0</height>
-                                  </size>
                                 </property>
                                 <property name="text">
                                   <string>发行商（label）</string>
@@ -18956,16 +18914,10 @@
                             <item>
                               <widget class="QCheckBox" name="checkBox_nfo_release">
                                 <property name="sizePolicy">
-                                  <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+                                  <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
                                     <horstretch>0</horstretch>
                                     <verstretch>0</verstretch>
                                   </sizepolicy>
-                                </property>
-                                <property name="minimumSize">
-                                  <size>
-                                    <width>150</width>
-                                    <height>0</height>
-                                  </size>
                                 </property>
                                 <property name="text">
                                   <string>发行日期（release）</string>
@@ -18975,16 +18927,10 @@
                             <item>
                               <widget class="QCheckBox" name="checkBox_nfo_relasedate">
                                 <property name="sizePolicy">
-                                  <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+                                  <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
                                     <horstretch>0</horstretch>
                                     <verstretch>0</verstretch>
                                   </sizepolicy>
-                                </property>
-                                <property name="minimumSize">
-                                  <size>
-                                    <width>150</width>
-                                    <height>0</height>
-                                  </size>
                                 </property>
                                 <property name="text">
                                   <string>发行日期（releasedate）</string>
@@ -19080,16 +19026,10 @@
                             <item>
                               <widget class="QCheckBox" name="checkBox_nfo_year">
                                 <property name="sizePolicy">
-                                  <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+                                  <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
                                     <horstretch>0</horstretch>
                                     <verstretch>0</verstretch>
                                   </sizepolicy>
-                                </property>
-                                <property name="minimumSize">
-                                  <size>
-                                    <width>150</width>
-                                    <height>0</height>
-                                  </size>
                                 </property>
                                 <property name="text">
                                   <string>年份（year）</string>
@@ -19099,16 +19039,10 @@
                             <item>
                               <widget class="QCheckBox" name="checkBox_nfo_runtime">
                                 <property name="sizePolicy">
-                                  <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+                                  <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
                                     <horstretch>0</horstretch>
                                     <verstretch>0</verstretch>
                                   </sizepolicy>
-                                </property>
-                                <property name="minimumSize">
-                                  <size>
-                                    <width>150</width>
-                                    <height>0</height>
-                                  </size>
                                 </property>
                                 <property name="text">
                                   <string>时长（runtime）</string>
@@ -19117,12 +19051,6 @@
                             </item>
                             <item>
                               <widget class="QCheckBox" name="checkBox_nfo_wanted">
-                                <property name="minimumSize">
-                                  <size>
-                                    <width>0</width>
-                                    <height>0</height>
-                                  </size>
-                                </property>
                                 <property name="text">
                                   <string>想看人数（votes）</string>
                                 </property>
@@ -19196,16 +19124,10 @@
                             <item>
                               <widget class="QCheckBox" name="checkBox_nfo_country">
                                 <property name="sizePolicy">
-                                  <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+                                  <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
                                     <horstretch>0</horstretch>
                                     <verstretch>0</verstretch>
                                   </sizepolicy>
-                                </property>
-                                <property name="minimumSize">
-                                  <size>
-                                    <width>150</width>
-                                    <height>0</height>
-                                  </size>
                                 </property>
                                 <property name="text">
                                   <string>国家（country）</string>
@@ -19215,16 +19137,10 @@
                             <item>
                               <widget class="QCheckBox" name="checkBox_nfo_mpaa">
                                 <property name="sizePolicy">
-                                  <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+                                  <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
                                     <horstretch>0</horstretch>
                                     <verstretch>0</verstretch>
                                   </sizepolicy>
-                                </property>
-                                <property name="minimumSize">
-                                  <size>
-                                    <width>150</width>
-                                    <height>0</height>
-                                  </size>
                                 </property>
                                 <property name="text">
                                   <string>分级信息（mpaa）</string>
@@ -19270,16 +19186,10 @@
                             <item>
                               <widget class="QCheckBox" name="checkBox_nfo_actor">
                                 <property name="sizePolicy">
-                                  <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+                                  <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
                                     <horstretch>0</horstretch>
                                     <verstretch>0</verstretch>
                                   </sizepolicy>
-                                </property>
-                                <property name="minimumSize">
-                                  <size>
-                                    <width>150</width>
-                                    <height>0</height>
-                                  </size>
                                 </property>
                                 <property name="text">
                                   <string>演员（actor）</string>
@@ -19293,12 +19203,6 @@
                                     <horstretch>0</horstretch>
                                     <verstretch>0</verstretch>
                                   </sizepolicy>
-                                </property>
-                                <property name="minimumSize">
-                                  <size>
-                                    <width>150</width>
-                                    <height>0</height>
-                                  </size>
                                 </property>
                                 <property name="text">
                                   <string>导演（director）</string>
@@ -19429,157 +19333,6 @@
                               </widget>
                             </item>
                           </layout>
-                        </item>
-                        <item row="21" column="0">
-                          <widget class="QLabel" name="label_434">
-                            <property name="sizePolicy">
-                              <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
-                                <horstretch>0</horstretch>
-                                <verstretch>0</verstretch>
-                              </sizepolicy>
-                            </property>
-                            <property name="minimumSize">
-                              <size>
-                                <width>130</width>
-                                <height>30</height>
-                              </size>
-                            </property>
-                            <property name="layoutDirection">
-                              <enum>Qt::LeftToRight</enum>
-                            </property>
-                            <property name="text">
-                              <string />
-                            </property>
-                            <property name="alignment">
-                              <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-                            </property>
-                          </widget>
-                        </item>
-                        <item row="21" column="1">
-                          <layout class="QHBoxLayout" name="horizontalLayout_162">
-                            <item>
-                              <widget class="QLabel" name="label_424">
-                                <property name="sizePolicy">
-                                  <sizepolicy hsizetype="Fixed" vsizetype="Minimum">
-                                    <horstretch>0</horstretch>
-                                    <verstretch>0</verstretch>
-                                  </sizepolicy>
-                                </property>
-                                <property name="minimumSize">
-                                  <size>
-                                    <width>0</width>
-                                    <height>30</height>
-                                  </size>
-                                </property>
-                                <property name="layoutDirection">
-                                  <enum>Qt::LeftToRight</enum>
-                                </property>
-                                <property name="styleSheet">
-                                  <string notr="true">color: rgb(8, 128, 128);</string>
-                                </property>
-                                <property name="text">
-                                  <string>演员名白名单：</string>
-                                </property>
-                                <property name="alignment">
-                                  <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
-                                </property>
-                              </widget>
-                            </item>
-                            <item>
-                              <widget class="QLineEdit" name="lineEdit_nfo_tag_actor_contains">
-                                <property name="sizePolicy">
-                                  <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
-                                    <horstretch>0</horstretch>
-                                    <verstretch>0</verstretch>
-                                  </sizepolicy>
-                                </property>
-                                <property name="minimumSize">
-                                  <size>
-                                    <width>0</width>
-                                    <height>30</height>
-                                  </size>
-                                </property>
-                                <property name="styleSheet">
-                                  <string notr="true"> font: "Courier New";
-                                    border: 1px solid rgba(0,0,0, 50);
-                                    border-radius: 15px;
-</string>
-                                </property>
-                              </widget>
-                            </item>
-                          </layout>
-                        </item>
-                        <item row="22" column="0">
-                          <widget class="QLabel" name="label_435">
-                            <property name="sizePolicy">
-                              <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
-                                <horstretch>0</horstretch>
-                                <verstretch>0</verstretch>
-                              </sizepolicy>
-                            </property>
-                            <property name="minimumSize">
-                              <size>
-                                <width>130</width>
-                                <height>30</height>
-                              </size>
-                            </property>
-                            <property name="layoutDirection">
-                              <enum>Qt::LeftToRight</enum>
-                            </property>
-                            <property name="text">
-                              <string />
-                            </property>
-                            <property name="alignment">
-                              <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
-                            </property>
-                          </widget>
-                        </item>
-                        <item row="22" column="1">
-                          <widget class="QLabel" name="label_432">
-                            <property name="sizePolicy">
-                              <sizepolicy hsizetype="Fixed" vsizetype="Minimum">
-                                <horstretch>0</horstretch>
-                                <verstretch>0</verstretch>
-                              </sizepolicy>
-                            </property>
-                            <property name="minimumSize">
-                              <size>
-                                <width>0</width>
-                                <height>30</height>
-                              </size>
-                            </property>
-                            <property name="layoutDirection">
-                              <enum>Qt::LeftToRight</enum>
-                            </property>
-                            <property name="styleSheet">
-                              <string notr="true">color: rgb(8, 128, 128);</string>
-                            </property>
-                            <property name="text">
-                              <string>仅在白名单内的演员名才会被添加至标签（多个内容以｜分割），留空表示全部添加</string>
-                            </property>
-                            <property name="alignment">
-                              <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
-                            </property>
-                          </widget>
-                        </item>
-                        <item row="22" column="2">
-                          <widget class="QLabel" name="label_nfo_tag_actor_whitelist_hint">
-                            <property name="sizePolicy">
-                              <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
-                                <horstretch>0</horstretch>
-                                <verstretch>0</verstretch>
-                              </sizepolicy>
-                            </property>
-                            <property name="styleSheet">
-                              <string notr="true">color: rgb(8, 128, 128);</string>
-                            </property>
-                            <property name="text">
-                              <string>用途：限制 NFO 标签里出现哪些演员名——只把白名单中的演员写入「演员」标签，留空 = 全部演员都写入。适用于不想把某位演员放进标签的场景。</string>
-                            </property>
-                            <property name="wordWrap">
-                              <bool>true</bool>
-                            </property>
-                          </widget>
                         </item>
                         <item row="23" column="1">
                           <widget class="QLabel" name="label_428">

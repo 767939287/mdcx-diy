@@ -813,7 +813,6 @@
   "nfo_tag_studio": "片商: studio",
   "nfo_tag_publisher": "发行: publisher",
   "nfo_tag_actor": "actor",
-  "nfo_tag_actor_contains": [],
   "folder_name": "{{ actor }}/{{ number }}",
   "naming_file": "{{ number }}",
   "naming_media": "{% if number %}{{ number }}{% endif %}{% if title and title != number %} {{ title }}{% endif %}",
