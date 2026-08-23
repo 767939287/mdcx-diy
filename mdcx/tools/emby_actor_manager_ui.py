@@ -212,35 +212,46 @@ class PreparePreviewThread(QThread):
     async def _try_fetch_image(self, actor: ActorInfo, force: bool):
         if not force and actor.has_image:
             return
+        graphis_attempted = False
+        graphis_backdrop: str | None = None
+        # 头像：按配置源顺序第一个命中即采用（保留用户设置优先级）
         for src in self.image_sources:
-            if src == "gfriends" and self.gfriends_index:
-                result = await from_gfriends(actor, self.gfriends_index, self.cache_dir)
-                if result:
-                    actor.new_image_path = result
-                    actor.need_update_image = True
-                    return
-            elif src == "graphis":
+            if src == "graphis":
+                graphis_attempted = True
                 graphis_result = await from_graphis(actor, self.cache_dir)
-                if isinstance(graphis_result, tuple):
-                    avatar_path, backdrop_path = graphis_result
-                    actor.new_image_path = avatar_path
+                if isinstance(graphis_result, tuple) and graphis_result[0]:
+                    actor.new_image_path = graphis_result[0]
                     actor.need_update_image = True
-                    if backdrop_path:
-                        actor.new_backdrop_path = backdrop_path
-                        actor.need_update_backdrop = True
-                    return
-            elif src == "minnano":
-                result = await from_minnano_image(actor, self.cache_dir)
-                if result:
-                    actor.new_image_path = result
-                    actor.need_update_image = True
-                    return
-            elif src == "local":
-                result = from_local_avatar(actor, self.local_avatar_dir, self._local_avatar_index)
-                if result:
-                    actor.new_image_path = result
-                    actor.need_update_image = True
-                    return
+                    graphis_backdrop = graphis_result[1]
+                    break
+                continue
+            result = await self._fetch_avatar_from(actor, src)
+            if result:
+                actor.new_image_path = result
+                actor.need_update_image = True
+                break
+        # 背景图：头像命中不代表有背景（gfriends/local/minnano 均无背景），
+        # 若仍缺背景，用 graphis 补——避免头像先命中导致背景永远无法补齐。
+        # graphis 若已在头像循环尝试过，直接复用其结果，不重复请求。
+        if not actor.has_backdrop and not actor.need_update_backdrop and "graphis" in self.image_sources:
+            if graphis_backdrop:
+                actor.new_backdrop_path = graphis_backdrop
+                actor.need_update_backdrop = True
+            elif not graphis_attempted:
+                graphis_result = await from_graphis(actor, self.cache_dir)
+                if isinstance(graphis_result, tuple) and graphis_result[1]:
+                    actor.new_backdrop_path = graphis_result[1]
+                    actor.need_update_backdrop = True
+
+    async def _fetch_avatar_from(self, actor: ActorInfo, src: str) -> str | None:
+        """从单个图源尝试获取头像路径；未命中返回 None。graphis 由 _try_fetch_image 特判处理。"""
+        if src == "gfriends" and self.gfriends_index:
+            return await from_gfriends(actor, self.gfriends_index, self.cache_dir)
+        if src == "minnano":
+            return await from_minnano_image(actor, self.cache_dir)
+        if src == "local":
+            return from_local_avatar(actor, self.local_avatar_dir, self._local_avatar_index)
+        return None
 
     async def _try_fetch_info(self, actor: ActorInfo, force: bool):
         if not force and actor.has_overview:
@@ -256,7 +267,7 @@ class PreparePreviewThread(QThread):
 
 class SyncThread(QThread):
     progress = Signal(int, int, str)
-    actor_done = Signal(str, bool, str)
+    actor_done = Signal(str, str, bool, str)  # (actor_id, name, success, msg)
     sync_done = Signal(int, int)
     error = Signal(str)
 
@@ -269,7 +280,7 @@ class SyncThread(QThread):
             success, fail = sync_batch(
                 self.actors,
                 progress_callback=lambda c, t, m: self.progress.emit(c, t, m),
-                actor_callback=lambda actor, ok, msg: self.actor_done.emit(actor.name, ok, msg),
+                actor_callback=lambda actor, ok, msg: self.actor_done.emit(actor.actor_id, actor.name, ok, msg),
             )
             self.sync_done.emit(success, fail)
         except Exception as e:
@@ -606,7 +617,8 @@ class EmbyActorManagerDialog(QDialog):
             cfg.api_key = self._emby_key
             cfg.emby_url = HttpUrl(self._emby_url)
             manager._replace_config(cfg)
-            manager.save()
+            # 写盘移后台线程，避免主线程同步 IO 卡顿
+            threading.Thread(target=manager.save, daemon=True).start()
             self.log("💾 已保存连接设置到配置")
         except Exception as e:
             self.log(f"🔶 连接设置保存失败，继续使用当前配置: {e}")
@@ -641,6 +653,7 @@ class EmbyActorManagerDialog(QDialog):
             QMessageBox.warning(self, "提示", "请至少选择一个媒体库")
             return
         library_ids = None if len(selected_ids) == len(libraries) else selected_ids
+        self._current_library_ids = library_ids  # 供同步后自动刷新复用，避免丢媒体库过滤
         self._set_buttons_enabled(False)
         self.progress_bar.setVisible(True)
         self.progress_bar.setValue(0)
@@ -763,8 +776,9 @@ class EmbyActorManagerDialog(QDialog):
         self.progress_bar.setValue(current)
         self.setWindowTitle(f"Emby 演员管理器 - {msg}")
 
-    def _on_sync_actor_done(self, name: str, success: bool, msg: str):
-        actor = next((a for a in self._actors if getattr(a, "name", "") == name), None)
+    def _on_sync_actor_done(self, actor_id: str, name: str, success: bool, msg: str):
+        # 用 actor_id 匹配，避免同名演员（未去重时）按名字错位更新状态
+        actor = next((a for a in self._actors if a.actor_id == actor_id), None)
         if success:
             if actor is not None:
                 self._apply_sync_success(actor)
@@ -809,6 +823,7 @@ class EmbyActorManagerDialog(QDialog):
         self._set_buttons_enabled(False)
         self.log("🔄 正在自动刷新演员列表...")
         self._refresh_thread = FetchActorsThread(self)
+        self._refresh_thread.library_ids = getattr(self, "_current_library_ids", None)
         self._refresh_thread.progress.connect(self._on_fetch_progress)
         self._refresh_thread.fetch_done.connect(self._on_auto_refresh_finished)
         self._refresh_thread.error.connect(self._on_thread_error)

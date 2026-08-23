@@ -64,11 +64,39 @@ def _generate_server_url(actor: dict) -> tuple[str, str, str, str, str, str]:
     return actor_homepage, actor_person, pic_url, backdrop_url, backdrop_url_0, update_url
 
 
+_IMAGE_CONTENT_TYPES = {
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".png": "image/png",
+    ".webp": "image/webp",
+    ".gif": "image/gif",
+    ".bmp": "image/bmp",
+}
+
+
+def _image_content_type(path: Path) -> str:
+    """按文件实际格式返回 Content-Type（后缀识别不了时用 PIL 探测，兜底 jpeg）。"""
+    from PIL import Image
+
+    mime = _IMAGE_CONTENT_TYPES.get(path.suffix.lower())
+    if mime:
+        return mime
+    try:
+        with Image.open(path) as img:
+            fmt = (img.format or "").lower()
+            for suffix, candidate in _IMAGE_CONTENT_TYPES.items():
+                if fmt == suffix.lstrip("."):
+                    return candidate
+    except Exception:
+        pass
+    return "image/jpeg"
+
+
 async def _upload_actor_photo(url: str, pic_path: Path) -> tuple[bool, str]:
     try:
         async with aiofiles.open(pic_path, "rb") as f:
             content = await f.read()
-        header = {"Content-Type": "image/jpeg" if pic_path.suffix.lower() in (".jpg", ".jpeg") else "image/png"}
+        header = {"Content-Type": _image_content_type(pic_path)}
         header = _build_jellyfin_headers(header)
         async with manager.acquire_computed() as computed:
             r, err = await computed.async_client.post_content(url=url, data=content, headers=header, use_proxy=False)

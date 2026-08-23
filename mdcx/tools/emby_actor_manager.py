@@ -167,7 +167,17 @@ async def get_media_folders() -> list[dict]:
     return response.get("Items", [])
 
 
+# 演员详情进程内缓存（TTL 5 分钟）：数据准备阶段同一演员可能被多次请求详情，避免重复网络请求
+_ACTOR_DETAIL_CACHE: dict[str, tuple[float, dict]] = {}
+_ACTOR_DETAIL_CACHE_TTL = 300.0
+
+
 async def fetch_actor_detail(actor_name: str) -> dict | None:
+    now = time.monotonic()
+    cached = _ACTOR_DETAIL_CACHE.get(actor_name)
+    if cached is not None and now - cached[0] < _ACTOR_DETAIL_CACHE_TTL:
+        return cached[1]
+
     base_url = str(manager.config.emby_url).rstrip("/")
     headers = _build_jellyfin_headers()
     from urllib.parse import quote
@@ -182,6 +192,11 @@ async def fetch_actor_detail(actor_name: str) -> dict | None:
         )
     async with manager.acquire_computed() as computed:
         response, error = await computed.async_client.get_json(url, headers=headers, use_proxy=False)
+    if response is not None:
+        # 缓存数量有界，避免长时间运行内存增长
+        if len(_ACTOR_DETAIL_CACHE) >= 2000:
+            _ACTOR_DETAIL_CACHE.clear()
+        _ACTOR_DETAIL_CACHE[actor_name] = (time.monotonic(), response)
     return response
 
 
