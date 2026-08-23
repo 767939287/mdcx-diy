@@ -282,8 +282,10 @@ class ScrapeStateCache:
         for row in rows:
             p = Path(row["file_path"])
             if p not in existing:
-                if self._execute("DELETE FROM scrape_state WHERE file_path = ?", (row["file_path"],)):
+                # commit=False 批量积累，共享一个事务（原逐条独立事务，大库数千条产生数千次 commit）
+                if self._execute("DELETE FROM scrape_state WHERE file_path = ?", (row["file_path"],), commit=False):
                     removed += 1
+        self.flush()
         return removed
 
     def clear(self) -> None:

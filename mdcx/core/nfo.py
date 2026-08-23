@@ -81,7 +81,9 @@ def _build_generated_read_tags(
     return {tag for tag in generated_tags if tag}
 
 
-async def write_nfo(file_info: FileInfo, data: CrawlersResult, nfo_file: Path, output_dir: Path, update=False) -> bool:
+async def write_nfo(
+    file_info: FileInfo, data: CrawlersResult, nfo_file: Path, output_dir: Path, update=False, skip_merge=False
+) -> bool:
     start_time = time.time()
     download_files = manager.config.download_files
     keep_files = manager.config.keep_files
@@ -109,9 +111,10 @@ async def write_nfo(file_info: FileInfo, data: CrawlersResult, nfo_file: Path, o
     else:
         nfo_title_template = manager.config.naming_media
 
-    # NFO 合并策略：非 prefer_scraper 时读取现有 NFO 并按策略合并
+    # NFO 合并策略：非 prefer_scraper 时读取现有 NFO 并按策略合并。
+    # skip_merge=True（NFO 库表单编辑保存）时跳过合并，避免 PREFER_NFO 等策略用磁盘旧值覆盖用户表单修改。
     merge_strategy = manager.config.nfo_merge_strategy
-    if merge_strategy != NfoMergeStrategy.PREFER_SCRAPER and await aiofiles.os.path.exists(nfo_file):
+    if not skip_merge and merge_strategy != NfoMergeStrategy.PREFER_SCRAPER and await aiofiles.os.path.exists(nfo_file):
         try:
             existing_data, _ = await get_nfo_data(file_info.file_path, data.number)
             if existing_data is not None:

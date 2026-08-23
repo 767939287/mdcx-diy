@@ -104,4 +104,10 @@ async def compress_images_in_folder_async(folder_path: Path, enabled: bool = Tru
         for path in folder_path.rglob("*")
         if not path.is_symlink() and path.is_file() and path.suffix.lower() in IMAGE_SUFFIXES
     ]
-    await asyncio.gather(*(compress_image_async(path, True) for path in image_paths))
+    sem = asyncio.Semaphore(8)
+
+    async def _limited(path):
+        async with sem:
+            await compress_image_async(path, True)
+
+    await asyncio.gather(*(_limited(path) for path in image_paths))

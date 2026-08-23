@@ -1125,10 +1125,23 @@ class Config(BaseModel):
     def model_dump(self, *, mask_secrets: bool = False, **kwargs: Any) -> dict[str, Any]:
         data = super().model_dump(**kwargs)
         if mask_secrets:
-            for field_name in SENSITIVE_FIELDS:
-                if field_name in data and data[field_name]:
-                    data[field_name] = "***"
+            self._mask_secrets_recursive(data)
         return data
+
+    @classmethod
+    def _mask_secrets_recursive(cls, node: Any) -> None:
+        """递归掩码敏感字段：嵌套的 translate_config（baidu_key/deepl_key/llm_key）等
+        不在顶层，原实现只遍历顶层导致嵌套密钥泄露。"""
+        if isinstance(node, dict):
+            for key, value in list(node.items()):
+                if key in SENSITIVE_FIELDS and isinstance(value, str) and value:
+                    node[key] = "***"
+                elif isinstance(value, (dict, list)):
+                    cls._mask_secrets_recursive(value)
+        elif isinstance(node, list):
+            for item in node:
+                if isinstance(item, (dict, list)):
+                    cls._mask_secrets_recursive(item)
 
     def model_dump_json(self, *, mask_secrets: bool = False, **kwargs: Any) -> str:
         import json

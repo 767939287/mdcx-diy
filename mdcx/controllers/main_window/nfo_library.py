@@ -314,7 +314,7 @@ def pushButton_nfo_lib_save_clicked(self: MyMAinWindow) -> None:
 
     async def _save():
         try:
-            success = await write_nfo(file_info, data, nfo_path, nfo_folder, update=True)
+            success = await write_nfo(file_info, data, nfo_path, nfo_folder, update=True, skip_merge=True)
             self._nfo_lib_save_result = success
             self.nfo_lib_save_done.emit(str(nfo_path))
         except Exception:

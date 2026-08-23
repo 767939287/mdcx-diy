@@ -180,16 +180,7 @@ async def _add_to_pic(pic_path: Path, img_pic: Image.Image, mark_size: int, coun
             img_pic.paste(img_subt, mark_postion, mask=a)
         except Exception:
             signal.show_log_text(traceback.format_exc())
-        img_pic = img_pic.convert("RGB")
-        temp_pic_path = pic_path.with_suffix(".[MARK].jpg")
-        try:
-            img_pic.load()
-            img_pic.save(temp_pic_path, quality=95, subsampling=0)
-        except Exception:
-            signal.show_log_text(traceback.format_exc())
         img_subt.close()
-        if await check_pic_async(temp_pic_path):
-            await move_file_async(temp_pic_path, pic_path)
 
 
 async def add_mark_thread(pic_path: Path, mark_list: list[str]):
@@ -237,7 +228,17 @@ async def add_mark_thread(pic_path: Path, mark_list: list[str]):
                     mark_pos_count += 1
                 else:
                     await _add_to_pic(pic_path, img_pic, mark_size, mark_pos_count % 4, mark_name)
+    # 所有水印 paste 完成后统一保存一次，避免每个水印都全图编码（N 个水印 N 次编码）
+    converted = img_pic.convert("RGB")
+    temp_pic_path = pic_path.with_suffix(".[MARK].jpg")
+    try:
+        converted.load()
+        converted.save(temp_pic_path, quality=95, subsampling=0)
+    except Exception:
+        signal.show_log_text(traceback.format_exc())
     img_pic.close()
+    if await check_pic_async(temp_pic_path):
+        await move_file_async(temp_pic_path, pic_path)
 
 
 async def add_del_extrafanart_copy(mode: str) -> None:

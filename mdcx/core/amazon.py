@@ -3,6 +3,7 @@ Amazon 相关封面搜索与条码识别逻辑
 """
 # mypy: ignore-errors
 
+import asyncio
 import re
 import urllib.parse
 from asyncio import to_thread
@@ -1052,7 +1053,11 @@ async def get_big_pic_by_amazon(
             success, html_search = await search_amazon(actor_name)
             if not success or not html_search or is_no_result(html_search):
                 continue
-            html = etree.fromstring(html_search, etree.HTMLParser())
+            try:
+                html = etree.fromstring(html_search, etree.HTMLParser())
+            except Exception as e:
+                LogBuffer.log().write(f" 🟡 Amazon 搜索页解析失败，跳过该搜索词: {e}")
+                continue
             pic_card = html.xpath('//div[@data-component-type="s-search-result" and @data-asin]')
             for each in pic_card:
                 pic_ver_list = each.xpath('.//a[contains(@class, "a-text-bold")]/text()')
@@ -1112,9 +1117,15 @@ async def get_big_pic_by_amazon(
 
         fallback_candidates = sorted(fallback_candidates, key=lambda item: item[0], reverse=True)
         best_fallback_match: tuple[tuple[int, float, int], str, str, str, int] | None = None
-        for current_match, matched_url, matched_title, matched_actor in fallback_candidates:
+
+        async def _probe_width(matched_url):
             width, _ = await _get_image_size(matched_url, media_context)
-            width = width or 0
+            return width or 0
+
+        widths = await asyncio.gather(*(_probe_width(url) for _, url, _, _ in fallback_candidates))
+        for (current_match, matched_url, matched_title, matched_actor), width in zip(
+            fallback_candidates, widths, strict=True
+        ):
             if best_fallback_match is None:
                 best_fallback_match = (current_match, matched_url, matched_title, matched_actor, width)
             if is_hd_candidate_width(width):
@@ -1204,7 +1215,11 @@ async def get_big_pic_by_amazon(
         candidate["detail_checked"] = True
         if not success or not html_detail:
             return
-        html = etree.fromstring(html_detail, etree.HTMLParser())
+        try:
+            html = etree.fromstring(html_detail, etree.HTMLParser())
+        except Exception as e:
+            LogBuffer.log().write(f" 🟡 Amazon 详情页解析失败: {e}")
+            return
         detail_actor_names: list[str] = []
         for each_xpath in [
             '//span[contains(@class, "author")]/a/text()',
@@ -1405,7 +1420,11 @@ async def get_big_pic_by_amazon(
                 return ""
 
             total_result_count = _get_amazon_total_result_count(html_search)
-            html = etree.fromstring(html_search, etree.HTMLParser())
+            try:
+                html = etree.fromstring(html_search, etree.HTMLParser())
+            except Exception as e:
+                LogBuffer.log().write(f"\n 🟡 Amazon条码快路径：搜索页解析失败 {barcode}: {e}")
+                return ""
             pic_card = html.xpath('//div[@data-component-type="s-search-result" and @data-asin]')
             if not pic_card:
                 LogBuffer.log().write(f"\n 🟡 Amazon条码快路径未命中：结果页无有效卡片 {barcode}")
@@ -1483,12 +1502,16 @@ async def get_big_pic_by_amazon(
                 : min(probe_limit, len(barcode_candidates))
             ]
 
+            async def _probe_candidate(cand):
+                await enrich_candidate(cand)
+                width, _ = await _get_image_size(str(cand["url"]), media_context)
+                cand["width"] = width or 0
+
+            await asyncio.gather(*(_probe_candidate(c) for c in probe_candidates))
+
             confirmed_candidates: list[dict[str, object]] = []
             accepted_candidates: list[dict[str, object]] = []
             for each_candidate in probe_candidates:
-                await enrich_candidate(each_candidate)
-                width, _ = await _get_image_size(str(each_candidate["url"]), media_context)
-                each_candidate["width"] = width or 0
                 if bool(each_candidate.get("detail_barcode_match")):
                     confirmed_candidates.append(each_candidate)
                     continue
@@ -1618,7 +1641,12 @@ async def get_big_pic_by_amazon(
             continue
 
         if result and html_search:
-            html = etree.fromstring(html_search, etree.HTMLParser())
+            try:
+                html = etree.fromstring(html_search, etree.HTMLParser())
+            except Exception as e:
+                LogBuffer.log().write(f" 🟡 Amazon 搜索页解析失败，跳过该关键词: {e}")
+                query_index += 1
+                continue
             query_has_signal = False
             pic_card = html.xpath('//div[@data-component-type="s-search-result" and @data-asin]')
             for each in pic_card:
@@ -1696,17 +1724,23 @@ async def get_big_pic_by_amazon(
 
     if candidate_pool:
         preliminary_candidates = sorted(candidate_pool.values(), key=candidate_sort_key, reverse=True)
-        for each_candidate in preliminary_candidates[: min(6, len(preliminary_candidates))]:
-            await enrich_candidate(each_candidate)
+        await asyncio.gather(
+            *(enrich_candidate(c) for c in preliminary_candidates[: min(6, len(preliminary_candidates))])
+        )
         accepted_candidates = [candidate for candidate in candidate_pool.values() if is_candidate_acceptable(candidate)]
         if accepted_candidates:
             probe_candidates = sorted(accepted_candidates, key=candidate_probe_order_key, reverse=True)[
                 : min(6, len(accepted_candidates))
             ]
             best_fallback_candidate: dict[str, object] | None = None
+
+            async def _probe_width(cand):
+                width, _ = await _get_image_size(str(cand["url"]), media_context)
+                cand["width"] = width or 0
+
+            await asyncio.gather(*(_probe_width(c) for c in probe_candidates))
+
             for each_candidate in probe_candidates:
-                width, _ = await _get_image_size(str(each_candidate["url"]), media_context)
-                each_candidate["width"] = width or 0
                 if best_fallback_candidate is None:
                     best_fallback_candidate = each_candidate
                 if is_hd_candidate_width(int(each_candidate["width"])):

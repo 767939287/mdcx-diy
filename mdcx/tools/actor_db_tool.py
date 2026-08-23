@@ -2509,26 +2509,37 @@ async def verify_tmdb_ids(*, limit: int = 5000, concurrency: int = 5) -> VerifyT
                 wb.save(db_path)
                 _log_line(f" 🗑️ [校验tmdbid] 清除失效 id {len(invalid_rows)} 个")
 
-                # 按名字重搜补回新 id（TMDB 可能重建了档案）
+                # 按名字重搜补回新 id（TMDB 可能重建了档案）；并发查询提高恢复速度
                 from mdcx.core.tmdb_actor import query_single_actor_cached
 
                 recovered = 0
+                sem = asyncio.Semaphore(5)
+
+                async def _recover(row_idx: int, jp: str, zh: str) -> int:
+                    if not jp and not zh:
+                        return 0
+                    query_name = jp or zh
+                    try:
+                        qr = await query_single_actor_cached(query_name, base_url, tmdb_api_key, client)
+                        if qr and qr.get("adult") and qr.get("pid"):
+                            ws.cell(row=row_idx, column=COL_TMDBID + 1).value = int(qr["pid"])
+                            ws.cell(row=row_idx, column=COL_TMDB_URL + 1).value = _tmdb_person_url(int(qr["pid"]))
+                            _log_line(f"  🔁 [校验tmdbid] {jp or zh} 补回新 id {qr['pid']}")
+                            return 1
+                    except Exception:
+                        pass
+                    return 0
+
+                async def _limited(args):
+                    async with sem:
+                        return await _recover(*args)
+
                 async with aiohttp.ClientSession() as client:
-                    for row_idx, (jp, zh) in invalid_meta.items():
-                        if _is_stop_requested():
-                            break
-                        if not jp and not zh:
-                            continue
-                        query_name = jp or zh
-                        try:
-                            qr = await query_single_actor_cached(query_name, base_url, tmdb_api_key, client)
-                            if qr and qr.get("adult") and qr.get("pid"):
-                                ws.cell(row=row_idx, column=COL_TMDBID + 1).value = int(qr["pid"])
-                                ws.cell(row=row_idx, column=COL_TMDB_URL + 1).value = _tmdb_person_url(int(qr["pid"]))
-                                recovered += 1
-                                _log_line(f"  🔁 [校验tmdbid] {jp or zh} 补回新 id {qr['pid']}")
-                        except Exception:
-                            continue
+                    recover_items = [
+                        (row_idx, jp, zh) for row_idx, (jp, zh) in invalid_meta.items() if not _is_stop_requested()
+                    ]
+                    results = await asyncio.gather(*(_limited(a) for a in recover_items), return_exceptions=True)
+                    recovered = sum(r for r in results if isinstance(r, int))
                 if recovered:
                     _format_db_worksheet(ws)
                     wb.save(db_path)
