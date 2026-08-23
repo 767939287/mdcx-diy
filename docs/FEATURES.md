@@ -175,7 +175,7 @@ MDCx 支持的功能全景。只想快速上手的话，先看 [QUICKSTART.md](Q
   - 状态机管理：≥2 个不同番号验证成功转正（verified）、连续构造失败 ≥3 次隔离（quarantined）、新证据解除隔离重新验证
   - 学习数据持久化到 `userdata/dmm_prefix_learned.json`（原子写），仅记录验证成功的证据
   - CID 候选构造顺序：学习表 verified → 静态前缀表 → 学习表 provisional → 常见前缀盲试
-- **MGStage**：Poster 候选全部失败时，直构 MGStage 官方 CDN 高清竖图作海报兜底（系列映射表：LUXU/OTIM/CHUC/GERK/ONEZ/ONEX/MFC/ARA，来自 JavDB 高清图替换油猴脚本实测），补上 DMM 不收录的素人番号场景
+- **MGStage**：站点图源全部失败时，直构 MGStage 官方 CDN 高清图——`pb_e` 横版大图（840~980 宽）作封面兜底、`pf_e` 竖版小图（~422×600）作海报兜底（系列映射表：LUXU/OTIM/CHUC/GERK/ONEZ/ONEX/MFC/ARA，来自 JavDB 高清图替换油猴脚本实测并经多番号实测验证），补上 DMM 不收录的素人番号场景
 - 所有图片下载统一设 50MB 大小上限，防止异常大文件占用磁盘
 
 ## 五、翻译系统

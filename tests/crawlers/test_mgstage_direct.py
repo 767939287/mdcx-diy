@@ -4,6 +4,7 @@ from mdcx.crawlers.mgstage_direct import (
     build_mgstage_cover_candidates,
     build_mgstage_poster_candidates,
     find_valid_mgstage_cover,
+    find_valid_mgstage_poster,
 )
 
 
@@ -100,3 +101,28 @@ async def test_find_valid_mgstage_cover_skips_uncensored(monkeypatch):
     monkeypatch.setattr("mdcx.base.web.get_imgsize", _big_size)
     assert await find_valid_mgstage_cover("FC2-PPV-1234567") is None
     assert await find_valid_mgstage_cover("HEYZO-0123") is None
+
+
+@pytest.mark.asyncio
+async def test_find_valid_mgstage_poster_hit(monkeypatch):
+    async def _counting_ok(url):
+        return url
+
+    async def _big_size(url):
+        return 422, 600
+
+    monkeypatch.setattr("mdcx.base.web.check_url", _counting_ok)
+    monkeypatch.setattr("mdcx.base.web.get_imgsize", _big_size)
+    url = await find_valid_mgstage_poster("259LUXU-1111")
+    assert url is not None
+    assert url.endswith("pf_e_259luxu-1111.jpg")
+
+
+@pytest.mark.asyncio
+async def test_find_valid_mgstage_poster_no_hit_returns_none(monkeypatch):
+    async def _fail(url):
+        return None
+
+    monkeypatch.setattr("mdcx.base.web.check_url", _fail)
+    assert await find_valid_mgstage_poster("259LUXU-1111") is None
+    assert await find_valid_mgstage_poster("FC2-PPV-1234567") is None

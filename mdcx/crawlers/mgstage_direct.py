@@ -89,17 +89,31 @@ def build_mgstage_poster_candidates(number: str) -> list[str]:
 
 
 async def find_valid_mgstage_cover(number: str) -> str | None:
-    """尝试为番号找到一张可用的 MGStage 大封面（pb_e）.
+    """尝试为番号找到一张可用的 MGStage 横版大图（pb_e）.
 
     站点图源全部失败时作兜底：按番号直构 MGStage 候选，逐个校验存在且非小图。
     未知系列或无码番号返回 None。
     """
+    return await _find_valid_mgstage_image(number, "cover")
+
+
+async def find_valid_mgstage_poster(number: str) -> str | None:
+    """尝试为番号找到一张可用的 MGStage 竖版小图（pf_e）.
+
+    Poster 候选全部失败时作兜底：按番号直构 MGStage 竖版海报候选，
+    逐个校验存在且非小图。未知系列或无码番号返回 None。
+    """
+    return await _find_valid_mgstage_image(number, "poster")
+
+
+async def _find_valid_mgstage_image(number: str, kind: str) -> str | None:
     from mdcx.base.web import check_url, get_imgsize
     from mdcx.crawlers.dmm_direct import is_uncensored_number
 
     if not number or is_uncensored_number(number):
         return None
-    for url in build_mgstage_cover_candidates(number):
+    builders = {"cover": build_mgstage_cover_candidates, "poster": build_mgstage_poster_candidates}
+    for url in builders[kind](number):
         if await check_url(url):
             width, _height = await get_imgsize(url)
             if width >= _MGSTAGE_HD_MIN_WIDTH:

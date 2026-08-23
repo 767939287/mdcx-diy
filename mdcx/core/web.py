@@ -869,6 +869,35 @@ async def thumb_download(
             else:
                 LogBuffer.log().write("\n 🟠 DMM 兜底封面下载失败，继续降级处理 ")
 
+        # DMM 未命中或下载失败，尝试 MGStage 官方图源直构兜底（素人番号横版大图）
+        from mdcx.crawlers.mgstage_direct import find_valid_mgstage_cover
+
+        mg_cover_url = await find_valid_mgstage_cover(result.number or "")
+        if mg_cover_url:
+            LogBuffer.log().write(f"\n 🟡 站点图源全部失败，尝试 MGStage 官方图源直构兜底: {mg_cover_url}")
+            thumb_final_path_temp = thumb_final_path
+            if await aiofiles.os.path.exists(thumb_final_path):
+                thumb_final_path_temp = thumb_final_path.with_suffix(".[DOWNLOAD].jpg")
+            if media_context is not None:
+                downloaded = await media_context.save_image(mg_cover_url, thumb_final_path_temp, folder_new_path)
+            else:
+                downloaded = await download_file_with_filepath(mg_cover_url, thumb_final_path_temp, folder_new_path)
+            if downloaded:
+                cover_size = await check_pic_async(thumb_final_path_temp)
+                if cover_size:
+                    if thumb_final_path_temp != thumb_final_path:
+                        await move_file_async(thumb_final_path_temp, thumb_final_path)
+                        await delete_file_async(thumb_final_path_temp)
+                    if cd_part:
+                        Flags.file_done_dic[result.number].update({"thumb": thumb_final_path})
+                    other.thumb_marked = False
+                    LogBuffer.log().write(f"\n 🍀 Thumb done! (mgstage_fallback)({get_used_time(start_time)}s) ")
+                    other.thumb_path = thumb_final_path
+                    return True
+                LogBuffer.log().write("\n 🟠 MGStage 兜底封面下载后校验失败，继续降级处理 ")
+            else:
+                LogBuffer.log().write("\n 🟠 MGStage 兜底封面下载失败，继续降级处理 ")
+
     # 下载失败，本地有图
     if thumb_path:
         LogBuffer.log().write("\n 🟠 Thumb download failed! 将继续使用本地旧文件！")
@@ -1161,17 +1190,17 @@ async def poster_download(
             ):
                 return True
 
-    # 全部候选下载失败，尝试 MGStage 官方图源直构兜底（素人番号高清竖图）
+    # 全部候选下载失败，尝试 MGStage 官方图源直构兜底（素人番号竖版海报）
     if manager.config.dmm_fallback_enabled:
-        from mdcx.crawlers.mgstage_direct import find_valid_mgstage_cover
+        from mdcx.crawlers.mgstage_direct import find_valid_mgstage_poster
 
-        mg_cover_url = await find_valid_mgstage_cover(result.number or "")
-        if mg_cover_url:
-            LogBuffer.log().write(f"\n 🟡 Poster 候选全部失败，尝试 MGStage 官方图源直构兜底: {mg_cover_url}")
+        mg_poster_url = await find_valid_mgstage_poster(result.number or "")
+        if mg_poster_url:
+            LogBuffer.log().write(f"\n 🟡 Poster 候选全部失败，尝试 MGStage 官方图源直构兜底: {mg_poster_url}")
             if media_context is not None:
-                downloaded = await media_context.save_image(mg_cover_url, poster_final_path_temp, folder_new_path)
+                downloaded = await media_context.save_image(mg_poster_url, poster_final_path_temp, folder_new_path)
             else:
-                downloaded = await download_file_with_filepath(mg_cover_url, poster_final_path_temp, folder_new_path)
+                downloaded = await download_file_with_filepath(mg_poster_url, poster_final_path_temp, folder_new_path)
             if downloaded:
                 poster_size = await check_pic_async(poster_final_path_temp)
                 if poster_size:
