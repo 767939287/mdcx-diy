@@ -25,7 +25,7 @@
 ### 修复
 
 - **DMM 预约版 9 前缀番号识别**：`number.py` 番号提取新增 9 前缀分支，`9ssis01` → `SSIS-001`（9 + 厂牌 + 编号，编号补零到 3 位，对应 DMM 预约版先行配信）；lookbehind 保证 9 独立成段不误伤 `ABC9XXX` 类番号
-- **Cloudflare 拦截时强制轮换指纹**：`network_fingerprint.py` 默认指纹池新增 `safari17_2_ios` 手机 Safari 指纹（实测 missav.ai 桌面 Chrome 指纹 403、Safari 手机指纹 200）；`web_async.py` 检测到 CF 挑战页（403/503 + challenge 标记）时强制轮换该连接池指纹（`_force_rotate_fingerprint`，排除当前指纹重选），让重试有机会换 Safari 指纹绕过，missav 等对桌面指纹拦截强的站点可恢复刮削
+- **Cloudflare 拦截时强制轮换指纹**：`network_fingerprint.py` 默认指纹池新增 `safari17_2_ios` 手机 Safari 指纹（实测 missav.ai 桌面 Chrome 指纹 403、Safari 手机指纹 200）；`web_async.py` 检测到 CF 挑战页（403/503 + challenge 标记）时强制轮换该连接池指纹（`_force_rotate_fingerprint`，排除当前指纹重选），让重试有机会换 Safari 指纹绕过，missav 等对桌面指纹拦截强的站点可恢复刮削。amazon 指纹池改为独立纯桌面池（不继承默认池的 safari iOS，避免偶发返回移动版页面干扰 amazon 桌面 DOM 解析）
 - **extrafanart 目录替换非原子**：`core/web.py` 原先先 `rmtree` 旧目录再 `rename` 新目录，改名失败（跨卷/被占用）时旧数据已丢；现先把旧目录移到备份名、rename 成功后清理备份，失败自动回滚旧目录
 - **read_link_sync 符号链接环死循环**：`utils/file.py` 的 `read_link_sync` 对成环链接（A→B→A）会无限循环；现用 seen 集合检测环，命中时返回当前路径
 - **xdg-open -R 无效参数**：`utils/file.py` `open_file_thread` 在 Linux 目录分支的兜底用了 macOS 专属的 `-R` 参数，xdg-open 不支持；现改为直接打开目录
