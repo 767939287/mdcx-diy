@@ -94,15 +94,18 @@ def copy_file_sync(old: Path | str, new: Path | str):
     return False, error_info
 
 
-def read_link_sync(p: str):
-    # 获取符号链接的真实路径；seen 集合防符号链接成环（A→B→A）导致死循环
-    seen: set[str] = set()
-    while os.path.islink(p):
-        if p in seen:
-            return p
-        seen.add(p)
-        p = os.readlink(p)
-    return p
+def read_link_sync(p: str | Path) -> str:
+    """获取符号链接的真实路径，并正确解析相对链接目标。"""
+    current = Path(os.path.normpath(p))
+    seen: set[Path] = set()
+    while current.is_symlink():
+        absolute_current = current.absolute()
+        if absolute_current in seen:
+            return str(current)
+        seen.add(absolute_current)
+        target = Path(os.readlink(current))
+        current = target if target.is_absolute() else Path(os.path.normpath(current.parent / target))
+    return str(current)
 
 
 def resolve_link_source_sync(p: str | Path):

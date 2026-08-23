@@ -2074,7 +2074,8 @@ class AsyncWebClient:
         """
         try:
             if await aiofiles.os.path.exists(meta_path) and await aiofiles.os.path.exists(part_file_path):
-                raw = await (await aiofiles.open(meta_path, encoding="utf-8")).read()
+                async with aiofiles.open(meta_path, encoding="utf-8") as f:
+                    raw = await f.read()
                 meta = json.loads(raw)
                 if meta.get("url") == url and meta.get("file_size") == file_size and meta.get("each_size") == each_size:
                     stat = await aiofiles.os.stat(part_file_path)

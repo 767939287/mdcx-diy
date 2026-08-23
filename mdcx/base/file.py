@@ -370,6 +370,7 @@ async def movie_lists(ignore_dirs: list[Path], media_type: list[str], movie_path
         i = 100
         skip = 0
         skip_repeat_softlink = 0
+        seen_link_targets: set[Path] = set()
         for root, dirs, files in movie_path.walk(top_down=True):
             for d in dirs.copy():
                 if root / d in ignore_dirs or "behind the scenes" in d:
@@ -404,30 +405,21 @@ async def movie_lists(ignore_dirs: list[Path], media_type: list[str], movie_path
                         continue
 
                     # 添加文件
-                    temp_total = []
                     if file_ext.lower() in media_type:
                         if os.path.islink(path):
-                            real_path = path.readlink()
+                            real_path = Path(os.path.realpath(path))
                             # 清理失效的软链接文件
-                            if NoEscape.CHECK_SYMLINK in manager.config.no_escape and not os.path.exists(real_path):
+                            if NoEscape.CHECK_SYMLINK in manager.config.no_escape and not real_path.exists():
                                 result, error_info = delete_file_sync(path)
                                 if result:
                                     signal.show_log_text(f" 🗑 Clean dead link: {path} ")
                                 else:
                                     signal.show_log_text(f" 🗑 Clean dead link error: {error_info} ")
                                 continue
-                            if real_path in temp_total:
+                            if real_path in seen_link_targets:
                                 skip_repeat_softlink += 1
-                                delete_file_sync(path)
                                 continue
-                            else:
-                                temp_total.append(real_path)
-
-                        if path in temp_total:
-                            skip_repeat_softlink += 1
-                            continue
-                        else:
-                            temp_total.append(path)
+                            seen_link_targets.add(real_path)
                         if not_skip_success or path not in Flags.success_list:
                             total.append(path)
                         else:

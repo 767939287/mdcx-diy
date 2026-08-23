@@ -11,6 +11,9 @@
 import aiofiles
 import pytest
 
+from mdcx.base.file import movie_lists
+from mdcx.config.enums import NoEscape
+from mdcx.config.manager import manager
 from mdcx.core.web import _replace_dir_atomic
 from mdcx.crawlers.base.parser import parse_runtime
 from mdcx.utils import get_new_release
@@ -69,6 +72,17 @@ def test_read_link_sync_resolves_normal_link(tmp_path):
     assert read_link_sync(str(link)) == str(target)
 
 
+def test_read_link_sync_resolves_relative_link_from_link_directory(tmp_path):
+    target = tmp_path / "target.txt"
+    target.write_text("x")
+    link_dir = tmp_path / "nested"
+    link_dir.mkdir()
+    link = link_dir / "link.txt"
+    link.symlink_to("../target.txt")
+
+    assert read_link_sync(link) == str(target)
+
+
 def test_read_link_sync_breaks_cycle(tmp_path):
     a = tmp_path / "a"
     b = tmp_path / "b"
@@ -76,6 +90,30 @@ def test_read_link_sync_breaks_cycle(tmp_path):
     b.symlink_to(a)
     # 成环（a→b→a）不无限循环；seen 命中后返回当前路径
     assert read_link_sync(str(a)) in {str(a), str(b)}
+
+
+@pytest.mark.asyncio
+async def test_movie_lists_skips_duplicate_symlink_targets_without_deleting_links(tmp_path, monkeypatch):
+    source_dir = tmp_path / "source"
+    source_dir.mkdir()
+    source = source_dir / "movie.mp4"
+    source.write_bytes(b"video")
+    first_dir = tmp_path / "first"
+    second_dir = tmp_path / "second"
+    first_dir.mkdir()
+    second_dir.mkdir()
+    first_link = first_dir / "movie.mp4"
+    second_link = second_dir / "movie.mp4"
+    first_link.symlink_to("../source/movie.mp4")
+    second_link.symlink_to("../source/movie.mp4")
+    monkeypatch.setattr(manager.config, "clean_enable", [])
+    monkeypatch.setattr(manager.config, "no_escape", [NoEscape.CHECK_SYMLINK])
+
+    movies = await movie_lists([], [".mp4"], tmp_path)
+
+    assert sum(path.is_symlink() for path in movies) == 1
+    assert first_link.is_symlink()
+    assert second_link.is_symlink()
 
 
 # ---- is_proxy_host：匹配分支回归（改造后语义等价）----

@@ -910,26 +910,27 @@ async def run_network_check(
         if not group_specs or group == "基础环境":
             continue
         progress(group)
-        tasks = [asyncio.create_task(run_one(spec)) for spec in group_specs]
-        for task in asyncio.as_completed(tasks):
+        pending = {asyncio.create_task(run_one(spec)) for spec in group_specs}
+        while pending:
             if cancel_event and cancel_event.is_set():
-                for pending in tasks:
-                    if not pending.done():
-                        pending.cancel()
-                await asyncio.gather(*tasks, return_exceptions=True)
+                for task in pending:
+                    task.cancel()
+                await asyncio.gather(*pending, return_exceptions=True)
                 elapsed = time.perf_counter() - start_time
                 for line in format_summary(results, elapsed, cancelled=True, proxy_unavailable=proxy_down):
                     progress(line)
                 return results
-            result = await task
-            results.append(result)
-            if result.spec.group == "基础连通性":
-                if result.status == NetworkCheckStatus.FAILED and _is_proxy_error(result.error):
-                    proxy_down = True
-            elif proxy_down and result.status == NetworkCheckStatus.FAILED and _is_proxy_error(result.error):
-                # 全局代理不可用时，站点失败多为代理导致，简化提示避免误导用户以为站点全挂
-                result = replace(result, message="代理不可用（见顶部提示）", error="")
-            progress(format_result_line(result))
+            done, pending = await asyncio.wait(pending, return_when=asyncio.FIRST_COMPLETED)
+            for task in done:
+                result = task.result()
+                results.append(result)
+                if result.spec.group == "基础连通性":
+                    if result.status == NetworkCheckStatus.FAILED and _is_proxy_error(result.error):
+                        proxy_down = True
+                elif proxy_down and result.status == NetworkCheckStatus.FAILED and _is_proxy_error(result.error):
+                    # 全局代理不可用时，站点失败多为代理导致，简化提示避免误导用户以为站点全挂
+                    result = replace(result, message="代理不可用（见顶部提示）", error="")
+                progress(format_result_line(result))
 
     elapsed = time.perf_counter() - start_time
     for line in format_summary(
