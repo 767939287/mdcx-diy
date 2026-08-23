@@ -1,5 +1,6 @@
 import asyncio
 import contextlib
+import json
 import os
 import random
 import re
@@ -1941,65 +1942,123 @@ class AsyncWebClient:
         return await self._write_file_content(url, file_path, content)
 
     async def _download_chunks(self, url: str, file_path: Path, file_size: int, use_proxy: bool = True) -> bool:
-        """分块下载大文件"""
+        """分块下载大文件（支持断点续传）。
+
+        失败时保留 ``{文件名}.part`` 与 ``{文件名}.part.meta`` 进度文件；
+        下次下载同一 url 时通过 meta 跳过已完成分块，避免从头重下。
+        """
         MB = 1024**2
         # Range 的 end 为闭区间，最后一块最大只能到 file_size - 1。
         each_size = min(4 * MB, file_size)
         parts = [(s, min(s + each_size - 1, file_size - 1)) for s in range(0, file_size, each_size)]
         part_file_path = file_path.with_name(f"{file_path.name}.part")
+        meta_path = file_path.with_name(f"{file_path.name}.part.meta")
 
-        self._log(f"📦 分块下载: {url} {len(parts)} 个分块, 总大小: {file_size} bytes")
-
-        # 先写入临时分块文件，全部成功后再替换目标文件，避免留下不可播放的成品文件。
-        try:
-            async with aiofiles.open(part_file_path, "wb") as f:
-                await f.truncate(file_size)
-        except Exception as e:
-            self._log(f"🔴 文件创建失败: {url} {e!s}")
-            return False
+        done = await self._load_resume_state(url, file_size, each_size, part_file_path, meta_path, parts)
+        resume_note = f" (续传：{len(done)}/{len(parts)} 个分块已完成)" if done else ""
+        self._log(f"📦 分块下载: {url} {len(parts)} 个分块, 总大小: {file_size} bytes{resume_note}")
 
         try:
             # 创建下载任务
             semaphore = asyncio.Semaphore(6)  # 限制并发数
-            first_start, first_end = parts[0]
-            first_error = await self._download_chunk(
-                semaphore, url, part_file_path, first_start, first_end, 0, use_proxy
-            )
-            if first_error:
-                if self._is_range_unsupported_error(first_error):
-                    self._log(f"🟡 服务器不支持分块下载，回退普通下载: {url}")
-                    with contextlib.suppress(Exception):
-                        await aiofiles.os.remove(part_file_path)
-                    return await self._download_whole_file(url, file_path, use_proxy=use_proxy, expected_size=file_size)
-                self._log(f"🔴 分块 0 下载失败: {url} {first_error}")
-                return False
-
-            tasks = []
-
-            for i, (start, end) in enumerate(parts[1:], start=1):
-                task = self._download_chunk(semaphore, url, part_file_path, start, end, i, use_proxy)
-                tasks.append(task)
-
-            # 并发执行所有下载任务
-            errors = await asyncio.gather(*tasks, return_exceptions=True)
-            # 检查所有任务是否成功
-            for i, err in enumerate(errors, start=1):
-                if isinstance(err, Exception):
-                    self._log(f"🔴 分块 {i} 下载失败: {url} {err!s}")
+            if 0 not in done:
+                # 分块 0 同时承担 Range 支持探测（续传已含 0 说明上次已验证，跳过探测）
+                first_error = await self._download_chunk(
+                    semaphore, url, part_file_path, parts[0][0], parts[0][1], 0, use_proxy
+                )
+                if first_error:
+                    if self._is_range_unsupported_error(first_error):
+                        self._log(f"🟡 服务器不支持分块下载，回退普通下载: {url}")
+                        with contextlib.suppress(Exception):
+                            await aiofiles.os.remove(part_file_path)
+                        with contextlib.suppress(Exception):
+                            await aiofiles.os.remove(meta_path)
+                        return await self._download_whole_file(
+                            url, file_path, use_proxy=use_proxy, expected_size=file_size
+                        )
+                    self._log(f"🔴 分块 0 下载失败: {url} {first_error}")
                     return False
-                if err:
-                    self._log(f"🔴 分块 {i} 下载失败: {url} {err}")
+                done.add(0)
+                await self._save_resume_state(meta_path, url, file_size, each_size, done, parts)
+
+            pending = [(i, start, end) for i, (start, end) in enumerate(parts) if i not in done]
+            if pending:
+                tasks = [
+                    self._download_chunk(semaphore, url, part_file_path, start, end, i, use_proxy)
+                    for i, start, end in pending
+                ]
+                # 并发执行所有下载任务
+                errors = await asyncio.gather(*tasks, return_exceptions=True)
+                failed = [
+                    (i, err if isinstance(err, Exception) else err or "")
+                    for (i, _, _), err in zip(pending, errors, strict=True)
+                    if err
+                ]
+                if failed:
+                    for i, err in failed:
+                        self._log(f"🔴 分块 {i} 下载失败: {url} {err!s}")
+                    # 保留 .part 与 .part.meta，下次重试续传
+                    self._log(f"🟡 下载未完成，已保留断点进度（{len(done)}/{len(parts)} 个分块），可重试续传: {url}")
                     return False
+                done |= {i for i, _, _ in pending}
+
+            await self._save_resume_state(meta_path, url, file_size, each_size, done, parts)
             await asyncio.to_thread(os.replace, part_file_path, file_path)
+            with contextlib.suppress(Exception):
+                await aiofiles.os.remove(meta_path)
             self._log(f"✅ 多分块下载完成: {url} {file_path}")
             return True
         except Exception as e:
             self._log(f"🔴 并发下载异常: {url} {e!s}")
             return False
-        finally:
-            if await aiofiles.os.path.exists(part_file_path):
-                with contextlib.suppress(Exception):
-                    await aiofiles.os.remove(part_file_path)
+
+    async def _load_resume_state(
+        self,
+        url: str,
+        file_size: int,
+        each_size: int,
+        part_file_path: Path,
+        meta_path: Path,
+        parts: list[tuple[int, int]],
+    ) -> set[int]:
+        """加载断点进度。
+
+        仅当 meta 的 url/file_size/each_size 与当前一致、part 文件存在且大小正确时，
+        返回已完成的分块 id 集合；否则重建（预分配）part 文件并返回空集合。
+        """
+        try:
+            if await aiofiles.os.path.exists(meta_path) and await aiofiles.os.path.exists(part_file_path):
+                raw = await (await aiofiles.open(meta_path, encoding="utf-8")).read()
+                meta = json.loads(raw)
+                if meta.get("url") == url and meta.get("file_size") == file_size and meta.get("each_size") == each_size:
+                    stat = await aiofiles.os.stat(part_file_path)
+                    if stat.st_size == file_size:
+                        return {int(i) for i in meta.get("done", []) if int(i) < len(parts)}
+        except Exception:
+            pass
+        # 无有效进度：重建 part 文件（预分配占位）
+        async with aiofiles.open(part_file_path, "wb") as f:
+            await f.truncate(file_size)
+        return set()
+
+    @staticmethod
+    async def _save_resume_state(
+        meta_path: Path,
+        url: str,
+        file_size: int,
+        each_size: int,
+        done: set[int],
+        parts: list[tuple[int, int]],
+    ) -> None:
+        """持久化断点进度。done 中越界的分块 id 会被丢弃。"""
+        meta = {
+            "url": url,
+            "file_size": file_size,
+            "each_size": each_size,
+            "done": sorted(int(i) for i in done if i < len(parts)),
+        }
+        async with aiofiles.open(meta_path, "w", encoding="utf-8") as f:
+            await f.write(json.dumps(meta))
 
     def _is_range_unsupported_error(self, error: str) -> bool:
         return "分块响应状态异常: HTTP 200" in str(error or "")

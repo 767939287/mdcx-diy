@@ -1969,6 +1969,30 @@ async def sync_from_avdb(
             total = len(actors)
             progress_interval = max(1, total // 10)  # 每 10% 输出一次进度
 
+            # ---- 并发预热 TMDB 身份缓存 ----
+            # 原实现逐行串行 await fetch_person_identity（每个新 id 一个网络往返），
+            # 大量条目时极慢。这里提前并发请求所有需校验的 tmdbid，
+            # 结果存 identity_cache 供主循环 O(1) 查询；未预热（如本地新建行）才现场请求。
+            identity_cache: dict[int, dict | None] = {}
+            if verify_tmdbid and tmdb_api_key:
+                pending_ids: set[int] = set()
+                for actor in actors:
+                    raw_id = clean_actor_value(actor.tmdb_id)
+                    if raw_id.isdigit() and raw_id not in tmdb_index:
+                        pending_ids.add(int(raw_id))
+                if pending_ids:
+                    _log_line(f" ⚡ [AVdb同步] 并发预热 {len(pending_ids)} 个 tmdbid 身份校验...")
+                    _tmdb_http_client = await _tmdb_client()
+                    _semaphore = asyncio.Semaphore(8)
+
+                    async def _prefetch_tmdb_identity(_pid: int) -> None:
+                        async with _semaphore:
+                            identity_cache[_pid] = await fetch_person_identity(
+                                _pid, tmdb_base_url, tmdb_api_key, _tmdb_http_client
+                            )
+
+                    await asyncio.gather(*(_prefetch_tmdb_identity(_pid) for _pid in pending_ids))
+
             for n, actor in enumerate(actors, 1):
                 try:
                     jp = clean_actor_value(actor.jp)
@@ -1999,21 +2023,17 @@ async def sync_from_avdb(
                     # 4) tmdbid 身份校验：AVdb 提供的 id 若与条目名不是同一人则丢弃该 id
                     #    （宁缺毋滥——错误 id 比无 id 更糟，刮削遇同名演员会按名字重新搜索）
                     #    仅当该 id 本地尚不存在时校验（已存在的映射为历史数据，不重复反查）
-                    if (
-                        verify_tmdbid
-                        and tmdb_key
-                        and tmdb_api_key
-                        and tmdb_key not in tmdb_index
-                        and not _tmdb_id_matches_entry(
-                            _entry_variants(jp, zh_cn, kw_list),
-                            await fetch_person_identity(
-                                int(tmdb_key), tmdb_base_url, tmdb_api_key, await _tmdb_client()
-                            ),
-                        )
-                    ):
-                        result.skipped_tmdbid += 1
-                        _log_line(f"  ⚠️ [AVdb同步] tmdbid={tmdb_key} 与名字 {entry_name} 不匹配，丢弃该 id")
-                        tmdb_key = ""
+                    if verify_tmdbid and tmdb_key and tmdb_api_key and tmdb_key not in tmdb_index:
+                        _pid = int(tmdb_key)
+                        _identity = identity_cache.get(_pid)
+                        if _identity is None and _pid not in identity_cache:
+                            _identity = await fetch_person_identity(
+                                _pid, tmdb_base_url, tmdb_api_key, await _tmdb_client()
+                            )
+                        if not _tmdb_id_matches_entry(_entry_variants(jp, zh_cn, kw_list), _identity):
+                            result.skipped_tmdbid += 1
+                            _log_line(f"  ⚠️ [AVdb同步] tmdbid={tmdb_key} 与名字 {entry_name} 不匹配，丢弃该 id")
+                            tmdb_key = ""
 
                     # 1) tmdbid 冲突优先并入
                     target_row = None

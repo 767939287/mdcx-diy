@@ -24,6 +24,9 @@
 
 ### 修复
 
+- **分块下载支持断点续传**：`web_async.py` 的 `_download_chunks` 原先任意分块失败即删除 `.part` 临时文件，重试从头下载；现失败时保留 `.part` 与新增的 `.part.meta` 进度文件（记录 url/大小/分块划分/已完成分块），下次下载同一 url 时校验 meta 匹配则跳过已完成分块续传，全部完成后才替换目标文件并清理进度文件；file_size 变化时旧进度自动失效全量重下
+- **镜像轮询重试相乘放大**：`crawlers/base/base.py` 的 `_get_text_with_rotate` 每个镜像调用 `get_text` 默认内部重试 3 次，镜像数 × 3 放大请求次数；现轮询路径传 `retry_count=1`，每个镜像只请求一次、失败立即切下一个镜像，总请求次数从 3N 降到 N
+- **AVdb 同步 tmdbid 身份校验并发化**：`actor_db_tool.py` 的 `sync_from_avdb` 原先逐行串行 `await fetch_person_identity`（每个新 id 一个网络往返，大量条目时极慢）；现主循环前用 `asyncio.Semaphore(8)` 并发预热所有需校验的 tmdbid（命中 `tmdb_index` 的本地已有 id 不预热），结果缓存供主循环 O(1) 查询，未预热的新建行才现场请求；TMDB 请求仍受 `_tmdb_rate_limiter` 全局限流保护
 - **get_new_release 日期格式崩溃**：`utils/__init__.py` 的 `get_new_release` 原先对非 `YYYY-MM-DD` 格式的日期直接 `re.findall(...)[0]` 取首个匹配，无匹配时抛 `IndexError` 导致刮削中断；现改为先用 `re.search` 校验、无匹配则原样返回 release，规则替换仅在有匹配时进行
 - **actor 数据库自动修复保存失败静默吞错**：`actor_db_tool.py` 的 `auto_fix_actor_db` 原先 `wb.save` 失败被 `except: pass` 吞掉，界面显示「已修复 N 项」但实际未落盘；现把异常写入返回结果的 `save_error`，主界面弹窗红字提示保存失败并建议关闭占用程序后重试
 - **mmtv/kin8/iqqtv 时长解析崩溃**：三处复制粘贴的 `get_runtime`/`getRuntime` 对非数字时长文本直接 `int()` 抛 `ValueError`；现抽取公共函数 `parse_runtime`（`crawlers/base/parser.py`）统一处理 `HH:MM:SS`/`HH:MM`/`MM`/`95分`/`95min` 等格式，任一段非数字时返回空串而非崩溃；iqqtv 未调用的死代码 `getRuntime` 一并删除

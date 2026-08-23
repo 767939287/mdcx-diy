@@ -520,3 +520,99 @@ async def test_chunk_rejects_size_mismatch(monkeypatch: pytest.MonkeyPatch, tmp_
 
     assert error == "分块大小不匹配: 2/3"
     assert target.read_bytes() == b"\x00\x00\x00"
+
+
+@pytest.mark.asyncio
+async def test_chunk_download_failure_keeps_resume_state(monkeypatch: pytest.MonkeyPatch, tmp_path):
+    """失败时保留 .part 与 .part.meta，供下次续传。"""
+    client = AsyncWebClient(timeout=1, retry=1)
+    target = tmp_path / "video.bin"
+    chunk_size = 4 * 1024**2
+
+    async def fake_download_chunk(semaphore, url, file_path, start, end, chunk_id, use_proxy=True):
+        if chunk_id == 0:
+            async with aiofiles.open(file_path, "rb+") as fp:
+                await fp.seek(start)
+                await fp.write(b"a" * (end - start + 1))
+            return ""
+        return "分块 1 网络错误"
+
+    monkeypatch.setattr(client, "_download_chunk", fake_download_chunk)
+
+    assert await client._download_chunks("https://example.test/video.mp4", target, chunk_size + 3) is False
+
+    part = target.with_name(f"{target.name}.part")
+    meta = target.with_name(f"{target.name}.part.meta")
+    assert part.exists()
+    assert meta.exists()
+    assert not target.exists()
+
+
+@pytest.mark.asyncio
+async def test_chunk_download_resumes_skips_done_chunks(monkeypatch: pytest.MonkeyPatch, tmp_path):
+    """第二次调用同一 url 时只下载未完成的分块，并最终拼出完整文件。"""
+    client = AsyncWebClient(timeout=1, retry=1)
+    target = tmp_path / "video.bin"
+    chunk_size = 4 * 1024**2
+    calls: list[int] = []
+
+    async def fake_download_chunk(semaphore, url, file_path, start, end, chunk_id, use_proxy=True):
+        calls.append(chunk_id)
+        async with aiofiles.open(file_path, "rb+") as fp:
+            await fp.seek(start)
+            await fp.write(b"a" * (end - start + 1))
+        return ""
+
+    monkeypatch.setattr(client, "_download_chunk", fake_download_chunk)
+
+    # 第一次：分块 0 成功，分块 1 失败
+    calls.clear()
+
+    async def fake_fail(semaphore, url, file_path, start, end, chunk_id, use_proxy=True):
+        calls.append(chunk_id)
+        if chunk_id == 1:
+            return "分块 1 网络错误"
+        async with aiofiles.open(file_path, "rb+") as fp:
+            await fp.seek(start)
+            await fp.write(b"a" * (end - start + 1))
+        return ""
+
+    monkeypatch.setattr(client, "_download_chunk", fake_fail)
+    assert await client._download_chunks("https://example.test/video.mp4", target, chunk_size + 3) is False
+    assert calls == [0, 1]
+
+    # 第二次：应跳过已完成的分块 0，只重新下载分块 1
+    calls.clear()
+    monkeypatch.setattr(client, "_download_chunk", fake_download_chunk)
+    assert await client._download_chunks("https://example.test/video.mp4", target, chunk_size + 3) is True
+
+    assert calls == [1]
+    assert target.stat().st_size == chunk_size + 3
+    assert target.read_bytes() == b"a" * (chunk_size + 3)
+    assert not target.with_name(f"{target.name}.part").exists()
+    assert not target.with_name(f"{target.name}.part.meta").exists()
+
+
+@pytest.mark.asyncio
+async def test_chunk_download_resume_invalidated_by_size_change(monkeypatch: pytest.MonkeyPatch, tmp_path):
+    """file_size 变化时旧进度失效，全部重新下载。"""
+    client = AsyncWebClient(timeout=1, retry=1)
+    target = tmp_path / "video.bin"
+    chunk_size = 4 * 1024**2
+    calls: list[int] = []
+
+    async def fake_download_chunk(semaphore, url, file_path, start, end, chunk_id, use_proxy=True):
+        calls.append(chunk_id)
+        async with aiofiles.open(file_path, "rb+") as fp:
+            await fp.seek(start)
+            await fp.write(b"a" * (end - start + 1))
+        return ""
+
+    monkeypatch.setattr(client, "_download_chunk", fake_download_chunk)
+    assert await client._download_chunks("https://example.test/video.mp4", target, chunk_size + 3) is True
+    assert calls == [0, 1]
+
+    calls.clear()
+    # 文件大小变化（扩大到 3 个分块），旧进度失效，重新全量下载
+    assert await client._download_chunks("https://example.test/video.mp4", target, chunk_size * 2 + 1) is True
+    assert calls == [0, 1, 2]

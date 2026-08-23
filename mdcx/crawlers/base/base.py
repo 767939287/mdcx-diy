@@ -79,13 +79,15 @@ class GenericBaseCrawler[T: Context = Context](ABC):
         """请求文本；连接失败/SSL/超时等可重试错误时自动轮询镜像域名重试。
 
         未声明 _domains 或已用自定义 URL 时，行为与普通 get_text 一致（单次请求）。
+        轮询路径传 retry_count=1：重试交给轮询层（每个镜像只试一次，失败立即切下一个），
+        避免「镜像数 × 内部重试」相乘放大请求次数。
         """
         rotator = getattr(self, "_rotator", None)
         if rotator is None or not rotator.domains:
             return await self.async_client.get_text(url, headers=headers, cookies=cookies)
         max_rotations = max_rotations or len(rotator.domains)
         for _ in range(max_rotations):
-            htmlcode, error = await self.async_client.get_text(url, headers=headers, cookies=cookies)
+            htmlcode, error = await self.async_client.get_text(url, headers=headers, cookies=cookies, retry_count=1)
             if htmlcode is not None:
                 return htmlcode, ""
             if "404" in str(error):
