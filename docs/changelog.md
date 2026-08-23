@@ -78,6 +78,7 @@
 
 ### 工程质量
 
+- **avsex 死代码清理**：`crawlers/avsex.py` 删除零调用者的 `get_poster` 函数，移除其中硬编码的 `9sex.tv` 域名残留（实际海报走搜索页 `ctx.poster_url`；搜索/列表本就默认走 `avsex.cc`）
 - **extrafanart 目录替换提取辅助函数**：`core/web.py` 的备份式原子替换逻辑提取为模块级 `_replace_dir_atomic`（行为不变，便于复用与测试）
 - 新增 `tests/test_review_regressions.py` 回归测试（16 例）：覆盖 `get_new_release` 非标准日期容错、`parse_runtime` 各格式分支、`read_link_sync` 符号链接环防护、`is_proxy_host` 各匹配分支、`_replace_dir_atomic` 成功替换与失败回滚
 - **qt_thread 表达式语句改 if**：`utils/qt_thread.py` 的 `signal_qt.show_log_text(...) if log_prefix else None` 是丢弃结果的表达式语句，改为显式 `if log_prefix:` 判断

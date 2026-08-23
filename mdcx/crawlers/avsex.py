@@ -120,12 +120,6 @@ def get_mosaic(html, studio):
     return "国产" if "國產" in studio else mosaic
 
 
-def get_poster(html):
-    result = html.xpath('//div[@class="img_box col-4 col-sm-3 col-md-3 d-lg-none"]/img/@src')
-    if result:
-        return "https://9sex.tv/cn" + result[0] if "http" not in result[0] else result[0]
-
-
 def get_real_url(html, number):
     res_list = html.xpath("//ul[@class]/li/a")
     for each in res_list:
