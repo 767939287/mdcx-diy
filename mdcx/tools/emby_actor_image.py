@@ -396,7 +396,7 @@ def _get_local_actor_photo() -> dict[str, str] | Literal[False]:
         return False
     local_actor_photo_dic = {}
     all_files = os.walk(actor_photo_folder)
-    for root, dirs, files in all_files:
+    for root, _dirs, files in all_files:
         for file in files:
             if (file.endswith("jpg") or file.endswith("png")) and file not in local_actor_photo_dic:
                 pic_path = os.path.join(root, file)

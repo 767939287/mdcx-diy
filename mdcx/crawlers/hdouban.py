@@ -205,8 +205,8 @@ class HdoubanCrawler(BaseCrawler):
                     raise CrawlerException(f"网络请求错误: {error}")
                 try:
                     result = html_search["data"]["list"]
-                except Exception:
-                    raise CrawlerException(f"搜索结果解析错误: {html_search}")
+                except Exception as exc:
+                    raise CrawlerException(f"搜索结果解析错误: {html_search}") from exc
 
                 temp_number = candidate.upper().replace("-", "").strip()
                 for each in result:

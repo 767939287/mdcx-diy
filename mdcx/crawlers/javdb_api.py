@@ -386,7 +386,7 @@ class JavdbApiCrawler(BaseCrawler):
         number = ctx.input.number
         norm_target = number.upper().replace("-", "").replace(".", "").replace(" ", "")
 
-        for href, code, title, meta in info_list:
+        for href, code, title, _meta in info_list:
             if match_number(code or "", number) or match_number(title or "", number):
                 return [urljoin(self.base_url, href)]
 

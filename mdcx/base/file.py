@@ -274,7 +274,7 @@ async def _clean_empty_folders(path: Path, file_mode: FileMode) -> None:
 
     def task():
         folders: list[Path] = []
-        for root, dirs, files in path.walk(top_down=True):
+        for root, dirs, _files in path.walk(top_down=True):
             if (root / "skip").exists():  # 是否有skip文件
                 dirs[:] = []  # 忽略当前文件夹子目录
                 continue
@@ -321,7 +321,7 @@ async def check_and_clean_files() -> None:
         if not Path(movie_path).exists():
             signal.show_log_text(f" 🔴 Movie folder does not exist: {movie_path}")
             continue
-        for root, dirs, files in Path(movie_path).walk(top_down=True):
+        for root, _dirs, files in Path(movie_path).walk(top_down=True):
             for f in files:
                 # 判断清理文件
                 path = root / f

@@ -1114,7 +1114,7 @@ def auto_fix_actor_db(db_path: Path) -> dict:
 
     # 1. jp 空行删除 + jp 重复合并（按行号逆序处理避免索引错乱）
     delete_rows = set()
-    for row_idx, msg, cat in issues["errors"] + issues["warnings"]:
+    for row_idx, _msg, cat in issues["errors"] + issues["warnings"]:
         if cat == "jp_empty":
             delete_rows.add(row_idx)
     if delete_rows:
@@ -1397,7 +1397,7 @@ async def run_actor_db_xlsx(
     # reformat_minnano 纯本地同步处理，不走网络/并发通道
     if mode == "reformat_minnano":
         reformatted = 0
-        for jp, _tmdbid, row_idx in rows_to_process:
+        for _jp, _tmdbid, row_idx in rows_to_process:
             if _is_stop_requested():
                 break
             raw = str(ws.cell(row=row_idx, column=COL_BIO + 1).value or "").strip()

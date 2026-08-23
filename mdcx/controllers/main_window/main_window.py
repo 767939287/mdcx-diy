@@ -1207,7 +1207,7 @@ class MyMAinWindow(QMainWindow):
             if len(outline) > 38:
                 outline = outline[:36] + "……"
             self.Ui.label_outline.setText(outline)
-            tag = str(data.tag).strip(" [',']").replace("'", "")
+            tag = ", ".join(str(item) for item in data.tag) if isinstance(data.tag, list) else str(data.tag)
             self.Ui.label_tag.setToolTip(tag)
             if len(tag) > 76:
                 tag = tag[:75] + "……"
@@ -2830,7 +2830,7 @@ class MyMAinWindow(QMainWindow):
         lines.append("<b style='color: #c62828;'>错误（需立即处理）：</b>")
         for cat, count in sorted(error_cats.items(), key=lambda x: -x[1]):
             lines.append(f"  • {cat_names.get(cat, cat)}: {count} 项")
-        for row, msg, cat in errors[:20]:
+        for row, msg, _cat in errors[:20]:
             lines.append(f"&nbsp;&nbsp;- 行{row}: {msg}")
         if len(errors) > 20:
             lines.append(f"&nbsp;&nbsp;... 还有 {len(errors) - 20} 条未显示")
@@ -2839,7 +2839,7 @@ class MyMAinWindow(QMainWindow):
             lines.append("<b style='color: #ef6c00;'>警告（建议处理）：</b>")
             for cat, count in sorted(warning_cats.items(), key=lambda x: -x[1]):
                 lines.append(f"  • {cat_names.get(cat, cat)}: {count} 项")
-            for row, msg, cat in warnings[:10]:
+            for row, msg, _cat in warnings[:10]:
                 lines.append(f"&nbsp;&nbsp;- 行{row}: {msg}")
             if len(warnings) > 10:
                 lines.append(f"&nbsp;&nbsp;... 还有 {len(warnings) - 10} 条未显示")
@@ -2940,7 +2940,7 @@ class MyMAinWindow(QMainWindow):
             if needs_manual:
                 lines.append("")
                 lines.append(f"{len(needs_manual)} 项需人工处理：")
-                for row, msg, cat in needs_manual[:10]:
+                for row, msg, _cat in needs_manual[:10]:
                     lines.append(f"  - 行{row}: {msg}")
                 if len(needs_manual) > 10:
                     lines.append(f"  ... 还有 {len(needs_manual) - 10} 项")

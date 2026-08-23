@@ -238,7 +238,7 @@ class JavdbCrawler(BaseCrawler):
 
         # 精确匹配
         number = ctx.input.number
-        for href, title, meta in info_list:
+        for href, title, _meta in info_list:
             if title and match_number(title, number):
                 return [self._with_locale_zh(urljoin(self.base_url, href))]
 

@@ -120,7 +120,7 @@ class LogBuffer:
             for tid, categories in list(LogBuffer.all_buffers.items()):
                 if tid == task_id:
                     continue
-                for category, buf in categories.items():
+                for _category, buf in categories.items():
                     if isinstance(buf, LogBuffer):
                         # 浅拷贝避免并发 append 时 "list changed size during iteration"
                         result += "".join(list(buf.buffer))

@@ -176,7 +176,7 @@ async def save_asin_to_excel(
         from openpyxl.utils import get_column_letter
     except ImportError:
         LogBuffer.log().write("  ⚠️ [ASIN 数据库] 缺少 openpyxl，无法保存 amazon_asin_database.xlsx")
-        raise ImportError("请安装 openpyxl 库：pip install openpyxl")
+        raise ImportError("请安装 openpyxl 库：pip install openpyxl") from None
 
     if excel_path is None:
         excel_path = _get_default_excel_path()
@@ -497,7 +497,7 @@ async def export_asin_statistics(
     try:
         import openpyxl
     except ImportError:
-        raise ImportError("请安装 openpyxl 库：pip install openpyxl")
+        raise ImportError("请安装 openpyxl 库：pip install openpyxl") from None
 
     if excel_path is None:
         excel_path = _get_default_excel_path()

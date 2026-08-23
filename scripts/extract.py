@@ -118,7 +118,7 @@ class LineExtractor:
 
         try:
             with open(input_file, encoding=encoding) as infile:
-                for line_num, line in enumerate(infile, 1):
+                for line in infile:
                     total_lines += 1
                     if self.matches_line(line):
                         matched_lines.append(line)
@@ -129,7 +129,7 @@ class LineExtractor:
             return {"total_lines": total_lines, "matched_lines": len(matched_lines), "output_file": output_file}
 
         except UnicodeDecodeError as e:
-            raise ValueError(f"文件编码错误，请尝试其他编码格式: {e}")
+            raise ValueError(f"文件编码错误，请尝试其他编码格式: {e}") from e
 
 
 def create_parser():

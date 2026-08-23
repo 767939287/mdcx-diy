@@ -36,7 +36,7 @@ def run_git_command(command: list[str]) -> str:
     except subprocess.CalledProcessError as e:
         console.print(f"[red]执行git命令失败: {' '.join(command)}[/red]")
         console.print(f"[red]错误信息: {e.stderr}[/red]")
-        raise typer.Exit(1)
+        raise typer.Exit(1) from e
 
 
 def git_ref_exists(ref: str) -> bool:
@@ -145,7 +145,7 @@ def generate_changelog(commit_log: str, output_file: Path) -> None:
         console.print(f"[green]Changelog已生成到: {output_file}[/green]")
     except Exception as e:
         console.print(f"[red]写入文件失败: {e}[/red]")
-        raise typer.Exit(1)
+        raise typer.Exit(1) from e
 
 
 @app.command()

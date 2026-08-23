@@ -416,7 +416,7 @@ class Scraper:
             signal.show_log_text(
                 f" ⏱ {get_current_time()}（{remain_time}）秒后开始刮削：{count}/{count_all} {show_name}"
             )
-            for i in range(remain_time):
+            for _ in range(remain_time):
                 self._check_stop(show_name)
                 await asyncio.sleep(1)
 

@@ -20,7 +20,7 @@ def safe_rmtree(path: str | Path) -> None:
     try:
         p = Path(path).resolve()
     except (OSError, ValueError) as exc:
-        raise ValueError(f"safe_rmtree: 无法解析路径 {path!r}: {exc}")
+        raise ValueError(f"safe_rmtree: 无法解析路径 {path!r}: {exc}") from exc
     # 拒绝文件系统根/盘符根(无父目录)
     if p.parent == p:
         raise PermissionError(f"safe_rmtree: 拒绝删除文件系统根 {p}")

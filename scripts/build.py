@@ -383,9 +383,9 @@ class BuildManager:
         try:
             result = subprocess.run(args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
             logger.debug(result.stdout.strip())
-        except Exception:
+        except Exception as exc:
             if error_msg is not None:
-                raise BuildError(f"{error_msg}")
+                raise BuildError(f"{error_msg}") from exc
             return False
         if result.returncode != 0:
             if error_msg is not None:

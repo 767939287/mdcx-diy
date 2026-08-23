@@ -251,7 +251,7 @@ def get_cached_actor(name: str) -> dict | None:
         if name in _cache_data:
             return _cache_data[name]
         # 模糊匹配：别名中包含
-        for jp, data in _cache_data.items():
+        for _jp, data in _cache_data.items():
             alias = data.get("alias", "")
             if name in alias:
                 return data

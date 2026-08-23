@@ -135,7 +135,7 @@ def main(
         console.print(
             Panel.fit(f"[bold red]错误:[/bold red] {e}", title="[bold red]操作失败[/bold red]", border_style="red")
         )
-        raise typer.Exit(1)
+        raise typer.Exit(1) from e
 
 
 if __name__ == "__main__":

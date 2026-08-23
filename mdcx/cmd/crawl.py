@@ -332,7 +332,7 @@ async def _fetch_async(
 
     except Exception as e:
         console.print(f"[red]错误: {e!s}[/red]")
-        raise typer.Exit(1)
+        raise typer.Exit(1) from e
     finally:
         await browser_provider.close()
         await async_client.close()

@@ -249,7 +249,7 @@ async def _avmoo_fetch_numbers(domain_site: str, namespace: str, name: str) -> s
 
 async def _avmoo_locate_star_id(base: str, namespace: str, name: str) -> str | None:
     """通过搜索演员名 → 影片详情 → star 字段定位 starId。"""
-    for attempt in range(3):
+    for _ in range(3):
         async with manager.acquire_computed() as computed:
             json_data, error = await computed.async_client.post_json(
                 f"{base}/{namespace}/data/api/search",

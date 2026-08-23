@@ -84,7 +84,7 @@ def filter_xml_file(input_file: str, output_file: str | None = None, backup: boo
         tree = ET.parse(input_file, parser)
         root = tree.getroot()
     except ET.ParseError as e:
-        raise ValueError(f"XML解析错误: {e}")
+        raise ValueError(f"XML解析错误: {e}") from e
 
     # 统计信息
     total_count = 0

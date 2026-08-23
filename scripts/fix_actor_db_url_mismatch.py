@@ -61,7 +61,7 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     shutil.copy(db_path, Path("/tmp/actor_db_before_url_fix.xlsx"))
-    for row_idx, jp in fix_rows:
+    for row_idx, _jp in fix_rows:
         clear_tmdb(ws, row_idx)  # 成对清空 id+url（防单独清 url 留 id 错配）
     for row_idx in sorted(del_rows, reverse=True):
         ws.delete_rows(row_idx, 1)
