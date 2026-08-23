@@ -42,13 +42,16 @@
   - 改 `pyproject.toml` 依赖、`scripts/build.py`、`.github/workflows/build-windows.yml`/`release.yml`、或运行时引入新三方依赖时，必须按上述清单逐项核对，确认无遗漏再提交。
 
 [UI 改动与排查注意事项]
-- Date: 2026-08-03（2026-08-16、2026-08-21 更新）
+- Date: 2026-08-03（2026-08-16、2026-08-21、2026-08-23 更新）
 - Context: 多次调整工具页 UI 沉淀约束；排查 UI 功能时漏看弹窗模块误报
 - Category: 环境配置
 - Instructions:
-  - **规范流程**：先改 `.ui` → `uv run python -m PyQt6.uic.pyuic mdcx/views/MDCx.ui -o mdcx/views/MDCx.py` → `uv run ruff format mdcx/views/MDCx.py`。不要手工改 MDCx.py（`test_mdcx_py_in_sync_with_ui` 把关）。新文案必须回写 `.ui` 让其成唯一权威源。改后跑 `uv run pytest tests/test_ui_structure.py -q` 验证。
+  - **规范流程**：先改 `.ui` → `uv run python -m PyQt6.uic.pyuic mdcx/views/MDCx.ui -o mdcx/views/MDCx.py` → `uv run ruff format mdcx/views/MDCx.py`。不要手工改 MDCx.py（`test_mdcx_py_in_sync_with_ui` 把关）。新文案必须回写 `.ui` 让其成唯一权威源。改后跑 `uv run pytest tests/test_ui_structure.py -q` 验证。ElementTree 重写 `.ui` 会重排全文件格式，必须用文本级精确替换。
   - **groupBox 绝对定位**：`page_tool` 滚动区内增高某 groupBox 后须连锁把下方所有兄弟 groupBox y 同步 +delta，并同步增高滚动区高度（底部留 20px）。
-  - **gridLayout 陷阱**：同一 `row:col` 只能放一个 widget/layout，多个会覆盖/重影。长 label 用 `addWidget(w, row, 0, 1, 2)` 跨整行 + `setWordWrap(True)`。新增控件前先 `grep -n` 扫描现有 row/col 分布。
+  - **gridLayout 陷阱**：同一 `row:col` 只能放一个 widget/layout，多个会覆盖/重影。长 label 用 `addWidget(w, row, 0, 1, 2)` 跨整行 + `setWordWrap(True)`。新增控件前先 `grep -n` 扫描现有 row/col 分布。**item 必须给 row/col**：无定位的 `<item>` 被 pyuic 以 addWidget(w,0,0) 落到 (0,0) 退化为 100×30 与已有控件重叠（批量操作面板实例）。
+  - **长说明 label 重影**：vsizetype Fixed 锁死高度→多行文字向下溢出被下方控件遮挡（重影）；改 vsizetype Minimum + minimumSize=sizeHint 高度。**sizeHint 必须 offscreen `show()`+`processEvents()`（或切到对应 stackedWidget 页）后实测**——未激活布局时控件尺寸退化 100×30 不可信，曾误判批量操作仍异常。
+  - **说明文字要常驻可见**：只放 tooltip/placeholder 用户 hover 才看得到（Bypass 落地白名单/压缩实例）；用 teal 说明 label，长文本 colspan 跨满列利用右侧空白（国产/动漫里番/Mywife 说明实例）。
+  - **功能控件放对页面**：批量操作曾放「类型刮削网站」设置里、操作对象（NFO 列表）却在 NFO 库页，用户找不到列表；操作控件应与操作对象同页。
   - **中文字体等宽**：统一用 `font:"Courier New"`，不用裸 `"Courier"`（中文显示方框）。
   - **排查 UI 必须覆盖弹窗**：排查功能时搜索所有 QDialog 子类和弹窗模块（`grep -rn "QDialog\|class.*Dialog"`），不能只看主窗口。项目弹窗集中在 `mdcx/controllers/main_window/site_priority_dialog.py` 等独立文件。典型坑：配置项在二次弹窗（如 FieldPriorityDialog），主窗口只放触发按钮，不看弹窗内部就误判"UI 没暴露该配置"。
   - 新增按钮检查三处一致：`MDCx.ui` + `MDCx.py` + `init.py`（clicked 槽 + setText 防重入）。删除按钮后清理失联 delegate 死代码。
