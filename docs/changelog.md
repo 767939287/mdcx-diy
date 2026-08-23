@@ -9,6 +9,7 @@
 - **字段 skip 哨兵（字段级跳过抓取）**：新增 `FieldConfig.skip`，勾选后该字段不从任何来源抓取；字段优先级对话框每字段行新增「跳过」复选框，清空/重置时同步清除 skip
 - **NFO 合并策略（5 种 MergeStrategy）**：新增 `NfoMergeStrategy` 枚举（prefer_scraper/prefer_nfo/merge_arrays/keep_existing/fill_missing_only），`write_nfo()` 写入前按策略与现有 NFO 合并，关键字段（number/title）双重保护；UI「读取模式」区域新增「NFO合并策略」下拉框
 - **图片下载大小上限**：`AsyncWebClient.download` 新增 `max_bytes`（Content-Length 预检 + 事后校验），图片链路统一 50MB 上限，trailer 等大文件链路不限
+- **MGStage 官方图源直构海报兜底**：Poster 候选全部失败时，按番号直构 MGStage 官方 CDN 高清竖图（`pb_e`）作海报兜底（`crawlers/mgstage_direct.py`，系列映射表来自 JavDB 高清图替换油猴脚本实测：LUXU/OTIM/CHUC/GERK/ONEZ/ONEX/MFC/ARA），补上 DMM 不收录的素人番号场景（素人番号天然跳过 Amazon 搜索，本兜底替代 Amazon 位置）；`check_url` 验存在 + 分辨率过滤小图，随「DMM 官方图源兜底」开关一起启用
 
 ### 重构
 

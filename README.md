@@ -49,7 +49,7 @@ MDCx-diy 是一个桌面工具，自动从 48 个网站抓取视频文件的元�
 - **智能番号识别** — 自动判断番号类型（有码/无码/FC2/国产/欧美）
 - **标准 NFO 生成** — 30+ 元数据字段，Emby/Jellyfin/Kodi 通用
 - **多引擎翻译** — Google、Bing、Baidu、DeepL、DeepLX、LLM 共 6 种
-- **图片处理** — 人脸裁剪、水印、Amazon 高清封面、DMM 官方图源兜底（自动学习厂牌前缀）
+- **图片处理** — 人脸裁剪、水印、Amazon 高清封面、官方图源兜底（DMM 高清封面自动学习厂牌前缀 + MGStage 素人高清海报）
 - **演员数据库** — Excel 数据库 + TMDB/Wikidata/Gfriends 多源补全
 - **Emby/Jellyfin 集成** — 自动同步演员信息和头像
 - **异步并发** — 同时刮多个文件，不卡界面

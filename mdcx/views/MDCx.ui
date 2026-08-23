@@ -10944,7 +10944,7 @@
                               </sizepolicy>
                             </property>
                             <property name="text">
-                              <string>DMM 官方图源兜底</string>
+                              <string>官方图源兜底（DMM / MGStage）</string>
                             </property>
                           </widget>
                         </item>
@@ -10960,7 +10960,7 @@
                               <string notr="true">color: rgb(8, 128, 128);</string>
                             </property>
                             <property name="text">
-                              <string>站点图源全部失败时，按番号直构 DMM 官方 CDN 高清封面（自动学习厂牌前缀，仅影响有码片）</string>
+                              <string>站点图源全部失败时，按番号直构官方 CDN 高清图：DMM 高清封面（自动学习厂牌前缀）与 MGStage 素人高清海报</string>
                             </property>
                           </widget>
                         </item>

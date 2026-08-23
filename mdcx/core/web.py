@@ -1161,6 +1161,33 @@ async def poster_download(
             ):
                 return True
 
+    # 全部候选下载失败，尝试 MGStage 官方图源直构兜底（素人番号高清竖图）
+    if manager.config.dmm_fallback_enabled:
+        from mdcx.crawlers.mgstage_direct import find_valid_mgstage_cover
+
+        mg_cover_url = await find_valid_mgstage_cover(result.number or "")
+        if mg_cover_url:
+            LogBuffer.log().write(f"\n 🟡 Poster 候选全部失败，尝试 MGStage 官方图源直构兜底: {mg_cover_url}")
+            if media_context is not None:
+                downloaded = await media_context.save_image(mg_cover_url, poster_final_path_temp, folder_new_path)
+            else:
+                downloaded = await download_file_with_filepath(mg_cover_url, poster_final_path_temp, folder_new_path)
+            if downloaded:
+                poster_size = await check_pic_async(poster_final_path_temp)
+                if poster_size:
+                    if poster_final_path_temp != poster_final_path:
+                        await move_file_async(poster_final_path_temp, poster_final_path)
+                        await delete_file_async(poster_final_path_temp)
+                    if cd_part:
+                        Flags.file_done_dic[result.number].update({"poster": poster_final_path})
+                    other.poster_marked = False
+                    LogBuffer.log().write(f"\n 🍀 Poster done! (mgstage_fallback)({get_used_time(start_time)}s) ")
+                    other.poster_path = poster_final_path
+                    return True
+                LogBuffer.log().write("\n 🟠 MGStage 兜底海报下载后校验失败，继续降级处理 ")
+            else:
+                LogBuffer.log().write("\n 🟠 MGStage 兜底海报下载失败，继续降级处理 ")
+
     # 判断之前有没有 poster 和 thumb
     if not poster_path and not thumb_path:
         other.poster_path = None

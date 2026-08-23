@@ -196,6 +196,9 @@ class BuildManager:
             # DMM 厂牌前缀学习表(dmm_direct 与 dmm/__init__ 函数内延迟导入, 学习数据持久化到 userdata)
             "--hidden-import",
             "mdcx.crawlers.dmm_prefix_learn",
+            # MGStage 官方图源直构器(core/web.py 兜底函数内延迟导入)
+            "--hidden-import",
+            "mdcx.crawlers.mgstage_direct",
             # NFO 合并策略引擎(nfo.py 写入前函数内延迟导入)
             "--hidden-import",
             "mdcx.core.nfo_merger",
