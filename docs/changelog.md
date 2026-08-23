@@ -5,95 +5,89 @@
 ### 功能
 
 - **missav 爬虫 3 域名轮询**：missav 支持 `missav.ai`/`missav.ws`/`missav.live` 三域名自动轮询，请求失败时自动切换镜像重试（404 不轮询直接返回）；missav.ai 排第一（当前网络环境最稳定）。默认代理站点列表加入 `missav.live`。`missav_api` 不需要轮询（走 Recombee API + fourhoi 图床，无 CF 无镜像）
-- **NFO 库管理页面（左侧导航新页）**：借鉴 NFO.Editor 的目录浏览+批量编辑理念，在左侧导航树新增「NFO库管理」按钮（工具与设置之间），`stackedWidget` 新增 `page_nfo_library`（index 6）。三栏布局：左栏 `QListWidget` 列出选定目录下所有 `.nfo` 文件（支持多选+筛选），中栏 `QFormLayout` 字段编辑表单（番号/标题/演员/发行日/年份/时长/导演/制作商/发行商/系列/评分/简介/标签/封面URL/海报URL 共 15 字段），右栏封面预览（poster 200×280 + thumb 200×120）+ 裁剪按钮。目录扫描递归 `rglob`，列表项存 NFO 路径于 `UserRole+1`。单条读取复用 `core/nfo.py:get_nfo_data`，保存复用 `write_nfo(update=True)`，均走 `executor.submit` 后台执行 + `pyqtSignal` 回主线程更新 UI（避免重蹈 `save_nfo_info` 的 `executor.run` 主线程阻塞）。封面预览从 NFO 同目录加载本地图片（`{番号}-poster.jpg`/`poster.jpg`/`{番号}-thumb.jpg`/`thumb.jpg`），不走网络。裁剪封面复用 `cut_window`。批量操作：左栏列表下方 `QGroupBox` 含替换演员名/加标签/删标签/统一系列名 4 个操作 + 批量保存按钮，每项配输入框，选中多条后一键执行，后台逐条读取-修改-写回，状态实时显示。**字段级 diff 预览**：加载 NFO 时深拷贝原始数据作为基准，点保存时对比表单与基准的 15 个字段，无改动提示后返回，有改动弹窗显示「字段名 + 旧值 → 新值」，确认后才写盘。**列表右键菜单**：重新刮削（找同目录同名视频加入 `Flags.again_dic` 队列，单个选中可修改番号）/ 打开所在目录（`open_file_thread` 定位到文件）/ 删除 NFO（Warning 确认框 → `delete_file_sync` → 从列表移除并更新计数）。新增 `controllers/main_window/nfo_library.py`（controller），`main_window.py` 加 `nfo_lib_data_loaded`/`nfo_lib_save_done`/`nfo_lib_batch_done` 三个信号 + 16 个包装方法，`init.py` 接线 11 个按钮信号 + 3 个信号槽连接
-- **字段 skip 哨兵（字段级跳过抓取）**：新增 `FieldConfig.skip`/`FieldPriorityConfig.skip` 字段，勾选后该字段不从任何来源抓取。`file_crawler.py` 预收集阶段和字段处理阶段两处检查 skip 标志，命中则跳过抓取并记录日志。字段优先级对话框（`FieldPriorityDialog`）每个字段行新增「跳过」复选框，勾选后禁用对应网站列表；全部重置/清空时同步清除 skip 状态。`set_field_skip()` 方法设置后清空并重建 `type_field_configs` 确保 skip 立即传播到 type 级配置
-- **NFO 合并策略（5 种 MergeStrategy）**：新增 `NfoMergeStrategy` 枚举（`prefer_scraper`/`prefer_nfo`/`merge_arrays`/`keep_existing`/`fill_empty`），`write_nfo()` 写入前按策略读取现有 NFO 并合并。`core/nfo_merger.py` 合并引擎区分标量字段（17 个）和数组字段（5 个），关键字段（number/title）双重保护，合并结果带溯源标记。UI 在主界面「读取模式」区域（「允许更新 nfo 文件」复选框下方）新增「NFO合并策略」下拉框，5 项按枚举顺序排列，`load_config`/`save_config` 双向同步
-- **DMM 官方图源兜底**（借鉴 AVACA 图源直构思想）：站点图源全部失败时，按番号直构 DMM 官方 CDN（awsimgsrc）高清封面兜底，自动学习厂牌前缀。`crawlers/dmm_direct.py` 新增 `find_valid_dmm_cover`（复用 `check_url` GET 验证 + `_is_dmm_hd_image` 分辨率过滤），`core/web.py` 的 `thumb_download` 失败分支插入兜底，成功后 fanart/poster 走既有复制/裁剪链路。新增 `dmm_prefix_learn.py` 前缀学习表：从刮削过程观察到的真实 DMM URL（`upgrade_dmm_cover` 命中 + dmm 爬虫验证过的图）提取 series→prefix 证据，状态机管理（≥2 个不同番号验证成功转正 verified、连续失败 ≥3 次隔离 quarantined、新证据解除隔离重走验证），持久化到 `userdata/dmm_prefix_learned.json`（原子写）。`generate_cid_candidates` 应用顺序：学习表 verified → 静态前缀表 → 学习表 provisional → 常见前缀盲试。新增配置项 `dmm_fallback_enabled`（默认开，设置页「下载高清图」组）与 `find_valid_dmm_cover` 测试、学习表 9 项测试
-- **图片下载大小上限**：`AsyncWebClient.download` 新增 `max_bytes` 参数（Content-Length 预检 + 未知大小 content 事后校验双重防护），图片链路（`download_file_with_filepath`/`download_content_with_filepath`/`download_dmm_extrafanart_with_filepath`）统一传 50MB 上限，防异常大文件拖死磁盘；trailer 等大文件链路不传保持不限。新增 4 项 `download` max_bytes 测试
+- **NFO 库管理页面（左侧导航新页）**：左侧导航新增「NFO库管理」，三栏布局——目录 `.nfo` 文件列表（多选+筛选）、15 字段编辑表单（番号/标题/演员/发行日/导演/制作商/系列/评分/简介/标签/封面/海报等）、封面预览。支持字段级 diff 预览（保存前对比改动）、批量操作（替换演员/加删标签/统一系列）、列表右键（重新刮削/打开目录/删除 NFO）。后台线程读写 + 信号回主线程
+- **字段 skip 哨兵（字段级跳过抓取）**：新增 `FieldConfig.skip`，勾选后该字段不从任何来源抓取；字段优先级对话框每字段行新增「跳过」复选框，清空/重置时同步清除 skip
+- **NFO 合并策略（5 种 MergeStrategy）**：新增 `NfoMergeStrategy` 枚举（prefer_scraper/prefer_nfo/merge_arrays/keep_existing/fill_missing_only），`write_nfo()` 写入前按策略与现有 NFO 合并，关键字段（number/title）双重保护；UI「读取模式」区域新增「NFO合并策略」下拉框
+- **图片下载大小上限**：`AsyncWebClient.download` 新增 `max_bytes`（Content-Length 预检 + 事后校验），图片链路统一 50MB 上限，trailer 等大文件链路不限
 
 ### 重构
 
-- **dmm_api 爬虫底层替换为 DMM 官方 Affiliate API**：原 `dmm_api` 爬虫实际走 `api.thejavdb.net`（JavDB 第三方 API），名不副实。现将 `dmm_api` 底层实现替换为 DMM 官方 Affiliate API（`api.dmm.com/affiliate/v3/ItemList`），枚举值 `dmm_api` 不变，老用户配置零迁移、无感知。新爬虫直连 DMM 官方 API（无需日本节点），单请求获取完整元数据（标题/演员/厂牌/标签/系列/导演/日期/时长/评分/封面/剧照），并从 HTML5 player 页面提取预告片直链（复用 DmmCrawler 预告片质量分级系统，自动选最优画质）。NetworkConfig 新增 `dmm_api_id`/`dmm_affiliate_id` 配置项，留空使用内置默认值开箱即用，正式使用建议自行注册获取
+- **dmm_api 爬虫底层替换为 DMM 官方 Affiliate API**：原 `dmm_api` 实际走 JavDB 第三方 API，现替换为 DMM 官方 Affiliate API（枚举值不变，老配置零迁移）。直连无需日本节点，单请求获取完整元数据 + HTML5 player 预告片直链；新增 `dmm_api_id`/`dmm_affiliate_id` 配置项（留空用内置默认值）
 - **新增 thejavdb_api 爬虫**：保留原有 thejavdb.net API 数据源为独立爬虫 `thejavdb_api`（`crawlers/thejavdb_api.py`），枚举值 `thejavdb_api`，默认未启用，需手动添加到网站列表。修复原 `dmm_api` 未设置 `ctx.number_00`/`ctx.number_no_00` 导致 DMM 高清封面升级（AWS CDN `pl.jpg`）部分失效的问题
 - **爬虫文件去 `_new` 后缀**：`dmm_new` → `dmm`、`javdb_new` → `javdb`、`avbase_new` → `avbase`，消除"有旧版"的误导。纯文件重命名 + import 路径更新，无功能变更
 - **JavDB App 爬虫类名统一**：`javdb_app.py` 的 `JavdbAPICrawler` → `JavdbAppCrawler`，与文件名一致且避免与 `javdb_api.py` 的 `JavdbApiCrawler` 同名冲突
 - **love6.py 死代码清理**：删除未调用的 `get_extrafanart` 函数（从 lulubar.py 复制粘贴遗留，拼接了错误的 `lulubar.net` 域名）
-- **JavDB App 签名简化 + 设备参数补全**：`javdb_app.py` 签名算法从运行时 base64 解密（`_decrypt` + `_ENCRYPTED_PART1/2` + `_SECRET`）改为直接硬编码已验证的 prefix/suffix 常量（与 javdb-cli 项目交叉验证值一致），消除 `base64`/`json` 模块依赖；`_build_api_params` 补全 `system_version`/`device_model`/`device_name`/`device_uuid` 四个设备标识参数（与真实 JavDB App 请求一致），降低被风控的概率
-- **移植 sakuramediabe 4 项改进**：① `remove_disturb` 域名干扰预处理——番号清洗时去除附带域名（如 `ABC-123.example.com` → `ABC-123`），去除后为空则保留原值防止整个文件名被吃掉；② jsdelivr CDN 加速——`Content`/`Filetree` 资源 URL 从 github.com 改为 jsdelivr CDN（版本检测保持 github.com）；③ NFKC 归一化匹配——演员名等匹配时先做 NFKC 归一化消除全半角差异（不预构建索引）；④ stale cache 降级——缓存过期时不直接报错而是降级使用旧数据（不替换版本检测逻辑）
-- **Emby 演员管理器入口移到左侧导航**：工具页顶部的 90px「Emby 演员管理」入口 groupBox 删除（下方 8 个 groupBox 连锁上移 90px，滚动区高度同步收缩），改为左侧导航树新增「Emby演员管理」按钮（工具按钮下方，点击弹出原独立对话框，行为不变）。同步清理 init.py 旧按钮 clicked/setText 连接与 main_window.py 失联信号定义，文档更新为「左侧导航 Emby演员管理」
+- **JavDB App 签名简化 + 设备参数补全**：签名算法从运行时 base64 解密改为硬编码已验证常量，补全 `system_version`/`device_model`/`device_name`/`device_uuid` 设备参数（降低被风控概率）
+- **移植 sakuramediabe 4 项改进**：番号清洗去附带域名干扰、jsdelivr CDN 加速、NFKC 归一化匹配、stale 缓存降级
+- **Emby 演员管理器入口移到左侧导航**：工具页顶部入口删除，改为左侧导航「Emby演员管理」按钮（弹出原对话框）
 
 ### 修复
 
-- **移除冗余依赖 ping3**：全模块审查清理了唯一使用方（`base/web.py` 的 ping_host 网络检测已改 HTTP），但 `pyproject.toml`/`uv.lock` 仍保留 `ping3==4.0.4` 依赖。按记忆文件「UI/文档/打包同步」检查确认全库无引用后移除，减小打包体积
-- **纯死代码清理（4 项，运行时核实零调用不影响功能）**：① `config/enums.py` 删除仅被注释引用的 `WholeField`/`NoneField` 枚举；② `actor_sources.py` 删除零调用的模块级 `_normalize_number`（`missav_api.py` 的同名方法不受影响）；③ `amazon.py` 删除零调用的 `try_get_amazon_barcode_from_covers` 及 `core/web.py` 的 import/`__all__` 条目；④ `amazon.py` `_save_asin_record` 移除从未使用的 `detail_url` 死参数及 8 处传参。保留有测试依赖的 `get_new_str`（conftest patch）与 `media_resource.get_size`（测试调用）
-- **全模块审查谨慎设计项修复（5 项，并发安全）**：① `actor_db_tool.py` 演员库维护 `run()` 加载工作簿后重建行索引（原 `_ACTOR_DB_ROW_INDEX` 可能为更早磁盘状态遗留，与 `_wb` 快照错位并发写错行）；② `minnano_crawler.py` `_cache_data` 读写加 `_cache_lock`（原 `load_cache`/`get_cached_actor` 无锁，与 `save_cache_row` 并发清空/覆盖错乱）；③ `resources.py` `info_db_index` 懒构建纳入 `_data_load_lock`（原并发 `reload_info_db` 置 None 时 `_build_info_db_index(None)` 抛 TypeError）；④ `selenium_adapter.py` 连续失败计数加 `_selenium_state_lock`（原 read-modify-write 并发 to_thread 下计数丢失，冷却触发不准）；⑤ `core/file.py` 图片迁移 move 段纳入 `_pic_catch_lock` 并锁内复查 `final_path`（原多 CD 分集并发共用 poster/thumb/fanart.jpg 的 TOCTOU 竞态导致后写覆盖先写，现先到先得）
-- **全模块审查补充修复（10 项，低风险加固）**：① `core/scraper.py` 图片下载 fanart/poster 异常时取消 extrafanart 后台任务（原任务泄漏到批次结束）；② `core/nfo.py` 评分/年份/时长等裸字符串拼接改用 `write_text_element` 转义（原含 `&`/`<` 的异常值生成非法 XML）；③ `nfo_merger.py` `_SCALAR_FIELDS` 移除 `director`（与 `directors` 数组双重合并，标量结果恒被覆盖）；④ `core/nfo.py` CD 后缀剥离支持 `CD10+` 且不再误删"系列 5"这类结尾数字；⑤ `actor_db_tool.py` `auto_fix_actor_db` 删除行后 `needs_manual` 报告行号减去被删行偏移（原行号失效指向错误行）；⑥ `wiki.py` 个人资料表格列数不匹配降级跳过（原 raise 导致整页失败、已提取内容也丢弃）；⑦ `minnano_crawler.py` 缓存写入移 `asyncio.to_thread`（原 openpyxl 同步阻塞阻塞事件循环）；⑧ `config/extend.py` `deal_url` 先 strip 再补 scheme（原带首尾空格 URL 补成含空格失效）；⑨ `scraper.py` `remain_count` 用 `max(0, ...)` 避免瞬时负数显示；⑩ `amazon.py` `append_split_keyword` 运算符优先级加括号（长英文演员名不再绕过排除）
-- **全模块审查 P2 性能 + P3 健壮性修复（7 项）**：① `core/amazon.py` 详情页 enrich 与图片尺寸探测串行改 `asyncio.gather` 并发（条码/标题/actor 兜底三处，单片刮削省多个串行 RTT）；② `actor_db_tool.py` `verify_tmdb_ids` 恢复阶段串行查询改 Semaphore(5) 并发；③ `base/image.py` 水印 N 个水印 N 次全图编码改为全部 paste 后统一保存一次，`utils/image.py` `compress_images_in_folder_async` 无限并发线程改 Semaphore(8) 限流；④ `scrape_cache.py` `cleanup_missing` 逐条独立事务改 `commit=False` 批量共享事务 + 最后 flush；⑤ `amazon.py` 4 处 `etree.fromstring` 加异常保护（反爬页/非 HTML 响应不再中断刮削）；⑥ `nfo.py` `write_nfo` 加 `skip_merge` 参数，NFO 库表单编辑保存跳过合并（原 PREFER_NFO 等策略用磁盘旧值覆盖用户表单修改）；⑦ `models.py` `mask_secrets` 递归掩码嵌套密钥（原只掩顶层，`translate_config` 内 baidu_key/deepl_key/llm_key 泄露）
-- **全模块审查 P1 功能失效级修复（7 项）**：① `core/scraper.py` 断点续刮缓存键改用移动后实际路径（原用移动前旧路径，成功文件被反复重刮）；② 重写间歇刮削状态机（原分支颠倒：该休不休/不该休乱休，`rest_now_begin_count` 每任务更新导致阈值永不满足）；③ 共享番号释放不完整（读模式 NFO 番号与原始番号不同时，等待协程空转 300 秒）——新增 `_release_shared_status` 遍历释放全部注册键，`FileInfo` 加 `shared_number` 字段；④ `actor_sources.py` 数据源可靠性：libredmm 链接/名字 zip 错位改逐 `<a>` 成对取、avmoo 重试循环 `return None` 移出循环、getMovie 请求体改 JSON 字符串+Content-Type、javbus star 相对路径补全绝对 URL；⑤ `wiki.py` provider_ids 六个 ID 独立 try 提取（原同 try 单点缺失全部丢失）；⑥ `minnano_crawler.py` 缓存超链接列偏移修复（col_idx 14→15）、星座正则字符类改分组（原 `[牡羊|...]` 的 `|` 是字面量导致星座名拆成错误单字）；⑦ `similar.py` 按番号主键排除 target 自身（原 `is not` 身份比较对语料副本失效导致"自己推荐自己"）
-- **全模块审查 P0 数据损坏级修复（6 项）**：① `core/translate.py` 翻译映射用 Language 枚举当 dict 键查字符串字典恒返回 None，导致标签/系列/片商/发行商/导演默认配置下被清空——统一改 `.value`；② 简繁转换用 `== "zh_cn"` 字符串与枚举比较恒 False，标题/简介转换整体失效——改 `== Language.ZH_CN/ZH_TW`；③ `core/nfo_merger.py` 合并演员后 `original_actors` 未同步导致按位置配对 TMDB ID 错配到别的演员——新增 `_sync_original_actors` 对齐；④ `core/file.py` 图片迁移移动失败后仍删除旧文件（源图片丢失）——检查 `move_file_async` 返回值，失败不删；⑤ `utils/file.py` `move_file_sync` 同路径不同写法误判"不同"先删源再移导致源丢失——用 `_is_same_path` 判断；⑥ `utils/xml.py` 写入路径删除全角空格/不换行空格等合法字符且实体二次解释——`escape_xml_text`/`build_cdata` 改为只做实体幂等化+XML 转义，不做字符清洗
-- **Emby 演员管理器 6 项修复/优化**：① 同步完成后自动刷新复用用户选择的媒体库过滤（原丢失过滤拉全部库演员）；② 背景图补齐不再被头像源命中阻断——头像按源顺序第一命中即用，但缺背景时仍单独用 graphis 补（原 gfriends 先命中则永远无背景）；③ 连接设置写盘移后台线程，避免主线程同步 IO 卡顿；④ `fetch_actor_detail` 加进程内 TTL 缓存（5 分钟，容量 2000 有界），数据准备阶段避免重复网络请求；⑤ 上传图片 Content-Type 按实际格式识别（后缀 + PIL 探测兜底，修复 webp 等误判为 png）；⑥ 同步回调按 `actor_id` 匹配（防未去重时同名演员状态错位）
-- **网络检测功能增强（5 项）**：`core/network_check.py` 与检测网络页面——① 全局代理不可用时，汇总醒目提示"代理不可用，站点失败多为代理导致"，站点行简化提示避免误导以为站点全挂；② 镜像域名检测改为每站点仅抽样 1 个，减少刷屏拖慢（javbus 等 5-6 镜像不再逐个检测）；③ 单厂牌站点搜索探测无结果时明确提示"测试番号未被该站点收录，建议用实际番号实测"（此前笼统"搜索无结果"易困惑）；④ 检测页新增「重试失败项」按钮（`run_network_check` 支持指定检测子集，只重测失败/警告项）；⑤ 检测页新增「复制结果」按钮（把本次检测完整输出复制到剪贴板，便于反馈/排查）
-- **网络检测 DMM 误报"无固定检测入口"**：`core/network_check.py` 构建检测项时，`DmmCrawler.base_url_()` 返回空串导致 `check_urls()` 返回 `[""]`，覆盖了 `DEFAULT_SITE_URLS` 的 `www.dmm.co.jp` 默认地址，使 DMM 检测项误显示"无固定检测入口"（实际有固定地址）。现过滤 `check_urls` 中的空串，空时回退默认地址，DMM 检测恢复正常（实测 `[ok] 连接正常，刮削正常`）
-- **看番号时主界面操作按钮被 NFO 编辑器遮挡**：主界面点选结果树中的番号时，若 NFO 编辑器覆盖面板（`widget_nfo`，791×681）处于打开状态，会一直遮挡 page_main 上「播放/打开文件夹/编辑 NFO/右键菜单/清空列表」按钮，且点选其它番号不会自动收起。现点选番号时自动 `widget_nfo.hide()` 收起编辑器，主界面按钮始终可见；编辑 NFO 仍由「编辑 NFO」按钮打开、编辑器内关闭按钮收起
-- **DMM 预约版 9 前缀番号识别**：`number.py` 番号提取新增 9 前缀分支，`9ssis01` → `SSIS-001`（9 + 厂牌 + 编号，编号补零到 3 位，对应 DMM 预约版先行配信）；lookbehind 保证 9 独立成段不误伤 `ABC9XXX` 类番号
-- **Cloudflare 拦截时强制轮换指纹**：`network_fingerprint.py` 默认指纹池新增 `safari17_2_ios` 手机 Safari 指纹（实测 missav.ai 桌面 Chrome 指纹 403、Safari 手机指纹 200）；`web_async.py` 检测到 CF 挑战页（403/503 + challenge 标记）时强制轮换该连接池指纹（`_force_rotate_fingerprint`，排除当前指纹重选），让重试有机会换 Safari 指纹绕过，missav 等对桌面指纹拦截强的站点可恢复刮削。amazon 指纹池改为独立纯桌面池（不继承默认池的 safari iOS，避免偶发返回移动版页面干扰 amazon 桌面 DOM 解析）
-- **extrafanart 目录替换非原子**：`core/web.py` 原先先 `rmtree` 旧目录再 `rename` 新目录，改名失败（跨卷/被占用）时旧数据已丢；现先把旧目录移到备份名、rename 成功后清理备份，失败自动回滚旧目录
-- **read_link_sync 符号链接环死循环**：`utils/file.py` 的 `read_link_sync` 对成环链接（A→B→A）会无限循环；现用 seen 集合检测环，命中时返回当前路径
-- **xdg-open -R 无效参数**：`utils/file.py` `open_file_thread` 在 Linux 目录分支的兜底用了 macOS 专属的 `-R` 参数，xdg-open 不支持；现改为直接打开目录
-- **move_file_async 先删目标**：`utils/file.py` 移动前无条件删除目标文件，若移动失败目标已丢失；现仅当目标为目录时先删（`shutil.move` 会把源移入目录而非覆盖），文件目标由 `shutil.move` 内部原子覆盖
-- **hdouban 时长秒数解析崩溃**：`crawlers/hdouban.py` 的 `int(int(runtime)/3600)` 遇非数字内容抛 `ValueError` 中断解析；现 try/except 容错，非数字时返回空时长
-- **is_proxy_host O(n×m) 优化**：`web_async.py` 的 `is_proxy_host` 每匹配一个 proxy_site 就遍历整个 `ManualConfig.WEB_DIC`（O(n×m)），该函数每次请求都调用；现预构建「站点值 → 已知域名集合（含 TLD 变体）」映射（`_web_dic_domains_by_value`），反查降为 O(1) 集合命中，语义与原逻辑逐分支核对等价
-- **配置保存 sleep 重试链缩短**：`config/manager.py` 写配置失败时的重试等待从 0.45s/0.3s 降至 0.22s/0.08s，减少主线程保存配置时的卡顿（写失败为异常场景，正常路径无影响）
-- **成功列表记录旧路径**：`core/scraper.py` 非视频模式的完成路径 `save_success_list(file_path, file_path)` 把移动前的旧路径写入成功列表，与视频模式分支 `save_success_list(file_path, file_new_path)` 不一致；现统一传 `file_new_path`，改名/移动后成功列表指向实际新路径
-- **连接池空闲清理持锁阻塞**：`web_async.py` 的 `_cleanup_idle_locked` 在 `_lock` 临界区内 `await pool.close()`（网络关闭操作），会阻塞其它 `get`/`reset`；现该方法只在锁内做内存操作（检测空闲 + 从字典移除）并返回待关闭列表，`get()` 在锁外统一关闭，消除持锁等待
-- **分块下载支持断点续传**：`web_async.py` 的 `_download_chunks` 原先任意分块失败即删除 `.part` 临时文件，重试从头下载；现失败时保留 `.part` 与新增的 `.part.meta` 进度文件（记录 url/大小/分块划分/已完成分块），下次下载同一 url 时校验 meta 匹配则跳过已完成分块续传，全部完成后才替换目标文件并清理进度文件；file_size 变化时旧进度自动失效全量重下
-- **镜像轮询重试相乘放大**：`crawlers/base/base.py` 的 `_get_text_with_rotate` 每个镜像调用 `get_text` 默认内部重试 3 次，镜像数 × 3 放大请求次数；现轮询路径传 `retry_count=1`，每个镜像只请求一次、失败立即切下一个镜像，总请求次数从 3N 降到 N
-- **AVdb 同步 tmdbid 身份校验并发化**：`actor_db_tool.py` 的 `sync_from_avdb` 原先逐行串行 `await fetch_person_identity`（每个新 id 一个网络往返，大量条目时极慢）；现主循环前用 `asyncio.Semaphore(8)` 并发预热所有需校验的 tmdbid（命中 `tmdb_index` 的本地已有 id 不预热），结果缓存供主循环 O(1) 查询，未预热的新建行才现场请求；TMDB 请求仍受 `_tmdb_rate_limiter` 全局限流保护
-- **get_new_release 日期格式崩溃**：`utils/__init__.py` 的 `get_new_release` 原先对非 `YYYY-MM-DD` 格式的日期直接 `re.findall(...)[0]` 取首个匹配，无匹配时抛 `IndexError` 导致刮削中断；现改为先用 `re.search` 校验、无匹配则原样返回 release，规则替换仅在有匹配时进行
-- **actor 数据库自动修复保存失败静默吞错**：`actor_db_tool.py` 的 `auto_fix_actor_db` 原先 `wb.save` 失败被 `except: pass` 吞掉，界面显示「已修复 N 项」但实际未落盘；现把异常写入返回结果的 `save_error`，主界面弹窗红字提示保存失败并建议关闭占用程序后重试
-- **mmtv/kin8/iqqtv 时长解析崩溃**：三处复制粘贴的 `get_runtime`/`getRuntime` 对非数字时长文本直接 `int()` 抛 `ValueError`；现抽取公共函数 `parse_runtime`（`crawlers/base/parser.py`）统一处理 `HH:MM:SS`/`HH:MM`/`MM`/`95分`/`95min` 等格式，任一段非数字时返回空串而非崩溃；iqqtv 未调用的死代码 `getRuntime` 一并删除
-- **缺失番号查询缓存写失败中断任务**：`tools/missing.py` 扫描完整个资源库后若缓存文件写入失败（磁盘满/目录只读/文件被占用）会抛异常中断整个查询；现写入改为 `_try_write_cache_async` 包裹，失败仅记录日志不影响查询结果
-- **highdpi_passthrough 标记文件相对路径**：`main.py` 与 `load_config.py` 对 `highdpi_passthrough` 文件用相对路径判断，从非项目目录启动时标记文件读写到错误位置、开关失效；现统一改用 `MAIN_PATH` 绝对路径
-- **配置保存读取竞态**：`config/manager.py` 的 `save()` 原先在锁外读取 `self.config`，与 `_replace_config` 热切换并发时可能读到切换中的不一致状态；现读取 config 放入 `_computed_lock` 临界区（写盘仍在锁外，避免持锁做磁盘 IO）
-- **Emby 同步失败不再标记为已同步**：`emby_actor_manager_ui.py` 的 `_on_sync_finished` 原本无差别清掉全部 `need_update_*` 标记并刷新状态，失败演员也被标成已同步。现改为在 `_on_sync_actor_done`（per-actor 信号）里按演员名反查后仅对成功者调用 `_apply_sync_success` 清标记，失败演员保留待同步状态可在下次重试
-- **Emby 过滤器补齐 backdrop**：`emby_actor_manager_ui.py` 下拉框新增「缺背景」过滤模式（缺 backdrop 但有头像的演员不再只在全部里可见）；「待同步」模式条件补上 `need_update_backdrop`，漏掉待同步背景图的演员现在会出现在过滤结果中
-- **crawl CLI 测试消除 coroutine 警告**：`tests/test_crawl_cli.py` 的 `_FakeExecutor.submit` 接收 `task(c)` 协程后从不消费导致「coroutine never awaited」RuntimeWarning，fake 现对协程调用 `close()` 模拟真实 executor 的调度语义
-- **Gfriends 同步改后台线程**：`tool_handlers.py` 的 `pushButton_sync_gfriends_clicked` 不再同步调用 `do_sync`（内部 `git pull` 最长 5 分钟）阻塞 UI 主线程，改为 `executor.submit` + `asyncio.to_thread` 后台执行，通过新增的 `_gfriends_signals.done`（pyqtSignal）回主线程恢复按钮、提示结果并刷新更新时间
-- **Emby 演员名双击反查**：`emby_actor_manager_ui.py` 的 `_on_table_double_clicked` 改用 `table.item(row, 1).text()` 取演员名后到 `self._actors` 反查数据，不再用过滤后的视觉行索引 `filtered[row]`，修复列表经过筛选后双击错位/越界的问题
-- **Emby 图片上传去掉 base64**：`emby_shared.py` 移除 `base64.b64encode(content)` 与 `import base64`，直接发送原始图片字节流，修复 Emby 收到的图片因二次编码损坏、无法识别的问题
-- **minnano 缓存 key 统一为字符串**：`minnano_crawler.py` 缓存行从数字 `COL_*` key 改为字符串 key（新增 `CACHE_FIELD_KEYS` 常量），`save_cache_row` 新建/追加统一按番号去重更新，`load_cache` 加载前清空内存表，修复缓存读/写 key 错位导致的信息漏填（新爬取结果也受影响）
-- **nfo criticrating 读取修复**：`core/nfo.py` 第二处评分 xpath 从重复的 `//rating/text()` 改为 `//criticrating/text()`，并加 `int/10` 转换与 ValueError 兜底，修复 criticrating 永远读不到、NFO 重写后评分丢失的问题
-- **dmm 番号匹配修复前导零与连字符**：`dmm_api.py` 的 `_match_score` 归一化去除非字母数字后比较，编号段分别 `int` 比较（`ABC-012` 与 `ABC-12` 能匹配），并新增回归测试
-- **javdb 两位数评分 + 镜像轮询修复**：`javdb_api.py`/`javdb.py` 评分正则 `\d{1}\.\d+` → `\d{1,2}\.\d+`（支持 10.0 等）；`javdb_api.py` 重写 `_try_mirrors` 显式遍历 `_MIRRORS` 且每轮设置 `self.base_url`，修复 `base_url` getter 缓存旧成功镜像导致失败镜像被永久锁定的问题
-- **fc2 无修正判定修正**：`fc2.py` 在清洗「無修正」标签前保存原始 `tag`，正确判定无码（原逻辑标签清洗后永远判为有码）
-- **prestige 爬虫字段缺失防护**：`prestige.py` 演员/媒体/标签/标题/简介/时长等字段改用 `.get` + 默认值，站点接口结构变化时不再抛 KeyError
-- **dmm release 截断为日期 + 预告片质量正则兼容数字序号**：`dmm/__init__.py` 的 `startDeliveryAt`/`startPublicAt` 截取前 10 位为日期（去掉 `T20:00:00Z` 尾缀）；`_trailer_quality_rank` 第一正则序号段 `[a-z]` 放宽为 `[a-z]|\d{1,2}`，修复 `{cid}_hhb_1.mp4` 等带数字序号 URL 评不到质量等级的问题
-- **javdb_app year 推导修复**：`javdb_app.py` 的 year 从 `release[:4]` 推导不再依赖 runtime 字段存在与否
-- **fanart 下载失败不再静默忽略**：`core/scraper.py` `_download_images` 消费 `fanart_task.result()`，fanart 复制失败时返回失败
-- **强杀线程加超时保护**：`utils/__init__.py` 的 `_async_raise` 去掉 `while res == 1` 自旋（改为单次注入 + res>1 回滚），`kill_a_thread` 改为限时循环（默认 10 秒）；`main_window.py` 的 `_kill_threads` 外层加 12 秒忙等上限，防止线程无法退出时主进程无限空转
-- **dmm_prefix_learn 加载失败禁落盘**：`dmm_prefix_learn.py` 学习表加载失败（`_load_failed`）时 `_persist` 直接返回，防止空表 + 单条新记录覆盖历史学习结果
-- **Emby 演员管理器 3 项 P0 修复**：① 连接参数生效——`_on_connect_result` 成功后把 UI 填写的地址/密钥写回全局配置（`manager._replace_config` + `save`），此前仅存于对话框实例导致后续取列表/同步实际使用旧配置；② 头像/背景改为直接覆盖上传——`sync_actor` 不再先 DELETE 再 POST（删除成功但上传失败会丢失旧头像），头像直接 POST 覆盖 `Images/Primary`，背景覆盖 `Images/Backdrop/0`；③ 缓存文件名清洗——新增 `_safe_filename` 替换演员名中的 Windows 非法字符（`\ / : * ? " < > |` 等），`from_gfriends`/`from_graphis`/`from_minnano_image` 三处缓存文件统一走安全名，避免含特殊字符演员名下载/读写失败
-- **Emby 演员管理器 3 项 P1 优化**：① `sync_batch` 并发同步——原逐个串行同步（大列表极慢），现拆出 `_sync_actor_async` 协程 + `asyncio.Semaphore(SYNC_CONCURRENCY=4)` 并发批量执行，回调均在后台 loop 线程顺序触发（Qt 信号线程安全）；② 取列表带 fields 一次拿全——`get_emby_actor_list` Emby 分支补 `fields=Overview,Taglines,ProductionYear,PremiereDate,ProductionLocations,ProviderIds,Genres,Tags`，`fetch_all_actors` 第二遍检测列表项已含详情字段时直接复用，不再逐人 `fetch_actor_detail`（省 N 次 HTTP）；③ 失败演员重试——`_on_sync_actor_done` 失败时记录演员名，同步完成后自动刷新（3 秒）重建 ActorInfo 前把失败演员旧对象合并进刷新结果（保留 `need_update_*` 与本地新数据，仅更新服务器侧状态），失败项可再次点「开始全部更新同步」直接重试
-- **Emby 演员管理器 3 项易用性/结构优化**：① 移除冗余「测试连接」按钮——与「连接 Emby」完全同行为，删除按钮、信号连接与 `_on_test_connection` 方法；② 详情对话框「新数据」信息表新增「外部ID」行——可编辑 `ProviderIds`（`key:value` 逗号分隔），`_apply_edits` 解析回字典并计入 `need_update_info` 判定；同时移除 `actress_db.py` 数据库补全时用演员名占位写入 `ProviderIds["javdb"]` 的污染逻辑；③ 抽取共用「快速设置」面板 `_SourceQuickSettingsPanel`——数据源测试窗口与演员详情窗口原来各有一份几乎相同的头像/信息源拖拽排序 + 本地头像目录面板，现合并为一个组件，删除两处重复的 `_fill_source_list`/`_save_quick_settings`/`_browse_folder`
-
-- **读取模式不再受断点续刮缓存干扰**：断点续刮（ScrapeStateCache）的跳过逻辑与状态写入原本不区分刮削模式，读取模式（`main_mode==4`）下大量已刮削文件被 `should_skip` 过滤不可见，且读取一次后因标记 done 下次读不到。修复为读取模式跳过 `should_skip` 过滤全部文件入队，成功/失败路径不写 `set_done`/`set_failed`，始终处理全部选中文件
-- **打包脚本补齐 v2.0.6 新增延迟导入模块**：`scripts/build.py` 的 hidden-import 列表补上 `mdcx.crawlers.dmm_prefix_learn`（DMM 厂牌前缀学习表，被 `dmm_direct.py`/`dmm/__init__.py` 函数内延迟导入）与 `mdcx.core.nfo_merger`（NFO 合并策略引擎，被 `nfo.py` 写入前函数内延迟导入）。这两模块 PyInstaller 静态分析收集不到，不显式打包会在 exe 运行期报 ModuleNotFoundError（与 `qt_thread` 同因）
-- **文档与代码同步**：站点数量统一更新为实际注册数 48（README 徽章 Sites-47→48、FEATURES 标题「全部 47 个爬虫」、DEVELOPMENT、UI 帮助文档「当前 47 个」），FEATURES 补上遗漏的 thejavdb_api 爬虫行并标「仅能有码」；dmm_api 数据源描述从误写的「JavDB v1 API」改为「DMM 官方 Affiliate API」；免 CF 通道清单由 3 条补为 4 条（+thejavdb_api）；DMM 兜底描述统一补前缀学习机制（覆盖 USER_GUIDE/FEATURES/UI 帮助文档）；UI 帮助文档与 FEATURES 补 NFO 合并策略（5 种 MergeStrategy）、FEATURES 与 CONFIGURATION 补字段 skip 哨兵说明；CONFIGURATION 走代理网站默认白名单补 missav.live
-- **演员数据库日文异体字简体化**：`actor_db_tool.py` 新增日文新字体/异体字→简体映射表（87 字，覆盖 亜→亚、桜→樱、沢→泽、恵→惠、瀬→濑 等），在 zhconv 繁简转换后额外应用；修复 `fill_zh_javdb` 和 TMDB 翻译模式中因 zhconv 不识别日文汉字导致中文名保留日文原字的问题。一次性修复脚本对现有 xlsx 修复 4569 条中文名 + 2561 条繁体名
-- **演员数据库异常数据清理**：清理 2 条中文名/繁体名包含拉丁字母前缀的异常记录（`Aiko SUZUHARA - 鈴原愛子`、`Chihiro SHIRASAKI - 白崎千尋`）
-- **copytree same-file 防护**：新增 `safe_copytree`/`safe_copytree_async`（`utils/file.py`），在 `shutil.copytree` 前检查 src==dst，命中则直接返回。修复用户把 `extrafanart_folder` 配成 `"extrafanart"` 时，外层 `rmtree(dst)` 先删源目录再 `copytree` 导致 extrafanart 剧照数据丢失的问题。`base/image.py`（`extrafanart_copy2`/`extrafanart_extras_copy`/批量补图）和 `base/video.py`（`add_del_extras`）4 处裸 `shutil.copytree` 已替换
-- **程序退出改优雅退出**：`main_window.py` `exit_app` 不再 `os._exit(0)` 强杀进程（跳过 Python/atexit/Qt 资源清理，PyInstaller bootloader 也收不到正常退出信号），改为 `QApplication.quit()` 让 `app.exec()` 自然返回、主流程正常清理后退出（executor 后台线程为 daemon，不会挂起退出）
-- **ComputedLease 释放改非阻塞**：`config/manager.py` `ComputedLease.__exit__` 不再主线程 `executor.run(computed.release())` 阻塞等待，改为 `executor.submit` 后台释放并消费结果（release 通常为 O(1) 计数递减，仅关闭请求时才清理连接池），保存配置等路径不再卡 UI
-- **TMDB 演员库并发覆盖写防护**：`core/tmdb_actor.py` `fetch_actor_tmdb_ids` 的预加载 workbook → await 查询 → 落盘跨 await 点，多影片并发刮削时后落盘者覆盖先前写入行。新增模块级 `asyncio.Lock` 串行化整个读改写批次（独立路径 `update_actor_db_row` 原有 `_actor_db_write_lock` 已全程保护）
-- **标记文件路径校验**：`config/manager.py` `__init__` 读取 MARK_FILE 内容后校验空值/空字节，无效时回退默认配置路径，防止标记文件被破坏时 `Path("")` 指向当前目录或 NUL 字节触发启动崩溃
-- **软链接原身路径解析不再阻塞事件循环**：`core/file.py` 软链接分支的同步 `Path.resolve()` 改为 `asyncio.to_thread(os.path.realpath)`，避免网络路径解析卡住整个异步循环
-- **女优信息库并发访问加锁**：`actress_db.py` 单例 SQLite 连接（`check_same_thread=False`）的 `init_db` 与查询用模块级 `threading.Lock` 串行化，消除多线程并发读写同一连接的隐患
+- **死代码与冗余依赖清理**：删除 4 项零调用死代码（`WholeField`/`NoneField` 枚举、`actor_sources._normalize_number`、amazon 单数壳 `try_get_amazon_barcode_from_covers`、`_save_asin_record` 死参数，均运行时核实零调用）；移除无引用的 `ping3` 依赖（`pyproject.toml`/`uv.lock`）
+- **全模块审查修复（35 项）**：
+  - **数据损坏级（6 项）**：翻译映射字段被清空、简繁转换失效、NFO 合并演员 tmdbid 错配、图片迁移移动失败删源、`move_file_sync` 同路径误删、写入路径删除全角空格
+  - **功能失效级（7 项）**：断点续刮失效、间歇刮削状态机颠倒、共享番号释放不完整、演员数据源可靠性（libredmm/avmoo/javbus/getMovie）、wiki provider_ids 提取、minnano 缓存超链接与星座解析、相似推荐自推荐
+  - **性能健壮性 + 并发安全（22 项）**：网络请求并发化、水印合并保存、批量事务、解析异常保护、NFO 编辑跳过合并、密钥递归掩码、并发加锁（行索引/缓存/info 索引/selenium 计数/图片迁移 TOCTOU）、后台任务取消、XML 转义、行号偏移修正、缓存写 to_thread、URL 处理、正则优先级等
+- **Emby 演员管理器 6 项修复/优化**：同步后自动刷新复用媒体库过滤、背景图补齐不被头像源阻断、连接写盘后台化、详情 TTL 缓存、上传图片 Content-Type 按实际格式、同步回调按 actor_id 匹配
+- **网络检测增强（6 项）**：代理故障醒目提示、镜像抽样、单厂牌探测提示、新增「重试失败项」「复制结果」按钮、DMM 误报"无固定检测入口"修复
+- **DMM 预约版 9 前缀番号识别**：`9ssis01` → `SSIS-001`（编号补零到 3 位，lookbehind 防误伤）
+- **Cloudflare 拦截强制轮换指纹**：默认指纹池新增 `safari17_2_ios`，CF 挑战页时强制轮换连接池指纹重试，missav 等站点可恢复刮削；amazon 指纹池改独立纯桌面池
+- **extrafanart 目录替换非原子**：先移旧目录到备份名、rename 成功后清理，失败自动回滚
+- **read_link_sync 符号链接环死循环**：seen 集合检测环，命中返回当前路径
+- **xdg-open -R 无效参数**：Linux 目录兜底改为直接打开目录
+- **move_file_async 先删目标**：仅目录目标先删，文件目标由 shutil.move 原子覆盖
+- **hdouban 时长秒数解析崩溃**：try/except 容错
+- **is_proxy_host O(n×m) 优化**：预构建域名映射，反查 O(1)
+- **配置保存 sleep 重试链缩短**：减少主线程卡顿
+- **成功列表记录旧路径**：统一记移动后新路径
+- **连接池空闲清理持锁阻塞**：清理移出锁外
+- **分块下载支持断点续传**：`.part` + `.part.meta` 进度文件，重试跳过已完成分块
+- **镜像轮询重试相乘放大**：轮询路径传 `retry_count=1`，总请求从 3N 降到 N
+- **AVdb 同步 tmdbid 身份校验并发化**：Semaphore 并发预热
+- **get_new_release 日期格式崩溃**：非标准格式原样返回不崩溃
+- **actor 数据库自动修复保存失败静默吞错**：`save_error` 上报并 UI 红字提示
+- **mmtv/kin8/iqqtv 时长解析崩溃**：抽取公共 `parse_runtime` 容错
+- **缺失番号查询缓存写失败中断任务**：失败仅记录日志
+- **highdpi_passthrough 标记文件相对路径**：统一 `MAIN_PATH` 绝对路径
+- **配置保存读取竞态**：读 config 移入锁临界区
+- **Emby 同步失败不再标记为已同步**：per-actor 信号仅成功者清标记
+- **Emby 过滤器补齐 backdrop**：新增「缺背景」过滤
+- **crawl CLI 测试消除 coroutine 警告**：fake executor 消费协程
+- **Gfriends 同步改后台线程**：不阻塞 UI
+- **Emby 演员名双击反查**：按名字反查不依赖视觉行索引
+- **Emby 图片上传去掉 base64**：直接发原始字节
+- **minnano 缓存 key 统一为字符串**：修复缓存读写 key 错位
+- **nfo criticrating 读取修复**：修复评分丢失
+- **dmm 番号匹配前导零与连字符**：归一化比较
+- **javdb 两位数评分 + 镜像轮询修复**：支持 10.0，重写镜像轮询
+- **fc2 无修正判定修正**：清洗前保存原始 tag
+- **prestige 爬虫字段缺失防护**：`.get` + 默认值
+- **dmm release 截断 + 预告片质量正则**：修复日期尾缀与数字序号
+- **javdb_app year 推导修复**：不依赖 runtime
+- **fanart 下载失败不再静默忽略**：消费 result 判失败
+- **强杀线程加超时保护**：限时循环防无限空转
+- **dmm_prefix_learn 加载失败禁落盘**：防空表覆盖学习结果
+- **Emby 演员管理器 3 项 P0 修复**：连接参数生效、头像/背景直接覆盖上传、缓存文件名清洗
+- **Emby 演员管理器 3 项 P1 优化**：并发同步、取列表带 fields、失败演员可重试
+- **Emby 演员管理器 3 项易用性优化**：移除冗余测试连接、外部ID 可编辑、抽取共用快速设置面板
+- **读取模式不再受断点续刮缓存干扰**：读取模式跳过缓存过滤、不写 done
+- **打包脚本补齐延迟导入模块**：hidden-import 补 dmm_prefix_learn / nfo_merger
+- **文档与代码同步**：站点数量统一 48，补 thejavdb_api/免 CF/DMM 兜底/NFO 合并/字段 skip 等描述
+- **演员数据库日文异体字简体化**：新增 87 字映射表
+- **演员数据库异常数据清理**：清理 2 条异常记录
+- **copytree same-file 防护**：`safe_copytree` 检查 src==dst
+- **程序退出改优雅退出**：`QApplication.quit()` 替代 `os._exit`
+- **ComputedLease 释放改非阻塞**：后台释放不卡 UI
+- **TMDB 演员库并发覆盖写防护**：模块级锁串行化
+- **标记文件路径校验**：无效回退默认路径
+- **软链接原身路径解析不阻塞**：`asyncio.to_thread`
+- **女优信息库并发访问加锁**：SQLite 连接加锁
 
 ### 工程质量
 
 - **新增 quick-check 快速检查命令**：`scripts/quick_check.py` + pyproject 注册 `uv run quick-check`，只跑 ruff format --check / ruff check / mypy（秒级），供日常改完代码快速自检；完整 check（含全量测试）仍留给提交前跑一次 `uv run check --skip-hook-install`
 - **avsox/avmoo/avheat 域名壳函数清理**：`base/web.py` 删除零调用的 `get_avsox_domain`/`get_avmoo_domain`/`get_avheat_domain` 三个薄壳（各只是 `get_aio_domain("xx")` 的包一层）。三个爬虫继承 `AioSiteCrawler`，动态域名直接走通用 `get_aio_domain(domain_site)`，不受影响
-- **废弃死代码清理（A 类）**：`base/web.py` 删除零调用且有 todo 标记的 `ping_host`/`_ping_host_thread` 及 `ping3` 依赖（网络检测已改为 http 请求）；`core/utils.py` 删除被 `render_name` 替代的 `render_name_template` 及死 import；`core/tmdb_actor.py` 删除被 sync 版替代的 `_tmdb_query_cache_persist_async` 与死变量 `_TMDB_QUERY_CACHE_IO_LOCK`；`tools/emby_actor_manager_ui.py` 删除被 `tool_handlers` 直接实例化替代的 `open_emby_actor_manager` 入口。以上均经运行时核实（动态加载全模块 + gc 引用扫描 + 字符串字面量扫描）确认零引用
+- **废弃死代码清理（A 类）**：删除 `ping_host`/`_ping_host_thread`（含 `ping3` 依赖）、`render_name_template`、`_tmdb_query_cache_persist_async`、`open_emby_actor_manager` 入口，均经运行时核实零引用
 - **avsex 死代码清理**：`crawlers/avsex.py` 删除零调用者的 `get_poster` 函数，移除其中硬编码的 `9sex.tv` 域名残留（实际海报走搜索页 `ctx.poster_url`；搜索/列表本就默认走 `avsex.cc`）
 - **extrafanart 目录替换提取辅助函数**：`core/web.py` 的备份式原子替换逻辑提取为模块级 `_replace_dir_atomic`（行为不变，便于复用与测试）
 - 新增 `tests/test_review_regressions.py` 回归测试（16 例）：覆盖 `get_new_release` 非标准日期容错、`parse_runtime` 各格式分支、`read_link_sync` 符号链接环防护、`is_proxy_host` 各匹配分支、`_replace_dir_atomic` 成功替换与失败回滚
