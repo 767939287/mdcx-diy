@@ -1,0 +1,154 @@
+"""审查修复项回归测试。
+
+覆盖本轮代码审查中修复但尚未有针对性测试的项：
+- get_new_release 非标准日期格式容错
+- parse_runtime 各格式分支（含 "95分"/"min" 与容错）
+- read_link_sync 符号链接环防护
+- is_proxy_host 各匹配分支
+- _replace_dir_atomic 目录原子替换与失败回滚
+"""
+
+import aiofiles
+import pytest
+
+from mdcx.core.web import _replace_dir_atomic
+from mdcx.crawlers.base.parser import parse_runtime
+from mdcx.utils import get_new_release
+from mdcx.utils.file import read_link_sync
+from mdcx.web_async import is_proxy_host
+
+# ---- get_new_release：非标准日期格式容错（修复 findall[0] 越界崩溃）----
+
+
+def test_get_new_release_standard_format():
+    assert get_new_release("2026-08-23", "YYYY.MM.DD") == "2026.08.23"
+    assert get_new_release("2026-08-23", "YY.MM.DD") == "26.08.23"
+
+
+def test_get_new_release_non_standard_format_returns_original():
+    # 非 YYYY-MM-DD 格式不再崩溃，原样返回
+    assert get_new_release("2026/08/23", "YYYY.MM.DD") == "2026/08/23"
+    assert get_new_release("未知", "YYYY.MM.DD") == "未知"
+
+
+def test_get_new_release_empty_release():
+    assert get_new_release("", "YYYY.MM.DD") == "0000.00.00"
+    assert get_new_release("", "YYYY-MM-DD") == "0000-00-00"
+
+
+# ---- parse_runtime：时长解析统一与容错 ----
+
+
+def test_parse_runtime_hh_mm_ss_ignores_seconds():
+    assert parse_runtime("1:20:30") == "80"
+
+
+def test_parse_runtime_hh_mm():
+    assert parse_runtime("1:20") == "80"
+
+
+def test_parse_runtime_minutes_variants():
+    assert parse_runtime("95") == "95"
+    assert parse_runtime("95分") == "95"
+    assert parse_runtime("95min") == "95"
+
+
+def test_parse_runtime_non_numeric_safe():
+    assert parse_runtime("未知:xx") == ""
+    assert parse_runtime("") == ""
+
+
+# ---- read_link_sync：符号链接环防护 ----
+
+
+def test_read_link_sync_resolves_normal_link(tmp_path):
+    target = tmp_path / "target.txt"
+    target.write_text("x")
+    link = tmp_path / "link.txt"
+    link.symlink_to(target)
+    assert read_link_sync(str(link)) == str(target)
+
+
+def test_read_link_sync_breaks_cycle(tmp_path):
+    a = tmp_path / "a"
+    b = tmp_path / "b"
+    a.symlink_to(b)
+    b.symlink_to(a)
+    # 成环（a→b→a）不无限循环；seen 命中后返回当前路径
+    assert read_link_sync(str(a)) in {str(a), str(b)}
+
+
+# ---- is_proxy_host：匹配分支回归（改造后语义等价）----
+
+
+def test_is_proxy_host_direct_and_subdomain():
+    assert is_proxy_host("javdb.com", ["javdb.com"])
+    assert is_proxy_host("api.javdb.com", ["javdb.com"])
+
+
+def test_is_proxy_host_web_dic_mapping():
+    assert is_proxy_host("javdb.com", ["javdb"])
+    assert is_proxy_host("www.javdb.net", ["javdb"])
+
+
+def test_is_proxy_host_tld_fallback():
+    # 未入 WEB_DIC 的站点值靠 TLD 兜底
+    assert is_proxy_host("libredmm.com", ["libredmm"])
+    assert is_proxy_host("api.libredmm.com", ["libredmm"])
+
+
+def test_is_proxy_host_no_match():
+    assert not is_proxy_host("example.com", ["javdb"])
+    assert not is_proxy_host("javdb.com", ["other"])
+
+
+def test_is_proxy_host_empty_inputs():
+    assert not is_proxy_host("", ["javdb"])
+    assert not is_proxy_host("javdb.com", [])
+    assert not is_proxy_host("javdb.com", None)
+
+
+# ---- _replace_dir_atomic：目录原子替换与失败回滚 ----
+
+
+@pytest.mark.asyncio
+async def test_replace_dir_atomic_success(tmp_path):
+    target = tmp_path / "extrafanart"
+    temp = tmp_path / "extrafanart[DOWNLOAD]"
+    target.mkdir()
+    (target / "old.jpg").write_bytes(b"old")
+    temp.mkdir()
+    (temp / "new.jpg").write_bytes(b"new")
+
+    await _replace_dir_atomic(temp, target)
+
+    assert (target / "new.jpg").exists()
+    assert not (target / "old.jpg").exists()
+    assert not temp.exists()
+    assert not (tmp_path / "extrafanart.old").exists()
+
+
+@pytest.mark.asyncio
+async def test_replace_dir_atomic_rollback_on_failure(tmp_path, monkeypatch):
+    target = tmp_path / "extrafanart"
+    temp = tmp_path / "extrafanart[DOWNLOAD]"
+    target.mkdir()
+    (target / "old.jpg").write_bytes(b"old")
+    temp.mkdir()
+    (temp / "new.jpg").write_bytes(b"new")
+
+    real_rename = aiofiles.os.rename
+
+    async def failing_rename(src, dst, *args, **kwargs):
+        if src == temp:
+            raise OSError("simulated failure")
+        return await real_rename(src, dst, *args, **kwargs)
+
+    monkeypatch.setattr(aiofiles.os, "rename", failing_rename)
+
+    with pytest.raises(OSError):
+        await _replace_dir_atomic(temp, target)
+
+    # 旧目录已回滚，新目录保留供下次重试
+    assert (target / "old.jpg").exists()
+    assert temp.exists()

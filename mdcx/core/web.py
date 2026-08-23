@@ -1274,6 +1274,25 @@ async def fanart_download(
     return False
 
 
+async def _replace_dir_atomic(temp_dir: Path, target_dir: Path) -> None:
+    """原子替换目录：先把旧目录移到备份名，新目录落地失败时回滚旧目录。
+
+    原实现先 rmtree 旧目录再 rename，改名失败（跨卷/被占用）时旧数据已丢。
+    """
+    backup_dir = target_dir.with_name(target_dir.name + ".old")
+    if target_dir.exists():
+        await to_thread(shutil.rmtree, backup_dir, ignore_errors=True)
+        await aiofiles.os.rename(target_dir, backup_dir)
+    try:
+        await aiofiles.os.rename(temp_dir, target_dir)
+    except Exception:
+        # 新目录落地失败：回滚旧目录，保留 temp 供下次重试
+        if backup_dir.exists() and not target_dir.exists():
+            await aiofiles.os.rename(backup_dir, target_dir)
+        raise
+    await to_thread(shutil.rmtree, backup_dir, ignore_errors=True)
+
+
 async def extrafanart_download(extrafanart: list[str], extrafanart_from: str, folder_new_path: Path) -> bool | None:
     start_time = time.time()
     download_files = manager.config.download_files
@@ -1330,20 +1349,7 @@ async def extrafanart_download(extrafanart: list[str], extrafanart_from: str, fo
                 extrafanart_count_succ += 1
         if extrafanart_count_succ == extrafanart_count:
             if extrafanart_folder_path_temp != extrafanart_folder_path:
-                # 非原子替换：先删旧目录再改名，若改名失败（跨卷/被占用）旧数据已丢。
-                # 改为先把旧目录移到备份名，rename 成功后再清理备份，失败可回滚。
-                backup_path = extrafanart_folder_path.with_name(extrafanart_folder_path.name + ".old")
-                if extrafanart_folder_path.exists():
-                    await to_thread(shutil.rmtree, backup_path, ignore_errors=True)
-                    await aiofiles.os.rename(extrafanart_folder_path, backup_path)
-                try:
-                    await aiofiles.os.rename(extrafanart_folder_path_temp, extrafanart_folder_path)
-                except Exception:
-                    # 新目录落地失败：回滚旧目录，保留 temp 供下次重试
-                    if backup_path.exists() and not extrafanart_folder_path.exists():
-                        await aiofiles.os.rename(backup_path, extrafanart_folder_path)
-                    raise
-                await to_thread(shutil.rmtree, backup_path, ignore_errors=True)
+                await _replace_dir_atomic(extrafanart_folder_path_temp, extrafanart_folder_path)
             LogBuffer.log().write(
                 f"\n 🍀 ExtraFanart done! ({extrafanart_from} {extrafanart_count_succ}/{extrafanart_count})({get_used_time(start_time)}s)"
             )

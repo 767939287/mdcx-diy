@@ -78,6 +78,8 @@
 
 ### 工程质量
 
+- **extrafanart 目录替换提取辅助函数**：`core/web.py` 的备份式原子替换逻辑提取为模块级 `_replace_dir_atomic`（行为不变，便于复用与测试）
+- 新增 `tests/test_review_regressions.py` 回归测试（16 例）：覆盖 `get_new_release` 非标准日期容错、`parse_runtime` 各格式分支、`read_link_sync` 符号链接环防护、`is_proxy_host` 各匹配分支、`_replace_dir_atomic` 成功替换与失败回滚
 - **qt_thread 表达式语句改 if**：`utils/qt_thread.py` 的 `signal_qt.show_log_text(...) if log_prefix else None` 是丢弃结果的表达式语句，改为显式 `if log_prefix:` 判断
 - **分块并发数提取常量**：`web_async.py` 分块下载的 `asyncio.Semaphore(6)` 硬编码并发数提取为模块级常量 `_CHUNK_DOWNLOAD_CONCURRENCY`，便于统一调整
 - **PNG 压缩级别降为默认 6**：`utils/image.py` `_encode_image` 的 PNG `compress_level` 从 9 降到 6（PIL 默认），无损压缩压缩比差异极小但耗时数倍，图片压缩/保存提速
