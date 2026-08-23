@@ -818,11 +818,9 @@ class Scraper:
                                         base = base[8:]
                                     base_url = f"{protocol}{base}" if base else "https://api.tmdb.org"
 
-                                    _read_mode_error_count = 0
                                     _read_mode_semaphore = asyncio.Semaphore(3)
 
                                     async def _query_one_actor(actor_name: str) -> None:
-                                        nonlocal _read_mode_error_count
                                         row = search_actor_db_reverse(actor_name)
                                         jp_name = str(row.get("jp")) if row and row.get("jp") else actor_name
                                         try:
@@ -874,7 +872,6 @@ class Scraper:
                                             else:
                                                 LogBuffer.log().write(f"  ⚠️ [TMDB] {actor_name} 未找到匹配的 TMDB 演员")
                                         except Exception as e:
-                                            _read_mode_error_count += 1
                                             LogBuffer.log().write(f"  ❌ [TMDB] {actor_name} 查询失败: {e}")
 
                                     async def _limited_query(actor_name: str) -> None:
@@ -953,15 +950,6 @@ class Scraper:
                 if tag
                 not in (  # 移除与具体文件相关的 tag; 分辨率相关 tag 在 add_definition_tag 中会移除; codec tag 无法穷举, 移除常见类型
                     # todo 所有文件相关的 tag 推迟到 write_nfo 时从 file_info 生成, json_data_dic 只存储通用的 tag
-                    # "中文字幕",
-                    # "无码流出",
-                    # "無碼流出",
-                    # "无码破解",
-                    # "無碼破解",
-                    # "无码",
-                    # "無碼",
-                    # "有码",
-                    # "有碼",
                     "国产",
                     "國產",
                     "里番",
@@ -1208,7 +1196,7 @@ class Scraper:
             # 移动文件
             if not await move_movie(other, file_info, file_path, file_new_path):
                 return None, None
-        await save_success_list(file_path, file_path)
+        await save_success_list(file_path, file_new_path)
 
         # 创建软链接及复制文件（由 auto_link 独立控制）
         if manager.config.auto_link:

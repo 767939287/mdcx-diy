@@ -2341,6 +2341,12 @@ class MyMAinWindow(QMainWindow):
             log_name = time.strftime("%Y-%m-%d-%H-%M-%S", time.localtime()) + ".txt"
             log_name = log_folder / log_name
             try:
+                old = Flags.log_txt
+                if old is not None:
+                    try:
+                        old.close()
+                    except Exception:
+                        pass
                 Flags.log_txt = open(log_name, "wb", buffering=0)
                 Flags.log_txt.write(text.encode("utf-8"))
                 self.main_log_queue.appendleft(f"创建日志文件: {log_name}")

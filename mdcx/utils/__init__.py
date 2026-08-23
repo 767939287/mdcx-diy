@@ -325,30 +325,30 @@ def get_random_headers() -> dict:
         # Firefox Mac
         "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:{}.0) Gecko/20100101 Firefox/{}.0",
         # Safari Mac
-        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.{}.{} Safari/605.1.15",
-        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_6) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.{}.{} Safari/605.1.15",
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/{}.{}.{} Safari/605.1.15",
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_6) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/{}.{}.{} Safari/605.1.15",
         # Edge
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/{}.0.{}.{} Safari/537.36 Edg/{}.0.{}.{}",
         # Mobile Chrome
         "Mozilla/5.0 (Linux; Android 11; SM-G991B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/{}.0.{}.{} Mobile Safari/537.36",
-        "Mozilla/5.0 (iPhone; CPU iPhone OS 15_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.6 Mobile/15E148 Safari/604.1",
+        "Mozilla/5.0 (iPhone; CPU iPhone OS 17_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.6 Mobile/15E148 Safari/604.1",
     ]
 
     # 生成随机版本号
     def get_chrome_version():
-        major = random.randint(100, 130)
+        major = random.randint(115, 135)
         minor = random.randint(0, 5)
         build = random.randint(1000, 9999)
         patch = random.randint(100, 999)
         return major, minor, build, patch
 
     def get_firefox_version():
-        version = random.randint(90, 120)
+        version = random.randint(110, 135)
         return version, version
 
     def get_safari_version():
-        major = random.randint(14, 17)
-        minor = random.randint(0, 9)
+        major = random.randint(16, 18)
+        minor = random.randint(0, 5)
         patch = random.randint(0, 9)
         return major, minor, patch
 
@@ -495,12 +495,14 @@ def get_new_release(release: str, release_rule: str) -> str:
     return release_rule.replace("YYYY", year).replace("YY", year[-2:]).replace("MM", month).replace("DD", day)
 
 
+_FULL_HALF_TRANS = str.maketrans(dict(ManualConfig.FULL_HALF_CHAR))
+
+
 def convert_half(string: str) -> str:
     # 替换敏感词
     for key, value in ManualConfig.SPECIAL_WORD.items():
         string = string.replace(key, value)
-    # 替换全角为半角
-    for each in ManualConfig.FULL_HALF_CHAR:
-        string = string.replace(each[0], each[1])
+    # 替换全角为半角（一次性翻译表，避免逐字符 replace）
+    string = string.translate(_FULL_HALF_TRANS)
     # 去除空格等符号
     return re.sub(r"[\W_]", "", string).upper()

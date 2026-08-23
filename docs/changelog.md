@@ -24,6 +24,8 @@
 
 ### 修复
 
+- **成功列表记录旧路径**：`core/scraper.py` 非视频模式的完成路径 `save_success_list(file_path, file_path)` 把移动前的旧路径写入成功列表，与视频模式分支 `save_success_list(file_path, file_new_path)` 不一致；现统一传 `file_new_path`，改名/移动后成功列表指向实际新路径
+- **连接池空闲清理持锁阻塞**：`web_async.py` 的 `_cleanup_idle_locked` 在 `_lock` 临界区内 `await pool.close()`（网络关闭操作），会阻塞其它 `get`/`reset`；现该方法只在锁内做内存操作（检测空闲 + 从字典移除）并返回待关闭列表，`get()` 在锁外统一关闭，消除持锁等待
 - **分块下载支持断点续传**：`web_async.py` 的 `_download_chunks` 原先任意分块失败即删除 `.part` 临时文件，重试从头下载；现失败时保留 `.part` 与新增的 `.part.meta` 进度文件（记录 url/大小/分块划分/已完成分块），下次下载同一 url 时校验 meta 匹配则跳过已完成分块续传，全部完成后才替换目标文件并清理进度文件；file_size 变化时旧进度自动失效全量重下
 - **镜像轮询重试相乘放大**：`crawlers/base/base.py` 的 `_get_text_with_rotate` 每个镜像调用 `get_text` 默认内部重试 3 次，镜像数 × 3 放大请求次数；现轮询路径传 `retry_count=1`，每个镜像只请求一次、失败立即切下一个镜像，总请求次数从 3N 降到 N
 - **AVdb 同步 tmdbid 身份校验并发化**：`actor_db_tool.py` 的 `sync_from_avdb` 原先逐行串行 `await fetch_person_identity`（每个新 id 一个网络往返，大量条目时极慢）；现主循环前用 `asyncio.Semaphore(8)` 并发预热所有需校验的 tmdbid（命中 `tmdb_index` 的本地已有 id 不预热），结果缓存供主循环 O(1) 查询，未预热的新建行才现场请求；TMDB 请求仍受 `_tmdb_rate_limiter` 全局限流保护
@@ -69,6 +71,9 @@
 
 ### 工程质量
 
+- **冗余代码清理**：`core/scraper.py` 删除 tag 过滤列表中 8 条注释掉的死代码与从不读取的 `_read_mode_error_count` 死变量；`main_window.py` `_write_main_logs_to_file` 覆盖新日志句柄前先关闭旧句柄（修复句柄泄漏）；`crawlers/base/types.py` 删除零调用者的 `r()` 函数及其死导入
+- **UA 池版本更新**：`utils/__init__.py` `get_random_headers` 的 UA 池过时（Chrome 100-130、Firefox 90-120、Safari 14-17/iOS 15），2026 年部分站点会识别为旧版浏览器；现更新为 Chrome 115-135、Firefox 110-135、Safari 16-18/iOS 17；Safari 模板占位符改为 3 段，让原本被丢弃的主版本号生效
+- **convert_half 改用翻译表**：`utils/__init__.py` `convert_half` 的全角→半角从逐字符 `str.replace`（97 对映射）改为模块级 `str.maketrans` 一次性翻译表 + `str.translate`，热点函数（文件名清洗）大幅提速，输出与原逻辑逐字符对比一致
 - 新增 `tests/crawlers/test_dmm_api.py` 回归测试（`test_content_id_leading_zeros_match` 前导零匹配、`test_product_id_with_hyphen_match` 连字符编号匹配）；`tests/test_minnano_lookup.py` 缓存 row 数据同步改为字符串 key；`tests/test_jellyfin_actor_api.py` 图片上传测试断言同步改为原始字节 body（`test_upload_actor_photo_uses_raw_image_body_for_emby`/`_jellyfin`，与 Emby/Jellyfin 图片上传 API 二进制 body 规范一致）；`tests/test_tool_handlers.py` Gfriends 同步测试适配后台化（offscreen QApplication + processEvents 轮询等待异步回调）
 
 ## v2.0.6 (2026-08-19)

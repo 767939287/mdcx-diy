@@ -308,7 +308,7 @@ class HostPoolManager:
         async with self._lock:
             if self._closed:
                 raise RuntimeError("网络连接池管理器已关闭")
-            await self._cleanup_idle_locked()
+            to_close = await self._cleanup_idle_locked()
             pool = self._pools.get(key)
             if pool is None:
                 pool = HostConnectionPool(
@@ -319,7 +319,11 @@ class HostPoolManager:
                     fingerprint=fingerprint,
                 )
                 self._pools[key] = pool
-            return pool
+        # 关闭过期连接是网络操作，放到锁外执行，避免持锁等待阻塞其他请求
+        for each_pool in to_close:
+            with contextlib.suppress(Exception):
+                await each_pool.close()
+        return pool
 
     async def reset(self, key: str, reason: str) -> None:
         async with self._lock:
@@ -357,18 +361,24 @@ class HostPoolManager:
             self._pools.clear()
         await asyncio.gather(*(pool.close() for pool in pools), return_exceptions=True)
 
-    async def _cleanup_idle_locked(self) -> None:
+    async def _cleanup_idle_locked(self) -> list[HostConnectionPool]:
+        """清理空闲超时的连接池，返回待关闭的池（调用方须在锁外关闭）。
+
+        必须在持有 _lock 时调用；只做内存操作（检测 + 从字典移除），
+        不在此处 await 网络 close。
+        """
         now = time.monotonic()
-        expired: list[str] = []
+        expired_keys: list[str] = []
+        expired: list[HostConnectionPool] = []
         for key, pool in self._pools.items():
             if now - pool.last_used_at <= self._idle_ttl:
                 continue
             if await pool.is_idle():
-                expired.append(key)
-        for key in expired:
-            pool = self._pools.pop(key, None)  # type: ignore[arg-type]
-            if pool is not None:
-                await pool.close()
+                expired_keys.append(key)
+                expired.append(pool)
+        for key in expired_keys:
+            self._pools.pop(key, None)
+        return expired
 
 
 class AsyncWebClient:

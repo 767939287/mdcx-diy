@@ -1,4 +1,3 @@
-import re
 from dataclasses import dataclass, field
 from re import Pattern
 
@@ -30,10 +29,6 @@ def c(selector: str) -> CSSSelector:
 
 def x(selector: str) -> XPath:
     return XPath(selector)
-
-
-def r(pattern: str) -> Pattern:
-    return re.compile(pattern)
 
 
 def split_csv(value: str) -> list[str]:
