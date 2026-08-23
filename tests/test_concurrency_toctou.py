@@ -170,6 +170,25 @@ async def test_json_get_status_concurrent_update():
     assert true_count == 50
 
 
+def test_flags_reset_keeps_async_locks_stable():
+    locks_before = {
+        attr: getattr(Flags, attr)
+        for attr in (
+            "_counter_lock",
+            "_json_get_lock",
+            "_file_path_lock",
+            "_file_done_lock",
+            "_pic_catch_lock",
+            "_extrafanart_lock",
+            "_trailer_lock",
+        )
+    }
+
+    Flags.reset()
+
+    assert {attr: getattr(Flags, attr) for attr in locks_before} == locks_before
+
+
 @pytest.mark.asyncio
 async def test_crawl_cache_concurrent_put_eviction():
     """并发写入 _crawl_cache 触发淘汰逻辑时不触发 RuntimeError。"""

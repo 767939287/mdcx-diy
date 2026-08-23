@@ -119,13 +119,6 @@ class _Flags:
         self.succ_count = 0
         self.fail_count = 0
         self.file_new_path_dic = {}
-        self._counter_lock = asyncio.Lock()
-        self._json_get_lock = asyncio.Lock()
-        self._file_path_lock = asyncio.Lock()
-        self._file_done_lock = asyncio.Lock()
-        self._pic_catch_lock = asyncio.Lock()
-        self._extrafanart_lock = asyncio.Lock()
-        self._trailer_lock = asyncio.Lock()
         self.pic_catch_set = set()
         self.file_done_dic = {}
         self.extrafanart_deal_set = set()
