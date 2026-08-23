@@ -129,17 +129,16 @@
 
 ---
 
-### 13. missav 爬虫指纹降级策略 🔶（三域名轮询已实现）
+### 13. missav 爬虫指纹降级策略 ✅（已实现）
 - **价值：低**　**难度：低**（0.5 天）
-- 待做：域名轮询全失败时降级 `curl_cffi` 的 `safari17_2_ios` 指纹（仅默认指纹被 CF 拦 403/503 时）
+- 实现：默认指纹池新增 `safari17_2_ios`；`web_async.py` 检测到 CF 挑战页（403/503 + challenge 标记）时强制轮换连接池指纹重试。实测 missav.ai 桌面 Chrome 403 → Safari 手机指纹 200
 
 ---
 
-### 14. MOVIE_NUMBER_PATTERNS 专用规则补全 ⬜
+### 14. MOVIE_NUMBER_PATTERNS 专用规则补全 🔶（9 前缀已完成）
 - **价值：低**　**难度：低**（1 天）
-- 价值较高：`9` 前缀规则（如 `9ssis01`），当前完全无法识别
-- 其余（LAF/MISM/MKBD/CWPBD/SM/MCDV）通用规则可兜底，匹配不理想才补
-- 每条配测试用例防冲突
+- ✅ 已完成：`9` 前缀规则（`9ssis01` → `SSIS-001`，编号补零到 3 位，配 7 个测试用例）
+- ⬜ 待做：其余（LAF/MISM/MKBD/CWPBD/SM/MCDV）通用规则可兜底，仅在匹配不理想时补充
 
 ---
 
@@ -183,8 +182,6 @@
 
 ---
 
-### 20. amazon 搜索 URL 双重 quote_plus 🔶（待真实请求验证，非阻塞）
+### 20. amazon 搜索 URL 双重 quote_plus ✅（已实测确认正确，无需改动）
 - **价值：低**　**难度：低**（验证类）
-- `core/amazon.py:1032` 仍是 `quote_plus(quote_plus(title))` 拼 `returnUrl=/s?k=`
-- 待确认 Amazon 是否对 returnUrl 二次解码；用真实请求对比单次/双重编码命中率
-- **验证前不要改**（可能是正确行为）；验证后更新此条并修正代码
+- 已实测：`core/amazon.py:1032` 的双重 `quote_plus` 是正确且必要的——Amazon 对 returnUrl 解一层得到内层 `/s?k=`，跳转时 k 值再解一层；单次编码会导致跳转失败直接去首页。当前代码不改。
