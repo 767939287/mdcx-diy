@@ -409,6 +409,8 @@ class EmbyActorManagerDialog(QDialog):
         btn_layout.addWidget(self.btn_test_source)
         self.btn_clear_cache = QPushButton("清空缓存文件夹")
         btn_layout.addWidget(self.btn_clear_cache)
+        self.btn_settings = QPushButton("设置")
+        btn_layout.addWidget(self.btn_settings)
         grid.addLayout(btn_layout, 1, 0, 1, 4)
         help_label = QLabel(
             "使用说明：① 填写地址和密钥 → ② 连接/获取演员列表 → ③ 选择模式获取数据 → "

@@ -734,6 +734,9 @@ class MyMAinWindow(QMainWindow):
                 self.Ui.pushButton_emby_manager_nav.setStyleSheet(
                     "QPushButton:hover#pushButton_emby_manager_nav{color: white;background-color: rgba(160,160,165,40);}"
                 )
+                self.Ui.pushButton_nfo_library.setStyleSheet(
+                    "QPushButton:hover#pushButton_nfo_library{color: white;background-color: rgba(160,160,165,40);}"
+                )
                 self.Ui.pushButton_setting.setStyleSheet(
                     "QPushButton:hover#pushButton_setting{color: white;background-color: rgba(160,160,165,40);}"
                 )
@@ -755,6 +758,9 @@ class MyMAinWindow(QMainWindow):
                 )
                 self.Ui.pushButton_emby_manager_nav.setStyleSheet(
                     "QPushButton:hover#pushButton_emby_manager_nav{color: black;background-color: rgba(160,160,165,40);}"
+                )
+                self.Ui.pushButton_nfo_library.setStyleSheet(
+                    "QPushButton:hover#pushButton_nfo_library{color: black;background-color: rgba(160,160,165,40);}"
                 )
                 self.Ui.pushButton_setting.setStyleSheet(
                     "QPushButton:hover#pushButton_setting{color: black;background-color: rgba(160,160,165,40);}"

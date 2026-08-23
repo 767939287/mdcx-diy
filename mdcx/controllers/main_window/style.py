@@ -267,7 +267,7 @@ def set_style(self: "MyMAinWindow"):
             border-top-left-radius: {self.window_radius}px;
             border-bottom-left-radius: {self.window_radius}px;
         }}
-        QPushButton#pushButton_main,#pushButton_log,#pushButton_tool,#pushButton_setting,#pushButton_net,#pushButton_about{{
+        QPushButton#pushButton_main,#pushButton_log,#pushButton_tool,#pushButton_setting,#pushButton_net,#pushButton_about,#pushButton_emby_manager_nav,#pushButton_nfo_library{{
             font-size: 14px;
             color: black;
             border-width: 9px;
@@ -730,7 +730,7 @@ def set_dark_style(self: "MyMAinWindow"):
             border-top-left-radius: {self.window_radius}px;
             border-bottom-left-radius: {self.window_radius}px;
         }}
-        QPushButton#pushButton_main,#pushButton_log,#pushButton_tool,#pushButton_setting,#pushButton_net,#pushButton_about{{
+        QPushButton#pushButton_main,#pushButton_log,#pushButton_tool,#pushButton_setting,#pushButton_net,#pushButton_about,#pushButton_emby_manager_nav,#pushButton_nfo_library{{
             font-size: 14px;
             color: white;
             border-width: 9px;
