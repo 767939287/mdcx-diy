@@ -9,6 +9,7 @@ from ..config.enums import FieldRule, Website
 from ..config.manager import manager
 from ..signals import signal
 from .base import BaseCrawler, Context, CrawlerData, CrawlerException
+from .base.parser import parse_runtime
 from .base.types import split_csv
 
 
@@ -111,15 +112,7 @@ def getOutline(html):  # 获取简介
 
 def getRuntime(html):  # 获取时长（分钟）
     result = html.xpath('string(//p[@class="items_article_info"])').strip()
-    if not result or ":" not in result:
-        return ""
-    temp_list = result.split(":")
-    runtime = ""
-    if len(temp_list) == 3:
-        runtime = int(temp_list[0]) * 60 + int(temp_list[1])
-    elif len(temp_list) <= 2:
-        runtime = int(temp_list[0])
-    return str(runtime)
+    return parse_runtime(result)
 
 
 def getScore(html):  # 获取评分

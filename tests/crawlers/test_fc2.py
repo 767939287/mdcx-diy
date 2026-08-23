@@ -1,8 +1,9 @@
 import pytest
+from lxml import etree
 
 from mdcx.config.enums import Language
 from mdcx.config.manager import manager
-from mdcx.crawlers.fc2 import Fc2Crawler
+from mdcx.crawlers.fc2 import Fc2Crawler, getRuntime
 from mdcx.models.types import CrawlerInput
 
 
@@ -36,6 +37,21 @@ class FakeFc2Client:
         if url == "https://adult.contents.fc2.com/api/v2/videos/1723984/sample":
             return '{"path":"https://example.test/sample.mp4?mid=token"}', ""
         return None, f"unexpected url: {url}"
+
+
+@pytest.mark.parametrize(
+    ("runtime_text", "expected"),
+    [
+        ("01:02:03", "62"),
+        ("120 分", "120"),
+        ("未知:xx", ""),
+        ("", ""),
+    ],
+)
+def test_fc2_runtime_handles_malformed_values(runtime_text: str, expected: str):
+    html = etree.HTML(f'<p class="items_article_info">{runtime_text}</p>')
+
+    assert getRuntime(html) == expected
 
 
 @pytest.mark.asyncio
