@@ -27,7 +27,6 @@ dependencies = [
     "oshash==0.1.1",
     "parsel>=1.10.0",
     "pillow>=12.2.0",  # GHSA-pwv6-vv43-88gr / whj4-6x5x-4v2j / cfh3-3jmp-rvhc / r73j-pqj5-w3x7 等 12 条告警; 处理不可信封面/缩略图
-    "ping3==4.0.4",
     "pydantic-settings>=2.14.2",  # GHSA-4xgf-cpjx-pc3j 符号链接越权读 secrets
     "pyqt6==6.11.0",
     "zhconv==1.4.3",
