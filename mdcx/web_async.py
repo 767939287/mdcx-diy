@@ -712,6 +712,15 @@ class AsyncWebClient:
             max_requests=max_requests,
         )
 
+    def _force_rotate_fingerprint(self, pool_base_key: str, current: BrowserFingerprint | None) -> None:
+        """被 CF 拦截时强制轮换该连接池的指纹：排除当前指纹并清状态，下次请求选新指纹。
+
+        默认指纹被 Cloudflare 识别后，换一个指纹（如 safari17_2_ios）重试可能绕过。
+        """
+        if current is not None:
+            self._excluded_fingerprint_by_pool_base[pool_base_key] = current.fingerprint_id
+        self._fingerprint_states_by_pool_base.pop(pool_base_key, None)
+
     async def _curl_request(self, *, fingerprint: BrowserFingerprint | None = None, **kwargs) -> Response:
         url = str(kwargs.get("url") or "")
         proxy = kwargs.get("proxy")
@@ -1554,6 +1563,7 @@ class AsyncWebClient:
                     apply_fingerprint=apply_fingerprint,
                 )
                 pool_key = HostPoolManager.key_for_request(url, request_proxy, fingerprint)
+                pool_base_key = HostPoolManager.key_for_url(url, request_proxy)
                 try:
                     req_headers = dict(prepared_headers)
                     req_cookies = self._merge_cookies(cookies)
@@ -1598,6 +1608,12 @@ class AsyncWebClient:
                         started = await self._ensure_local_bypass()
                         if not started:
                             self._log_cf("TRAWL 适配层启动失败，跳过 bypass", host)
+
+                    # 检测到 Cloudflare 挑战页：无论是否启用 bypass，都强制轮换该池指纹，
+                    # 让重试有机会换新指纹（含 safari17_2_ios）绕过（missav 等站点有效）
+                    if host and self._is_cf_challenge_response(resp):
+                        self._log_cf(f"🛑 Cloudflare 挑战页，轮换指纹重试: {method} {url}", host)
+                        self._force_rotate_fingerprint(pool_base_key, fingerprint)
 
                     if enable_cf_bypass and self._cf_bypass_enabled and host and self._is_cf_challenge_response(resp):
                         self._log_cf(f"🛑 检测到 Cloudflare 挑战页: {method} {url}", host)

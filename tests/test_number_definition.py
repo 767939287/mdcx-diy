@@ -93,6 +93,23 @@ def test_get_file_number_normalizes_suren_numbers(raw_number: str, expected_numb
 @pytest.mark.parametrize(
     ("raw_number", "expected_number"),
     [
+        (r"D:/test/9SSIS01.mp4", "SSIS-001"),
+        (r"D:/test/9ssis01.mp4", "SSIS-001"),
+        (r"D:/test/9SSNI001.mp4", "SSNI-001"),
+        (r"D:/test/9SSNI10.mp4", "SSNI-010"),
+        (r"D:/test/9SSIS-001.mp4", "SSIS-001"),
+        (r"D:/test/9SSIS001[中文].mp4", "SSIS-001"),
+        (r"D:/test/ABC9MUSK001.mp4", "ABC-001"),
+    ],
+)
+def test_get_file_number_normalizes_dmm_preorder_9_prefix(raw_number: str, expected_number: str):
+    """DMM 预约版 9 前缀番号：9ssis01 -> SSIS-001（编号补零到 3 位）；9 必须独立成段不误伤 ABC9。"""
+    assert get_file_number(raw_number, []) == expected_number
+
+
+@pytest.mark.parametrize(
+    ("raw_number", "expected_number"),
+    [
         (r"D:/test/DANDY-818.mp4", "DANDY-818"),
         (r"D:/test/KIWVR-254.mp4", "KIWVR-254"),
         (r"D:/test/GARA-022.mp4", "GARA-022"),

@@ -14,7 +14,7 @@ class BrowserFingerprint:
 
     fingerprint_id: str
     impersonate: str
-    family: Literal["chrome", "firefox"]
+    family: Literal["chrome", "firefox", "safari"]
     platform: str
     headers: dict[str, str]
 
@@ -151,6 +151,23 @@ _FIREFOX_135_WIN = BrowserFingerprint(
     },
 )
 
+# Safari iOS 手机指纹：missav 等站点对桌面指纹的 CF 拦截较强，换手机 Safari 指纹可绕过
+_SAFARI_17_2_IOS = BrowserFingerprint(
+    fingerprint_id="safari17_2_ios",
+    impersonate="safari17_2_ios",
+    family="safari",
+    platform="iOS",
+    headers={
+        "User-Agent": (
+            "Mozilla/5.0 (iPhone; CPU iPhone OS 17_2 like Mac OS X) AppleWebKit/605.1.15 "
+            "(KHTML, like Gecko) Version/17.2 Mobile/15E148 Safari/604.1"
+        ),
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8",
+        "Accept-Encoding": "gzip, deflate, br",
+    },
+)
+
 _DEFAULT_FINGERPRINTS = (
     _CHROME_136_WIN,
     _CHROME_131_WIN,
@@ -158,6 +175,7 @@ _DEFAULT_FINGERPRINTS = (
     _CHROME_136_MAC,
     _FIREFOX_135_WIN,
     _FIREFOX_133_WIN,
+    _SAFARI_17_2_IOS,
 )
 _AMAZON_FINGERPRINTS = _DEFAULT_FINGERPRINTS
 _MADOUQU_FINGERPRINTS = (_CHROME_136_WIN, _FIREFOX_133_WIN)
