@@ -41,6 +41,9 @@ class FileInfo:
     definition: str
     codec: str
 
+    # 读模式下被 NFO 番号覆盖后的实际番号（共享番号注册键之一，供释放方使用）
+    shared_number: str | None = None
+
     @property
     def optional_file_path(self) -> Path | None:
         if self.file_path == Path() or not self.file_path.is_file():

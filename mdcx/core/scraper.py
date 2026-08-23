@@ -362,6 +362,21 @@ class Scraper:
         finally:
             LogBuffer.clear_task()
 
+    async def _release_shared_status(self, *numbers: object) -> None:
+        """释放共享番号状态：标记为失败并唤醒等待方。
+
+        需释放注册时的全部键（movie_number 与 file_info.number），否则读模式下
+        NFO 番号与原始番号不同时，等待方会空转 300 秒超时（原实现只释放 origin_number）。
+        """
+        for status_number in {n for n in numbers if n}:
+            if status_number in Flags.json_get_status and Flags.json_get_status.get(status_number) is None:
+                async with Flags._json_get_lock:
+                    if Flags.json_get_status.get(status_number) is None:
+                        Flags.json_get_status[status_number] = False
+                        event = Flags.json_get_events.get(status_number)
+                        if event is not None:
+                            event.set()
+
     async def _process_one_file_impl(self, task: tuple[Path, int, int]) -> None:
         # 获取顺序
         file_path, count, count_all = task
@@ -461,20 +476,11 @@ class Scraper:
                             event = Flags.json_get_events.get(status_number)
                             if event is not None:
                                 event.set()
-            elif origin_number in Flags.json_get_status and Flags.json_get_status[origin_number] is None:
-                async with Flags._json_get_lock:
-                    Flags.json_get_status[origin_number] = False
-                    event = Flags.json_get_events.get(origin_number)
-                    if event is not None:
-                        event.set()
+            else:
+                await self._release_shared_status(origin_number, number, getattr(file_info, "shared_number", None))
         except Exception as e:
             scrape_error = str(e)
-            if origin_number in Flags.json_get_status and Flags.json_get_status[origin_number] is None:
-                async with Flags._json_get_lock:
-                    Flags.json_get_status[origin_number] = False
-                    event = Flags.json_get_events.get(origin_number)
-                    if event is not None:
-                        event.set()
+            await self._release_shared_status(origin_number, number, getattr(file_info, "shared_number", None))
             self._check_stop(show_name)
             signal.show_traceback_log(traceback.format_exc())
             signal.show_log_text(traceback.format_exc())
@@ -518,8 +524,8 @@ class Scraper:
                             "score": json_data.score,
                         }
                         self._state_cache.set_done(
-                            file_path,
-                            await _safe_mtime(file_path),
+                            file_info.file_path,  # 移动后路径：move_movie 已更新 file_info.file_path
+                            await _safe_mtime(file_info.file_path),
                             number=number,
                             summary=summary,
                             commit=False,
@@ -552,8 +558,8 @@ class Scraper:
                 if self._state_cache and self._state_cache.is_usable() and manager.config.main_mode != 4:
                     try:
                         self._state_cache.set_failed(
-                            file_path,
-                            await _safe_mtime(file_path),
+                            fail_file_path,  # 移动后路径：文件已被移到 failed_folder
+                            await _safe_mtime(fail_file_path),
                             error=error_msg,
                             commit=False,
                         )
@@ -616,27 +622,25 @@ class Scraper:
                     time_note = f" 🏖 已累计刮削 {count}/{count_all}，已连续刮削 {count - Flags.rest_now_begin_count}/{manager.config.rest_count}..."
                     signal.show_log_text(time_note)
                     if count - Flags.rest_now_begin_count >= manager.config.rest_count:
-                        if Flags.scrape_starting > count:
-                            time_note = f" 🏖 当前还存在 {Flags.scrape_starting - count} 个已经在刮削的任务，等待这些任务结束将进入休息状态...\n"
+                        if Flags.sleep_end.is_set():
+                            # 达到阈值且未在休息 → 启动休息
+                            Flags.sleep_end.clear()
+                            Flags.rest_next_begin_time = time.time()  # 下一轮倒计时开始时间
+                            time_note = f'\n ⏸ 休息 {Flags.rest_time_convert} 秒，将在 <font color="red">{get_real_time(Flags.rest_next_begin_time + Flags.rest_time_convert)}</font> 继续刮削剩余的 {count_all - count} 个任务...\n'
                             signal.show_log_text(time_note)
-                        await Flags.sleep_end.wait()  # 等待休眠结束
-                    elif Flags.sleep_end.is_set() and count < count_all:
-                        Flags.sleep_end.clear()  # 开始休眠
-                        Flags.rest_next_begin_time = time.time()  # 下一轮倒计时开始时间
-                        time_note = f'\n ⏸ 休息 {Flags.rest_time_convert} 秒，将在 <font color="red">{get_real_time(Flags.rest_next_begin_time + Flags.rest_time_convert)}</font> 继续刮削剩余的 {count_all - count} 个任务...\n'
-                        signal.show_log_text(time_note)
-                        while (
-                            Switch.REST_SCRAPE in manager.config.switch_on
-                            and time.time() - Flags.rest_next_begin_time < Flags.rest_time_convert
-                        ):
-                            if Flags.scrape_starting > count:  # 如果突然调大了文件数量，这时跳出休眠
-                                break
-                            await asyncio.sleep(1)
-                        Flags.rest_now_begin_count = count
-                        Flags.sleep_end.set()  # 休眠结束，下一轮开始
-                        Flags.next_start_time = time.time() - manager.config.thread_time
-                    else:
-                        await Flags.sleep_end.wait()
+                            while (
+                                Switch.REST_SCRAPE in manager.config.switch_on
+                                and time.time() - Flags.rest_next_begin_time < Flags.rest_time_convert
+                            ):
+                                if Flags.scrape_starting > count:  # 如果突然调大了文件数量，这时跳出休眠
+                                    break
+                                await asyncio.sleep(1)
+                            Flags.rest_now_begin_count = count  # 休息周期结束，重置计数
+                            Flags.sleep_end.set()  # 休眠结束，下一轮开始
+                            Flags.next_start_time = time.time() - manager.config.thread_time
+                        else:
+                            await Flags.sleep_end.wait()  # 正在休息 → 等待休眠结束
+                    # 未达阈值：继续刮削，无需处理
         except Exception as e:
             self._check_stop(show_name)
             signal.show_traceback_log(traceback.format_exc())
@@ -733,6 +737,7 @@ class Scraper:
                 is_nfo_existed = True
                 res = nfo_data
                 movie_number = nfo_data.number
+                file_info.shared_number = movie_number  # 供释放方释放共享番号双键
                 file_classification = classify_existing_scrape_result(file_info.crawl_task(), res, manager.config)
 
                 has_nfo_update = ReadMode.HAS_NFO_UPDATE in read_mode

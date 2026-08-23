@@ -190,8 +190,8 @@ def save_cache_row(row: dict) -> bool:
                     cell.fill = data_fill
                     cell.alignment = data_align
                     cell.border = full_border
-                    # 第14列超链接
-                    if col_idx == 14 and str(val or "").startswith("http"):
+                    # 第15列(minnano url)超链接：col_idx 为 1-based，COL_MINNANO_URL 是 0-based
+                    if col_idx == COL_MINNANO_URL + 1 and str(val or "").startswith("http"):
                         cell.hyperlink = val
                         cell.font = link_font
                 wb.save(cache_path)
@@ -224,7 +224,7 @@ def save_cache_row(row: dict) -> bool:
                 cell.fill = data_fill
                 cell.alignment = data_align
                 cell.border = full_border
-                if col_idx == 14 and str(val or "").startswith("http"):
+                if col_idx == COL_MINNANO_URL + 1 and str(val or "").startswith("http"):
                     cell.hyperlink = val
                     cell.font = link_font
 
@@ -308,8 +308,8 @@ def _parse_birthday(raw: str) -> tuple[str, str]:
     if m:
         year, month, day = m.group(1), m.group(2), m.group(3)
         birthday = f"{year}-{int(month):02d}-{int(day):02d}"
-    # 星座
-    zodiac_match = re.search(r"([牡羊|金牛|雙子|巨蟹|獅子|處女|天秤|天蠍|射手|摩羯|水瓶|雙魚])座", raw)
+    # 星座：用分组而非字符类（原 [牡羊|金牛|...] 的 | 是字面量，星座名被拆成错误单字）
+    zodiac_match = re.search(r"(牡羊|金牛|雙子|巨蟹|獅子|處女|天秤|天蠍|射手|摩羯|水瓶|雙魚)座", raw)
     if zodiac_match:
         zodiac = zodiac_match.group(1)
     elif "いて座" in raw:

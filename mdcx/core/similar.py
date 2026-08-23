@@ -175,7 +175,14 @@ class SimilarIndex[T: _SimilarItem]:
             weight = idf if idf > 0 else 1.0
             for i in self._inverted.get(t, []):
                 scores[i] += weight
-        filtered = [(i, s) for i, s in scores.items() if self._corpus[i] is not target]
+        target_number = getattr(target, "number", None)
+        # 用番号主键排除 target 自身：语料混合了当次结果对象与缓存摘要对象时，
+        # 同一影片可能是不同对象实例，`is not` 身份比较会失效导致"自己推荐自己"。
+        filtered = [
+            (i, s)
+            for i, s in scores.items()
+            if self._corpus[i] is not target and getattr(self._corpus[i], "number", None) != target_number
+        ]
         filtered.sort(key=lambda kv: kv[1], reverse=True)
         return [self._corpus[i] for i, _ in filtered[:top_n]]
 

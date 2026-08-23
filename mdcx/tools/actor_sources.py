@@ -139,12 +139,14 @@ async def _libredmm_fuzzy_search(name: str) -> str | None:
     if not html:
         return None
     root = etree.fromstring(html, etree.HTMLParser())
-    links = root.xpath('//a[contains(@href,"/actresses/")]/@href')
-    names = [n.strip() for n in root.xpath("//a[contains(@href,'/actresses/')]//text()") if n.strip()]
-    for link, nm in zip(links, names, strict=False):
+    anchors = root.xpath('//a[contains(@href,"/actresses/")]')
+    # 逐 <a> 成对取 href 与完整文本，避免跨 xpath 的 links/names zip 数量不等导致错位配对
+    for a in anchors:
+        link = str(a.get("href") or "")
+        nm = "".join(a.xpath(".//text()")).strip()
         if nm == name or name in nm or nm in name:
             return link
-    return links[0] if links else None
+    return str(anchors[0].get("href") or "") if anchors else None
 
 
 async def _libredmm_fetch_numbers(rel_or_url: str) -> set[str]:
@@ -274,8 +276,8 @@ async def _avmoo_locate_star_id(base: str, namespace: str, name: str) -> str | N
             async with manager.acquire_computed() as computed:
                 detail, derr = await computed.async_client.post_json(
                     f"{base}/{namespace}/data/api/getMovie",
-                    data={"movieId": mid},
-                    headers={"Accept": "application/json"},
+                    data=json.dumps({"movieId": mid}),
+                    headers={"Accept": "application/json", "Content-Type": "application/json"},
                 )
             if derr or detail is None:
                 continue
@@ -284,7 +286,7 @@ async def _avmoo_locate_star_id(base: str, namespace: str, name: str) -> str | N
                 sn = (st.get("starName_ja") or st.get("starName_en") or "").strip()
                 if sn and (sn == name or name in sn or sn in name):
                     return st.get("starId")
-        return None
+        # 无匹配：继续下一次 attempt（原实现在此 return None，使重试只对网络错误生效）
     return None
 
 
@@ -382,7 +384,11 @@ async def _javbus_searchstar(rotator: _JavbusRotator, name: str, uncensored: boo
         else:
             if "/uncensored/" not in href:
                 star_hrefs.append(href)
-    return star_hrefs[0] if star_hrefs else None
+    if star_hrefs:
+        href = star_hrefs[0]
+        # 页面返回的 href 可能是根相对路径（/star/xxx），补全为绝对 URL 供后续请求
+        return href if href.startswith("http") else f"{rotator.base}{href}"
+    return None
 
 
 async def _javbus_star_numbers(rotator: _JavbusRotator, star_url: str) -> set[str]:

@@ -200,32 +200,33 @@ def handle_search_res(
     except Exception:
         claims = None
     if claims:
-        try:
-            tmdb_id = claims["P4985"][0]["mainsnak"]["datavalue"]["value"]
-            actor_info.provider_ids["Tmdb"] = tmdb_id
-            url_log += f"TheMovieDb: https://www.themoviedb.org/person/{tmdb_id} \n"
 
-            imdb_id = claims["P345"][0]["mainsnak"]["datavalue"]["value"]
-            actor_info.provider_ids["Imdb"] = imdb_id
-            url_log += f"IMDb: https://www.imdb.com/name/{imdb_id} \n"
+        def _extract(pid: str) -> str | None:
+            # 单个 ID 独立提取：缺失/异常不影响其它 ID（原实现放同一 try，单点缺失全部丢失）
+            try:
+                v = claims[pid][0]["mainsnak"]["datavalue"]["value"]
+                return str(v) if v else None
+            except Exception:
+                return None
 
-            twitter_id = claims["P2002"][0]["mainsnak"]["datavalue"]["value"]
-            actor_info.provider_ids["Twitter"] = twitter_id
-            url_log += f"Twitter: https://twitter.com/{twitter_id} \n"
-
-            instagram_id = claims["P2003"][0]["mainsnak"]["datavalue"]["value"]
-            actor_info.provider_ids["Instagram"] = instagram_id
-            url_log += f"Instagram: https://www.instagram.com/{instagram_id} \n"
-
-            fanza_id = claims["P9781"][0]["mainsnak"]["datavalue"]["value"]
-            actor_info.provider_ids["Fanza"] = fanza_id
-            url_log += f"Fanza: https://actress.dmm.co.jp/-/detail/=/actress_id={fanza_id} \n"
-
-            xhamster_id = claims["P8720"][0]["mainsnak"]["datavalue"]["value"]
-            actor_info.provider_ids["xHamster"] = f"https://xhamster.com/pornstars/{xhamster_id}"
-            url_log += f"xHamster: https://xhamster.com/pornstars/{xhamster_id} \n"
-        except Exception:
-            pass
+        if v := _extract("P4985"):
+            actor_info.provider_ids["Tmdb"] = v
+            url_log += f"TheMovieDb: https://www.themoviedb.org/person/{v} \n"
+        if v := _extract("P345"):
+            actor_info.provider_ids["Imdb"] = v
+            url_log += f"IMDb: https://www.imdb.com/name/{v} \n"
+        if v := _extract("P2002"):
+            actor_info.provider_ids["Twitter"] = v
+            url_log += f"Twitter: https://twitter.com/{v} \n"
+        if v := _extract("P2003"):
+            actor_info.provider_ids["Instagram"] = v
+            url_log += f"Instagram: https://www.instagram.com/{v} \n"
+        if v := _extract("P9781"):
+            actor_info.provider_ids["Fanza"] = v
+            url_log += f"Fanza: https://actress.dmm.co.jp/-/detail/=/actress_id={v} \n"
+        if v := _extract("P8720"):
+            actor_info.provider_ids["xHamster"] = f"https://xhamster.com/pornstars/{v}"
+            url_log += f"xHamster: https://xhamster.com/pornstars/{v} \n"
 
     # 获取 wiki url 和 description
     try:
