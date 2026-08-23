@@ -1550,6 +1550,32 @@
               <string>开始检测</string>
             </property>
           </widget>
+          <widget class="QPushButton" name="pushButton_net_copy">
+            <property name="geometry">
+              <rect>
+                <x>560</x>
+                <y>13</y>
+                <width>110</width>
+                <height>40</height>
+              </rect>
+            </property>
+            <property name="text">
+              <string>复制结果</string>
+            </property>
+          </widget>
+          <widget class="QPushButton" name="pushButton_net_retry">
+            <property name="geometry">
+              <rect>
+                <x>440</x>
+                <y>13</y>
+                <width>110</width>
+                <height>40</height>
+              </rect>
+            </property>
+            <property name="text">
+              <string>重试失败项</string>
+            </property>
+          </widget>
         </widget>
         <widget class="QWidget" name="page_tool">
           <widget class="QScrollArea" name="scrollArea_10">

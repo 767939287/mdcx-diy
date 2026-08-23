@@ -44,7 +44,7 @@ from mdcx.config.manager import manager
 from mdcx.config.resources import resources
 from mdcx.consts import GITHUB_ISSUES_URL, GITHUB_RELEASES_URL, IS_WINDOWS, LOCAL_VERSION, VERSION_NAME
 from mdcx.core.naming import NameRenderOptions, NamingTarget, render_name
-from mdcx.core.network_check import run_network_check
+from mdcx.core.network_check import NetworkCheckStatus, run_network_check
 from mdcx.core.nfo import write_nfo
 from mdcx.core.scrape_cache import ScrapeStateCache
 from mdcx.core.scraper import again_search, get_remain_list, start_new_scrape
@@ -3443,10 +3443,15 @@ class MyMAinWindow(QMainWindow):
             signal_qt.show_net_info("\n⛑ 开始检测网络...")
             cancel_event = threading.Event()
             self.network_check_cancel_event = cancel_event
-            self.network_check_future = executor.submit(
-                run_network_check(progress=signal_qt.show_net_info, cancel_event=cancel_event)
-            )
-            self.network_check_future.result()
+            self.network_check_results = None
+            self._net_check_lines = []
+
+            def progress(line):
+                self._net_check_lines.append(line)
+                signal_qt.show_net_info(line)
+
+            self.network_check_future = executor.submit(run_network_check(progress=progress, cancel_event=cancel_event))
+            self.network_check_results = self.network_check_future.result()
         except Exception as e:
             signal_qt.show_net_info(f"\n⛔️ 网络检测出现异常：{e}")
             signal_qt.show_net_info(
@@ -3459,6 +3464,58 @@ class MyMAinWindow(QMainWindow):
             self.network_check_future = None
             # 按钮状态必须在主线程恢复，经信号调度
             self.net_check_done.emit()
+
+    def _run_net_retry(self):
+        """后台线程：重试上次检测的失败/警告项。"""
+        results = self.network_check_results
+        if not results:
+            signal_qt.show_net_info("⛔️ 请先运行一次完整检测，再使用「重试失败项」")
+            return
+        failed_specs = [
+            result.spec
+            for result in results
+            if result.status in (NetworkCheckStatus.FAILED, NetworkCheckStatus.WARNING)
+        ]
+        if not failed_specs:
+            signal_qt.show_net_info("✅ 上次检测没有失败/警告项，无需重试")
+            return
+        try:
+            signal_qt.show_net_info(f"\n⛑ 重试 {len(failed_specs)} 个失败/警告项...")
+            cancel_event = threading.Event()
+            self.network_check_cancel_event = cancel_event
+            self._net_check_lines = []
+
+            def progress(line):
+                self._net_check_lines.append(line)
+                signal_qt.show_net_info(line)
+
+            self.network_check_future = executor.submit(
+                run_network_check(progress=progress, cancel_event=cancel_event, specs=failed_specs, emit_header=False)
+            )
+            self.network_check_results = self.network_check_future.result()
+        except Exception as e:
+            signal_qt.show_net_info(f"\n⛔️ 重试失败项出现异常：{e}")
+            signal_qt.show_traceback_log(traceback.format_exc())
+        finally:
+            self.network_check_cancel_event = None
+            self.network_check_future = None
+            self.net_check_done.emit()
+
+    def pushButton_net_retry_clicked(self):
+        if self.network_check_future is not None:
+            signal_qt.show_net_info("⏳ 上一次检测仍在进行，请稍后再试")
+            return
+        t = threading.Thread(target=self._run_net_retry, daemon=True)
+        t.start()
+
+    def pushButton_net_copy_clicked(self):
+        lines = getattr(self, "_net_check_lines", None) or []
+        if not lines:
+            signal_qt.show_net_info("⛔️ 暂无可复制内容，请先运行检测")
+            return
+        text = "\n".join(lines)
+        QApplication.clipboard().setText(text)
+        signal_qt.show_net_info(f"✅ 检测结果已复制到剪贴板（{len(lines)} 行）")
 
     def _on_net_check_done(self):
         """主线程：网络检测完成，恢复按钮状态。"""

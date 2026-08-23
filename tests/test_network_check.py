@@ -384,7 +384,7 @@ async def test_probe_crawler_capability_warns_when_no_search_result(monkeypatch:
     status, message = await _probe_crawler_capability(ProbeFakeClient(), spec)
 
     assert status == NetworkCheckStatus.WARNING
-    assert "搜索无结果" in message
+    assert "未被该站点收录" in message
 
 
 @pytest.mark.anyio

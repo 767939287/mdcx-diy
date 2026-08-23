@@ -3,7 +3,7 @@ import re
 import threading
 import time
 from collections.abc import Callable
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from enum import StrEnum
 from typing import TYPE_CHECKING, Any
 from urllib.parse import quote_plus, urljoin
@@ -261,7 +261,7 @@ async def _probe_crawler_by_run(
 
     if response is None or response.data is None:
         error = getattr(getattr(response, "debug_info", None), "error", None) if response else None
-        message = f"刮削探测失败: {error}" if error else "站点可达但搜索无结果，可能该测试番号未收录"
+        message = f"刮削探测失败: {error}" if error else "站点可达，但测试番号未被该站点收录，建议用实际番号实测"
         return NetworkCheckStatus.WARNING, message
     return NetworkCheckStatus.OK, "连接正常，刮削正常"
 
@@ -342,8 +342,11 @@ async def _probe_crawler_capability(
             detail_urls = await crawler._parse_search_page(ctx, selector, search_url)
             if detail_urls:
                 return NetworkCheckStatus.OK, "连接正常，刮削正常"
-            return NetworkCheckStatus.WARNING, "站点可达但搜索无结果，可能该测试番号未收录"
-        return NetworkCheckStatus.WARNING, "站点可达但搜索无结果"
+            return (
+                NetworkCheckStatus.WARNING,
+                "站点可达，但测试番号 SSNI-647 未被该站点收录（单厂牌/收录有限站点常见），建议刮削时用实际番号实测",
+            )
+        return NetworkCheckStatus.WARNING, "站点可达，但搜索未匹配到测试番号"
     except NotImplementedError:
         return NetworkCheckStatus.WARNING, "站点可达但无法自动探测刮削，可用设置页指定网址实测"
     except CrawlerException as exc:
@@ -432,7 +435,12 @@ def format_result_line(result: NetworkCheckResult) -> str:
     return f"  {icon} {name:<18} {status_code:>4}  {elapsed:>8}  {proxy} {message}"
 
 
-def format_summary(results: list[NetworkCheckResult], elapsed: float, cancelled: bool) -> list[str]:
+def format_summary(
+    results: list[NetworkCheckResult],
+    elapsed: float,
+    cancelled: bool,
+    proxy_unavailable: bool = False,
+) -> list[str]:
     failed = sum(1 for result in results if result.status == NetworkCheckStatus.FAILED)
     warning = sum(1 for result in results if result.status == NetworkCheckStatus.WARNING)
     ok = sum(1 for result in results if result.status == NetworkCheckStatus.OK)
@@ -442,6 +450,10 @@ def format_summary(results: list[NetworkCheckResult], elapsed: float, cancelled:
         "-" * 88,
         f"网络检测{status}：正常 {ok}，警告 {warning}，失败 {failed}，跳过 {skipped}，用时 {elapsed:.2f} 秒",
     ]
+    if proxy_unavailable:
+        lines.append(
+            "⚠️ 全局代理不可用（基础连通性两项均因代理失败）。下方站点失败多为代理导致，请先检查代理软件/节点后再重试。"
+        )
     if failed or warning:
         lines.append("建议优先查看失败/警告项；若基础连通性失败，先检查代理或系统网络。")
     lines.append("=" * 88)
@@ -485,9 +497,13 @@ async def _build_site_specs() -> list[NetworkCheckSpec]:
             check_urls = await crawler_cls.check_urls()
         except Exception:
             check_urls = []
-        # 用户未自定义 URL 时，动态域名站优先用动态解析出的地址作为主检测地址
+        # 用户未自定义 URL 时，动态域名站优先用动态解析出的地址作为主检测地址。
+        # 过滤空串：base_url_() 返回空的站点（如 dmm）check_urls 会返回 [""]，
+        # 此时应回退到 DEFAULT_SITE_URLS 的默认地址，而不是覆盖成空导致误报"无固定入口"。
         if not customized and check_urls:
-            base_url = check_urls[0].rstrip("/")
+            non_empty_urls = [u.rstrip("/") for u in check_urls if u and u.strip()]
+            if non_empty_urls:
+                base_url = non_empty_urls[0]
 
         path = SPECIAL_CHECK_PATHS.get(site, "")
         url = _join_url(base_url, path)
@@ -573,14 +589,21 @@ async def _build_site_specs() -> list[NetworkCheckSpec]:
             )
         )
 
-        # 动态域名/镜像站点的额外检测地址（主地址已用上面的特化逻辑生成 spec）
+        # 动态域名/镜像站点的额外检测地址：每个站点只保留 1 个镜像作抽样，
+        # 避免 javbus 等 5-6 个镜像逐个检测刷屏拖慢；主站失败时仍能看到镜像是否可用。
         if len(check_urls) > 1:
             main_host = url.split("://")[-1].split("/")[0]
+            extra_sampled = False
             for extra_url in check_urls:
                 extra_url = extra_url.rstrip("/")
+                if not extra_url:
+                    continue
                 extra_host = extra_url.split("://")[-1].split("/")[0]
                 if extra_host == main_host:
                     continue
+                if extra_sampled:
+                    continue
+                extra_sampled = True
                 specs.append(
                     NetworkCheckSpec(
                         name=f"{site.value}·镜像",
@@ -860,15 +883,20 @@ async def run_network_check(
     concurrency: int = 10,
     client: "AsyncWebClient | Any | None" = None,
     emit_header: bool = True,
+    specs: list[NetworkCheckSpec] | None = None,
 ) -> list[NetworkCheckResult]:
+    """执行网络检测。
+
+    specs: 指定检测子集（用于"重试失败项"只重测失败/警告项）；None 表示全量构建检测项。
+    """
     progress = progress or (lambda line: None)
     if emit_header:
         for line in _format_header():
             progress(line)
 
-    specs = await build_network_check_specs()
+    check_specs = specs if specs is not None else await build_network_check_specs()
     results: list[NetworkCheckResult] = []
-    grouped_specs = {group: [spec for spec in specs if spec.group == group] for group in GROUP_ORDER}
+    grouped_specs = {group: [spec for spec in check_specs if spec.group == group] for group in GROUP_ORDER}
     semaphore = asyncio.Semaphore(max(int(concurrency), 1))
 
     async def run_one(spec: NetworkCheckSpec) -> NetworkCheckResult:
@@ -876,6 +904,7 @@ async def run_network_check(
             return await run_network_check_item(spec, cancel_event=cancel_event, client=client)
 
     start_time = time.perf_counter()
+    proxy_down = False
     for group in GROUP_ORDER:
         group_specs = grouped_specs.get(group, [])
         if not group_specs or group == "基础环境":
@@ -889,15 +918,23 @@ async def run_network_check(
                         pending.cancel()
                 await asyncio.gather(*tasks, return_exceptions=True)
                 elapsed = time.perf_counter() - start_time
-                for line in format_summary(results, elapsed, cancelled=True):
+                for line in format_summary(results, elapsed, cancelled=True, proxy_unavailable=proxy_down):
                     progress(line)
                 return results
             result = await task
             results.append(result)
+            if result.spec.group == "基础连通性":
+                if result.status == NetworkCheckStatus.FAILED and _is_proxy_error(result.error):
+                    proxy_down = True
+            elif proxy_down and result.status == NetworkCheckStatus.FAILED and _is_proxy_error(result.error):
+                # 全局代理不可用时，站点失败多为代理导致，简化提示避免误导用户以为站点全挂
+                result = replace(result, message="代理不可用（见顶部提示）", error="")
             progress(format_result_line(result))
 
     elapsed = time.perf_counter() - start_time
-    for line in format_summary(results, elapsed, cancelled=bool(cancel_event and cancel_event.is_set())):
+    for line in format_summary(
+        results, elapsed, cancelled=bool(cancel_event and cancel_event.is_set()), proxy_unavailable=proxy_down
+    ):
         progress(line)
     return sorted(
         results,
