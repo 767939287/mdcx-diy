@@ -32,12 +32,6 @@ jobs:
       - name: Set up uv
         uses: astral-sh/setup-uv@v6
 
-      - name: Run ruff format
-        run: uvx ruff@0.15.12 format --check
-
-      - name: Run ruff check
-        run: uvx ruff@0.15.12 check --output-format=github
-
       - name: Install dependencies
         run: |
           if ! uv sync --locked --dev 2>/dev/null; then
@@ -45,6 +39,12 @@ jobs:
             uv lock
             uv sync --dev
           fi
+
+      - name: Run ruff format
+        run: uv run ruff format --check
+
+      - name: Run ruff check
+        run: uv run ruff check --output-format=github
 
       - name: Run mypy
         run: uv run mypy mdcx/

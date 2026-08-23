@@ -8,7 +8,7 @@ on:
     types: [published]
   push:
     tags:
-      - 220*
+      - 2*
   workflow_dispatch:
     inputs:
       tag:
