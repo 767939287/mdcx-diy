@@ -30,60 +30,35 @@
 ### 修复
 
 - **全模块审查修复（35 项）**：数据损坏级 6 项（翻译映射清空/简繁失效/tmdbid 错配/迁移丢图/同路径误删/字符清洗）、功能失效级 7 项（断点续刮/间歇刮削/共享番号/数据源/wiki/minnano/相似自推荐）、性能健壮性与并发安全 22 项
-- **Emby 演员管理器 15 项修复/优化**：连接/同步/上传/缓存/背景图/过滤器/详情 TTL 等
-- **左侧导航修复**：Emby 演员管理点击无反应（`btn_settings` 按钮被误删但信号残留，对话框构造抛错被吞）+ 新按钮未纳入导航样式选择器显示默认背景框；补齐按钮与统一样式
-- **演员库维护 group 修复**：内容超出固定高度致底部按钮裁剪、5 处说明 label 高度不足被上下裁剪且字体过小（11px/9px）；统一 12px、补齐高度、连锁调整布局
-- **网络设置 group 重影**：长说明 label 垂直策略 Fixed 锁高度致文字溢出被遮挡；并修复 grid row 6 超时滑块与 TRAWL 输入重复占位重叠
-- **批量操作面板迁移**：grid item 缺 row 定位退化为 100×30 与说明文字重叠，且面板被放错页面（操作对象 NFO 列表在 NFO 库页）；迁移到 NFO 库页左栏列表下方并补用法说明
-- **配置项说明补齐**：Bypass 落地白名单、压缩均补常驻/清晰说明（tooltip 或 teal 文字）
-- **类型刮削网站说明空白**：国产/动漫里番/Mywife 说明 label colspan 3 利用右侧空白
-- **UI 与文档一致性检查**：网站数量 48 全一致；代理列表补 missav.live；兜底描述补 MGStage；弹窗有码列表补 thejavdb_api
+- **Emby 演员管理器 15 项修复/优化 + 窗口遮挡（issue #38）**：连接/同步/上传/缓存/背景图/过滤器/详情 TTL 等；模态改非模态 + 后台执行
+- **全页面 UI 布局批量修复**：13 个滚动区 widgetResizable→true（高 DPI 横向裁切）、33 个 GroupBox 限宽 739→860、60 个长文本 QLabel 补 wordWrap；NFO 设置页 26 个超长 CheckBox 硬截断修复；网络设置说明文字截断/重影修复；配套 check_ui_layout 静态检查纳入 CI，三项清零验证
+- **其他 UI 修复**：左侧导航 Emby 按钮（误删信号残留）、演员库维护 group 裁剪、网络设置 group 重影/超时滑块重叠、批量操作面板迁移到 NFO 库页左栏、NFO 库页三栏自适应 + 批量面板默认折叠 + 预览框边框、空列表占位提示、配置项说明补齐、类型刮削说明空白补 colspan
 - **网络检测增强 6 项**：代理故障提示、镜像抽样、单厂牌提示、重试失败项/复制结果按钮、DMM 误报修复
 - **翻译修复**：Bing 端点改 cn.bing.com（原返回空响应体）；百度翻译 appid/key strip 修复签名错误
 - **CLI 修复**：crawl 代理白名单失效、失败退出码、javdb_api 搜索 q 参数丢失
-- **爬虫修复**：dmm 双重重试/番号匹配/评分/日期截断、javbus 搜索镜像轮换、minnano 标题校验/缓存 key、MGStage/Jav321/FC2Club/FC2Hub/JavLibrary 字段直接解析保留引号与方括号、FC2Hub 缺失标题或厂商节点容错、FC2 时长异常格式容错、fc2 无修正判定、prestige 字段防护、javdb_app year 推导
-- **版本检查日志刷屏修复**：启动时「获取最新版本失败」把整个 GitHub API JSON 响应倒进日志；改用 releases 列表 API 遍历找纯数字 tag（正确跳过 TRAWL 发布），错误日志只输出简洁说明
-- **下载/文件修复**：分块下载断点续传（.part + .part.meta）、断点元数据句柄关闭、文件复制原子替换保留旧目标、移动文件拒绝目录目标避免意外落点、图片流式下载 50MB 限制与同 URL 并发复用、图片共享任务完成回收与上下文关闭取消、extrafanart 目录替换原子化、相对符号链接解析与跨目录重复链接跳过、网络检测取消任务回收、move_file 先删目标、成功列表记录新路径、fanart 失败不再静默忽略
+- **爬虫修复**：dmm 双重重试/番号匹配/评分/日期截断、javbus 搜索镜像轮换、minnano 标题校验/缓存 key、MGStage/Jav321/FC2Club/FC2Hub/JavLibrary 字段解析保留引号方括号、FC2Hub 缺失节点容错、FC2 时长/无修正判定、prestige 字段防护、javdb_app year 推导
+- **版本检查日志刷屏修复**：失败时不再把整个 GitHub API JSON 倒进日志；改用 releases 列表 API 遍历找纯数字 tag（正确跳过 TRAWL 发布），错误只输出简洁说明
+- **下载/文件修复**：分块下载断点续传（.part + .part.meta）、文件复制原子替换、移动文件拒绝目录目标、图片 50MB 限制与同 URL 并发复用、extrafanart 替换原子化、符号链接解析与跨目录重复跳过、move_file 先删目标、成功列表记录新路径、fanart 失败不再静默
 - **崩溃容错**：get_new_release 日期格式、parse_runtime 时长解析、hdouban 秒数、强杀线程单次注入与全局停止超时保护
 - **并发/性能**：is_proxy_host O(1) 映射、镜像轮询重试去重、AVdb 并发预热、连接池锁外清理、Flags 重置保持异步锁身份稳定、TMDB 演员库并发写保护、女优信息库加锁
-- **其他**：DMM 9 前缀番号识别、CF 指纹轮换（safari17_2_ios）、读取模式不受断点缓存干扰、打包 hidden-import 补齐、配置保存竞态/重试链、优雅退出、ComputedLease 非阻塞
-- **网络设置说明文字截断/未左对齐**：label_103 高度写死 70px 且未开自动换行，5 行青色说明文字底部被裁、缩在滑块列下方未与「重试次数」对齐；改为跨两列（colspan=2）+ wordWrap + 由内容撑高，内部网格高度 500→540 防下方控件被挤出框外
-- **NFO 设置页勾选项文字截断**：groupBox 锁宽 739 + 内容区仅 ~580px，3~4 个带英文括号的 CheckBox 挤不下被硬截断（如「发行日期（re」「国家（countr」「片商（st」）；scrollArea widgetResizable 改 true、groupBox 放宽至 860、26 个超长 CheckBox 统一 sizePolicy 为 Minimum 去掉 150 硬限按文本比例分配宽度，字段名完整显示
-- **NFO 库管理页布局半成品**：三栏写死宽度不自适应（列表/表单/预览都不随窗口撑开）；给 nfo_lib_content_layout 三栏设 stretch（2/3/0）表单优先吃空间、表单 minimumSize 300→380、内容区 width 298→360；列表 minimumHeight 320 防被批量操作压扁、批量操作 GroupBox 改默认折叠（checkable+unchecked）；预览 QLabel 加 StyledPanel 边框 + 浅色背景成为「图片框」；列表为空时加不可选占位提示（"请先选择目录"/"未找到 NFO 文件"）
-- **全页面滚动区自适应 + 长文本换行批量修复**：13 个 QScrollArea `widgetResizable` false→true（工具页/设置 11 个标签页 + NFO 编辑器页，高 DPI/宽字体下右侧内容被横向裁切）；13 个内容区 geometry width 760/770/752→860；33 个 QGroupBox `maximumWidth` 739→860；60 个 QLabel 长纯文本加 `wordWrap=true`（分集规则/命名说明/目录说明/Emby 配置等，原被硬截断）；check_ui_layout 脚本验证：13→0、33→0、60→0
+- **Windows 体验**：保存配置黑色控制台窗口（SYSTEM_INFO 替代 platform()）、配置保存拒绝访问多级回退、翻译说明文字重影
+- **其他**：DMM 9 前缀番号识别、CF 指纹轮换（safari17_2_ios）、读取模式不受断点缓存干扰、打包 hidden-import 补齐、配置保存竞态/重试链、优雅退出、ComputedLease 非阻塞、UI 与文档一致性（网站数量 48/missav.live/MGStage/thejavdb_api）
 
 ### 工程质量
 
 - **新增 quick-check 快速检查命令**（ruff + mypy 秒级自检）
-- **死代码清理**：删零调用函数/死变量（A 类 4 项、avsex get_poster、域名壳函数、冗余代码）及无引用的 ping3 依赖
-- **回归测试**：新增 review_regressions/save_success_list/UI 几何/avsox 系/Amazon 匹配等多批测试
-- **版本元数据统一**：Python 包版本同步 GUI 展示版本，并用回归测试防止再次分裂
-- **静态质量收口**：清理 B005/B007/B904 等高价值 Ruff 告警，异常链保留根因，补目录删除安全测试
-- **性能优化**：PNG 压缩级别降为默认 6、convert_half 改翻译表、分块并发数提取常量、UA 池更新至 Chrome 115-135
-- **mypy 类型检查启用修复**：quick_check 改用 `sys.executable -m mypy` 调用（mypy.exe 入口脚本未绑定 venv 致 ModuleNotFoundError）；重命名与标准库冲突的 types 模块（`mdcx/models/types.py`→`model_types.py`、`mdcx/crawlers/base/types.py`→`base_types.py`，108 处引用同步改写）消除 mypy shadowing 硬错误，mypy 现可完整检查全部 151 个源文件
-- **CI/Release 工作流修复**：release.yml tag 触发模式 `220*`→`2*`（YYYYMMDD 格式 tag 如 `20260823` 不以 `220` 开头，旧模式导致 push tag 永不触发自动发布）；CI ruff 检查改 `uvx ruff@0.15.12`→`uv run ruff`（先 uv sync 再跑 ruff，与本地 venv 锁定版本完全一致，消除格式化漂移）
-- **UI 布局静态检查脚本**：新增 `scripts/check_ui_layout.py`，扫描 `.ui` 文件中打包后才暴露的布局隐患——QScrollArea `widgetResizable=false`（高 DPI 横向裁切）、QGroupBox `maximumWidth=739`（容器偏窄）、QLabel 长文本缺 `wordWrap`（硬截断）、wordWrap 误加到 QCheckBox（运行时 AttributeError，critical 阻断）；已纳入 `uv run check` 与 CI
-
-### 文档
-
-- 同步 README/FEATURES/USER_GUIDE/CONFIGURATION/DEVELOPMENT 与 UI 使用说明页（网站数量、CF 外部服务、代理列表、刮削模式修正）；UI 文字全面修正（输入网址弹窗网站动态生成、调试模式位置、tooltip 等）
-
-### 清理
-
-- **移除「演员名白名单」功能**：实用性极低，删除 UI（5 个 item 含输入框/说明）+ 配置字段 `nfo_tag_actor_contains`（models/v1/default_config）+ 读写（save/load_config）+ 迁移逻辑 + translate 白名单过滤；刮削后全部演员均写入「演员」标签
-- **死代码/冗余清理**：AVWikiDB 别名查询、文件移动冗余分支、Gfriends 缓存重复写入、CF 后退避死分支、javdb_api 不可达代码
-- **Windows 体验**：保存配置黑色控制台窗口（SYSTEM_INFO 替代 platform()）、配置保存拒绝访问多级回退、翻译说明文字重影修复
-- **Emby 窗口遮挡修复（issue #38）**：模态改非模态 + 主线程阻塞改后台执行
-
-### 工程/文档
-
-- **UI 收口到 .ui**：百度翻译、网站优先级按钮、fc2ppvdb Cookie 控件从运行时注入改为写进 MDCx.ui（.ui 成为唯一权威源）
-- **跨线程 Qt 安全收口**：提取 `run_in_background` 通用工具 + `check_thread_safety` AST 扫描（当前 0 违规）
-- **UI 几何回归测试**：offscreen 遍历布局断言控件无重叠，防重影回归
+- **mypy 类型检查启用修复**：quick_check 改用 `sys.executable -m mypy`；重命名与标准库冲突的 types 模块（108 处引用同步改写），mypy 完整检查全部 151 个源文件
+- **CI/Release 工作流修复**：release.yml tag 触发 `220*`→`2*`（YYYYMMDD tag 不以 220 开头，旧模式永不触发发布）；CI ruff 改 `uv run ruff` 消除版本漂移
+- **UI 布局静态检查脚本**：新增 `scripts/check_ui_layout.py`，扫描 `.ui` 中滚动区 widgetResizable、GroupBox 限宽、QLabel wordWrap 等打包后才暴露的隐患（wordWrap 误用 critical 阻断）；纳入 `uv run check` 与 CI
+- **跨线程 Qt 安全收口**：提取 `run_in_background` 通用工具 + `check_thread_safety` AST 扫描（0 违规）
+- **UI 收口到 .ui + 几何回归测试**：百度翻译/网站优先级/fc2ppvdb Cookie 写进 MDCx.ui（唯一权威源）；offscreen 遍历断言无重叠
 - **刮削缓存管理 UI**：工具页新增缓存统计/失败列表/导出 CSV/重置/清空
-- **性能优化批次**：剩余任务快照写盘、水印缓存、asyncio.Event 唤醒、ActressDB 参数化、缓存 WAL+批量提交、内存上限
-- **启动性能**：本地数据库延迟加载（ResourcesDataLoader 后台线程 + 就绪屏障）
-- **启动健康自检**：检查配置目录可写/TMDB Key/代理可达性，不阻塞启动
+- **死代码清理**：删零调用函数/死变量（avsex get_poster 等）、无引用 ping3 依赖、AVWikiDB 别名查询、文件移动冗余分支、Gfriends 缓存重复写入、CF 后退避死分支、javdb_api 不可达代码
+- **回归测试**：新增 review_regressions/save_success_list/UI 几何/avsox 系/Amazon 匹配等多批
+- **版本元数据统一**：Python 包版本同步 GUI 展示版本，回归测试防再分裂
+- **静态质量收口**：清理 B005/B007/B904 等高价值 Ruff 告警，异常链保留根因，补目录删除安全测试
+- **性能优化**：PNG 压缩级别 6、convert_half 翻译表、剩余任务快照写盘、水印缓存、asyncio.Event 唤醒、ActressDB 参数化、缓存 WAL+批量提交、内存上限、UA 池更新至 Chrome 115-135
+- **启动性能与自检**：本地数据库延迟加载（后台线程 + 就绪屏障）；启动检查配置目录可写/TMDB Key/代理可达性，不阻塞启动
 
 ## v2.0.5 (2026-08-15)
 
