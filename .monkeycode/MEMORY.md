@@ -40,10 +40,12 @@
   - `QCheckBox`、`QRadioButton`、`QPushButton`、`QGroupBox` 不支持 `wordWrap`；长文本通过容器放宽和 `sizePolicy Fixed→Minimum` 解决。
   - 长说明 QLabel 使用 `wordWrap`；垂直策略不能锁死为 Fixed。测量 `sizeHint` 前必须 `show()` + `processEvents()`，或切换到对应 stackedWidget 页面。
   - `gridLayout` 同一 `row:column` 只能放一个 widget/layout；Qt Designer XML 使用 `row` 和 `column` 属性；长 label 使用跨列布局；每个 `.ui` item 必须明确行列。
-  - 增高滚动区内 groupBox 时，连锁调整下方兄弟 groupBox 的 y 和滚动区高度，底部保留 20px；绝对定位内容的高度变化同步更新内容 widget 的最小高度。
+  - 增高滚动区内 groupBox 时，连锁调整下方兄弟 groupBox 的 y 和滚动区高度，底部保留约 60px 安全余量；绝对定位内容的高度变化同步更新内容 widget 的最小高度。
   - 排查功能必须覆盖所有 QDialog 子类和独立弹窗模块；新增按钮同步检查 `MDCx.ui`、`MDCx.py`、`init.py` 的信号和防重入逻辑。修改主窗口初始化链（信号连接/布局/配置加载）后运行 `tests/test_main_window_startup.py` 冒烟验证，静态检查发现不了 Qt API 签名错误。
   - 滚动区排查必须同时检查 `widgetResizable`、内容 widget 的运行时最小宽高和 `childrenRect`；绝对定位内容使用 `CustomScrollArea` 同步 `childrenRect.right()/bottom()`，单独设置 `widgetResizable=true` 不能保证垂直滚动。内容 geometry 可以保留 `.ui` 的设计基准宽度，运行时通过最小尺寸适配视口。
   - 横向裁切排查需要逐页切换 stackedWidget 并执行 `show()` + `processEvents()`，检查页面边界、滚动内容宽度和覆盖层（如 NFO 编辑器）；使用 `scripts/check_ui_layout.py` 配合运行时审计。
+  - 打包前必须逐页检查最后一个可见控件与内容底部的安全余量；滚动条 range 非零只代表能滚动，不能证明最后一行可见。绝对定位滚动内容底部保留约 60px 余量，并在不同窗口/DPI 下复测。
+  - UI 审计应覆盖主界面、日志、工具、设置全部子页、检测网络、NFO 编辑器和 NFO 库管理；静态布局检查、offscreen 几何测试和逐页运行时审计三者缺一不可。
   - 中文等宽字体使用 `Courier New`，不要使用裸 `Courier`。
 
 [Qt 跨线程与后台任务]

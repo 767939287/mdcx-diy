@@ -31,7 +31,8 @@ class CustomScrollArea(QScrollArea):
     按 childrenRect 显式补最小高度，同时保留宽度自适应。
     """
 
-    _CONTENT_BOTTOM_MARGIN = 20
+    # Leave enough room for the last row, frame, font metrics, and DPI scaling.
+    _CONTENT_BOTTOM_MARGIN = 60
 
     def sync_content_min_height(self) -> None:
         content = self.widget()
