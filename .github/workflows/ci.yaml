@@ -66,3 +66,31 @@ jobs:
 
       - name: Run check_ui_layout
         run: uv run python -m scripts.check_ui_layout
+
+  windows:
+    name: Windows Compatibility and Build
+    runs-on: windows-2025
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          activate-environment: true
+
+      - name: Install dependencies
+        shell: pwsh
+        run: |
+          uv sync --locked --all-extras --dev
+
+      - name: Run Windows offline tests
+        env:
+          QT_QPA_PLATFORM: offscreen
+          PYTHONIOENCODING: utf-8
+        run: uv run pytest tests/ --tb=short -m "not network"

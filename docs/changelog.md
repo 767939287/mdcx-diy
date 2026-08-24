@@ -46,6 +46,7 @@
 
 ### 工程质量
 
+- **CI 双平台门禁**：新增 Windows 离线测试 job；Linux 继续执行完整质量检查，Windows 实际覆盖路径/文件系统条件分支；PyInstaller EXE 由 Release 和手动打包工作流验证
 - **打包与 Release 工作流收口**：Windows 构建显式使用 Release Tag 版本；矩阵构建先上传 artifact，再由串行任务统一创建 Release；Release 权限、Tag 来源、对应版本 checkout 和当前版本 changelog 提取统一校验
 - **新增 quick-check 快速检查命令**（ruff + mypy 秒级自检）
 - **mypy 类型检查启用修复**：quick_check 改用 `sys.executable -m mypy`；重命名与标准库冲突的 types 模块（108 处引用同步改写），mypy 完整检查全部 151 个源文件
