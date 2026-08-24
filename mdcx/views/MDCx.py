@@ -11986,10 +11986,10 @@ class Ui_MDCx(object):
         )
         self.label_local_number.setObjectName("label_local_number")
         self.widget_buttons = QtWidgets.QWidget(parent=self.widget_setting)
-        self.widget_buttons.setGeometry(QtCore.QRect(0, 50, 210, 341))
+        self.widget_buttons.setGeometry(QtCore.QRect(0, 50, 210, 390))
         self.widget_buttons.setObjectName("widget_buttons")
         self.layoutWidget6 = QtWidgets.QWidget(parent=self.widget_buttons)
-        self.layoutWidget6.setGeometry(QtCore.QRect(0, 0, 211, 282))
+        self.layoutWidget6.setGeometry(QtCore.QRect(0, 0, 211, 380))
         self.layoutWidget6.setObjectName("layoutWidget6")
         self.verticalLayout = QtWidgets.QVBoxLayout(self.layoutWidget6)
         self.verticalLayout.setSizeConstraint(QtWidgets.QLayout.SizeConstraint.SetMinimumSize)
@@ -14129,10 +14129,10 @@ class Ui_MDCx(object):
                 "\n"
                 "<h4>一、快速开始</h4>\n"
                 "<ol>\n"
-                '<li><b>设置媒体路径</b>：设置 → 通用，配置"成功输出目录""失败输出目录"和"视频源目录"。</li>\n'
-                "<li><b>选择刮削网站</b>：设置 → 刮削，为不同类型（有码 / 无码 / FC2 / 国产 / 欧美）分别选择数据源网站。</li>\n"
+                "<li><b>设置媒体路径</b>：设置 → 刮削目录，配置「待刮削视频目录」「成功输出目录」和「失败输出目录」。也可以在主界面点击「选择目录」临时选择待刮削目录。</li>\n"
+                "<li><b>选择刮削网站</b>：设置 → 刮削网站，为不同类型（有码 / 无码 / FC2 / 国产 / 欧美）分别选择数据源网站。</li>\n"
                 "<li><b>选择下载项</b>：设置 → 下载，勾选需要下载的元数据、图片与字幕。</li>\n"
-                '<li><b>开始刮削</b>：主界面点击"扫描"选择文件 / 文件夹，再点击"开始"。建议先用 1~3 个文件测试效果。</li>\n'
+                "<li><b>开始刮削</b>：主界面点击「选择目录」选择待刮削目录，再点击「开始」。建议先用 1~3 个文件测试效果。</li>\n"
                 "</ol>\n"
                 "\n"
                 "<h4>二、刮削模式</h4>\n"
@@ -14141,7 +14141,7 @@ class Ui_MDCx(object):
                 "<li><b>整理模式</b>（视频模式）：仅联网刮削番号用于命名，然后重命名和移动视频文件，不下载图片、不生成 NFO。适合不需要海报墙、只想归类文件的用户。</li>\n"
                 "<li><b>更新模式</b>：对已有 NFO 的影片在不改动文件位置结构的前提下重新整理文件结构，按更新规则重新命名目录和文件。适合已刮过但想调整目录结构的情况。</li>\n"
                 "<li><b>读取模式</b>：通过读取本地 NFO 文件实现无需联网的查看或更新，4 个独立选项可自由组合——有 NFO 时更新（按更新规则整理）、无 NFO 时刮削（对没 NFO 的文件联网刮）、重新下载（重新下载图片）、更新 NFO（更新 NFO 内容如补演员 TMDB ID）。读取模式不受断点续刮缓存干扰，始终处理全部选中文件。</li>\n"
-                " <li><b>NFO 合并策略</b>（读取模式区域下拉框）：写入 NFO 前按策略决定如何处理已存在的 NFO——偏好刮削结果（prefer_scraper）/ 偏好本地 NFO（prefer_nfo）/ 数组字段合并（merge_arrays）/ 保留现有（keep_existing）/ 仅填空缺（fill_empty），防止重刮覆盖手动整理的内容。</li>\n"
+                " <li><b>NFO 合并策略</b>（读取模式区域下拉框）：写入 NFO 前按策略决定如何处理已存在的 NFO——偏好刮削结果（prefer_scraper）/ 偏好本地 NFO（prefer_nfo）/ 数组字段合并（merge_arrays）/ 保留现有（preserve_existing）/ 仅填空缺（fill_missing_only），防止重刮覆盖手动整理的内容。</li>\n"
                 "<li><b>软链接</b>（设置项，非独立模式）：在任意模式下勾选「创建软链接」即可刮削后不移动原视频，而是在目标目录创建软链接（类快捷方式），便于 PT 下载既刮削又保种；需以管理员 / 有权限身份运行。注意：软链接通常只能在媒体库展示，不能直接播放。</li>\n"
                 "<li><b>调试模式</b>（设置→高级选项）：在「设置→高级」勾选「调试模式」选项后，日志页面会输出番号对应的完整元数据（封面、导演、演员、简介等）供排查。</li>\n"
                 "</ul>\n"
@@ -14190,14 +14190,14 @@ class Ui_MDCx(object):
                 "<li><b>暗色模式</b>：内置暗色主题切换。</li>\n"
                 "</ul>\n"
                 "\n"
-                "<h4>七之二、断点续刮与相似推荐</h4>\n"
+                "<h4>八、断点续刮与相似推荐</h4>\n"
                 "<ul>\n"
                 "<li><b>断点续刮</b>：刮削进度自动保存到本地数据库（userdata/scrape_state.db，WAL 模式 SQLite）。程序重启或崩溃后再次刮削，会自动跳过已完成的文件、恢复上次失败的未超限文件（最多自动重试 3 次），从上次进度继续。<b>读取模式不受断点续刮缓存干扰</b>，始终处理全部选中文件。如需清除缓存重新全量刮削，可使用工具页的「刮削缓存管理」重置。</li>\n"
                 "<li><b>失败重试</b>：刮削失败的文件自动记录，下次启动时重新尝试，连续失败 3 次后停止自动重试（可在结果树中对失败项右键强制重刮）。</li>\n"
                 "<li><b>相似片推荐</b>：在右侧结果树中对任意影片右键 →「查看相似片推荐」，基于标签 IDF 加权 Jaccard 相似度 + 系列/片商/发行商/导演/评分/年份/时长/演员等多维特征本地离线计算，自动推荐风格相近的影片，支持全部历史刮削结果（含跨会话），双击推荐项可跳转。</li>\n"
                 "</ul>\n"
                 "\n"
-                "<h4>八、其他设置</h4>\n"
+                "<h4>九、其他设置</h4>\n"
                 "<ul>\n"
                 "<li><b>排除目录 / 字符 / 字符串</b>：多层目录刮削时跳过指定目录；命名单据时剔除指定字符；提取番号前先删除指定字符串以提高识别率（多项用逗号分隔）。</li>\n"
                 "<li><b>失败后移动</b>：刮削不到信息时，可选择不移动，或自动移入失败输出目录。</li>\n"
@@ -14205,7 +14205,7 @@ class Ui_MDCx(object):
                 "<li><b>下载高清图（官方图源兜底）</b>：勾选后当所有图源站点均无法获取封面时，程序按番号直构官方 CDN 高清图兜底——DMM 高清封面（自动学习各厂牌前缀规则，学习数据保存在 userdata/dmm_prefix_learned.json）+ MGStage 素人高清海报（LUXU/OTIM 等 8 个系列）。所有图片下载统一设 50MB 大小上限，防止异常大文件占用磁盘。</li>\n"
                 "</ul>\n"
                 "\n"
-                "<h4>九、工具页面</h4>\n"
+                "<h4>十、工具页面</h4>\n"
                 " <ul>\n"
                 "  <li><b>NFO 库管理</b>：左侧导航独立页面，浏览和编辑整个 NFO 库。选择目录后递归扫描所有 .nfo 文件生成列表（支持番号/演员/标题筛选）；点列表项读取 NFO 填充 15 字段编辑表单（番号/标题/演员/发行日/年份/时长/导演/制作商/发行商/系列/评分/简介/标签/封面URL/海报URL），右侧同步预览本地海报和缩略图，可调起裁剪工具；保存前自动对比改动弹窗确认（字段级 diff），无改动不写盘；批量操作面板支持多选后一键替换演员名、加标签、删标签、统一系列名；列表右键菜单提供重新刮削（找同目录同名视频入队）、打开所在目录、删除 NFO。</li>\n"
                 "  <li><b>演员库维护</b>：直接操作 actor_database.xlsx。补全中文名（按 TMDB ID 补翻译）、补全 LibreDMM 链接、补全别名（可选来源：TMDB、minnano 或 JavDB；默认仅补缺别名的条目，勾选「全量更新」则并入全部行，不覆盖本地已有别名，支持「起始行/限量」分片续跑）、JavDB 中文名（从 JavDB 影片详情页抓取演员中文名，并发拉取影片详情，支持分片续跑与「停止当前维护任务」）、minnano 补全（从 minnano-av 补缺生日/简介，日文字段自动翻译）、检查用户库（扫描格式/结构/数据异常并弹窗报告，安全项可一键自动修复，tmdb 项给人工修复步骤）、打开数据库（用默认程序打开 xlsx 供手工编辑）、剔除男演员（按 TMDB 性别删除男优）、校验 tmdbid 有效性（清除 TMDB 失效 id 并按名字重搜补回）、更新 nfo tmdbid（用本地库新 id 覆盖 nfo 旧 id）。联网工具支持限量分片与「停止当前维护任务」按钮，网络请求自动并发，进度实时显示。</li>\n"
@@ -14219,7 +14219,7 @@ class Ui_MDCx(object):
                 " <li><b>检查演员缺失番号</b>：检查资源库中指定演员本地缺失的番号。</li>\n"
                 " </ul>\n"
                 "\n"
-                "<h4>十、常见番号命名参考</h4>\n"
+                "<h4>十一、常见番号命名参考</h4>\n"
                 "<p>刮削前尽量命名规范、不区分大小写：</p>\n"
                 "<ul>\n"
                 "<li><b>标准有码</b>：JavDB / JavBus: SSNI-111；DMM: ssni00111</li>\n"
@@ -14231,7 +14231,7 @@ class Ui_MDCx(object):
                 "<li><b>外挂字幕</b>：字幕文件名需与影片一致，支持 srt / ass / sub，方可随影片一起移动</li>\n"
                 "</ul>\n"
                 "\n"
-                "<h4>十一、获取帮助</h4>\n"
+                "<h4>十二、获取帮助</h4>\n"
                 "<ul>\n"
                 "<li>项目主页：https://github.com/cdlongbow/mdcx-diy</li>\n"
                 "<li>Release 下载：https://github.com/cdlongbow/mdcx-diy/releases</li>\n"
