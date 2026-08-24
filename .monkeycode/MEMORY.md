@@ -67,6 +67,7 @@
   - `str.maketrans` 映射字典的 key 是 int，检查覆盖率使用 `ord(ch) in mapping`。
   - `ElementTree p.find()` 返回无子节点 Element 时真值为 False；必须使用 `is not None` 判断。
   - 使用 edit 删除函数时，oldString 必须包含函数全文和下一函数定义行；删除后检查死 import 和死变量。
+  - 环境无 gh CLI：GitHub Actions 失败日志通过 `git credential fill`（host=github.com）取 token，再调 `{actions/runs/<run_id>/jobs}` 找 job id、`{actions/jobs/<job_id>/logs}` 下载文本日志。
 
 [并发与性能]
 - Date: 2026-08-24
