@@ -16,7 +16,7 @@ from lxml import etree
 from PIL import Image
 
 from ..config.manager import manager
-from ..consts import GITHUB_RELEASES_API_LATEST
+from ..consts import GITHUB_RELEASES_API_LIST
 from ..models.log_buffer import LogBuffer
 from ..network_fingerprint import build_amazon_headers, build_fingerprint_headers, select_fingerprint
 from ..signals import signal
@@ -813,7 +813,7 @@ async def get_dmm_trailer(trailer_url: str) -> str:
 
 def check_version() -> int | None:
     if manager.config.update_check:
-        url = GITHUB_RELEASES_API_LATEST
+        url = GITHUB_RELEASES_API_LIST
         headers = {
             "Accept": "application/vnd.github+json",
             "User-Agent": "mdcx-update-check",
@@ -852,10 +852,19 @@ def check_version() -> int | None:
                 continue
 
             try:
-                latest_version = int(str(response.json()["tag_name"]).strip())
-                return latest_version
+                releases = response.json()
+                if not isinstance(releases, list):
+                    last_error = "响应格式异常（非数组）"
+                    continue
+                for release in releases:
+                    tag = str(release.get("tag_name", "")).strip()
+                    if tag.isdigit():
+                        return int(tag)
+                tags = [str(r.get("tag_name", "?")) for r in releases[:5]]
+                signal.add_log(f"❌ 未找到 MDCx 版本发布（最近发布: {', '.join(tags)}）")
+                return None
             except Exception:
-                signal.add_log(f"❌ 获取最新版本失败！{response.text}")
+                signal.add_log("❌ 获取最新版本失败！响应解析异常")
                 return None
 
         if last_error:

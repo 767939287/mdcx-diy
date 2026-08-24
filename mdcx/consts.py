@@ -14,6 +14,7 @@ SYSTEM_INFO = platform.uname().system or "Unknown"
 GITHUB_REPO = "cdlongbow/mdcx-diy"
 GITHUB_RELEASES_URL = f"https://github.com/{GITHUB_REPO}/releases"
 GITHUB_RELEASES_API_LATEST = f"https://api.github.com/repos/{GITHUB_REPO}/releases/latest"
+GITHUB_RELEASES_API_LIST = f"https://api.github.com/repos/{GITHUB_REPO}/releases?per_page=10"
 GITHUB_ISSUES_URL = f"https://github.com/{GITHUB_REPO}/issues/new/choose"
 
 os_name = platform.system()
