@@ -29,6 +29,13 @@ class _DummySignal:
     def emit(self, *args, **kwargs):
         return None
 
+    def connect(self, *args, **kwargs):
+        # 启动冒烟测试会执行 Init_Singal 的全部 .connect 调用
+        return None
+
+    def disconnect(self, *args, **kwargs):
+        return None
+
 
 class _DummySignals:
     def __init__(self):
@@ -190,14 +197,65 @@ class _DummyManager:
     def __init__(self):
         self.config = _DummyConfig()
         self.data_folder = Path(tempfile.gettempdir()) / "mdcx-tests"
+        self.file = "config.json"
+        self.path = self.data_folder / self.file
         self.computed = _DummyComputed()
+
+    def load(self):
+        # 主窗口启动冒烟测试 load_config 会调用；返回空错误列表。
+        return []
+
+    def reset(self):
+        # 主窗口启动冒烟测试：写默认配置文件，保证 load_config 重入后走
+        # 「配置存在」分支，避免 init_config → reset → load_config 无限递归。
+        self.data_folder.mkdir(parents=True, exist_ok=True)
+        self.path.write_text("{}", encoding="utf-8")
+
+    def list_configs(self):
+        # 列出配置目录下的 *.json；目录不存在时回退默认项。
+        try:
+            files = sorted(p.name for p in self.data_folder.glob("*.json"))
+        except OSError:
+            files = []
+        return files if files else ["config.json"]
 
     def acquire_computed(self):
         return _DummyComputedLease(self.computed)
 
 
 class _DummyResources:
+    # 主窗口启动冒烟测试用到的图标资源（空路径即可，QIcon 静默忽略）。
+    # 注意：不能用 __getattr__ 兜底返回 "" —— 生产代码（如 is_male_actor）
+    # 依赖缺失资源方法时抛 AttributeError 做优雅降级，兜底会把方法调用变成
+    # "'str' object is not callable"。
+    _ICON_ATTRS = (
+        "clear_tree_icon",
+        "del_file_icon",
+        "del_folder_icon",
+        "help_icon",
+        "hide_boss_icon",
+        "hide_logs_icon",
+        "home_icon",
+        "icon_ico",
+        "input_number_icon",
+        "input_website_icon",
+        "log_icon",
+        "net_icon",
+        "open_folder_icon",
+        "open_nfo_icon",
+        "play_icon",
+        "right_menu",
+        "save_failed_list_icon",
+        "setting_icon",
+        "show_logs_icon",
+        "start_icon",
+        "stop_icon",
+        "tool_icon",
+    )
+
     def __init__(self):
+        for name in self._ICON_ATTRS:
+            setattr(self, name, "")
         self.actor_db = {}
         self.actor_db_reverse_index = None
         self.info_db = []
@@ -205,6 +263,17 @@ class _DummyResources:
 
     def u(self, relative_path):
         return manager_module.manager.data_folder / "userdata" / relative_path
+
+    def get_fonts(self):
+        # 主窗口启动冒烟测试会调用（真实实现读资源字体文件）
+        return None
+
+    def start_data_loading(self):
+        # 主窗口启动冒烟测试会调用（真实实现后台线程加载数据库）
+        return None
+
+    def qtr(self, relative_path):
+        return str(self.u(relative_path))
 
     def get_actor_data(self, actor):
         from mdcx.core.tmdb_actor import search_actor_db_reverse

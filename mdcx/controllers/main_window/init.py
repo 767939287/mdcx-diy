@@ -222,9 +222,10 @@ def Init_Singal(self: "MyMAinWindow"):
     self.Ui.pushButton_nfo_lib_batch_del_tag.clicked.connect(self.pushButton_nfo_lib_batch_del_tag_clicked)
     self.Ui.pushButton_nfo_lib_batch_series.clicked.connect(self.pushButton_nfo_lib_batch_series_clicked)
     self.Ui.pushButton_nfo_lib_batch_save.clicked.connect(self.pushButton_nfo_lib_batch_save_clicked)
-    self.Ui.nfo_lib_content_layout.setStretchFactor(0, 2)
-    self.Ui.nfo_lib_content_layout.setStretchFactor(1, 3)
-    self.Ui.nfo_lib_content_layout.setStretchFactor(2, 0)
+    # QLayout.setStretchFactor 只接受 QWidget/QLayout 对象；按 index 设置用 QBoxLayout.setStretch
+    self.Ui.nfo_lib_content_layout.setStretch(0, 2)
+    self.Ui.nfo_lib_content_layout.setStretch(1, 3)
+    self.Ui.nfo_lib_content_layout.setStretch(2, 0)
     self.Ui.pushButton_select_local_library.clicked.connect(self.pushButton_select_local_library_clicked)
     self.Ui.pushButton_select_netdisk_path.clicked.connect(self.pushButton_select_netdisk_path_clicked)
     self.Ui.pushButton_select_localdisk_path.clicked.connect(self.pushButton_select_localdisk_path_clicked)

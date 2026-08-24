@@ -29,7 +29,8 @@
 
 ### 修复
 
-- **Windows CI 测试全量修复（28 项）**：硬编码 `/tmp` 路径改 `tempfile.gettempdir()`（脚本+测试）；AST exec 补 `Path` 到 globals；`.read_text()` 统一加 `encoding="utf-8"`（Windows cp1252 解码失败）；`read_link_sync` 剥离 `\\?\` 长路径前缀；pyuic6 头部注释路径分隔符归一化
+- **Windows CI 离线测试全量适配（30 项）**：硬编码 `/tmp` 路径改 `tempfile.gettempdir()`（脚本+测试）；AST exec 补 `Path` 到 globals；`.read_text()` 统一加 `encoding="utf-8"`（Windows cp1252 解码失败）；`read_link_sync` 剥离 `\\?\` 长路径前缀（含环检测 early return）；pyuic6 产物与仓库版两边做相同路径分隔符归一化
+- **主窗口启动崩溃修复**：NFO 库页三栏布局用了 PyQt5 才有的 `QLayout.setStretchFactor(index, stretch)`，PyQt6 严格重载下启动即抛 TypeError（Windows 打包版首发暴露）；改用 `QBoxLayout.setStretch(index, stretch)`
 - **全模块审查修复（35 项）**：数据损坏级 6 项（翻译映射清空/简繁失效/tmdbid 错配/迁移丢图/同路径误删/字符清洗）、功能失效级 7 项（断点续刮/间歇刮削/共享番号/数据源/wiki/minnano/相似自推荐）、性能健壮性与并发安全 22 项
 - **Emby 演员管理器 15 项修复/优化 + 窗口遮挡（issue #38）**：连接/同步/上传/缓存/背景图/过滤器/详情 TTL 等；模态改非模态 + 后台执行
 - **全页面 UI 布局批量修复**：13 个滚动区 widgetResizable→true（高 DPI 横向裁切）、33 个 GroupBox 限宽 739→860、60 个长文本 QLabel 补 wordWrap；NFO 设置页 26 个超长 CheckBox 硬截断修复；网络设置说明文字截断/重影修复；配套 check_ui_layout 静态检查纳入 CI，三项清零验证
@@ -48,6 +49,7 @@
 ### 工程质量
 
 - **CI 双平台门禁**：新增 Windows 离线测试 job；Linux 继续执行完整质量检查，Windows 实际覆盖路径/文件系统条件分支；PyInstaller EXE 由 Release 和手动打包工作流验证
+- **GUI 启动冒烟测试**：offscreen 下完整构造主窗口（setupUi→Init_Singal→Init_Ui→load_config 全链路）与 Emby 演员管理器两个对话框，PyQt6 签名不兼容/属性缺失类问题在 CI 双平台拦截，不再推迟到用户运行时暴露
 - **打包与 Release 工作流收口**：Windows 构建显式使用 Release Tag 版本；矩阵构建先上传 artifact，再由串行任务统一创建 Release；Release 权限、Tag 来源、对应版本 checkout 和当前版本 changelog 提取统一校验
 - **新增 quick-check 快速检查命令**（ruff + mypy 秒级自检）
 - **mypy 类型检查启用修复**：quick_check 改用 `sys.executable -m mypy`；重命名与标准库冲突的 types 模块（108 处引用同步改写），mypy 完整检查全部 151 个源文件
