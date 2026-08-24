@@ -189,7 +189,7 @@ def test_mdcx_py_in_sync_with_ui():
     assert PY_PATH.exists(), f"缺少 {PY_PATH}"
     assert UI_PATH.exists(), f"缺少 {UI_PATH}"
 
-    with tempfile.NamedTemporaryFile(suffix=".py", dir="/tmp", delete=False) as tmp:
+    with tempfile.NamedTemporaryFile(suffix=".py", delete=False) as tmp:
         tmp_path = Path(tmp.name)
 
     try:

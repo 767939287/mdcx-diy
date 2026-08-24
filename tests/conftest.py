@@ -1,4 +1,5 @@
 import sys
+import tempfile
 import types
 from pathlib import Path
 from types import SimpleNamespace
@@ -188,7 +189,7 @@ class _DummyComputedLease:
 class _DummyManager:
     def __init__(self):
         self.config = _DummyConfig()
-        self.data_folder = Path("/tmp/mdcx-tests")
+        self.data_folder = Path(tempfile.gettempdir()) / "mdcx-tests"
         self.computed = _DummyComputed()
 
     def acquire_computed(self):
