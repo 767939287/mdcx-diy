@@ -1,146 +1,99 @@
 # 用户指令记忆
 
-本文件记录用户的指令、偏好和教导，用于未来交互参考。
-
-格式：用户指令条目 `[摘要]`/`- Date`/`- Context`/`- Instructions`；项目知识条目附加 `- Category`。添加前查重，重复则合并（更新 Context/Date），保持精简。
+本文件记录用户的指令、偏好和项目长期经验。添加前查重，重复内容合并；只记录行为规范、构建部署、排错调试和协作流程，不记录可从代码直接获得的实现细节。
 
 ## 条目
 
-[AI 行为与沟通规范]
-- Date: 2026-06-08（2026-08-21 更新）
-- Context: 用户希望以编程能手、审核、修改和补全代码专家的方式长期协作；面向小白解释问题
+[协作与质量流程]
+- Date: 2026-08-24
+- Context: 长期代码开发、审查、修改、测试和发布协作
 - Category: 工作流协作
 - Instructions:
-  - 默认从全方位、多角度、深层次的角度审查和改进代码；面向小白解释问题，给出细致、可执行、易落地的建议；在发现风险、缺陷、遗漏时主动指出并给出修复方案和验证。
-  - **面向小白解释的举例**：用户问「为什么海报下载不下来？」，应回答「海报是从日文网站抓的，该网站反爬把程序拦了，所以只能显示占位图。你可以：① 隔几分钟重试一次；② 在设置→刮削里换一个图源网站；③ 打开代理再试」，而不是只甩技术结论「连接超时被反爬拦截」。原则：先说现象和后果，再用大白话讲原因，最后给 2-3 条用户能直接照做的步骤。
-  - **排查中发现的所有问题必须全量报告**：包括已修复的、暂不修复的、仅记录的，不能因"已修复"或"太小"而遗漏。按严重程度排序，每条含文件路径+行号、当前内容、问题描述、建议。判定不改的也要列出并说明原因，让用户自行决定。主动给修复方案、优先级和潜在影响评估。
-  - **死代码删除要谨慎核实**：用户"不是为删而删，前提不影响功能"，倾向保守保留存疑项（如纯死代码影响功能才删、有测试依赖的保留）。删除前反复确认；探讨与执行分离，探讨阶段不改代码。核实技术方法见[排错调试]「死代码核实」。
+  - 所有回复使用简体中文；面向小白解释时先说现象和后果，再说明原因，最后给出可直接执行的步骤。
+  - 发现的问题必须全部报告，包含已修复、暂不修复和仅记录项；按严重程度排序，提供路径、行号、当前内容、影响和建议。
+  - 代码改动和提交推送前先说明内容与原因并获得同意；用户明确要求提交/推送后才执行。直接在当前分支操作，不另开分支。
+  - 每次代码改动后运行 `uv run quick-check`；用户要求提交/推送时，最后一次代码改动后运行 `uv run check --skip-hook-install`。必须确认退出码和完整结果，不能只 grep 关键词。
+  - 不安装 pre-commit 钩子；`uv run check` 已覆盖所需检查。
+  - 代码改动提交前同步更新 `docs/changelog.md` 顶部当前版本条目，按内容分类并合并同主题。
+  - 新增、移除或改名站点、爬虫、CF 服务、配置项后，检查 `MDCx.ui` 帮助 HTML、`main_window.py` 启动/弹窗文字、`README.md` 和 `docs/*.md`。网站数量必须与 `get_registered_crawler_sites()` 一致；移除功能时清理 UI、说明和配置描述。
+  - 文档日期使用北京时间（UTC+8）。
+  - `scripts/*.py` 顶部的 `# ruff: noqa: E402` 属于路径 hack，必须保留；探测性 import 使用 `# noqa: F401`。
 
-[提交推送与质量把关]
-- Date: 2026-07-18（2026-08-03、2026-08-16、2026-08-18、2026-08-21、2026-08-23 更新）
-- Context: 改动/推送前必须征得同意，推送前自动跑测试；pre-commit 钩子无需安装；不开新分支直接推当前分支；changelog 随改动更新；功能改动同步 UI/文档
+[Windows 打包与依赖]
+- Date: 2026-08-24
+- Context: Windows 单 exe 打包和 GitHub Release
+- Category: 环境配置
+- Instructions:
+  - 优先使用标准库，不主动引入三方依赖；运行时持久化沿用 `resources`/`userdata` 目录。
+  - 延迟导入模块必须加入 `scripts/build.py` 的 `--hidden-import` 或 `--collect-all`；修改依赖、`scripts/build.py`、Windows 构建或 Release 工作流时逐项核对。
+  - `EXCLUDED_MODULES` 中的 `rich`/`typer` 等不得被 GUI 运行期引用；它们只供构建脚本或 CLI 开发环境使用。
+  - Windows `curl_cffi` wheel 的 `curl_cffi.libs` 需要显式 `--add-binary` 收集。
+  - Release Tag 使用纯数字 `YYYYMMDD`，以便版本检查执行 `int(tag_name)`；Windows 和 macOS 构建都必须显式传入 Release Tag。
+
+[UI 开发与排查]
+- Date: 2026-08-24
+- Context: 多次调整工具页、设置页、弹窗和滚动区布局
+- Category: 环境配置
+- Instructions:
+  - UI 修改流程：先改 `.ui`，再运行 `uv run python -m PyQt6.uic.pyuic mdcx/views/MDCx.ui -o mdcx/views/MDCx.py`，随后 `uv run ruff format mdcx/views/MDCx.py`，最后运行 `uv run pytest tests/test_ui_structure.py -q`。不要手工改生成的 `MDCx.py`。
+  - 新文案回写 `.ui`，使 `.ui` 成为唯一权威源。ElementTree 只读解析，写入使用文本级精确替换，避免重排整个文件。
+  - `QCheckBox`、`QRadioButton`、`QPushButton`、`QGroupBox` 不支持 `wordWrap`；长文本通过容器放宽和 `sizePolicy Fixed→Minimum` 解决。
+  - 长说明 QLabel 使用 `wordWrap`；垂直策略不能锁死为 Fixed。测量 `sizeHint` 前必须 `show()` + `processEvents()`，或切换到对应 stackedWidget 页面。
+  - `gridLayout` 同一 `row:col` 只能放一个 widget/layout；长 label 使用跨列布局；每个 `.ui` item 必须明确 row/col。
+  - 增高滚动区内 groupBox 时，连锁调整下方兄弟 groupBox 的 y 和滚动区高度，底部保留 20px。
+  - 排查功能必须覆盖所有 QDialog 子类和独立弹窗模块；新增按钮同步检查 `MDCx.ui`、`MDCx.py`、`init.py` 的信号和防重入逻辑。
+  - 横向裁切排查三件套：`QScrollArea.widgetResizable=true`、内容 geometry width 不写死、`QGroupBox.maximumWidth` 不锁死偏窄。使用 `scripts/check_ui_layout.py` 验证。
+  - 中文等宽字体使用 `Courier New`，不要使用裸 `Courier`。
+
+[Qt 跨线程与后台任务]
+- Date: 2026-08-24
+- Context: 演员库工具、Emby 管理器和后台网络任务
 - Category: 工作流协作
 - Instructions:
-  - 所有代码改动和提交推送必须先说明内容与原因，获得同意后再执行。本指令优先级高于所有"自动执行"类指令。
-  - **不要随便主动提交推送**（2026-08-23 用户明确强调）：只有用户明确指示"提交/推送"时才做。每次提交推送都要跑完整 check（约 2 分钟）很慢，用户视为"折磨"，避免不必要的等待。做完改动先停，报告待办，等用户发话。
-  - **日常快速自检（改完代码必须先跑）**：改完代码立即用 `uv run quick-check`（ruff format/check + mypy，秒级，抓格式/lint/类型），通过后继续改；只有用户要求提交/推送前才跑完整 `uv run check --skip-hook-install`。完整 check 含 ruff format，跳过 quick-check 直接跑完整 check 会在 2 分钟后才发现格式问题白等（2026-08-23 用户强调）。
-  - **直接在当前分支提交推送，不另开新分支**（覆盖 auto-create-branch 规则）。用户指示开分支时才开。
-  - **check 按需运行**：最后一次代码改动后运行一次 `uv run check --skip-hook-install`（ruff format --check + ruff check + mypy mdcx/ + pytest + check_actor_db + check_info_db + check_thread_safety），全绿后如代码再无改动，push 前不重跑。改 .ui 后必须重编译 MDCx.py + ruff format 再 check。**看结果必须确认退出码（`echo $?`）或看完整输出尾部，禁止只 grep 关键词过滤**——grep 模式漏掉"违规"等词会把 check_thread_safety 失败输出滤掉造成全绿假象（2026-08-21 CI 拦截实测）。
-  - **不安装 pre-commit 钩子**：`.pre-commit-config.yaml` 钩子 stages 为 `pre-merge-commit, pre-push`，普通 commit 不触发；`uv run check` 已覆盖。
-  - **changelog 随改动更新（推送前）**：每次代码改动在 commit 里同时更新 `docs/changelog.md` 顶部未发版版本条目（当前 v2.0.6），按内容分类记录，同主题合并。不允许"提交后补"。
-  - **功能改动同步 UI/文档**：新增/移除/改名站点、爬虫、CF 服务、配置项后，必须同步检查：UI 帮助文档 HTML（`MDCx.ui`）、启动提示/弹窗文字（`main_window.py`）、仓库文档（`README.md`、`docs/*.md`）。网站数量必须与 `get_registered_crawler_sites()` 实际注册数一致。移除功能时同步删除对应 UI 控件/说明/配置项描述。
-  - **提交检查清单**：① `git status`/`git diff` 看改了什么 → ② 有功能/修复/重构 → 先更新 changelog → ③ 改依赖/打包 → 按「Windows exe 打包依赖约束」核对 → ④ 涉及功能/站点/CF/配置 → 检查 UI 说明/弹窗/文档 → ⑤ `git add` + `git commit` + `git push`。
-  - **.monkeycode/specs/ 规则**：feature-design 新生成 spec 实现验证后即删除对应子目录；实现意图从代码/`tests/`/`docs/changelog.md` 回溯。当前 specs/ 为空。
-  - **时间以北京时间为准**：所有文档/记忆/changelog 日期标注一律用北京时间（UTC+8），不照抄 git log UTC 时间戳或系统 date 输出。
-
-[Windows exe 打包依赖约束]
-- Date: 2026-08-03（2026-08-18 更新）
-- Context: 用户以单 exe 运行，改动需兼容 Windows 单 exe 打包发布
-- Category: 环境配置
-- Instructions:
-  - 优先标准库，不主动引入三方依赖；持久化路径沿用 `resources`/`userdata` 目录习惯。
-  - 延迟导入模块须加入 `scripts/build.py` 的 `--hidden-import`/`--collect-all`，否则 exe 报 ModuleNotFoundError。顶层 import 的三方依赖 PyInstaller 自动收集。`EXCLUDED_MODULES` 排除的包（rich/typer 等）绝不能被 GUI 运行期引用。已知 rich/typer 仅 CLI 脚本 `mdcx/cmd/crawl.py` 使用，不被打包，排除安全。
-  - 改 `pyproject.toml` 依赖、`scripts/build.py`、`.github/workflows/build-windows.yml`/`release.yml`、或运行时引入新三方依赖时，必须按上述清单逐项核对，确认无遗漏再提交。
-
-[UI 改动与排查注意事项]
-- Date: 2026-08-03（2026-08-16、2026-08-21、2026-08-23、2026-08-24 更新）
-- Context: 多次调整工具页 UI 沉淀约束；排查 UI 功能时漏看弹窗模块误报；批量 .ui 修复 13 个滚动区 + 60 个 QLabel wordWrap
-- Category: 环境配置
-- Instructions:
-  - **规范流程**：先改 `.ui` → `uv run python -m PyQt6.uic.pyuic mdcx/views/MDCx.ui -o mdcx/views/MDCx.py` → `uv run ruff format mdcx/views/MDCx.py`。不要手工改 MDCx.py（`test_mdcx_py_in_sync_with_ui` 把关）。新文案必须回写 `.ui` 让其成唯一权威源。改后跑 `uv run pytest tests/test_ui_structure.py -q` 验证。ElementTree 重写 `.ui` 会重排全文件格式，必须用文本级精确替换。
-  - **groupBox 绝对定位**：`page_tool` 滚动区内增高某 groupBox 后须连锁把下方所有兄弟 groupBox y 同步 +delta，并同步增高滚动区高度（底部留 20px）。
-  - **gridLayout 陷阱**：同一 `row:col` 只能放一个 widget/layout，多个会覆盖/重影。长 label 用 `addWidget(w, row, 0, 1, 2)` 跨整行 + `setWordWrap(True)`。新增控件前先 `grep -n` 扫描现有 row/col 分布。**item 必须给 row/col**：无定位的 `<item>` 被 pyuic 以 addWidget(w,0,0) 落到 (0,0) 退化为 100×30 与已有控件重叠（批量操作面板实例）。
-  - **QCheckBox 不支持 wordWrap**：运行时 `AttributeError`，永远不要给 QCheckBox 加 wordWrap property。CheckBox 文字截断改用 `sizePolicy Fixed→Minimum` + 容器（groupBox）放宽解决（QLabel 的 wordWrap 不受影响，可正常用）。
-  - **长说明 label 重影**：vsizetype Fixed 锁死高度→多行文字向下溢出被下方控件遮挡（重影）；改 vsizetype Minimum + minimumSize=sizeHint 高度。**sizeHint 必须 offscreen `show()`+`processEvents()`（或切到对应 stackedWidget 页）后实测**——未激活布局时控件尺寸退化 100×30 不可信，曾误判批量操作仍异常。
-  - **说明文字要常驻可见**：只放 tooltip/placeholder 用户 hover 才看得到（Bypass 落地白名单/压缩实例）；用 teal 说明 label，长文本 colspan 跨满列利用右侧空白（国产/动漫里番/Mywife 说明实例）。
-  - **功能控件放对页面**：批量操作曾放「类型刮削网站」设置里、操作对象（NFO 列表）却在 NFO 库页，用户找不到列表；操作控件应与操作对象同页。
-  - **中文字体等宽**：统一用 `font:"Courier New"`，不用裸 `"Courier"`（中文显示方框）。
-  - **排查 UI 必须覆盖弹窗**：排查功能时搜索所有 QDialog 子类和弹窗模块（`grep -rn "QDialog\|class.*Dialog"`），不能只看主窗口。项目弹窗集中在 `mdcx/controllers/main_window/site_priority_dialog.py` 等独立文件。典型坑：配置项在二次弹窗（如 FieldPriorityDialog），主窗口只放触发按钮，不看弹窗内部就误判"UI 没暴露该配置"。
-  - 新增按钮检查三处一致：`MDCx.ui` + `MDCx.py` + `init.py`（clicked 槽 + setText 防重入）。删除按钮后清理失联 delegate 死代码。
-  - **批量 .ui 改动技巧**：ElementTree 只读不写（解析识别目标控件 name 集合），文本级 `str.replace`/`re.sub` 写入（避免 ElementTree 重排全文件格式）。wordWrap property 插在 `</widget>` 前，缩进比 `</widget>` 多 2 格。批量替换 width 值（如 739→860）可直接 `content.replace`，前提是 grep 确认该值只出现在目标上下文。
-  - **滚动区内容横向裁切排查三件套**：高 DPI/宽字体下右侧内容被裁 → 查 ① `QScrollArea.widgetResizable` 是否 true ② `scrollAreaWidgetContents_*` geometry width 是否写死 ③ `QGroupBox.maximumSize.width` 是否锁死偏窄（常见 739）。三者都改才根治。`scripts/check_ui_layout.py` 可一键扫描。
+  - `AsyncBackgroundExecutor.submit(coro)` 只接收协程对象，使用 `executor.submit(run())`；后台协程不得直接操作 QWidget。
+  - 统一使用 `mdcx/utils/qt_thread.py::run_in_background`；主线程负责按钮状态，后台任务通过 pyqtSignal 把结果和完成状态传回主线程。
+  - 模态弹窗的后台任务使用 `show()`，避免 `exec()` 与主线程同步阻塞；`EmbyActorSettingsDialog` 保存设置后必须调用 `manager.save()`。
+  - 新增后台协程后运行 `scripts/check_thread_safety.py`，防止 async 函数直接调用 QWidget setter。
 
 [排错调试方法论]
-- Date: 2026-08-03（2026-08-04、2026-08-11、2026-08-21、2026-08-24 更新）
-- Context: Onefile 静默退出、openpyxl 空行残留、死代码误删、UI 弹窗漏查、zhconv 不覆盖日文异体字等典型坑
+- Date: 2026-08-24
+- Context: Onefile 静默退出、数据文件损坏、死代码误删和文本转换问题
 - Category: 排错调试
 - Instructions:
-  - **死代码核实（删前先怀疑功能从未运行，勿信 docstring/静态扫描）**：问三点——赋值点在哪（是否抛异常）、读取点在哪（是否被调用）、中间产物是否由别处写入。静态 AST 扫 Name.id+Attr.attr 有盲区：漏掉装饰器注册(typer `@app.command`)、字符串类型注解(`"Name"`)、延迟 import、字符串工厂路径(`"mod:func"`)，把活代码误判为死代码；docstring 会过时。运行时核实三件套：动态 import 全模块+`gc.get_referrers` 查持有者(排除定义模块 dict 与脚本自身 func 变量)、AST 扫全库字符串字面量(动态 getattr/globals 必以字符串写函数名)、git 历史常只有导入提交难回溯。删死函数后其私有辅助级联变死，删后重扫零引用确认。用户"是不是可复用"的反问是高价值信号。
-  - **Onefile 静默退出**：`-w` 下普通 Python 异常被静默吞掉（`sys.__stderr__` 不存在），表现为程序直接退出。诊断三件套：`faulthandler.enable()` + `sys.excepthook` 写文件 + stdout/stderr 重定向到 `MAIN_PATH/crash/`。工具内部日志走 `signal_qt.show_log_text`，`LogBuffer.log().write()` 只存内存不显示。
-  - **openpyxl delete_rows 空行残留**：历史脏库上 `delete_rows` 后 `max_row` 不变、空行残留（样式残留导致行号错乱）。可靠方案：重建工作簿——`iter_rows` 过滤空行，`Workbook()` 新建 append 表头+数据、重设样式。`check_actor_db` 报大量"jp 为空"即空行残留信号。
-  - **zhconv 不覆盖日文新字体/异体字**：`zhconv.convert("zh-cn")` 只做标准繁简映射，不识别 亜→亚、桜→樱、沢→泽、恵→惠、瀬→濑 等日文新字体。`actor_db_tool.py` 中 `_to_simplified()` 在 zhconv 前额外应用 `_JP_SHINJITAI_TO_SIMPLIFIED` 映射表（87 字）补救。zhconv 还会误转某些日文汉字（如 栞→刊），因此对 info_database 的 zh_cn 列只做 `.translate()` 不调 zhconv。
-  - **str.maketrans 返回 dict 的 key 是 int 不是 str**：`str.maketrans({"亜":"亚"})` 返回的 dict key 是 `ord("亜")`=int。用 `ch in mapping`（ch 是 str）检查永远 False，但 `"亜".translate(mapping)` 能正常工作。统计映射覆盖字时必须用 `ord(ch) in mapping` 而非 `ch in mapping`。
-  - **edit 删除函数安全**：oldString 用「函数全文+下一函数定义行」唯一锚点、newString 用「下一函数定义行」；oldString 为空会替换整个文件(曾致 core/utils.py 286 行丢失)；删除后查死 import(ruff F401)/死变量；误操作用 `git checkout -- <file>` 恢复。
-  - **DMM 高清 4 套机制**：①继承 DmmCrawler(dmm/dmm_api/thejavdb_api，post_process 升级用 number_00/no_00 构 pl.jpg，TheJavdbApiCrawler 继承才有高清)②upgrade_dmm_cover(javdb/javdb_api/javdb_app/javbus/javlibrary/r18dev)③build_aws 候选优先(libredmm/avbase)④core/web.py 全局层(poster 选优竖 ps + thumb 兜底横 pl，所有爬虫生效)。pl.jpg 横→封面、ps.jpg 竖→海报，分工不重复。下架→升级回退原图(图仍可用)、兜底失效(窄场景)；无码跳过。
-  - **ElementTree `p.find()` 真值测试陷阱**：`p.find("bool")` 返回 Element，无子节点的 Element（如 `<bool>true</bool>`）真值测试求 False（已弃用）。`if b := p.find("bool"):` 会静默跳过所有 `<bool>`/`<number>`/`<string>` 属性。必须用 `if (x := p.find(...)) is not None:`。
+  - Onefile 无控制台异常使用 `faulthandler.enable()`、`sys.excepthook` 和 `MAIN_PATH/crash/` 日志定位；GUI 日志必须走 `signal_qt.show_log_text`，`LogBuffer.log().write()` 只写内存。
+  - 删除死代码前核实赋值点、读取点和中间产物来源；检查装饰器注册、字符串类型注解、延迟 import、动态字符串工厂。删除后重扫零引用和 F401。
+  - openpyxl 历史脏库使用 `delete_rows` 可能保留空行和错误 `max_row`；可靠方案是新建 Workbook，过滤空行后重建表头、数据和样式。
+  - `zhconv` 不覆盖日文新字体/异体字；简体列在转换前使用项目映射表，info_database 的 jp/keyword 列保持原始匹配内容。
+  - `str.maketrans` 映射字典的 key 是 int，检查覆盖率使用 `ord(ch) in mapping`。
+  - `ElementTree p.find()` 返回无子节点 Element 时真值为 False；必须使用 `is not None` 判断。
+  - 使用 edit 删除函数时，oldString 必须包含函数全文和下一函数定义行；删除后检查死 import 和死变量。
 
-[executor.submit 与跨线程 Qt 安全]
-- Date: 2026-08-03（2026-08-16 更新）
-- Context: 修复演员库工具按钮 + Emby 演员管理器 executor.run 阻塞主线程问题
-- Category: 工作流协作
-- Instructions:
-  - `AsyncBackgroundExecutor.submit(coro)` 只收单个协程对象，正确写法 `executor.submit(run())`；`submit(asyncio.run, run())` 报 TypeError。
-  - 协程在后台线程事件循环执行，不可直接操作 QWidget。模式：主线程 setEnabled(False)+emit"运行中"，协程 finally 发射 pyqtSignal（线程安全），主线程槽恢复。
-  - **Emby 阻塞陷阱**：`_on_connect`/`_on_fetch` 等按钮槽在主线程调 `executor.run()` 同步阻塞。`signal.show_log_text`（主界面）vs `self.log`（管理器日志框）是两条独立通道，管理器日志空不代表网络请求没在跑。
-  - **Emby 弹窗保存陷阱**：`EmbyActorSettingsDialog._save` 等必须补 `manager.save()`，否则退出重进配置恢复原样。
-  - **跨线程收口工具**：新代码后台任务统一用 `mdcx/utils/qt_thread.py::run_in_background(button=, coro_factory=, busy_signal=, busy_text=, finished_signal=, finished_arg=, log_prefix=)`。需要回传结果时用自定义 Signal + `add_done_callback(lambda fut: self.xxx_signal.emit(_future_result_or(fut, default)))`，协程只返回结果不碰 QWidget。模态弹窗 `exec()` 改非模态 `show()`。
-  - **跨线程安全扫描**：`scripts/check_thread_safety.py` AST 扫 async def 体内直接操作 QWidget setter 的违规，新增后台协程前跑一遍防回归。
-
-[并发与性能优化约束]
-- Date: 2026-08-03（2026-08-17 更新）
-- Context: 刮削并发架构 + 性能优化批次 + 启动数据库延迟加载沉淀的可复用模式
+[并发与性能]
+- Date: 2026-08-24
+- Context: 刮削并发、网络连接池、缓存和启动性能
 - Category: 构建方法
 - Instructions:
-  - **刮削两层并发**：文件间 `_run_tasks_with_limit`（滑动窗口 `asyncio.wait(FIRST_COMPLETED)`，并发=配置 thread_number）；文件内 `_call_crawlers` 多站点 `asyncio.gather`。慢常是单站点超时拖累。新增异步批量工具优先用滑动窗口而非 `Semaphore+gather`。
-  - **httpx session 绑定全局 loop 是硬约束**：`computed.async_client` 在全局 executor loop 创建，跨 loop 复用会破坏连接池/代理/CF-bypass。网络请求必须留在全局 loop。
-  - **启动重型资源后台加载**：`Resources` 构造只做路径/图标/字典，XLSX 迁移合并加载走 `start_data_loading()` 后台线程 + `ensure_data_ready()` 同步屏障，GUI 首屏不被阻塞。
-  - **save_remain_list 后台写**：QTimer 触发时快照 `list(Flags.remain_list)` 后丢 daemon 线程，`threading.Lock` 防重复，主线程不写盘。
-  - **ScrapeStateCache**：WAL + `synchronous=NORMAL`，写操作 `commit=False` 批量积累（32 条自动 flush），`close()` 兜底 flush。
-  - **json_data_dic 有界**：OrderedDict 上限 2000，写时 `move_to_end` + 超限 `popitem(last=False)`。
-  - **info_db 索引**：加载时 `_normalize_info_key`（大写+全半角）+ `_build_info_db_index` 建 dict，查询 O(1)。
+  - 文件间使用滑动窗口 `asyncio.wait(FIRST_COMPLETED)`，文件内多站点使用 `asyncio.gather`；异步批量任务优先滑动窗口，不盲目使用 `Semaphore+gather`。
+  - `computed.async_client` 绑定全局 executor loop，网络请求不能跨 loop 复用。
+  - 重型 XLSX 资源使用后台加载线程和 `ensure_data_ready()` 同步屏障；QTimer 写盘先快照，再交给 daemon 线程，并用锁防重复。
+  - `ScrapeStateCache` 使用 WAL、`synchronous=NORMAL` 和批量 commit；有界缓存使用 OrderedDict 淘汰最旧项；info_database 加载时建立 O(1) 规范化索引。
 
-[演员库与标签库结构（TMDB 校验 + 日文异体字修复）]
-- Date: 2026-08-04（2026-08-05、2026-08-06、2026-08-21 更新）
-- Context: 梳理本地 actor 数据读写路径、提取男优名单去噪、TMDB 全量排查非 AV 演员；日文异体字简体化修复
+[演员库与标签库]
+- Date: 2026-08-24
+- Context: actor_database、info_database、TMDB 校验和日文异体字清洗
 - Category: 运维部署
 - Instructions:
-  - **两层库结构**（actor_database / info_database 均同）：出厂模板 `resources/userdata/*.xlsx`（git 跟踪，新用户首启复制）；运行时实际读写库 `manager.data_folder/userdata/*.xlsx`（默认 git 忽略）。给用户用改运行时库，进 git 作新装默认改出厂模板并提交。
-  - `get_actor_data(name)`（`resources.py`）按名反查返回 `birth_date`/`bio`/`has_name`，是 Emby 补全等下游统一查询入口。
-  - **AVdb 已弃用**：GUI 入口 v2.0.5 移除，`sync_from_avdb` 与测试保留供脚本复用但不主动建议。
-  - **男优名单**：`resources/userdata/male_actors.txt`，脚本 `scripts/build_male_actor_list.py` 可复现。
-  - **清洗**：括号拆解、超长(>8)剔除、标签黑名单、去后缀。女优混入是最大风险（レズ片女优填进 actor），用 actress 字段交叉验证。双通道清洗：名单精确匹配 + TMDB gender=2 校验。宁缺毋滥。
-  - 沙箱访问 TMDB：用 `api.tmdb.org` 域名 + `Host: api.themoviedb.org` 请求头。
-  - **info_database 结构**：4 列 `jp`/`zh_cn`/`zh_tw`/`keyword`。jp 列是日文标签名（含日文新字体是正常的，不改）；keyword 列含多语言变体用于匹配（不改）。只修 zh_cn（日文异体字→简体）和 zh_tw（非标准繁体→标准繁体）。
+  - 出厂模板在 `resources/userdata/*.xlsx`，运行时实际读写库在 `manager.data_folder/userdata/*.xlsx`；用户数据修改进运行时库，默认数据修改进出厂模板。
+  - `get_actor_data(name)` 是 Emby 等下游查询演员 `birth_date`/`bio`/`has_name` 的统一入口。
+  - AVdb GUI 入口已移除；`sync_from_avdb` 和测试只供脚本复用。
+  - info_database 的 jp/keyword 列用于原始匹配，维护重点是 zh_cn 和 zh_tw；演员清洗遵循宁缺毋滥，女优混入是最大风险。
 
-[ruff RUF100 误删 noqa 坑]
-- Date: 2026-08-10
-- Category: 工作流协作
-- Instructions:
-  - scripts/*.py 顶部 `# ruff: noqa: E402` 必须保留（sys.path hack 依赖）；RUF100 自动修复只应用到 `mdcx/` 与 `main.py`；探测性 import 标 `# noqa: F401  # 探活`。
-
-[devbox 验证环境配置]
-- Date: 2026-08-14（2026-08-19 更新）
-- Context: devbox 默认代理指向无进程的 127.0.0.1:7890 导致请求失败；首次跑 check 时 PyQt6 依赖系统库缺失
+[验证环境与长任务]
+- Date: 2026-08-24
+- Context: devbox 验证和大批量后台任务
 - Category: 环境配置
 - Instructions:
-  - **默认代理坑**：mdcx 默认 `use_proxy=True` + `proxy=http://127.0.0.1:7890`，devbox 无该代理进程。定位：打印 `manager.config.use_proxy`/`proxy`；同一 URL curl 直连 200 而 client 失败即中招。绕过：`manager._replace_config(cfg)` 后设 `use_proxy=False`、`proxy=""` 再 `_replace_config`。真实用户环境有可用代理，**不要据此改产品代码**。
-  - **系统 GUI 库**：devbox 缺 PyQt6 运行所需系统库，pytest import `mdcx.image` 时报 `libglib-2.0.so.0` 等 not found。一次性补装：`DEBIAN_FRONTEND=noninteractive apt-get install -y libglib2.0-0 libgl1 libegl1 libdbus-1-3 libfontconfig1 libxkbcommon0 libxkbcommon-x11-0 libxcb-xinerama0 libxcb-cursor0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-randr0 libxcb-render-util0 libxcb-shape0`（先 `apt-get update`）。uv 通过 `pip3 install uv` 安装，`uv run` 可能拉 Python 3.14.x。
-
-[GitHub CI 失败 runs 清理]
-- Date: 2026-08-14
-- Category: 排错调试
-- Instructions:
-  - 凭据 `git credential fill` 取 password 作 GH_TOKEN（用完即删）；`gh run list --workflow ci.yaml --limit 30 --json databaseId,conclusion` 筛 failure 逐条 `gh run delete`。
-
-[长时间后台任务的断点续传与自动循环]
-- Date: 2026-08-20
-- Context: fill_zh_javdb 演员库补全任务需处理 18606 行，单轮 47 分钟只能跑 ~2400 条
-- Category: 构建方法
-- Instructions:
-  - **后台 1 小时硬超时**：background_terminal_create timeout 默认 1 小时会被强杀，长任务必须设 `--max-runtime`（建议 2820s≈47min）。
-  - **断点续传**：每批完成后写 state 文件（JSON `{"offset":N,"updated":M}`），重启时读取 offset 续跑。state 文件加入 `.gitignore`。
-  - **单轮退出后自动循环重启**：脚本拆成 `run_round()` + 外层 `for round_num in range(max_rounds)`，单轮 max_runtime 到期保存 state 返回，外层 `await asyncio.sleep(5)` 后自动下一轮。设 `--max-rounds` 上限防无限循环。
-  - **分批处理**：单批 200 条，`count_pending(offset)` 每轮统计剩余避免空跑。
-  - **并发踩坑**：JavDB API 高并发（15/8）反而被限流降吞吐，实测并发 5 是天花板（~1 条/s）。临时脚本放 `scripts/` 并在 `.gitignore` 排除。
-  - **内存预算**：background_terminal_create 前先 `background_terminal_list` 检查现有终端，新增 memory_percent + 既有总额不超环境总内存 85%。
-
+  - devbox 默认代理 `127.0.0.1:7890` 可能无进程；排查网络时临时关闭 `manager.config.use_proxy` 并清空 proxy，不据此修改产品默认配置。
+  - PyQt6 测试缺系统库时按 devbox 环境文档安装依赖；先确认当前系统状态再处理。
+  - 后台长任务必须先 `background_terminal_list` 统计资源，新增内存额度与已有运行任务总额不超过总内存 85%。
+  - 长任务设置明确 timeout；每批完成写 JSON state（offset/updated），重启读取 offset 续跑；批次保持有限大小和并发上限，避免无限循环。
