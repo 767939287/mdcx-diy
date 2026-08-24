@@ -21835,8 +21835,11 @@
                             <property name="wordWrap">
                               <bool>true</bool>
                             </property>
+                            <property name="alignment">
+                              <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignTop</set>
+                            </property>
                             <property name="text">
-                              <string>&lt;p&gt;支持 http(s), socks5(h) 代理. 示例: http://127.0.0.1:7897&lt;br&gt;需要用户名和密码时格式为: schema://username:password@host:port&lt;br&gt;Cloudflare Bypass 地址留空时，若配置了下方"外部 CF 服务"则自动启动适配层；两者均留空时关闭 CF Bypass 功能&lt;br&gt;"使用代理"仅控制常规网络请求代理开关，不控制 CF Bypass 代理&lt;br&gt;"CF Bypass代理"仅作用于 bypass 服务请求（mirror/html）&lt;/p&gt;</string>
+                              <string>&lt;p style='line-height:20px'&gt;支持 http(s), socks5(h) 代理. 示例: http://127.0.0.1:7897&lt;br&gt;需要用户名和密码时格式为: schema://username:password@host:port&lt;br&gt;Cloudflare Bypass 地址留空时，若配置了下方"外部 CF 服务"则自动启动适配层；两者均留空时关闭 CF Bypass 功能&lt;br&gt;"使用代理"仅控制常规网络请求代理开关，不控制 CF Bypass 代理&lt;br&gt;"CF Bypass代理"仅作用于 bypass 服务请求（mirror/html）&lt;/p&gt;</string>
                             </property>
                           </widget>
                         </item>
@@ -24946,7 +24949,7 @@ p, li { white-space: pre-wrap; }
                                   <property name="minimumSize">
                                     <size>
                                       <width>0</width>
-                                      <height>42</height>
+                                      <height>64</height>
                                     </size>
                                   </property>
                                   <property name="styleSheet">

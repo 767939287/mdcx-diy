@@ -39,6 +39,7 @@
   - 新文案回写 `.ui`，使 `.ui` 成为唯一权威源。ElementTree 只读解析，写入使用文本级精确替换，避免重排整个文件。
   - `QCheckBox`、`QRadioButton`、`QPushButton`、`QGroupBox` 不支持 `wordWrap`；长文本通过容器放宽和 `sizePolicy Fixed→Minimum` 解决。
   - 长说明 QLabel 使用 `wordWrap`；垂直策略不能锁死为 Fixed。测量 `sizeHint` 前必须 `show()` + `processEvents()`，或切换到对应 stackedWidget 页面。
+  - `QLabel.wordWrap=true` 仍可能因固定 `minimumHeight` 在 Windows 字体/DPI 下裁切底部文字；说明文字必须按实际宽度检查运行时 `sizeHint()`，最小高度留出足够余量，并验证最后一行像素边界。
   - `gridLayout` 同一 `row:column` 只能放一个 widget/layout；Qt Designer XML 使用 `row` 和 `column` 属性；长 label 使用跨列布局；每个 `.ui` item 必须明确行列。
   - 增高滚动区内 groupBox 时，连锁调整下方兄弟 groupBox 的 y 和滚动区高度，底部保留约 60px 安全余量；绝对定位内容的高度变化同步更新内容 widget 的最小高度。
   - 排查功能必须覆盖所有 QDialog 子类和独立弹窗模块；新增按钮同步检查 `MDCx.ui`、`MDCx.py`、`init.py` 的信号和防重入逻辑。修改主窗口初始化链（信号连接/布局/配置加载）后运行 `tests/test_main_window_startup.py` 冒烟验证，静态检查发现不了 Qt API 签名错误。

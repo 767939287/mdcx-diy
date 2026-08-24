@@ -10356,6 +10356,9 @@ class Ui_MDCx(object):
         self.label_103.setCursor(QtGui.QCursor(QtCore.Qt.CursorShape.ArrowCursor))
         self.label_103.setTextInteractionFlags(QtCore.Qt.TextInteractionFlag.NoTextInteraction)
         self.label_103.setWordWrap(True)
+        self.label_103.setAlignment(
+            QtCore.Qt.AlignmentFlag.AlignLeading | QtCore.Qt.AlignmentFlag.AlignLeft | QtCore.Qt.AlignmentFlag.AlignTop
+        )
         self.label_103.setObjectName("label_103")
         self.gridLayout_9.addWidget(self.label_103, 8, 0, 1, 2)
         self.horizontalLayout_17 = QtWidgets.QHBoxLayout()
@@ -11808,7 +11811,7 @@ class Ui_MDCx(object):
         self.label_nfo_lib_batch_status.setObjectName("label_nfo_lib_batch_status")
         self.gridLayout_nfo_lib_batch.addWidget(self.label_nfo_lib_batch_status, 5, 0, 1, 2)
         self.label_nfo_lib_batch_hint = QtWidgets.QLabel(parent=self.groupBox_nfo_lib_batch)
-        self.label_nfo_lib_batch_hint.setMinimumSize(QtCore.QSize(0, 42))
+        self.label_nfo_lib_batch_hint.setMinimumSize(QtCore.QSize(0, 64))
         self.label_nfo_lib_batch_hint.setStyleSheet("color: rgb(8, 128, 128);")
         self.label_nfo_lib_batch_hint.setWordWrap(True)
         self.label_nfo_lib_batch_hint.setObjectName("label_nfo_lib_batch_hint")
@@ -13917,7 +13920,7 @@ class Ui_MDCx(object):
         self.label_103.setText(
             _translate(
                 "MDCx",
-                '<p>支持 http(s), socks5(h) 代理. 示例: http://127.0.0.1:7897<br>需要用户名和密码时格式为: schema://username:password@host:port<br>Cloudflare Bypass 地址留空时，若配置了下方"外部 CF 服务"则自动启动适配层；两者均留空时关闭 CF Bypass 功能<br>"使用代理"仅控制常规网络请求代理开关，不控制 CF Bypass 代理<br>"CF Bypass代理"仅作用于 bypass 服务请求（mirror/html）</p>',
+                '<p style=\'line-height:20px\'>支持 http(s), socks5(h) 代理. 示例: http://127.0.0.1:7897<br>需要用户名和密码时格式为: schema://username:password@host:port<br>Cloudflare Bypass 地址留空时，若配置了下方"外部 CF 服务"则自动启动适配层；两者均留空时关闭 CF Bypass 功能<br>"使用代理"仅控制常规网络请求代理开关，不控制 CF Bypass 代理<br>"CF Bypass代理"仅作用于 bypass 服务请求（mirror/html）</p>',
             )
         )
         self.checkBox_use_proxy.setToolTip(_translate("MDCx", "仅控制常规网络请求代理开关，不控制 CF Bypass 代理"))
