@@ -63,3 +63,6 @@ jobs:
 
       - name: Run check_thread_safety
         run: uv run python -m scripts.check_thread_safety
+
+      - name: Run check_ui_layout
+        run: uv run python -m scripts.check_ui_layout

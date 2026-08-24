@@ -60,6 +60,7 @@
 - **性能优化**：PNG 压缩级别降为默认 6、convert_half 改翻译表、分块并发数提取常量、UA 池更新至 Chrome 115-135
 - **mypy 类型检查启用修复**：quick_check 改用 `sys.executable -m mypy` 调用（mypy.exe 入口脚本未绑定 venv 致 ModuleNotFoundError）；重命名与标准库冲突的 types 模块（`mdcx/models/types.py`→`model_types.py`、`mdcx/crawlers/base/types.py`→`base_types.py`，108 处引用同步改写）消除 mypy shadowing 硬错误，mypy 现可完整检查全部 151 个源文件
 - **CI/Release 工作流修复**：release.yml tag 触发模式 `220*`→`2*`（YYYYMMDD 格式 tag 如 `20260823` 不以 `220` 开头，旧模式导致 push tag 永不触发自动发布）；CI ruff 检查改 `uvx ruff@0.15.12`→`uv run ruff`（先 uv sync 再跑 ruff，与本地 venv 锁定版本完全一致，消除格式化漂移）
+- **UI 布局静态检查脚本**：新增 `scripts/check_ui_layout.py`，扫描 `.ui` 文件中打包后才暴露的布局隐患——QScrollArea `widgetResizable=false`（高 DPI 横向裁切）、QGroupBox `maximumWidth=739`（容器偏窄）、QLabel 长文本缺 `wordWrap`（硬截断）、wordWrap 误加到 QCheckBox（运行时 AttributeError，critical 阻断）；已纳入 `uv run check` 与 CI
 
 ### 文档
 
