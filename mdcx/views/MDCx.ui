@@ -24973,7 +24973,7 @@ p, li { white-space: pre-wrap; }
                       </property>
                       <property name="minimumSize">
                         <size>
-                          <width>380</width>
+                          <width>0</width>
                           <height>0</height>
                         </size>
                       </property>

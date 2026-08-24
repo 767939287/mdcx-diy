@@ -33,6 +33,7 @@
 - **主窗口启动崩溃修复**：NFO 库页三栏布局用了 PyQt5 才有的 `QLayout.setStretchFactor(index, stretch)`，PyQt6 严格重载下启动即抛 TypeError（Windows 打包版首发暴露）；改用 `QBoxLayout.setStretch(index, stretch)`
 - **设置页与工具页滚动修复**：新增 `CustomScrollArea`，在 `widgetResizable=true` 下按绝对定位子控件包围盒同步内容最小宽高，恢复设置页、工具页和 NFO 编辑页的滚动；NFO 设置页宽度统一为 701，修复右侧 94px 截断；NFO 编辑器修复内容宽度被压缩到 98px 的问题
 - **设置页底部留白修复**：滚动内容底部安全余量从 20px 提高到 60px，避免最后一行文字或控件贴近边框后在字体基线、滚动条和 DPI 缩放下显示不全
+- **NFO 库管理三栏修复**：移除中间 NFO 表单滚动区的 380px 最小宽度约束，使左侧列表、中间表单和右侧海报/缩略图预览在 800px 内容区内不重叠，保存当前 NFO 按钮不再被右侧预览遮挡
 - **全模块审查修复（35 项）**：数据损坏级 6 项（翻译映射清空/简繁失效/tmdbid 错配/迁移丢图/同路径误删/字符清洗）、功能失效级 7 项（断点续刮/间歇刮削/共享番号/数据源/wiki/minnano/相似自推荐）、性能健壮性与并发安全 22 项
 - **Emby 演员管理器 15 项修复/优化 + 窗口遮挡（issue #38）**：连接/同步/上传/缓存/背景图/过滤器/详情 TTL 等；模态改非模态 + 后台执行
 - **全页面 UI 布局批量修复**：13 个滚动区 widgetResizable→true（高 DPI 横向裁切）、33 个 GroupBox 限宽 739→860、60 个长文本 QLabel 补 wordWrap；NFO 设置页 26 个超长 CheckBox 硬截断修复；网络设置说明文字截断/重影修复；配套 check_ui_layout 静态检查纳入 CI，三项清零验证

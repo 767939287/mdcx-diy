@@ -11817,7 +11817,7 @@ class Ui_MDCx(object):
         self.nfo_lib_content_layout.addWidget(self.nfo_lib_list_panel)
         self.scrollArea_nfo_lib_form = CustomScrollArea(parent=self.nfo_lib_content)
         self.scrollArea_nfo_lib_form.setWidgetResizable(True)
-        self.scrollArea_nfo_lib_form.setMinimumSize(QtCore.QSize(380, 0))
+        self.scrollArea_nfo_lib_form.setMinimumSize(QtCore.QSize(0, 0))
         self.scrollArea_nfo_lib_form.setObjectName("scrollArea_nfo_lib_form")
         self.scrollAreaWidgetContents_nfo_lib = QtWidgets.QWidget()
         self.scrollAreaWidgetContents_nfo_lib.setGeometry(QtCore.QRect(0, 0, 360, 560))
