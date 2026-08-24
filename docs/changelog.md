@@ -46,6 +46,7 @@
 
 ### 工程质量
 
+- **打包与 Release 工作流收口**：Windows 构建显式使用 Release Tag 版本；矩阵构建先上传 artifact，再由串行任务统一创建 Release；Release 权限、Tag 来源、对应版本 checkout 和当前版本 changelog 提取统一校验
 - **新增 quick-check 快速检查命令**（ruff + mypy 秒级自检）
 - **mypy 类型检查启用修复**：quick_check 改用 `sys.executable -m mypy`；重命名与标准库冲突的 types 模块（108 处引用同步改写），mypy 完整检查全部 151 个源文件
 - **CI/Release 工作流修复**：release.yml tag 触发 `220*`→`2*`（YYYYMMDD tag 不以 220 开头，旧模式永不触发发布）；CI ruff 改 `uv run ruff` 消除版本漂移

@@ -32,7 +32,10 @@ jobs:
       - name: Build Windows EXE
         env:
           PYTHONIOENCODING: utf-8
-        run: uv run scripts/build.py --debug
+        shell: pwsh
+        run: |
+          $version = uv run python -c "from mdcx.consts import LOCAL_VERSION; print(LOCAL_VERSION)"
+          uv run scripts/build.py --version $version.Trim() --debug
 
       - name: Upload EXE artifact
         uses: actions/upload-artifact@v4
