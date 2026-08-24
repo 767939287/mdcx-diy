@@ -1,5 +1,6 @@
 import argparse
 import logging
+import os
 import platform
 import re
 import shutil
@@ -156,7 +157,7 @@ class BuildManager:
             "-p",
             "./mdcx",
             "--add-data",
-            "resources:resources",
+            f"resources{os.pathsep}resources",
             "--icon",
             self._app_icon_path(),
             "--hidden-import",
@@ -228,7 +229,7 @@ class BuildManager:
                 libs_dir = Path(curl_cffi.__file__).resolve().parent.parent / "curl_cffi.libs"
                 if libs_dir.is_dir():
                     logger.info(f"显式收集 curl_cffi.libs: {libs_dir}")
-                    cmd.extend(["--add-binary", f"{libs_dir}:curl_cffi.libs"])
+                    cmd.extend(["--add-binary", f"{libs_dir}{os.pathsep}curl_cffi.libs"])
                 else:
                     logger.info("未发现 curl_cffi.libs (非 delvewheel 打包的 wheel), 跳过显式收集")
             except Exception as e:

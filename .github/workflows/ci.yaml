@@ -19,8 +19,39 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Classify changed files
+        id: changes
+        shell: bash
+        env:
+          BASE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          if [ "$BASE_SHA" = "0000000000000000000000000000000000000000" ] || ! git cat-file -e "$BASE_SHA^{commit}" 2>/dev/null; then
+            BASE_SHA="HEAD^"
+          fi
+          files=$(git diff --name-only "$BASE_SHA" "$GITHUB_SHA")
+          code_changed=false
+          while IFS= read -r file; do
+            [ -z "$file" ] && continue
+            case "$file" in
+              *.md|*.mdx|.monkeycode/*|docs/*) ;;
+              *) code_changed=true; break ;;
+            esac
+          done <<< "$files"
+          echo "code_changed=$code_changed" >> "$GITHUB_OUTPUT"
+
+      - name: Run docs-only check
+        if: steps.changes.outputs.code_changed != 'true'
+        env:
+          BASE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          if [ "$BASE_SHA" = "0000000000000000000000000000000000000000" ] || ! git cat-file -e "$BASE_SHA^{commit}" 2>/dev/null; then BASE_SHA="HEAD^"; fi
+          git diff --check "$BASE_SHA" "$GITHUB_SHA"
 
       - name: Install system dependencies
+        if: steps.changes.outputs.code_changed == 'true'
         run: >
           sudo apt-get update -y && sudo apt-get install -y
           libglib2.0-0 libegl1 libgl1 libfontconfig1
@@ -30,9 +61,11 @@ jobs:
           libxcb-keysyms1 libxcb-randr0 libxcb-render-util0 libxcb-shape0
 
       - name: Set up uv
+        if: steps.changes.outputs.code_changed == 'true'
         uses: astral-sh/setup-uv@v6
 
       - name: Install dependencies
+        if: steps.changes.outputs.code_changed == 'true'
         run: |
           if ! uv sync --locked --dev 2>/dev/null; then
             echo "Lock file out of date, running uv lock..."
@@ -41,30 +74,38 @@ jobs:
           fi
 
       - name: Run ruff format
+        if: steps.changes.outputs.code_changed == 'true'
         run: uv run ruff format --check
 
       - name: Run ruff check
+        if: steps.changes.outputs.code_changed == 'true'
         run: uv run ruff check --output-format=github
 
       - name: Run mypy
+        if: steps.changes.outputs.code_changed == 'true'
         run: uv run mypy mdcx/
 
       - name: Run pytest
+        if: steps.changes.outputs.code_changed == 'true'
         # PyQt6 需要 display 才能实例化 QApplication；offscreen 平台无需 X11/Wayland
         env:
           QT_QPA_PLATFORM: offscreen
         run: uv run pytest tests/ --tb=short -m "not network"
 
       - name: Run check_actor_db
+        if: steps.changes.outputs.code_changed == 'true'
         run: uv run python -m scripts.check_actor_db
 
       - name: Run check_info_db
+        if: steps.changes.outputs.code_changed == 'true'
         run: uv run python -m scripts.check_info_db
 
       - name: Run check_thread_safety
+        if: steps.changes.outputs.code_changed == 'true'
         run: uv run python -m scripts.check_thread_safety
 
       - name: Run check_ui_layout
+        if: steps.changes.outputs.code_changed == 'true'
         run: uv run python -m scripts.check_ui_layout
 
   windows:
@@ -73,23 +114,55 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Classify changed files
+        id: changes
+        shell: pwsh
+        env:
+          BASE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          $base = $env:BASE_SHA
+          if ($base -eq '0000000000000000000000000000000000000000' -or -not (git cat-file -e "$base^{commit}" 2>$null)) { $base = 'HEAD^' }
+          $files = git diff --name-only $base $env:GITHUB_SHA
+          $codeChanged = $false
+          foreach ($file in $files) {
+            if ([string]::IsNullOrWhiteSpace($file)) { continue }
+            if ($file -notmatch '(^|/)([^/]+\.md|[^/]+\.mdx)$' -and $file -notmatch '^\.monkeycode/' -and $file -notmatch '^docs/') { $codeChanged = $true; break }
+          }
+          "code_changed=$($codeChanged.ToString().ToLower())" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+
+      - name: Run docs-only check
+        if: steps.changes.outputs.code_changed != 'true'
+        env:
+          BASE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
+        shell: pwsh
+        run: |
+          $base = $env:BASE_SHA
+          if ($base -eq '0000000000000000000000000000000000000000' -or -not (git cat-file -e "$base^{commit}" 2>$null)) { $base = 'HEAD^' }
+          git diff --check $base $env:GITHUB_SHA
 
       - name: Set up Python 3.13
+        if: steps.changes.outputs.code_changed == 'true'
         uses: actions/setup-python@v5
         with:
           python-version: "3.13"
 
       - name: Set up uv
+        if: steps.changes.outputs.code_changed == 'true'
         uses: astral-sh/setup-uv@v6
         with:
           activate-environment: true
 
       - name: Install dependencies
+        if: steps.changes.outputs.code_changed == 'true'
         shell: pwsh
         run: |
           uv sync --locked --all-extras --dev
 
       - name: Run Windows offline tests
+        if: steps.changes.outputs.code_changed == 'true'
         env:
           QT_QPA_PLATFORM: offscreen
           PYTHONIOENCODING: utf-8
