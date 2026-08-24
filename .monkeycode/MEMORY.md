@@ -31,6 +31,7 @@
   - **功能改动同步 UI/文档**：新增/移除/改名站点、爬虫、CF 服务、配置项后，必须同步检查：UI 帮助文档 HTML（`MDCx.ui`）、启动提示/弹窗文字（`main_window.py`）、仓库文档（`README.md`、`docs/*.md`）。网站数量必须与 `get_registered_crawler_sites()` 实际注册数一致。移除功能时同步删除对应 UI 控件/说明/配置项描述。
   - **提交检查清单**：① `git status`/`git diff` 看改了什么 → ② 有功能/修复/重构 → 先更新 changelog → ③ 改依赖/打包 → 按「Windows exe 打包依赖约束」核对 → ④ 涉及功能/站点/CF/配置 → 检查 UI 说明/弹窗/文档 → ⑤ `git add` + `git commit` + `git push`。
   - **.monkeycode/specs/ 规则**：feature-design 新生成 spec 实现验证后即删除对应子目录；实现意图从代码/`tests/`/`docs/changelog.md` 回溯。当前 specs/ 为空。
+  - **时间以北京时间为准**：所有文档/记忆/changelog 日期标注一律用北京时间（UTC+8），不照抄 git log UTC 时间戳或系统 date 输出。
 
 [Windows exe 打包依赖约束]
 - Date: 2026-08-03（2026-08-18 更新）
@@ -43,7 +44,7 @@
 
 [UI 改动与排查注意事项]
 - Date: 2026-08-03（2026-08-16、2026-08-21、2026-08-23、2026-08-24 更新）
-- Context: 多次调整工具页 UI 沉淀约束；排查 UI 功能时漏看弹窗模块误报
+- Context: 多次调整工具页 UI 沉淀约束；排查 UI 功能时漏看弹窗模块误报；批量 .ui 修复 13 个滚动区 + 60 个 QLabel wordWrap
 - Category: 环境配置
 - Instructions:
   - **规范流程**：先改 `.ui` → `uv run python -m PyQt6.uic.pyuic mdcx/views/MDCx.ui -o mdcx/views/MDCx.py` → `uv run ruff format mdcx/views/MDCx.py`。不要手工改 MDCx.py（`test_mdcx_py_in_sync_with_ui` 把关）。新文案必须回写 `.ui` 让其成唯一权威源。改后跑 `uv run pytest tests/test_ui_structure.py -q` 验证。ElementTree 重写 `.ui` 会重排全文件格式，必须用文本级精确替换。
@@ -56,9 +57,11 @@
   - **中文字体等宽**：统一用 `font:"Courier New"`，不用裸 `"Courier"`（中文显示方框）。
   - **排查 UI 必须覆盖弹窗**：排查功能时搜索所有 QDialog 子类和弹窗模块（`grep -rn "QDialog\|class.*Dialog"`），不能只看主窗口。项目弹窗集中在 `mdcx/controllers/main_window/site_priority_dialog.py` 等独立文件。典型坑：配置项在二次弹窗（如 FieldPriorityDialog），主窗口只放触发按钮，不看弹窗内部就误判"UI 没暴露该配置"。
   - 新增按钮检查三处一致：`MDCx.ui` + `MDCx.py` + `init.py`（clicked 槽 + setText 防重入）。删除按钮后清理失联 delegate 死代码。
+  - **批量 .ui 改动技巧**：ElementTree 只读不写（解析识别目标控件 name 集合），文本级 `str.replace`/`re.sub` 写入（避免 ElementTree 重排全文件格式）。wordWrap property 插在 `</widget>` 前，缩进比 `</widget>` 多 2 格。批量替换 width 值（如 739→860）可直接 `content.replace`，前提是 grep 确认该值只出现在目标上下文。
+  - **滚动区内容横向裁切排查三件套**：高 DPI/宽字体下右侧内容被裁 → 查 ① `QScrollArea.widgetResizable` 是否 true ② `scrollAreaWidgetContents_*` geometry width 是否写死 ③ `QGroupBox.maximumSize.width` 是否锁死偏窄（常见 739）。三者都改才根治。`scripts/check_ui_layout.py` 可一键扫描。
 
 [排错调试方法论]
-- Date: 2026-08-03（2026-08-04、2026-08-11、2026-08-21 更新）
+- Date: 2026-08-03（2026-08-04、2026-08-11、2026-08-21、2026-08-24 更新）
 - Context: Onefile 静默退出、openpyxl 空行残留、死代码误删、UI 弹窗漏查、zhconv 不覆盖日文异体字等典型坑
 - Category: 排错调试
 - Instructions:
@@ -69,6 +72,7 @@
   - **str.maketrans 返回 dict 的 key 是 int 不是 str**：`str.maketrans({"亜":"亚"})` 返回的 dict key 是 `ord("亜")`=int。用 `ch in mapping`（ch 是 str）检查永远 False，但 `"亜".translate(mapping)` 能正常工作。统计映射覆盖字时必须用 `ord(ch) in mapping` 而非 `ch in mapping`。
   - **edit 删除函数安全**：oldString 用「函数全文+下一函数定义行」唯一锚点、newString 用「下一函数定义行」；oldString 为空会替换整个文件(曾致 core/utils.py 286 行丢失)；删除后查死 import(ruff F401)/死变量；误操作用 `git checkout -- <file>` 恢复。
   - **DMM 高清 4 套机制**：①继承 DmmCrawler(dmm/dmm_api/thejavdb_api，post_process 升级用 number_00/no_00 构 pl.jpg，TheJavdbApiCrawler 继承才有高清)②upgrade_dmm_cover(javdb/javdb_api/javdb_app/javbus/javlibrary/r18dev)③build_aws 候选优先(libredmm/avbase)④core/web.py 全局层(poster 选优竖 ps + thumb 兜底横 pl，所有爬虫生效)。pl.jpg 横→封面、ps.jpg 竖→海报，分工不重复。下架→升级回退原图(图仍可用)、兜底失效(窄场景)；无码跳过。
+  - **ElementTree `p.find()` 真值测试陷阱**：`p.find("bool")` 返回 Element，无子节点的 Element（如 `<bool>true</bool>`）真值测试求 False（已弃用）。`if b := p.find("bool"):` 会静默跳过所有 `<bool>`/`<number>`/`<string>` 属性。必须用 `if (x := p.find(...)) is not None:`。
 
 [executor.submit 与跨线程 Qt 安全]
 - Date: 2026-08-03（2026-08-16 更新）
@@ -108,14 +112,11 @@
   - 沙箱访问 TMDB：用 `api.tmdb.org` 域名 + `Host: api.themoviedb.org` 请求头。
   - **info_database 结构**：4 列 `jp`/`zh_cn`/`zh_tw`/`keyword`。jp 列是日文标签名（含日文新字体是正常的，不改）；keyword 列含多语言变体用于匹配（不改）。只修 zh_cn（日文异体字→简体）和 zh_tw（非标准繁体→标准繁体）。
 
-[ruff RUF100 误删 scripts/*.py 防御性 noqa 的坑]
+[ruff RUF100 误删 noqa 坑]
 - Date: 2026-08-10
-- Context: RUF100 自动修复把 scripts/*.py 顶部 `# ruff: noqa: E402` 判 unused 删除导致 import 失败
 - Category: 工作流协作
 - Instructions:
-  - scripts/*.py 顶部 noqa: E402 是必要的（脚本内 `sys.path.insert` hack 依赖）；E402 未启用时 RUF100 误判多余，保留以防未来启用。
-  - 启用 RUF100 自动修复只应用到 `mdcx/` 与 `main.py`，scripts/ 需 git checkout 回滚。
-  - 探测性 import（try/except ImportError 内）显式标注 `# noqa: F401  # 探活`。
+  - scripts/*.py 顶部 `# ruff: noqa: E402` 必须保留（sys.path hack 依赖）；RUF100 自动修复只应用到 `mdcx/` 与 `main.py`；探测性 import 标 `# noqa: F401  # 探活`。
 
 [devbox 验证环境配置]
 - Date: 2026-08-14（2026-08-19 更新）
@@ -125,20 +126,11 @@
   - **默认代理坑**：mdcx 默认 `use_proxy=True` + `proxy=http://127.0.0.1:7890`，devbox 无该代理进程。定位：打印 `manager.config.use_proxy`/`proxy`；同一 URL curl 直连 200 而 client 失败即中招。绕过：`manager._replace_config(cfg)` 后设 `use_proxy=False`、`proxy=""` 再 `_replace_config`。真实用户环境有可用代理，**不要据此改产品代码**。
   - **系统 GUI 库**：devbox 缺 PyQt6 运行所需系统库，pytest import `mdcx.image` 时报 `libglib-2.0.so.0` 等 not found。一次性补装：`DEBIAN_FRONTEND=noninteractive apt-get install -y libglib2.0-0 libgl1 libegl1 libdbus-1-3 libfontconfig1 libxkbcommon0 libxkbcommon-x11-0 libxcb-xinerama0 libxcb-cursor0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-randr0 libxcb-render-util0 libxcb-shape0`（先 `apt-get update`）。uv 通过 `pip3 install uv` 安装，`uv run` 可能拉 Python 3.14.x。
 
-[GitHub CI 失败 runs 批量清理流程]
+[GitHub CI 失败 runs 清理]
 - Date: 2026-08-14
-- Context: 批量删除 Actions 页 CI/CD 失败 run
 - Category: 排错调试
 - Instructions:
-  - 凭据：`echo -e "protocol=https\nhost=github.com\n" | git credential fill` 取 password 作 GH_TOKEN（需在 bash 调用前 export，用完即删）。
-  - 列 runs：`gh run list --workflow ci.yaml --limit 30 --json databaseId,conclusion,number`，筛选 failure；逐条 `gh run delete <databaseId>`。
-
-[时间以北京时间为准]
-- Date: 2026-08-19
-- Context: 开发环境系统时区为 UTC，git 提交时间戳显示 UTC
-- Category: 工作流协作
-- Instructions:
-  - 所有文档/记忆/changelog 中的日期标注一律使用北京时间（UTC+8），不直接照抄 git log 的 UTC 时间戳或系统 date 输出。
+  - 凭据 `git credential fill` 取 password 作 GH_TOKEN（用完即删）；`gh run list --workflow ci.yaml --limit 30 --json databaseId,conclusion` 筛 failure 逐条 `gh run delete`。
 
 [长时间后台任务的断点续传与自动循环]
 - Date: 2026-08-20
