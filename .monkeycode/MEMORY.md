@@ -41,7 +41,7 @@
   - 长说明 QLabel 使用 `wordWrap`；垂直策略不能锁死为 Fixed。测量 `sizeHint` 前必须 `show()` + `processEvents()`，或切换到对应 stackedWidget 页面。
   - `gridLayout` 同一 `row:col` 只能放一个 widget/layout；长 label 使用跨列布局；每个 `.ui` item 必须明确 row/col。
   - 增高滚动区内 groupBox 时，连锁调整下方兄弟 groupBox 的 y 和滚动区高度，底部保留 20px。
-  - 排查功能必须覆盖所有 QDialog 子类和独立弹窗模块；新增按钮同步检查 `MDCx.ui`、`MDCx.py`、`init.py` 的信号和防重入逻辑。
+  - 排查功能必须覆盖所有 QDialog 子类和独立弹窗模块；新增按钮同步检查 `MDCx.ui`、`MDCx.py`、`init.py` 的信号和防重入逻辑。修改主窗口初始化链（信号连接/布局/配置加载）后运行 `tests/test_main_window_startup.py` 冒烟验证，静态检查发现不了 Qt API 签名错误。
   - 横向裁切排查三件套：`QScrollArea.widgetResizable=true`、内容 geometry width 不写死、`QGroupBox.maximumWidth` 不锁死偏窄。使用 `scripts/check_ui_layout.py` 验证。
   - 中文等宽字体使用 `Courier New`，不要使用裸 `Courier`。
 
@@ -60,6 +60,8 @@
 - Context: Onefile 静默退出、数据文件损坏、死代码误删和文本转换问题
 - Category: 排错调试
 - Instructions:
+  - PyQt6 严格校验重载签名，PyQt5 宽松写法（如 `QLayout.setStretchFactor(int, int)`）启动即崩；`QLayout` 只接受 QWidget/QLayout，按 index 用 `QBoxLayout.setStretch()`，而 `QSplitter.setStretchFactor()` 恰好只接受 int index——同一方法名两类签名语义相反，改前先查目标类的重载。
+  - 给测试桩追加属性时显式枚举，严禁 `__getattr__` 通配兜底返回值；生产代码可能靠 `AttributeError` 做资源缺失优雅降级（如 `is_male_actor` 检测 `resources.r`），兜底会把降级路径变成运行期崩溃。
   - Onefile 无控制台异常使用 `faulthandler.enable()`、`sys.excepthook` 和 `MAIN_PATH/crash/` 日志定位；GUI 日志必须走 `signal_qt.show_log_text`，`LogBuffer.log().write()` 只写内存。
   - 删除死代码前核实赋值点、读取点和中间产物来源；检查装饰器注册、字符串类型注解、延迟 import、动态字符串工厂。删除后重扫零引用和 F401。
   - openpyxl 历史脏库使用 `delete_rows` 可能保留空行和错误 `max_row`；可靠方案是新建 Workbook，过滤空行后重建表头、数据和样式。
