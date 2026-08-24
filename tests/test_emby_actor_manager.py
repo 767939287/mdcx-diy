@@ -226,7 +226,7 @@ def test_safe_filename_empty_name_fallback():
     assert _safe_filename(None, "_x.jpg") == "unknown_x.jpg"
 
 
-def test_sync_actor_image_uploads_directly_without_delete(monkeypatch):
+def test_sync_actor_image_uploads_directly_without_delete(monkeypatch, tmp_path):
     """P0-2 回归：有 new_image_path 时直接覆盖上传，不再先删后传。"""
     import mdcx.tools.emby_actor_manager as em
 
@@ -248,7 +248,7 @@ def test_sync_actor_image_uploads_directly_without_delete(monkeypatch):
         actor_id="id1",
         server_id="srv1",
         need_update_image=True,
-        new_image_path="/tmp/avatar.jpg",
+        new_image_path=str(tmp_path / "avatar.jpg"),
     )
     ok, msg = em.sync_actor(actor, sync_type="image")
 

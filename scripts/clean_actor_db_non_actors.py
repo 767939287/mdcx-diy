@@ -4,7 +4,7 @@
 第 2 类：描述词/占位符——非人名的标签词（本妻/多数/女優不明 等）。
 第 3 类：确证的非 AV 主流人物（埃里克·坎通纳/艾琳娜·拉尼娜 等）。
 
-删除前在 /tmp 保留原始库副本（工作区安全网，不写入仓库）。
+删除前在系统临时目录保留原始库副本（工作区安全网，不写入仓库）。
 用法:
     python scripts/clean_actor_db_non_actors.py            # 预览
     python scripts/clean_actor_db_non_actors.py --apply    # 执行删除
@@ -16,6 +16,7 @@ from __future__ import annotations
 import argparse
 import shutil
 import sys
+import tempfile
 from pathlib import Path
 
 import openpyxl
@@ -28,7 +29,7 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 DB_PATH = ROOT / "resources" / "userdata" / "actor_database.xlsx"
-NON_ACTING_FILE = Path("/tmp/non_acting.txt")
+NON_ACTING_FILE = Path(tempfile.gettempdir()) / "non_acting.txt"
 
 # 第 2 类：描述词/占位符（人工甄别，非人名）
 _DESC_ROWS = {
@@ -172,8 +173,8 @@ def main(argv: list[str] | None = None) -> int:
         wb.close()
         return 0
 
-    # /tmp 保留原始库副本（工作区安全网，不进仓库）
-    shutil.copy(db_path, Path("/tmp/actor_db_before_clean_nonactors.xlsx"))
+    # 系统临时目录保留原始库副本（工作区安全网，不进仓库）
+    shutil.copy(db_path, Path(tempfile.gettempdir()) / "actor_db_before_clean_nonactors.xlsx")
 
     # 待删行合并为连续区间，一次 delete_rows(start, count) 批量删除
     # （逐行 delete_rows 每次 O(n) 移动，几百行会超时且中途 kill 会写坏文件）

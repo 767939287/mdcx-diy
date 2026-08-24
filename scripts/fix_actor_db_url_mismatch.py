@@ -14,6 +14,7 @@ from __future__ import annotations
 import argparse
 import shutil
 import sys
+import tempfile
 from pathlib import Path
 
 import openpyxl
@@ -60,7 +61,7 @@ def main(argv: list[str] | None = None) -> int:
         wb.close()
         return 0
 
-    shutil.copy(db_path, Path("/tmp/actor_db_before_url_fix.xlsx"))
+    shutil.copy(db_path, Path(tempfile.gettempdir()) / "actor_db_before_url_fix.xlsx")
     for row_idx, _jp in fix_rows:
         clear_tmdb(ws, row_idx)  # 成对清空 id+url（防单独清 url 留 id 错配）
     for row_idx in sorted(del_rows, reverse=True):

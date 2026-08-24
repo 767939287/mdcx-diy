@@ -117,7 +117,10 @@ def read_link_sync(p: str | Path) -> str:
         seen.add(absolute_current)
         target = Path(os.readlink(current))
         current = target if target.is_absolute() else Path(os.path.normpath(current.parent / target))
-    return str(current)
+    result = str(current)
+    if IS_WINDOWS and result.startswith("\\\\?\\"):
+        result = result[4:]
+    return result
 
 
 def resolve_link_source_sync(p: str | Path):

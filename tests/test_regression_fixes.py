@@ -20,7 +20,7 @@ REPO = Path(__file__).resolve().parent.parent
 # ============================================================
 def test_operator_precedence_fix():
     """验证 show_movie_info 中 OUTLINE/ORIGINALPLOT 的截断条件正确加括号。"""
-    source = (REPO / "mdcx/core/utils.py").read_text()
+    source = (REPO / "mdcx/core/utils.py").read_text(encoding="utf-8")
     # 检查修复后的代码包含括号
     assert (
         "(key == CrawlerResultFields.OUTLINE or key == CrawlerResultFields.ORIGINALPLOT) and len(value) > 100" in source
@@ -71,13 +71,13 @@ def test_operator_precedence_logic():
 # ============================================================
 def test_asyncio_import_exists():
     """验证 file.py 导入了 asyncio。"""
-    source = (REPO / "mdcx/core/file.py").read_text()
+    source = (REPO / "mdcx/core/file.py").read_text(encoding="utf-8")
     assert "import asyncio" in source, "asyncio 未导入"
 
 
 def test_no_duplicate_os_import():
     """验证 file.py 没有重复的 import os。"""
-    source = (REPO / "mdcx/core/file.py").read_text()
+    source = (REPO / "mdcx/core/file.py").read_text(encoding="utf-8")
     count = source.count("import os")
     assert count == 1, f"import os 出现了 {count} 次，应该有 1 次"
 
@@ -89,7 +89,7 @@ def test_no_duplicate_os_import():
 # ============================================================
 def test_no_blocking_sleep_in_async_scraper():
     """验证 scraper.py 的异步函数中不再使用同步 time.sleep。"""
-    source = (REPO / "mdcx/core/scraper.py").read_text()
+    source = (REPO / "mdcx/core/scraper.py").read_text(encoding="utf-8")
     # 检查 _process_one_file_with_context 方法中的 TMDB 部分
     # 找到 time.sleep 的行，确认不在 await 上下文中
     lines = source.split("\n")
@@ -105,7 +105,7 @@ def test_no_blocking_sleep_in_async_scraper():
 
 def test_no_blocking_sleep_in_async_tmdb_actor():
     """验证 tmdb_actor.py 的异步函数中不再使用同步 time.sleep。"""
-    source = (REPO / "mdcx/core/tmdb_actor.py").read_text()
+    source = (REPO / "mdcx/core/tmdb_actor.py").read_text(encoding="utf-8")
     lines = source.split("\n")
     in_async_context = False
     for i, line in enumerate(lines):
@@ -121,8 +121,8 @@ def test_no_blocking_sleep_in_async_tmdb_actor():
 
 def test_asyncio_sleep_used():
     """验证修复后使用非阻塞的 asyncio.sleep(而非 time.sleep)。"""
-    scraper = (REPO / "mdcx/core/scraper.py").read_text()
-    tmdb = (REPO / "mdcx/core/tmdb_actor.py").read_text()
+    scraper = (REPO / "mdcx/core/scraper.py").read_text(encoding="utf-8")
+    tmdb = (REPO / "mdcx/core/tmdb_actor.py").read_text(encoding="utf-8")
     assert "await asyncio.sleep(" in scraper
     assert "await asyncio.sleep(" in tmdb
 
@@ -134,7 +134,7 @@ def test_asyncio_sleep_used():
 # ============================================================
 def test_no_blocking_rmtree_in_async():
     """验证 file.py 中 async 函数不再直接调用 shutil.rmtree。"""
-    source = (REPO / "mdcx/core/file.py").read_text()
+    source = (REPO / "mdcx/core/file.py").read_text(encoding="utf-8")
     lines = source.split("\n")
     # 找到所有 shutil.rmtree 调用
     for i, line in enumerate(lines):
@@ -172,7 +172,7 @@ def test_rmtree_async_nonblocking():
 # ============================================================
 def test_get_file_info_v2_exception_bound():
     """验证 get_file_info_v2 最外层 except 子句绑定了异常对象并写入 LogBuffer.error。"""
-    source = (REPO / "mdcx/core/file.py").read_text()
+    source = (REPO / "mdcx/core/file.py").read_text(encoding="utf-8")
     lines = source.split("\n")
     # 找到 "except Exception as e:" 后面紧跟 LogBuffer.error().write 的行
     found = False
@@ -192,7 +192,7 @@ def test_get_file_info_v2_exception_bound():
 # ============================================================
 def test_file_done_dic_safe_access():
     """验证 file.py 中 Flags.file_done_dic[number]["local_*"] 使用安全访问。"""
-    source = (REPO / "mdcx/core/file.py").read_text()
+    source = (REPO / "mdcx/core/file.py").read_text(encoding="utf-8")
     lines = source.split("\n")
     for i, line in enumerate(lines):
         stripped = line.strip()
@@ -214,7 +214,7 @@ def test_file_done_dic_safe_access():
 # ============================================================
 def test_definition_none_safety():
     """验证 definition 字段在 None 时不会抛出 AttributeError。"""
-    source = (REPO / "mdcx/core/naming/fields.py").read_text()
+    source = (REPO / "mdcx/core/naming/fields.py").read_text(encoding="utf-8")
     assert '(file_info.definition or "").replace("UHD8", "UHD")' in source, "definition 未做 None 防护"
 
 
@@ -225,7 +225,7 @@ def test_definition_none_safety():
 # ============================================================
 def test_nfo_exception_logging():
     """验证 nfo.py 中异常处理不再使用 print 或 pass。"""
-    source = (REPO / "mdcx/core/nfo.py").read_text()
+    source = (REPO / "mdcx/core/nfo.py").read_text(encoding="utf-8")
     lines = source.split("\n")
 
     # 检查 score 部分的 except
@@ -245,7 +245,7 @@ def test_nfo_exception_logging():
 # ============================================================
 def test_start_new_scrape_exception_bound():
     """验证 start_new_scrape 的 except 子句绑定了异常对象。"""
-    source = (REPO / "mdcx/core/scraper.py").read_text()
+    source = (REPO / "mdcx/core/scraper.py").read_text(encoding="utf-8")
     lines = source.split("\n")
     in_function = False
     for i, line in enumerate(lines):
@@ -273,7 +273,7 @@ def test_no_dead_code_in_core_files():
         "mdcx/core/nfo.py": ["json_data.website = website"],
     }
     for file_path, dead_patterns in checks.items():
-        source = (REPO / file_path).read_text()
+        source = (REPO / file_path).read_text(encoding="utf-8")
         for pattern in dead_patterns:
             # 检查是否有注释掉的该行（# 开头）
             for line in source.split("\n"):

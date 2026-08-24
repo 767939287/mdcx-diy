@@ -44,11 +44,11 @@ def _enable_success_record(monkeypatch: pytest.MonkeyPatch) -> _FakeEmitSignal:
 
 
 @pytest.mark.asyncio
-async def test_records_new_path_when_not_softlink(monkeypatch: pytest.MonkeyPatch, _reset_flags):
+async def test_records_new_path_when_not_softlink(monkeypatch: pytest.MonkeyPatch, _reset_flags, tmp_path: Path):
     """非软链接模式下，成功列表应记录 new_path（移动后的新路径）而非 old_path。"""
     _enable_success_record(monkeypatch)
-    old_path = Path("/tmp/old/MIAA-001.mp4")
-    new_path = Path("/tmp/new/MIAA-001.mp4")
+    old_path = tmp_path / "old" / "MIAA-001.mp4"
+    new_path = tmp_path / "new" / "MIAA-001.mp4"
 
     await file_module.save_success_list(old_path, new_path)
 
@@ -57,12 +57,12 @@ async def test_records_new_path_when_not_softlink(monkeypatch: pytest.MonkeyPatc
 
 
 @pytest.mark.asyncio
-async def test_records_old_path_when_softlink(monkeypatch: pytest.MonkeyPatch, _reset_flags):
+async def test_records_old_path_when_softlink(monkeypatch: pytest.MonkeyPatch, _reset_flags, tmp_path: Path):
     """软链接模式（soft_link != 0）下，成功列表记录 old_path（原路径）。"""
     _enable_success_record(monkeypatch)
     monkeypatch.setattr(manager.config, "soft_link", 1)
-    old_path = Path("/tmp/old/MIAA-001.mp4")
-    new_path = Path("/tmp/new/MIAA-001.mp4")
+    old_path = tmp_path / "old" / "MIAA-001.mp4"
+    new_path = tmp_path / "new" / "MIAA-001.mp4"
 
     await file_module.save_success_list(old_path, new_path)
 
@@ -71,11 +71,11 @@ async def test_records_old_path_when_softlink(monkeypatch: pytest.MonkeyPatch, _
 
 
 @pytest.mark.asyncio
-async def test_records_nothing_without_feature(monkeypatch: pytest.MonkeyPatch, _reset_flags):
+async def test_records_nothing_without_feature(monkeypatch: pytest.MonkeyPatch, _reset_flags, tmp_path: Path):
     """未开启「记录成功文件」配置时，成功列表不记录任何路径。"""
     _enable_success_record(monkeypatch)
     monkeypatch.setattr(manager.config, "no_escape", [])
 
-    await file_module.save_success_list(Path("/tmp/old/MIAA-001.mp4"), Path("/tmp/new/MIAA-001.mp4"))
+    await file_module.save_success_list(tmp_path / "old" / "MIAA-001.mp4", tmp_path / "new" / "MIAA-001.mp4")
 
     assert Flags.success_list == set()

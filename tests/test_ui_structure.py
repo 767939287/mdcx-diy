@@ -228,6 +228,7 @@ def test_mdcx_py_in_sync_with_ui():
 
         # 3. 文本对比。
         compiled = tmp_path.read_text(encoding="utf-8")
+        compiled = compiled.replace("mdcx\\views\\MDCx.ui", "mdcx/views/MDCx.ui")
         repo = PY_PATH.read_text(encoding="utf-8")
         assert compiled == repo, (
             "MDCx.py 与 MDCx.ui 不同步！"

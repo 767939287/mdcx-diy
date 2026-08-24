@@ -17,6 +17,7 @@ def _load_merge_func():
     src_text = src.read_text(encoding="utf-8")
     tree = ast.parse(src_text)
     g = dict(vars(res_module))
+    g["Path"] = Path
     g["openpyxl"] = __import__("openpyxl")
     g["LogBuffer"] = mock.MagicMock()
     # 先执行依赖的辅助函数，再执行主函数
