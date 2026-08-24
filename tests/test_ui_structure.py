@@ -193,10 +193,10 @@ def test_mdcx_py_in_sync_with_ui():
         tmp_path = Path(tmp.name)
 
     try:
-        # 1. pyuic6 重编译（用相对路径，与仓库版头部注释一致）。
-        ui_rel = UI_PATH.relative_to(REPO)
+        # 1. pyuic6 重编译（用正斜杠相对路径，与仓库版头部注释一致）。
+        ui_rel = str(UI_PATH.relative_to(REPO)).replace("\\", "/")
         result = subprocess.run(
-            [sys.executable, "-m", "PyQt6.uic.pyuic", str(ui_rel), "-o", str(tmp_path)],
+            [sys.executable, "-m", "PyQt6.uic.pyuic", ui_rel, "-o", str(tmp_path)],
             capture_output=True,
             text=True,
             cwd=REPO,
@@ -228,7 +228,6 @@ def test_mdcx_py_in_sync_with_ui():
 
         # 3. 文本对比。
         compiled = tmp_path.read_text(encoding="utf-8")
-        compiled = compiled.replace("mdcx\\views\\MDCx.ui", "mdcx/views/MDCx.ui")
         repo = PY_PATH.read_text(encoding="utf-8")
         assert compiled == repo, (
             "MDCx.py 与 MDCx.ui 不同步！"
