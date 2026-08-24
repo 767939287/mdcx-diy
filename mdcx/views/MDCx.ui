@@ -301,10 +301,10 @@
             <property name="text">
               <string />
             </property>
-            <property name="wordWrap">
-              <bool>true</bool>
-            </property>
-          </widget>
+              <property name="wordWrap">
+                <bool>true</bool>
+              </property>
+            </widget>
           <widget class="QLabel" name="label_publish">
             <property name="geometry">
               <rect>
@@ -326,10 +326,10 @@
             <property name="text">
               <string />
             </property>
-            <property name="wordWrap">
-              <bool>true</bool>
-            </property>
-          </widget>
+              <property name="wordWrap">
+                <bool>true</bool>
+              </property>
+            </widget>
           <widget class="QLabel" name="label_23">
             <property name="geometry">
               <rect>
@@ -383,10 +383,10 @@
             <property name="text">
               <string />
             </property>
-            <property name="wordWrap">
-              <bool>true</bool>
-            </property>
-          </widget>
+              <property name="wordWrap">
+                <bool>true</bool>
+              </property>
+            </widget>
           <widget class="QLabel" name="label_series">
             <property name="geometry">
               <rect>
@@ -408,10 +408,10 @@
             <property name="text">
               <string />
             </property>
-            <property name="wordWrap">
-              <bool>true</bool>
-            </property>
-          </widget>
+              <property name="wordWrap">
+                <bool>true</bool>
+              </property>
+            </widget>
           <widget class="QLabel" name="label_30">
             <property name="geometry">
               <rect>
@@ -465,10 +465,10 @@
             <property name="text">
               <string />
             </property>
-            <property name="wordWrap">
-              <bool>true</bool>
-            </property>
-          </widget>
+              <property name="wordWrap">
+                <bool>true</bool>
+              </property>
+            </widget>
           <widget class="QLabel" name="label_33">
             <property name="geometry">
               <rect>
@@ -925,6 +925,9 @@
             <property name="text">
               <string>视频目录设置：【设置】-【目录】-【待刮削视频目录】。程序将刮削该目录及子目录的所有文件。</string>
             </property>
+            <property name="wordWrap">
+              <bool>true</bool>
+            </property>
           </widget>
           <widget class="Line" name="line_14">
             <property name="geometry">
@@ -1006,10 +1009,10 @@
             <property name="alignment">
               <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
             </property>
-            <property name="wordWrap">
-              <bool>true</bool>
-            </property>
-          </widget>
+              <property name="wordWrap">
+                <bool>true</bool>
+              </property>
+            </widget>
           <widget class="QLabel" name="label_thumb_size">
             <property name="geometry">
               <rect>
@@ -1603,14 +1606,14 @@
               <enum>Qt::ScrollBarAlwaysOff</enum>
             </property>
             <property name="widgetResizable">
-              <bool>false</bool>
+              <bool>true</bool>
             </property>
             <widget class="QWidget" name="scrollAreaWidgetContents_gongju">
               <property name="geometry">
                 <rect>
                   <x>0</x>
                   <y>0</y>
-                  <width>760</width>
+                  <width>860</width>
                   <height>2475</height>
                 </rect>
               </property>
@@ -1720,6 +1723,9 @@
                   <property name="alignment">
                     <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
                   </property>
+                  <property name="wordWrap">
+                    <bool>true</bool>
+                  </property>
                 </widget>
                 <widget class="QLineEdit" name="lineEdit_single_file_path">
                   <property name="geometry">
@@ -1795,6 +1801,9 @@
                   </property>
                   <property name="alignment">
                     <set>Qt::AlignCenter</set>
+                  </property>
+                  <property name="wordWrap">
+                    <bool>true</bool>
                   </property>
                 </widget>
               </widget>
@@ -1969,6 +1978,9 @@
                   <property name="text">
                     <string>本地资源库和演员名都可以填写多个，以逗号分开（中英文逗号都可以）</string>
                   </property>
+                  <property name="wordWrap">
+                    <bool>true</bool>
+                  </property>
                 </widget>
               </widget>
               <widget class="QGroupBox" name="groupBox_6">
@@ -2044,6 +2056,9 @@
                   </property>
                   <property name="alignment">
                     <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+                  </property>
+                  <property name="wordWrap">
+                    <bool>true</bool>
                   </property>
                 </widget>
               </widget>
@@ -2293,6 +2308,9 @@
                         <property name="alignment">
                           <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
                         </property>
+                        <property name="wordWrap">
+                          <bool>true</bool>
+                        </property>
                       </widget>
                     </item>
                   </layout>
@@ -2350,10 +2368,10 @@
                   <property name="text">
                     <string>以下操作均直接读写 actor_database.xlsx 文件，无需输入演员名单。</string>
                   </property>
-                  <property name="wordWrap">
-                    <bool>true</bool>
-                  </property>
-                </widget>
+                    <property name="wordWrap">
+                      <bool>true</bool>
+                    </property>
+                  </widget>
                 <widget class="QPushButton" name="pushButton_actor_db_translate">
                   <property name="geometry">
                     <rect>
@@ -2469,10 +2487,10 @@
                   <property name="text">
                     <string>提示：补全结果将输出到日志页。所有按钮均防重入，运行中按钮禁用。</string>
                   </property>
-                  <property name="wordWrap">
-                    <bool>true</bool>
-                  </property>
-                </widget>
+                    <property name="wordWrap">
+                      <bool>true</bool>
+                    </property>
+                  </widget>
                 <widget class="QPushButton" name="pushButton_actor_db_clean_male">
                   <property name="geometry">
                     <rect>
@@ -2517,10 +2535,10 @@
                    <property name="text">
                      <string>从 minnano-av 补全缺生日/简介，日文字段自动翻译</string>
                    </property>
-                  <property name="wordWrap">
-                    <bool>true</bool>
-                  </property>
-                </widget>
+                    <property name="wordWrap">
+                      <bool>true</bool>
+                    </property>
+                  </widget>
                 <widget class="QPushButton" name="pushButton_actor_db_verify_tmdbid">
                   <property name="geometry">
                     <rect>
@@ -2552,10 +2570,10 @@
                   <property name="text">
                     <string>失效 id 清除后自动按名字重搜补回新 id（搜不到则保持无 id，刮削兜底）</string>
                   </property>
-                  <property name="wordWrap">
-                    <bool>true</bool>
-                  </property>
-                </widget>
+                    <property name="wordWrap">
+                      <bool>true</bool>
+                    </property>
+                  </widget>
                 <widget class="QPushButton" name="pushButton_actor_db_check">
                   <property name="geometry">
                     <rect>
@@ -2587,10 +2605,10 @@
                   <property name="text">
                     <string>检查格式错误、数据异常，安全项自动修复，tmdb 项给人工修复步骤</string>
                   </property>
-                  <property name="wordWrap">
-                    <bool>true</bool>
-                  </property>
-                </widget>
+                    <property name="wordWrap">
+                      <bool>true</bool>
+                    </property>
+                  </widget>
                 <widget class="QPushButton" name="pushButton_actor_db_fill_zh_javdb">
                   <property name="geometry">
                     <rect>
@@ -2622,10 +2640,10 @@
                   <property name="text">
                     <string>JavDB 的 name_zht 转简体补全中文名；仅处理「中文==日文原名」的行</string>
                   </property>
-                  <property name="wordWrap">
-                    <bool>true</bool>
-                  </property>
-                </widget>
+                    <property name="wordWrap">
+                      <bool>true</bool>
+                    </property>
+                  </widget>
                 <widget class="QLineEdit" name="lineEdit_actor_db_nfo_dir">
                   <property name="geometry">
                     <rect>
@@ -2683,10 +2701,10 @@
                   <property name="text">
                     <string>用本地库新 id 覆盖 nfo 旧 id；原本没有的补上（nfo 是持久源，改这里 Emby 重扫才一致）</string>
                   </property>
-                  <property name="wordWrap">
-                    <bool>true</bool>
-                  </property>
-                </widget>
+                    <property name="wordWrap">
+                      <bool>true</bool>
+                    </property>
+                  </widget>
                 <widget class="QPushButton" name="pushButton_actor_db_sync_aliases">
                   <property name="geometry">
                     <rect>
@@ -2837,10 +2855,10 @@
                   <property name="text">
                     <string>0 起始行+5000 限量 = 默认行为</string>
                   </property>
-                  <property name="wordWrap">
-                    <bool>true</bool>
-                  </property>
-                </widget>
+                    <property name="wordWrap">
+                      <bool>true</bool>
+                    </property>
+                  </widget>
                 <widget class="QLabel" name="label_actor_db_sync_aliases_desc">
                   <property name="geometry">
                     <rect>
@@ -2856,10 +2874,10 @@
                   <property name="text">
                     <string>来源 TMDB 需配置 API Key；minnano 直接抓取みんなのAV。默认仅补缺别名的行，勾选「全量更新」则并入全部行；用「起始行/限量」可分片续跑</string>
                   </property>
-                  <property name="wordWrap">
-                    <bool>true</bool>
-                  </property>
-                </widget>
+                    <property name="wordWrap">
+                      <bool>true</bool>
+                    </property>
+                  </widget>
               </widget>
               <widget class="QGroupBox" name="groupBox_cover_backfill">
                 <property name="geometry">
@@ -2888,10 +2906,10 @@
                   <property name="text">
                     <string>输入番号（多个用空格分隔），将自动刮削并补齐封面和缩略图。复用当前配置的站点优先级、命名、裁切、水印规则。输出目录为当前数据目录（可在设置页修改）。</string>
                   </property>
-                  <property name="wordWrap">
-                    <bool>true</bool>
-                  </property>
-                </widget>
+                    <property name="wordWrap">
+                      <bool>true</bool>
+                    </property>
+                  </widget>
                 <widget class="QLineEdit" name="lineEdit_cover_backfill_numbers">
                   <property name="geometry">
                     <rect>
@@ -2967,10 +2985,10 @@
                   <property name="text">
                     <string>提示：补图结果将输出到日志页，可在日志页查看详细进度和错误信息。</string>
                   </property>
-                  <property name="wordWrap">
-                    <bool>true</bool>
-                  </property>
-                </widget>
+                    <property name="wordWrap">
+                      <bool>true</bool>
+                    </property>
+                  </widget>
               </widget>
               <widget class="QGroupBox" name="groupBox_scrape_cache">
                   <property name="geometry">
@@ -3136,14 +3154,14 @@
                   <enum>Qt::ScrollBarAlwaysOff</enum>
                 </property>
                 <property name="widgetResizable">
-                  <bool>false</bool>
+                  <bool>true</bool>
                 </property>
                 <widget class="QWidget" name="scrollAreaWidgetContents_guaxiaomulu">
                   <property name="geometry">
                     <rect>
                       <x>0</x>
                       <y>0</y>
-                      <width>760</width>
+                      <width>860</width>
                       <height>1770</height>
                     </rect>
                   </property>
@@ -3236,6 +3254,9 @@
                             </property>
                             <property name="text">
                               <string>指不想要刮削的目录，可以填写多个目录，以逗号分开（中英文逗号都可以）</string>
+                            </property>
+                            <property name="wordWrap">
+                              <bool>true</bool>
                             </property>
                           </widget>
                         </item>
@@ -3345,10 +3366,10 @@
                             <property name="alignment">
                               <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
                             </property>
-                            <property name="wordWrap">
-                              <bool>true</bool>
-                            </property>
-                          </widget>
+                              <property name="wordWrap">
+                                <bool>true</bool>
+                              </property>
+                            </widget>
                         </item>
                         <item row="2" column="1">
                           <widget class="QCheckBox" name="checkBox_scrape_softlink_path">
@@ -3485,6 +3506,9 @@
                             </property>
                             <property name="text">
                               <string>指刮削失败时，视频将移动到这个文件夹。输出目录可以不在待刮削视频目录下</string>
+                            </property>
+                            <property name="wordWrap">
+                              <bool>true</bool>
                             </property>
                           </widget>
                         </item>
@@ -3642,6 +3666,9 @@
                             <property name="text">
                               <string>指刮削成功时，视频将移动到这个文件夹。输出目录可以不在待刮削视频目录下</string>
                             </property>
+                            <property name="wordWrap">
+                              <bool>true</bool>
+                            </property>
                           </widget>
                         </item>
                         <item row="4" column="1">
@@ -3730,6 +3757,9 @@
                             <property name="text">
                               <string>勾选后将检查软链接文件指向的目标文件是否存在，若不存在则会删除该软链接</string>
                             </property>
+                            <property name="wordWrap">
+                              <bool>true</bool>
+                            </property>
                           </widget>
                         </item>
                         <item row="1" column="1">
@@ -3745,6 +3775,9 @@
                             </property>
                             <property name="text">
                               <string>支持记录和跳过已刮削成功的文件，避免新增视频时重复刮削之前成功的文件</string>
+                            </property>
+                            <property name="wordWrap">
+                              <bool>true</bool>
                             </property>
                           </widget>
                         </item>
@@ -3912,6 +3945,9 @@
                             <property name="text">
                               <string>识别番号时，将先过滤多余字符再进行识别。（填写时以逗号分割，不用区分大小写）</string>
                             </property>
+                            <property name="wordWrap">
+                              <bool>true</bool>
+                            </property>
                           </widget>
                         </item>
                         <item row="4" column="1">
@@ -3969,6 +4005,9 @@
                             </property>
                             <property name="text">
                               <string>用于过滤本地的一些广告视频，此处填写文件大小，小于该大小的视频将跳过刮削</string>
+                            </property>
+                            <property name="wordWrap">
+                              <bool>true</bool>
                             </property>
                           </widget>
                         </item>
@@ -4338,6 +4377,9 @@
                             <property name="text">
                               <string>以下已启用的规则中有任一命中时，文件将被清理。（多个内容以｜分割，区分大小写）</string>
                             </property>
+                            <property name="wordWrap">
+                              <bool>true</bool>
+                            </property>
                           </widget>
                         </item>
                         <item row="7" column="0">
@@ -4397,10 +4439,10 @@
                             <property name="alignment">
                               <set>Qt::AlignCenter</set>
                             </property>
-                            <property name="wordWrap">
-                              <bool>true</bool>
-                            </property>
-                          </widget>
+                              <property name="wordWrap">
+                                <bool>true</bool>
+                              </property>
+                            </widget>
                         </item>
                         <item row="7" column="1">
                           <layout class="QHBoxLayout" name="horizontalLayout_79">
@@ -4522,6 +4564,9 @@
                             </property>
                             <property name="text">
                               <string>以下已启用的规则中有任一命中时，文件将不被清理。（会优先处理不清理文件规则）</string>
+                            </property>
+                            <property name="wordWrap">
+                              <bool>true</bool>
                             </property>
                           </widget>
                         </item>
@@ -4765,10 +4810,10 @@
                       <property name="alignment">
                         <set>Qt::AlignCenter</set>
                       </property>
-                      <property name="wordWrap">
-                        <bool>true</bool>
-                      </property>
-                    </widget>
+                        <property name="wordWrap">
+                          <bool>true</bool>
+                        </property>
+                      </widget>
                   </widget>
                   <widget class="QGroupBox" name="groupBox_9">
                     <property name="geometry">
@@ -4933,14 +4978,14 @@
                   <enum>QAbstractScrollArea::AdjustIgnored</enum>
                 </property>
                 <property name="widgetResizable">
-                  <bool>false</bool>
+                  <bool>true</bool>
                 </property>
                 <widget class="QWidget" name="scrollAreaWidgetContents_guaxiaomoshi">
                   <property name="geometry">
                     <rect>
                       <x>0</x>
                       <y>0</y>
-                      <width>760</width>
+                      <width>860</width>
                       <height>2000</height>
                     </rect>
                   </property>
@@ -4961,7 +5006,7 @@
                     </property>
                     <property name="maximumSize">
                       <size>
-                        <width>739</width>
+                        <width>860</width>
                         <height>16777215</height>
                       </size>
                     </property>
@@ -5040,6 +5085,9 @@
                                 </property>
                                 <property name="text">
                                   <string>不刮削，读取本地信息并显示，适合检查媒体库或媒体库重新整理分类</string>
+                                </property>
+                                <property name="wordWrap">
+                                  <bool>true</bool>
                                 </property>
                               </widget>
                             </item>
@@ -5379,6 +5427,9 @@
                                 <property name="text">
                                   <string>流程同正常模式，但命名按照更新模式规则执行（在下方设置），适合二次刮削</string>
                                 </property>
+                                <property name="wordWrap">
+                                  <bool>true</bool>
+                                </property>
                               </widget>
                             </item>
                             <item>
@@ -5502,6 +5553,9 @@
                                 </property>
                                 <property name="text">
                                   <string>执行：刮削-&gt;重命名，仅整理本地视频，不下载图片，适合不要海报墙的情况</string>
+                                </property>
+                                <property name="wordWrap">
+                                  <bool>true</bool>
                                 </property>
                               </widget>
                             </item>
@@ -5656,6 +5710,9 @@
                                 <property name="text">
                                   <string>执行：刮削-&gt;下载封面-&gt;重命名-&gt;水印等全部操作，适合要海报墙的情况</string>
                                 </property>
+                                <property name="wordWrap">
+                                  <bool>true</bool>
+                                </property>
                               </widget>
                             </item>
                             <item>
@@ -5746,7 +5803,7 @@
                     </property>
                     <property name="maximumSize">
                       <size>
-                        <width>739</width>
+                        <width>860</width>
                         <height>16777215</height>
                       </size>
                     </property>
@@ -5796,6 +5853,9 @@
                             <property name="text">
                               <string>刮削成功时，不移动文件位置，仍在原目录（适合已整理好文件夹或二次刮削场景）</string>
                             </property>
+                            <property name="wordWrap">
+                              <bool>true</bool>
+                            </property>
                           </widget>
                         </item>
                         <item row="0" column="0">
@@ -5844,7 +5904,7 @@
                     </property>
                     <property name="maximumSize">
                       <size>
-                        <width>739</width>
+                        <width>860</width>
                         <height>16777215</height>
                       </size>
                     </property>
@@ -5939,7 +5999,7 @@
                     </property>
                     <property name="maximumSize">
                       <size>
-                        <width>739</width>
+                        <width>860</width>
                         <height>16777215</height>
                       </size>
                     </property>
@@ -6034,7 +6094,7 @@
                     </property>
                     <property name="maximumSize">
                       <size>
-                        <width>739</width>
+                        <width>860</width>
                         <height>16777215</height>
                       </size>
                     </property>
@@ -6147,6 +6207,9 @@
                             <property name="text">
                               <string>更新视频同级目录下的内容，即：../A/B/C[NEW].mp4</string>
                             </property>
+                            <property name="wordWrap">
+                              <bool>true</bool>
+                            </property>
                           </widget>
                         </item>
                         <item row="5" column="1">
@@ -6162,6 +6225,9 @@
                             </property>
                             <property name="text">
                               <string>在视频所在目录下为视频创建D目录，并更新C内容，即：../A/B/D/C[NEW].mp4</string>
+                            </property>
+                            <property name="wordWrap">
+                              <bool>true</bool>
                             </property>
                           </widget>
                         </item>
@@ -6333,6 +6399,9 @@
                             </property>
                             <property name="text">
                               <string>更新视频所在目录及该目录下的内容，即：../A/B[NEW]/C[NEW].mp4</string>
+                            </property>
+                            <property name="wordWrap">
+                              <bool>true</bool>
                             </property>
                           </widget>
                         </item>
@@ -6615,7 +6684,7 @@
                     </property>
                     <property name="maximumSize">
                       <size>
-                        <width>739</width>
+                        <width>860</width>
                         <height>16777215</height>
                       </size>
                     </property>
@@ -6645,6 +6714,9 @@
                             </property>
                             <property name="text">
                               <string>刮削成功时，按「命名」-「视频命名规则」-「视频文件名」重命名文件</string>
+                            </property>
+                            <property name="wordWrap">
+                              <bool>true</bool>
                             </property>
                           </widget>
                         </item>
@@ -6756,6 +6828,9 @@
                             </property>
                             <property name="text">
                               <string>设置 javdb 延时可降低 javdb 被封概率，将在1/2延时-1延时之间随机。</string>
+                            </property>
+                            <property name="wordWrap">
+                              <bool>true</bool>
                             </property>
                           </widget>
                         </item>
@@ -7072,7 +7147,7 @@
                     </property>
                     <property name="maximumSize">
                       <size>
-                        <width>739</width>
+                        <width>860</width>
                         <height>16777215</height>
                       </size>
                     </property>
@@ -7393,6 +7468,9 @@
                       <property name="text">
                         <string>注：软硬链接不会移动和重命名原视频文件，仅移动和重命名链接文件</string>
                       </property>
+                      <property name="wordWrap">
+                        <bool>true</bool>
+                      </property>
                     </widget>
                   </widget>
                 </widget>
@@ -7427,14 +7505,14 @@
                   <enum>QAbstractScrollArea::AdjustIgnored</enum>
                 </property>
                 <property name="widgetResizable">
-                  <bool>false</bool>
+                  <bool>true</bool>
                 </property>
                 <widget class="QWidget" name="scrollAreaWidgetContents_guaxiaowangzhan">
                   <property name="geometry">
                     <rect>
                       <x>0</x>
                       <y>0</y>
-                      <width>760</width>
+                      <width>860</width>
                       <height>2470</height>
                     </rect>
                   </property>
@@ -7455,7 +7533,7 @@
                     </property>
                     <property name="maximumSize">
                       <size>
-                        <width>739</width>
+                        <width>860</width>
                         <height>16777215</height>
                       </size>
                     </property>
@@ -7623,10 +7701,10 @@
                             <property name="alignment">
                               <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignTop</set>
                             </property>
-                            <property name="wordWrap">
-                              <bool>true</bool>
-                            </property>
-                          </widget>
+                              <property name="wordWrap">
+                                <bool>true</bool>
+                              </property>
+                            </widget>
                         </item>
                         <item row="5" column="1">
                           <widget class="QLabel" name="label_156">
@@ -7762,6 +7840,9 @@
                             <property name="text">
                               <string>比如：111111-111，111111_111，n1111，HEYZO-1111，SMD-111</string>
                             </property>
+                            <property name="wordWrap">
+                              <bool>true</bool>
+                            </property>
                           </widget>
                         </item>
                         <item row="12" column="1" colspan="3">
@@ -7784,10 +7865,10 @@
                             <property name="text">
                               <string>&lt;p&gt;「网站偏好」-「指定网站」指定 getchu、dmm、getchu_dmm，或文件路径含有「里番」、「动漫」时，将自动使用 getchu_dmm（二合一） 刮削&lt;/p&gt;</string>
                             </property>
-                            <property name="wordWrap">
-                              <bool>true</bool>
-                            </property>
-                          </widget>
+                              <property name="wordWrap">
+                                <bool>true</bool>
+                              </property>
+                            </widget>
                         </item>
                         <item row="13" column="1" colspan="3">
                           <widget class="QLabel" name="label_323">
@@ -7809,10 +7890,10 @@
                             <property name="text">
                               <string>&lt;p&gt;「网站偏好」-「指定网站」指定 mywife，或文件路径含有 mywife时，将自动使用 mywife 刮削（Mywife 番号规则： Mywife No.1230）&lt;/p&gt;</string>
                             </property>
-                            <property name="wordWrap">
-                              <bool>true</bool>
-                            </property>
-                          </widget>
+                              <property name="wordWrap">
+                                <bool>true</bool>
+                              </property>
+                            </widget>
                         </item>
                         <item row="1" column="1">
                           <widget class="QLabel" name="label_154">
@@ -8347,7 +8428,7 @@
                     </property>
                     <property name="maximumSize">
                       <size>
-                        <width>739</width>
+                        <width>860</width>
                         <height>16777215</height>
                       </size>
                     </property>
@@ -9337,10 +9418,10 @@
                       <property name="text">
                         <string>&lt;p&gt;说明：对于某个字段，如果不指定刮削网站，则将使用任意已获取网站的数据；否则将依次使用字段刮削网站与该类型的刮削网站的交集。&lt;/p&gt;&lt;p&gt;例如，若标题设置为 theporndb,dmm,javdb,fc2ppvdb，有码设置为 dmm,javdb,javbus，FC2设置为 fc2,fc2ppvdb&lt;/p&gt;&lt;p&gt;则对于有码影片，将依次使用 dmm,javdb 的标题数据；对于FC2影片将使用 fc2ppvdb 的标题数据&lt;/p&gt;</string>
                       </property>
-                      <property name="wordWrap">
-                        <bool>true</bool>
-                      </property>
-                    </widget>
+                        <property name="wordWrap">
+                          <bool>true</bool>
+                        </property>
+                      </widget>
                   </widget>
                   <widget class="QGroupBox" name="groupBox_11">
                     <property name="geometry">
@@ -9359,7 +9440,7 @@
                     </property>
                     <property name="maximumSize">
                       <size>
-                        <width>739</width>
+                        <width>860</width>
                         <height>1600</height>
                       </size>
                     </property>
@@ -9596,6 +9677,9 @@
                             <property name="wordWrap">
                               <bool>false</bool>
                             </property>
+                            <property name="wordWrap">
+                              <bool>true</bool>
+                            </property>
                           </widget>
                         </item>
                         <item row="2" column="1">
@@ -9784,14 +9868,14 @@
                   <enum>Qt::ScrollBarAlwaysOff</enum>
                 </property>
                 <property name="widgetResizable">
-                  <bool>false</bool>
+                  <bool>true</bool>
                 </property>
                 <widget class="QWidget" name="scrollAreaWidgetContents_xiazai">
                   <property name="geometry">
                     <rect>
                       <x>0</x>
                       <y>0</y>
-                      <width>760</width>
+                      <width>860</width>
                       <height>1680</height>
                     </rect>
                   </property>
@@ -10302,10 +10386,10 @@
                       <property name="alignment">
                         <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
                       </property>
-                      <property name="wordWrap">
-                        <bool>true</bool>
-                      </property>
-                    </widget>
+                        <property name="wordWrap">
+                          <bool>true</bool>
+                        </property>
+                      </widget>
                   </widget>
                   <widget class="QGroupBox" name="groupBox_33">
                     <property name="geometry">
@@ -10701,10 +10785,10 @@
                       <property name="alignment">
                         <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignTop</set>
                       </property>
-                      <property name="wordWrap">
-                        <bool>true</bool>
-                      </property>
-                    </widget>
+                        <property name="wordWrap">
+                          <bool>true</bool>
+                        </property>
+                      </widget>
                     <widget class="QWidget" name="horizontalLayoutWidget_24">
                       <property name="geometry">
                         <rect>
@@ -10880,6 +10964,9 @@
                             <property name="text">
                               <string>站点图源全部失败时，按番号直构官方 CDN 高清图：DMM 高清封面（自动学习厂牌前缀）与 MGStage 素人高清海报</string>
                             </property>
+                            <property name="wordWrap">
+                              <bool>true</bool>
+                            </property>
                           </widget>
                         </item>
                       </layout>
@@ -11010,14 +11097,14 @@
                   <enum>Qt::ScrollBarAlwaysOff</enum>
                 </property>
                 <property name="widgetResizable">
-                  <bool>false</bool>
+                  <bool>true</bool>
                 </property>
                 <widget class="QWidget" name="scrollAreaWidgetContents_mingming">
                   <property name="geometry">
                     <rect>
                       <x>0</x>
                       <y>0</y>
-                      <width>760</width>
+                      <width>860</width>
                       <height>3860</height>
                     </rect>
                   </property>
@@ -11233,10 +11320,10 @@
                             <property name="text">
                               <string>指在 nfo 文件中的标题(title)格式，在 Emby 中作为视频标题显示，支持完整 Jinja2 语法</string>
                             </property>
-                            <property name="wordWrap">
-                              <bool>true</bool>
-                            </property>
-                          </widget>
+                              <property name="wordWrap">
+                                <bool>true</bool>
+                              </property>
+                            </widget>
                         </item>
                         <item row="4" column="0">
                           <widget class="QLabel" name="label_67">
@@ -11276,6 +11363,9 @@
                             </property>
                             <property name="text">
                               <string>指本地视频文件的文件名格式，命名字段同上，推荐 {{ number }}</string>
+                            </property>
+                            <property name="wordWrap">
+                              <bool>true</bool>
                             </property>
                           </widget>
                         </item>
@@ -11434,7 +11524,7 @@
                     </property>
                     <property name="maximumSize">
                       <size>
-                        <width>739</width>
+                        <width>860</width>
                         <height>16777215</height>
                       </size>
                     </property>
@@ -11575,6 +11665,9 @@
                       </property>
                       <property name="text">
                         <string>默认识别分集：-CD1｜-PART1｜-HD1｜-1.mp4 （文件名含有这些字符时将识别其中的分集信息）</string>
+                      </property>
+                      <property name="wordWrap">
+                        <bool>true</bool>
                       </property>
                     </widget>
                     <widget class="QCheckBox" name="checkBox_cd_part_a">
@@ -12070,6 +12163,9 @@
                       <property name="text">
                         <string>指有多位演员时，命名时最多显示的演员数量。超出的演员将用以下字符替代：</string>
                       </property>
+                      <property name="wordWrap">
+                        <bool>true</bool>
+                      </property>
                     </widget>
                     <widget class="QLineEdit" name="lineEdit_folder_name_max">
                       <property name="geometry">
@@ -12282,7 +12378,7 @@
                     </property>
                     <property name="maximumSize">
                       <size>
-                        <width>739</width>
+                        <width>860</width>
                         <height>16777215</height>
                       </size>
                     </property>
@@ -12315,6 +12411,9 @@
                       </property>
                       <property name="text">
                         <string>指命名时在番号后添加版本命名字符。你也可以使用 moword 字段来调整添加位置</string>
+                      </property>
+                      <property name="wordWrap">
+                        <bool>true</bool>
                       </property>
                     </widget>
                     <widget class="QLineEdit" name="lineEdit_youma_style">
@@ -12874,7 +12973,7 @@
                     </property>
                     <property name="maximumSize">
                       <size>
-                        <width>739</width>
+                        <width>860</width>
                         <height>16777215</height>
                       </size>
                     </property>
@@ -12943,6 +13042,9 @@
                             <property name="text">
                               <string>视频文件名-thumb.jpg，视频文件名-fanart.jpg</string>
                             </property>
+                            <property name="wordWrap">
+                              <bool>true</bool>
+                            </property>
                           </widget>
                         </item>
                         <item row="1" column="1">
@@ -12981,7 +13083,7 @@
                     </property>
                     <property name="maximumSize">
                       <size>
-                        <width>739</width>
+                        <width>860</width>
                         <height>16777215</height>
                       </size>
                     </property>
@@ -13050,6 +13152,9 @@
                             <property name="text">
                               <string>每个视频创建一个「视频名-trailer.mp4」，多分集时会创建多个</string>
                             </property>
+                            <property name="wordWrap">
+                              <bool>true</bool>
+                            </property>
                           </widget>
                         </item>
                         <item row="1" column="1">
@@ -13065,6 +13170,9 @@
                             </property>
                             <property name="text">
                               <string>在视频目录创建「trailers」文件夹，多分集共用一个「trailer.mp4」</string>
+                            </property>
+                            <property name="wordWrap">
+                              <bool>true</bool>
                             </property>
                           </widget>
                         </item>
@@ -13088,7 +13196,7 @@
                     </property>
                     <property name="maximumSize">
                       <size>
-                        <width>739</width>
+                        <width>860</width>
                         <height>16777215</height>
                       </size>
                     </property>
@@ -13313,6 +13421,9 @@
                             <property name="text">
                               <string>年: YYYY或YY，月: MM，日:DD，比如: YY.MM.DD 将显示为 22.03.20</string>
                             </property>
+                            <property name="wordWrap">
+                              <bool>true</bool>
+                            </property>
                           </widget>
                         </item>
                         <item row="4" column="1">
@@ -13344,6 +13455,9 @@
                             </property>
                             <property name="text">
                               <string>当演员名不存在时，在使用演员命名字段命名时，使用以上字符替代</string>
+                            </property>
+                            <property name="wordWrap">
+                              <bool>true</bool>
                             </property>
                           </widget>
                         </item>
@@ -13436,7 +13550,7 @@
                     </property>
                     <property name="maximumSize">
                       <size>
-                        <width>739</width>
+                        <width>860</width>
                         <height>16777215</height>
                       </size>
                     </property>
@@ -13521,10 +13635,10 @@
                             <property name="text">
                               <string>以视频清晰度的英文缩写来命名不同画质</string>
                             </property>
-                            <property name="wordWrap">
-                              <bool>true</bool>
-                            </property>
-                          </widget>
+                              <property name="wordWrap">
+                                <bool>true</bool>
+                              </property>
+                            </widget>
                         </item>
                       </layout>
                     </widget>
@@ -13549,10 +13663,10 @@
                       <property name="text">
                         <string>&lt;p&gt;说明：qHD=540P，HD=720P/960P，FHD=1080P，QHD=1440P(2K)，UHD=4K/8K。低于540P时默认使用高度值命名&lt;/p&gt;</string>
                       </property>
-                      <property name="wordWrap">
-                        <bool>true</bool>
-                      </property>
-                    </widget>
+                        <property name="wordWrap">
+                          <bool>true</bool>
+                        </property>
+                      </widget>
                     <widget class="QFrame" name="frame_6">
                       <property name="geometry">
                         <rect>
@@ -13722,6 +13836,9 @@
                       <property name="text">
                         <string>指命名时在番号后添加 4K（仅4K）。你也可以使用 4K 字段来调整添加位置</string>
                       </property>
+                      <property name="wordWrap">
+                        <bool>true</bool>
+                      </property>
                     </widget>
                     <widget class="QCheckBox" name="checkBox_foldername_4k">
                       <property name="geometry">
@@ -13766,7 +13883,7 @@
                     </property>
                     <property name="maximumSize">
                       <size>
-                        <width>739</width>
+                        <width>860</width>
                         <height>16777215</height>
                       </size>
                     </property>
@@ -13858,6 +13975,9 @@
                       <property name="text">
                         <string>Emby 分集封面需要每个分集都提供图片，图片命名规则需要选择「视频文件名-poster.jpg」</string>
                       </property>
+                      <property name="wordWrap">
+                        <bool>true</bool>
+                      </property>
                     </widget>
                     <widget class="QLabel" name="label_354">
                       <property name="geometry">
@@ -13920,14 +14040,14 @@
                   <enum>Qt::ScrollBarAlwaysOff</enum>
                 </property>
                 <property name="widgetResizable">
-                  <bool>false</bool>
+                  <bool>true</bool>
                 </property>
                 <widget class="QWidget" name="scrollAreaWidgetContents_fanyi">
                   <property name="geometry">
                     <rect>
                       <x>0</x>
                       <y>0</y>
-                      <width>760</width>
+                      <width>860</width>
                       <height>2854</height>
                     </rect>
                   </property>
@@ -13948,7 +14068,7 @@
                     </property>
                     <property name="maximumSize">
                       <size>
-                        <width>739</width>
+                        <width>860</width>
                         <height>16777215</height>
                       </size>
                     </property>
@@ -14198,6 +14318,9 @@
                             </property>
                             <property name="text">
                               <string>当勾选多个时，将随机使用所勾选的其中任一翻译引擎，可降低被封几率</string>
+                            </property>
+                            <property name="wordWrap">
+                              <bool>true</bool>
                             </property>
                           </widget>
                         </item>
@@ -14510,6 +14633,9 @@
                             <property name="text">
                               <string>提示词模板. 可用变量: {content} 原文 {lang} 目标语言</string>
                             </property>
+                            <property name="wordWrap">
+                              <bool>true</bool>
+                            </property>
                           </widget>
                         </item>
                         <item row="8" column="1">
@@ -14639,7 +14765,7 @@
                     </property>
                     <property name="maximumSize">
                       <size>
-                        <width>739</width>
+                        <width>860</width>
                         <height>16777215</height>
                       </size>
                     </property>
@@ -14705,6 +14831,9 @@
                             </property>
                             <property name="text">
                               <string>将优先使用刮削网站的中文翻译，当刮削页面无中文时，才使用以下翻译方式。</string>
+                            </property>
+                            <property name="wordWrap">
+                              <bool>true</bool>
                             </property>
                           </widget>
                         </item>
@@ -14787,7 +14916,7 @@
                     </property>
                     <property name="maximumSize">
                       <size>
-                        <width>739</width>
+                        <width>860</width>
                         <height>16777215</height>
                       </size>
                     </property>
@@ -14842,6 +14971,9 @@
                             </property>
                             <property name="text">
                               <string>当字段语言选择中文，但只刮削到日语时，可使用翻译引擎进行翻译</string>
+                            </property>
+                            <property name="wordWrap">
+                              <bool>true</bool>
                             </property>
                           </widget>
                         </item>
@@ -15028,7 +15160,7 @@
                     </property>
                     <property name="maximumSize">
                       <size>
-                        <width>739</width>
+                        <width>860</width>
                         <height>16777215</height>
                       </size>
                     </property>
@@ -15205,7 +15337,7 @@
                     </property>
                     <property name="maximumSize">
                       <size>
-                        <width>739</width>
+                        <width>860</width>
                         <height>16777215</height>
                       </size>
                     </property>
@@ -15269,6 +15401,9 @@
                             </property>
                             <property name="alignment">
                               <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+                            </property>
+                            <property name="wordWrap">
+                              <bool>true</bool>
                             </property>
                           </widget>
                         </item>
@@ -15352,7 +15487,7 @@
                     </property>
                     <property name="maximumSize">
                       <size>
-                        <width>739</width>
+                        <width>860</width>
                         <height>16777215</height>
                       </size>
                     </property>
@@ -15439,6 +15574,9 @@
                             <property name="alignment">
                               <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
                             </property>
+                            <property name="wordWrap">
+                              <bool>true</bool>
+                            </property>
                           </widget>
                         </item>
                         <item row="0" column="1">
@@ -15499,7 +15637,7 @@
                     </property>
                     <property name="maximumSize">
                       <size>
-                        <width>739</width>
+                        <width>860</width>
                         <height>16777215</height>
                       </size>
                     </property>
@@ -15586,6 +15724,9 @@
                             <property name="alignment">
                               <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
                             </property>
+                            <property name="wordWrap">
+                              <bool>true</bool>
+                            </property>
                           </widget>
                         </item>
                         <item row="0" column="1">
@@ -15646,7 +15787,7 @@
                     </property>
                     <property name="maximumSize">
                       <size>
-                        <width>739</width>
+                        <width>860</width>
                         <height>16777215</height>
                       </size>
                     </property>
@@ -15733,6 +15874,9 @@
                             <property name="alignment">
                               <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
                             </property>
+                            <property name="wordWrap">
+                              <bool>true</bool>
+                            </property>
                           </widget>
                         </item>
                         <item row="0" column="1">
@@ -15793,7 +15937,7 @@
                     </property>
                     <property name="maximumSize">
                       <size>
-                        <width>739</width>
+                        <width>860</width>
                         <height>16777215</height>
                       </size>
                     </property>
@@ -15880,6 +16024,9 @@
                             <property name="alignment">
                               <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
                             </property>
+                            <property name="wordWrap">
+                              <bool>true</bool>
+                            </property>
                           </widget>
                         </item>
                         <item row="1" column="1">
@@ -15952,14 +16099,14 @@
                   <enum>Qt::ScrollBarAlwaysOff</enum>
                 </property>
                 <property name="widgetResizable">
-                  <bool>false</bool>
+                  <bool>true</bool>
                 </property>
                 <widget class="QWidget" name="scrollAreaWidgetContents_zimu">
                   <property name="geometry">
                     <rect>
                       <x>0</x>
                       <y>0</y>
-                      <width>760</width>
+                      <width>860</width>
                       <height>860</height>
                     </rect>
                   </property>
@@ -16059,6 +16206,9 @@
                             <property name="text">
                               <string>指视频有中文字幕时，在重命名文件名及目录名时在番号后添加该字符表示有中文字幕</string>
                             </property>
+                            <property name="wordWrap">
+                              <bool>true</bool>
+                            </property>
                           </widget>
                         </item>
                         <item row="1" column="1">
@@ -16120,6 +16270,9 @@
                             </property>
                             <property name="text">
                               <string>指命名时在番号后添加中文字幕命名字符。你也可以使用 cnword 字段来调整添加位置</string>
+                            </property>
+                            <property name="wordWrap">
+                              <bool>true</bool>
                             </property>
                           </widget>
                         </item>
@@ -16231,6 +16384,9 @@
                             </property>
                             <property name="text">
                               <string>刮削时，如果视频无内嵌字幕且同目录无字幕文件，则从字幕文件目录查找并复制字幕</string>
+                            </property>
+                            <property name="wordWrap">
+                              <bool>true</bool>
                             </property>
                           </widget>
                         </item>
@@ -16557,14 +16713,14 @@
                   <enum>Qt::ScrollBarAlwaysOff</enum>
                 </property>
                 <property name="widgetResizable">
-                  <bool>false</bool>
+                  <bool>true</bool>
                 </property>
                 <widget class="QWidget" name="scrollAreaWidgetContents_shuiyin">
                   <property name="geometry">
                     <rect>
                       <x>0</x>
                       <y>0</y>
-                      <width>760</width>
+                      <width>860</width>
                       <height>1670</height>
                     </rect>
                   </property>
@@ -16979,6 +17135,9 @@
                             <property name="text">
                               <string>水印图片的显示高度 = 设置的水印大小 / 40 * 封面图高度</string>
                             </property>
+                            <property name="wordWrap">
+                              <bool>true</bool>
+                            </property>
                           </widget>
                         </item>
                         <item row="7" column="1">
@@ -17209,6 +17368,9 @@
                             </property>
                             <property name="text">
                               <string>Emby 中 fanart 作为背景图，不需要添加水印。其他软件作为预览图时，可添加水印</string>
+                            </property>
+                            <property name="wordWrap">
+                              <bool>true</bool>
                             </property>
                           </widget>
                         </item>
@@ -19360,6 +19522,9 @@
                             <property name="alignment">
                               <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
                             </property>
+                            <property name="wordWrap">
+                              <bool>true</bool>
+                            </property>
                           </widget>
                         </item>
                         <item row="23" column="0">
@@ -19469,14 +19634,14 @@
                   <enum>Qt::ScrollBarAlwaysOff</enum>
                 </property>
                 <property name="widgetResizable">
-                  <bool>false</bool>
+                  <bool>true</bool>
                 </property>
                 <widget class="QWidget" name="scrollAreaWidgetContents_yanyuan">
                   <property name="geometry">
                     <rect>
                       <x>0</x>
                       <y>0</y>
-                      <width>770</width>
+                      <width>860</width>
                       <height>1570</height>
                     </rect>
                   </property>
@@ -19574,6 +19739,9 @@
                             </property>
                             <property name="text">
                               <string>API 密钥创建方法：控制台-&gt;高级-&gt;API 密钥-&gt;添加（APP 名称任意）</string>
+                            </property>
+                            <property name="wordWrap">
+                              <bool>true</bool>
                             </property>
                           </widget>
                         </item>
@@ -19755,6 +19923,9 @@
                             <property name="text">
                               <string>指你的 Emby/Jellyfin 服务器地址，比如：http://192.168.1.5:8096</string>
                             </property>
+                            <property name="wordWrap">
+                              <bool>true</bool>
+                            </property>
                           </widget>
                         </item>
                         <item row="0" column="0">
@@ -19880,6 +20051,9 @@
                             <property name="text">
                               <string>如果设置，将仅获取指定 Emby/Jellyfin 用户媒体库中的演员</string>
                             </property>
+                            <property name="wordWrap">
+                              <bool>true</bool>
+                            </property>
                           </widget>
                         </item>
                       </layout>
@@ -19902,7 +20076,7 @@
                     </property>
                     <property name="maximumSize">
                       <size>
-                        <width>739</width>
+                        <width>860</width>
                         <height>16777215</height>
                       </size>
                     </property>
@@ -19949,10 +20123,10 @@
                       <property name="text">
                         <string>使用网络头像库或本地头像库，补全 Emby/Jellyfin 演员头像。</string>
                       </property>
-                      <property name="wordWrap">
-                        <bool>true</bool>
-                      </property>
-                    </widget>
+                        <property name="wordWrap">
+                          <bool>true</bool>
+                        </property>
+                      </widget>
                     <widget class="QCheckBox" name="checkBox_actor_photo_auto">
                       <property name="geometry">
                         <rect>
@@ -20510,7 +20684,7 @@
                     </property>
                     <property name="maximumSize">
                       <size>
-                        <width>739</width>
+                        <width>860</width>
                         <height>16777215</height>
                       </size>
                     </property>
@@ -20653,7 +20827,6 @@
                             <property name="frameShadow">
                               <enum>QFrame::Raised</enum>
                             </property>
-
                           </widget>
                         </item>
                         <item row="4" column="1">
@@ -20864,10 +21037,10 @@
                       <property name="text">
                         <string>使用minnano-av和维基百科补全Emby/Jellyfin演员信息，包括:生日、身高、三围、出道时间和作品等。</string>
                       </property>
-                      <property name="wordWrap">
-                        <bool>true</bool>
-                      </property>
-                    </widget>
+                        <property name="wordWrap">
+                          <bool>true</bool>
+                        </property>
+                      </widget>
                     <widget class="QFrame" name="frame_4">
                       <property name="geometry">
                         <rect>
@@ -20990,7 +21163,7 @@
                     </property>
                     <property name="maximumSize">
                       <size>
-                        <width>739</width>
+                        <width>860</width>
                         <height>16777215</height>
                       </size>
                     </property>
@@ -21037,10 +21210,10 @@
                       <property name="text">
                         <string>将为待刮削目录的每个视频在同目录创建一个 .actors 文件夹，并将该视频的演员图片放在该文件夹中</string>
                       </property>
-                      <property name="wordWrap">
-                        <bool>true</bool>
-                      </property>
-                    </widget>
+                        <property name="wordWrap">
+                          <bool>true</bool>
+                        </property>
+                      </widget>
                     <widget class="QFrame" name="frame_7">
                       <property name="geometry">
                         <rect>
@@ -21187,14 +21360,14 @@
                   <enum>Qt::ScrollBarAlwaysOff</enum>
                 </property>
                 <property name="widgetResizable">
-                  <bool>false</bool>
+                  <bool>true</bool>
                 </property>
                 <widget class="QWidget" name="scrollAreaWidgetContents_wangluo">
                   <property name="geometry">
                     <rect>
                       <x>0</x>
                       <y>0</y>
-                      <width>760</width>
+                      <width>860</width>
                       <height>1880</height>
                     </rect>
                   </property>
@@ -21595,6 +21768,9 @@
                       </property>
                       <property name="textInteractionFlags">
                         <set>Qt::TextBrowserInteraction</set>
+                      </property>
+                      <property name="wordWrap">
+                        <bool>true</bool>
                       </property>
                     </widget>
                     <widget class="QLabel" name="label_7">
@@ -22216,10 +22392,10 @@
                             <property name="text">
                               <string>用途：校验 Bypass 服务落地/重定向后的最终域名，防止第三方服务被劫持时把恶意页面当数据。支持 *.example.com 子域通配，逗号分隔；留空表示不校验（默认）。一般无需配置。</string>
                             </property>
-                            <property name="wordWrap">
-                              <bool>true</bool>
-                            </property>
-                          </widget>
+                              <property name="wordWrap">
+                                <bool>true</bool>
+                              </property>
+                            </widget>
                         </item>
                         <item row="7" column="0">
                           <widget class="QLabel" name="label_65">
@@ -22798,14 +22974,14 @@
                   <enum>Qt::ScrollBarAlwaysOff</enum>
                 </property>
                 <property name="widgetResizable">
-                  <bool>false</bool>
+                  <bool>true</bool>
                 </property>
                 <widget class="QWidget" name="scrollAreaWidgetContents_gaoji">
                   <property name="geometry">
                     <rect>
                       <x>0</x>
                       <y>0</y>
-                      <width>770</width>
+                      <width>860</width>
                       <height>1000</height>
                     </rect>
                   </property>
@@ -22826,7 +23002,7 @@
                     </property>
                     <property name="maximumSize">
                       <size>
-                        <width>739</width>
+                        <width>860</width>
                         <height>16777215</height>
                       </size>
                     </property>
@@ -22877,7 +23053,7 @@
                     </property>
                     <property name="maximumSize">
                       <size>
-                        <width>739</width>
+                        <width>860</width>
                         <height>16777215</height>
                       </size>
                     </property>
@@ -22971,7 +23147,7 @@
                     </property>
                     <property name="maximumSize">
                       <size>
-                        <width>739</width>
+                        <width>860</width>
                         <height>16777215</height>
                       </size>
                     </property>
@@ -23022,7 +23198,7 @@
                     </property>
                     <property name="maximumSize">
                       <size>
-                        <width>739</width>
+                        <width>860</width>
                         <height>16777215</height>
                       </size>
                     </property>
@@ -23511,6 +23687,9 @@
                             </property>
                             <property name="text">
                               <string>将读取该目录中的配置文件、映射表、水印图片、演员头像等数据，修改后重启程序方可生效</string>
+                            </property>
+                            <property name="wordWrap">
+                              <bool>true</bool>
                             </property>
                           </widget>
                         </item>
@@ -24776,10 +24955,10 @@ p, li { white-space: pre-wrap; }
                                   <property name="text">
                                     <string>用法：先在左侧 NFO 列表选中多条记录，再填写内容点对应按钮（替换演员名/加标签/删标签/统一系列名），最后点「批量保存」统一写盘生效。</string>
                                   </property>
-                                  <property name="wordWrap">
-                                    <bool>true</bool>
-                                  </property>
-                                </widget>
+                                    <property name="wordWrap">
+                                      <bool>true</bool>
+                                    </property>
+                                  </widget>
                               </item>
                             </layout>
                           </widget>
@@ -25759,14 +25938,14 @@ p, li { white-space: pre-wrap; }
             <enum>Qt::ScrollBarAlwaysOn</enum>
           </property>
           <property name="widgetResizable">
-            <bool>false</bool>
+            <bool>true</bool>
           </property>
           <widget class="QWidget" name="scrollAreaWidgetContents_nfo_editor">
             <property name="geometry">
               <rect>
                 <x>0</x>
                 <y>0</y>
-                <width>752</width>
+                <width>860</width>
                 <height>1300</height>
               </rect>
             </property>
@@ -26440,10 +26619,10 @@ p, li { white-space: pre-wrap; }
               <property name="text">
                 <string />
               </property>
-              <property name="wordWrap">
-                <bool>true</bool>
-              </property>
-            </widget>
+                <property name="wordWrap">
+                  <bool>true</bool>
+                </property>
+              </widget>
             <widget class="QLabel" name="label_381">
               <property name="geometry">
                 <rect>

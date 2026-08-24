@@ -49,6 +49,7 @@
 - **网络设置说明文字截断/未左对齐**：label_103 高度写死 70px 且未开自动换行，5 行青色说明文字底部被裁、缩在滑块列下方未与「重试次数」对齐；改为跨两列（colspan=2）+ wordWrap + 由内容撑高，内部网格高度 500→540 防下方控件被挤出框外
 - **NFO 设置页勾选项文字截断**：groupBox 锁宽 739 + 内容区仅 ~580px，3~4 个带英文括号的 CheckBox 挤不下被硬截断（如「发行日期（re」「国家（countr」「片商（st」）；scrollArea widgetResizable 改 true、groupBox 放宽至 860、26 个超长 CheckBox 统一 sizePolicy 为 Minimum 去掉 150 硬限按文本比例分配宽度，字段名完整显示
 - **NFO 库管理页布局半成品**：三栏写死宽度不自适应（列表/表单/预览都不随窗口撑开）；给 nfo_lib_content_layout 三栏设 stretch（2/3/0）表单优先吃空间、表单 minimumSize 300→380、内容区 width 298→360；列表 minimumHeight 320 防被批量操作压扁、批量操作 GroupBox 改默认折叠（checkable+unchecked）；预览 QLabel 加 StyledPanel 边框 + 浅色背景成为「图片框」；列表为空时加不可选占位提示（"请先选择目录"/"未找到 NFO 文件"）
+- **全页面滚动区自适应 + 长文本换行批量修复**：13 个 QScrollArea `widgetResizable` false→true（工具页/设置 11 个标签页 + NFO 编辑器页，高 DPI/宽字体下右侧内容被横向裁切）；13 个内容区 geometry width 760/770/752→860；33 个 QGroupBox `maximumWidth` 739→860；60 个 QLabel 长纯文本加 `wordWrap=true`（分集规则/命名说明/目录说明/Emby 配置等，原被硬截断）；check_ui_layout 脚本验证：13→0、33→0、60→0
 
 ### 工程质量
 
