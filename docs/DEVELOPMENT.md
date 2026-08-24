@@ -235,6 +235,7 @@ ASIN 数据库（Excel `amazon_asin_database.xlsx`），搜索到的 ASIN 与番
   uv run pytest tests/                          # 全部测试
   uv run pytest tests/ --tb=short -m "not network" -x  # 仅不联网测试
   ```
+- **CI 平台分工**：Linux CI 执行 ruff、mypy、完整离线测试、数据库检查、线程安全检查和 UI 布局检查；Windows CI 在 `windows-2025` runner 上执行同一组离线 pytest，覆盖 Windows 路径和文件系统条件分支。PyInstaller EXE 由 Release 工作流和手动 `build-windows.yml` 工作流验证。
 - **覆盖**：tests/crawlers/ 爬虫测试、tests/core/ 核心测试、NFO 测试、配置测试、`tests/test_ui_structure.py`（UI 结构）、`tests/test_actor_clean.py`（演员数据语义清洗）等
 - **演员数据清洗测试**（`tests/test_actor_clean.py`）：验证 `mdcx/utils/actor_clean.py` 对名字/别名字段的语义清洗——系列标签/年份/国籍/事务所标注剥离、作品标题剔除、悬空斜杠修复、占位符识别置空，同时确保罗马音/日文映射、读音、韩文别名等合法内容不被误伤。新数据写入（刮削写入 `update_actor_db_row`）前统一经此模块清洗
 - **演员库完整性测试**（`tests/test_check_actor_db.py`）：验证 `scripts/check_actor_db.py` 对出厂 `actor_database.xlsx` 的完整性检查——jp 重复、tmdbid 重复、url 错配、**孤儿 hyperlink**（XML 层解析 `<c>` 定义集合与 `<hyperlink>` ref 差集）等。`clean_actor_db_non_actors.py` 删行后按 cell 实际坐标重建超链接，配合保存后校验防止孤儿 hyperlink 进入仓库
@@ -247,13 +248,13 @@ ASIN 数据库（Excel `amazon_asin_database.xlsx`），搜索到的 ASIN 与番
     及 `uv run ruff format mdcx/views/MDCx.py`，不要手工改 `MDCx.py`
 - **演员工具页按钮一致性测试**（`tests/test_actor_db_button_consistency.py`）：纯静态校验（无需 Qt 运行时），锁定 `_ACTOR_DB_IDLE_TEXT_MAP` ↔ `MDCx.ui` 中控件 ↔ `MyMainWindow` 顶层 `pyqtSignal(str)` 声明 ↔ `actor_db_finished` 信号契约四层一致。按钮改名、漏声明信号、map 漏收等漂移在 CI 即可捕获
 - **actor_db 并发信号契约**：`actor_db_finished = pyqtSignal(str)` 带 task_id；所有 `_run_actor_db_*` 走 `_run_actor_db_async(btn_attr, busy_text, log_prefix, coro_factory)` 通用模板，防重入依赖 `_actor_db_running` 集合，跨任务误恢复由 `reset_buttons_status` 与 `_on_actor_db_finished` 共同规避
-- **推送前自检**：`uv run check --skip-hook-install`（ruff format + ruff check + mypy mdcx/ + pytest + check_actor_db）
+- **推送前自检**：修改代码后先运行 `uv run quick-check`（ruff format/check + mypy）；提交推送前运行 `uv run check --skip-hook-install`（ruff format/check + mypy + pytest + check_actor_db + check_info_db + check_thread_safety + check_ui_layout）。
 
 ## 代码规范
 
 - **格式化**：ruff（行宽 120，启用 isort/pyupgrade/flake8）
 - **类型检查**：mypy（全项目零 `disable_error_code`；`mdcx/controllers/main_window/init.py`、`load_config.py`、`views/`、`gen/` 等豁免）、pyright（部分文件豁免）
-- **Git 钩子**：pre-commit 安装 ruff check + ruff format
+- **Git 钩子**：项目不要求安装 pre-commit；统一使用 `uv run quick-check` 和 `uv run check --skip-hook-install` 完成检查
 - **检查和修复**：
   ```bash
   uv run ruff check .          # 代码检查
