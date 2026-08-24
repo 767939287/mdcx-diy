@@ -155,6 +155,12 @@ def Init_Ui(self: "MyMAinWindow"):
     self.Ui.widget_nfo.resize(791, 681)
     self.Ui.widget_nfo.hide()
     setup_site_priority_ui(self)
+    # stackedWidget 中未显示的页面不会触发 resize/show 事件，统一初始化
+    # 自定义滚动区内容最小高度，保证首次切换到任一页面垂直滚动即可用
+    from mdcx.views.CustomClass import CustomScrollArea
+
+    for scroll_area in self.findChildren(CustomScrollArea):
+        scroll_area.sync_content_min_height()
 
 
 def _setup_combo_boxes(self: "MyMAinWindow") -> None:

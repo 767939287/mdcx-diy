@@ -39,10 +39,11 @@
   - 新文案回写 `.ui`，使 `.ui` 成为唯一权威源。ElementTree 只读解析，写入使用文本级精确替换，避免重排整个文件。
   - `QCheckBox`、`QRadioButton`、`QPushButton`、`QGroupBox` 不支持 `wordWrap`；长文本通过容器放宽和 `sizePolicy Fixed→Minimum` 解决。
   - 长说明 QLabel 使用 `wordWrap`；垂直策略不能锁死为 Fixed。测量 `sizeHint` 前必须 `show()` + `processEvents()`，或切换到对应 stackedWidget 页面。
-  - `gridLayout` 同一 `row:col` 只能放一个 widget/layout；长 label 使用跨列布局；每个 `.ui` item 必须明确 row/col。
-  - 增高滚动区内 groupBox 时，连锁调整下方兄弟 groupBox 的 y 和滚动区高度，底部保留 20px。
+  - `gridLayout` 同一 `row:column` 只能放一个 widget/layout；Qt Designer XML 使用 `row` 和 `column` 属性；长 label 使用跨列布局；每个 `.ui` item 必须明确行列。
+  - 增高滚动区内 groupBox 时，连锁调整下方兄弟 groupBox 的 y 和滚动区高度，底部保留 20px；绝对定位内容的高度变化同步更新内容 widget 的最小高度。
   - 排查功能必须覆盖所有 QDialog 子类和独立弹窗模块；新增按钮同步检查 `MDCx.ui`、`MDCx.py`、`init.py` 的信号和防重入逻辑。修改主窗口初始化链（信号连接/布局/配置加载）后运行 `tests/test_main_window_startup.py` 冒烟验证，静态检查发现不了 Qt API 签名错误。
-  - 横向裁切排查三件套：`QScrollArea.widgetResizable=true`、内容 geometry width 不写死、`QGroupBox.maximumWidth` 不锁死偏窄。使用 `scripts/check_ui_layout.py` 验证。
+  - 滚动区排查必须同时检查 `widgetResizable`、内容 widget 的运行时最小宽高和 `childrenRect`；绝对定位内容使用 `CustomScrollArea` 同步 `childrenRect.right()/bottom()`，单独设置 `widgetResizable=true` 不能保证垂直滚动。内容 geometry 可以保留 `.ui` 的设计基准宽度，运行时通过最小尺寸适配视口。
+  - 横向裁切排查需要逐页切换 stackedWidget 并执行 `show()` + `processEvents()`，检查页面边界、滚动内容宽度和覆盖层（如 NFO 编辑器）；使用 `scripts/check_ui_layout.py` 配合运行时审计。
   - 中文等宽字体使用 `Courier New`，不要使用裸 `Courier`。
 
 [Qt 跨线程与后台任务]
@@ -60,7 +61,7 @@
 - Context: Onefile 静默退出、数据文件损坏、死代码误删和文本转换问题
 - Category: 排错调试
 - Instructions:
-  - PyQt6 严格校验重载签名，PyQt5 宽松写法（如 `QLayout.setStretchFactor(int, int)`）启动即崩；`QLayout` 只接受 QWidget/QLayout，按 index 用 `QBoxLayout.setStretch()`，而 `QSplitter.setStretchFactor()` 恰好只接受 int index——同一方法名两类签名语义相反，改前先查目标类的重载。
+  - Qt 严格校验重载签名，不能把 `QSplitter.setStretchFactor(int, int)` 的 index 调用套到 `QLayout`；`QLayout.setStretchFactor()` 只接受 QWidget/QLayout，按 index 用 `QBoxLayout.setStretch()`，而 `QSplitter.setStretchFactor()` 恰好接受 int index，同名方法两类签名语义相反，改前先查目标类的重载。
   - 给测试桩追加属性时显式枚举，严禁 `__getattr__` 通配兜底返回值；生产代码可能靠 `AttributeError` 做资源缺失优雅降级（如 `is_male_actor` 检测 `resources.r`），兜底会把降级路径变成运行期崩溃。
   - Onefile 无控制台异常使用 `faulthandler.enable()`、`sys.excepthook` 和 `MAIN_PATH/crash/` 日志定位；GUI 日志必须走 `signal_qt.show_log_text`，`LogBuffer.log().write()` 只写内存。
   - 删除死代码前核实赋值点、读取点和中间产物来源；检查装饰器注册、字符串类型注解、延迟 import、动态字符串工厂。删除后重扫零引用和 F401。

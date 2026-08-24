@@ -1581,7 +1581,7 @@
           </widget>
         </widget>
         <widget class="QWidget" name="page_tool">
-          <widget class="QScrollArea" name="scrollArea_10">
+          <widget class="CustomScrollArea" name="scrollArea_10">
             <property name="geometry">
               <rect>
                 <x>20</x>
@@ -3067,8 +3067,8 @@
               <rect>
                 <x>20</x>
                 <y>10</y>
-                <width>802</width>
-                <height>684</height>
+                <width>800</width>
+                <height>682</height>
               </rect>
             </property>
             <property name="minimumSize">
@@ -3123,7 +3123,7 @@
               <attribute name="title">
                 <string> 刮削目录 </string>
               </attribute>
-              <widget class="QScrollArea" name="scrollArea_2">
+              <widget class="CustomScrollArea" name="scrollArea_2">
                 <property name="geometry">
                   <rect>
                     <x>0</x>
@@ -4944,7 +4944,7 @@
               <attribute name="title">
                 <string> 刮削模式 </string>
               </attribute>
-              <widget class="QScrollArea" name="scrollArea">
+              <widget class="CustomScrollArea" name="scrollArea">
                 <property name="geometry">
                   <rect>
                     <x>0</x>
@@ -7480,7 +7480,7 @@
               <attribute name="title">
                 <string> 刮削网站 </string>
               </attribute>
-              <widget class="QScrollArea" name="scrollArea_8">
+              <widget class="CustomScrollArea" name="scrollArea_8">
                 <property name="geometry">
                   <rect>
                     <x>0</x>
@@ -9837,7 +9837,7 @@
               <attribute name="title">
                 <string> 下载 </string>
               </attribute>
-              <widget class="QScrollArea" name="scrollArea_6">
+              <widget class="CustomScrollArea" name="scrollArea_6">
                 <property name="enabled">
                   <bool>true</bool>
                 </property>
@@ -11075,7 +11075,7 @@
               <attribute name="title">
                 <string> 命名 </string>
               </attribute>
-              <widget class="QScrollArea" name="scrollArea_7">
+              <widget class="CustomScrollArea" name="scrollArea_7">
                 <property name="geometry">
                   <rect>
                     <x>0</x>
@@ -14018,7 +14018,7 @@
               <attribute name="title">
                 <string> 翻译 </string>
               </attribute>
-              <widget class="QScrollArea" name="scrollArea_11">
+              <widget class="CustomScrollArea" name="scrollArea_11">
                 <property name="geometry">
                   <rect>
                     <x>0</x>
@@ -16077,7 +16077,7 @@
               <attribute name="title">
                 <string> 字幕 </string>
               </attribute>
-              <widget class="QScrollArea" name="scrollArea_9">
+              <widget class="CustomScrollArea" name="scrollArea_9">
                 <property name="geometry">
                   <rect>
                     <x>0</x>
@@ -16691,7 +16691,7 @@
               <attribute name="title">
                 <string> 水印 </string>
               </attribute>
-              <widget class="QScrollArea" name="scrollArea_4">
+              <widget class="CustomScrollArea" name="scrollArea_4">
                 <property name="geometry">
                   <rect>
                     <x>0</x>
@@ -18017,7 +18017,7 @@
               <attribute name="title">
                 <string> NFO </string>
               </attribute>
-              <widget class="QScrollArea" name="scrollArea_13">
+              <widget class="CustomScrollArea" name="scrollArea_13">
                 <property name="geometry">
                   <rect>
                     <x>0</x>
@@ -18052,7 +18052,7 @@
                       <rect>
                         <x>30</x>
                         <y>20</y>
-                        <width>860</width>
+                        <width>701</width>
                         <height>1071</height>
                       </rect>
                     </property>
@@ -18076,7 +18076,7 @@
                         <rect>
                           <x>20</x>
                           <y>30</y>
-                          <width>820</width>
+                          <width>661</width>
                           <height>1018</height>
                         </rect>
                       </property>
@@ -19609,7 +19609,7 @@
               <attribute name="title">
                 <string> 演员 </string>
               </attribute>
-              <widget class="QScrollArea" name="scrollArea_12">
+              <widget class="CustomScrollArea" name="scrollArea_12">
                 <property name="geometry">
                   <rect>
                     <x>0</x>
@@ -21338,7 +21338,7 @@
               <attribute name="title">
                 <string> 网络 </string>
               </attribute>
-              <widget class="QScrollArea" name="scrollArea_3">
+              <widget class="CustomScrollArea" name="scrollArea_3">
                 <property name="geometry">
                   <rect>
                     <x>0</x>
@@ -22952,7 +22952,7 @@
               <attribute name="title">
                 <string> 高级 </string>
               </attribute>
-              <widget class="QScrollArea" name="scrollArea_5">
+              <widget class="CustomScrollArea" name="scrollArea_5">
                 <property name="geometry">
                   <rect>
                     <x>0</x>
@@ -24171,7 +24171,7 @@
                 <x>0</x>
                 <y>620</y>
                 <width>799</width>
-                <height>74</height>
+                <height>72</height>
               </rect>
             </property>
             <property name="text">
@@ -24967,7 +24967,7 @@ p, li { white-space: pre-wrap; }
                     </widget>
                   </item>
                   <item>
-                    <widget class="QScrollArea" name="scrollArea_nfo_lib_form">
+                    <widget class="CustomScrollArea" name="scrollArea_nfo_lib_form">
                       <property name="widgetResizable">
                         <bool>true</bool>
                       </property>
@@ -25925,7 +25925,7 @@ p, li { white-space: pre-wrap; }
             <height>20</height>
           </rect>
         </property>
-        <widget class="QScrollArea" name="scrollArea_nfo">
+        <widget class="CustomScrollArea" name="scrollArea_nfo">
           <property name="geometry">
             <rect>
               <x>9</x>
@@ -26740,6 +26740,11 @@ p, li { white-space: pre-wrap; }
     <customwidget>
       <class>CustomQSlider</class>
       <extends>QSlider</extends>
+      <header>.CustomClass</header>
+    </customwidget>
+    <customwidget>
+      <class>CustomScrollArea</class>
+      <extends>QScrollArea</extends>
       <header>.CustomClass</header>
     </customwidget>
   </customwidgets>
