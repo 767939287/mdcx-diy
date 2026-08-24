@@ -227,8 +227,12 @@ def test_mdcx_py_in_sync_with_ui():
             pass  # 无 ruff 环境：直接文本对比
 
         # 3. 文本对比。
-        compiled = tmp_path.read_text(encoding="utf-8")
-        repo = PY_PATH.read_text(encoding="utf-8")
+        #    pyuic6 on Windows emits backslash path separators in resource
+        #    strings (e.g. xpm paths) due to os.path internal joining.
+        #    Normalize both sides the same way so only structural differences
+        #    are compared, not platform-specific path separators.
+        compiled = tmp_path.read_text(encoding="utf-8").replace("\\\\", "/")
+        repo = PY_PATH.read_text(encoding="utf-8").replace("\\\\", "/")
         assert compiled == repo, (
             "MDCx.py 与 MDCx.ui 不同步！"
             "请用 pyuic6 重新编译 mdcx/views/MDCx.ui，再运行 `uv run ruff format mdcx/views/MDCx.py`。"
