@@ -220,8 +220,12 @@ class R18devCrawler(BaseCrawler):
 
     @override
     async def _parse_search_page(self, ctx, html, search_url: str) -> list[str] | None:
+        # 输入三态：str（重写 _search 内部路径）、Selector（基类通用探测）、
+        # dict（parsel 对纯 JSON 文本的 .get() 结果会直接反序列化）
+        if not isinstance(html, str | dict):
+            html = html.get()
         try:
-            data = json.loads(html)
+            data = html if isinstance(html, dict) else json.loads(html)
         except json.JSONDecodeError:
             return None
         content_id = data.get("content_id") or data.get("dvd_id")
@@ -243,8 +247,10 @@ class R18devCrawler(BaseCrawler):
 
     @override
     async def _parse_detail_page(self, ctx, html, detail_url: str) -> CrawlerData | None:
+        if not isinstance(html, str | dict):
+            html = html.get()
         try:
-            data = json.loads(html)
+            data = html if isinstance(html, dict) else json.loads(html)
         except json.JSONDecodeError:
             return None
         return self._parse_json(data, ctx)

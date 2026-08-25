@@ -12,18 +12,15 @@ from .base import BaseCrawler, Context, CrawlerData, CrawlerException
 from .base.base_types import split_csv
 
 # javbus 镜像域名列表（主站 + 备用，按可用性排列；用户配置 custom_url 时优先使用）
+# 2026-08-25 实测：busjav.bond/seejav.cyou/buscdn.bond/javbus.bond SSL 连接失效已移除；
+# busdmm.bond 持续 CF 挑战未纳入。
 _JAVBUS_DOMAINS = [
     "https://www.dmmsee.cyou",
-    "https://www.busjav.bond",
-    "https://www.cdnbus.bond",
-    "https://www.seejav.cyou",
-    "https://www.buscdn.bond",
     "https://www.javsee.cyou",
-    "https://www.fanbus.bond",
-    "https://www.busdmm.bond",
+    "https://www.cdnbus.bond",
     "https://www.cdnbus.cyou",
+    "https://www.fanbus.bond",
     "https://www.dmmbus.bond",
-    "https://www.javbus.bond",
     "https://www.javbus.com",
 ]
 

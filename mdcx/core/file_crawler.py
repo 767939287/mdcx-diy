@@ -51,6 +51,7 @@ SPECIFIC_CRAWLER_TITLE_LANGUAGE_SITES = {
     Website.JAVLIBRARY,
     Website.MDTV,
     Website.MADOUQU,
+    Website.MADOUCLUB,
     Website.LULUBAR,
 }
 
@@ -162,7 +163,7 @@ def classify_scrape_task(task_input: CrawlTask, config: "Config", use_fixed_type
         return ScrapeClassification(FixedScrapingType.AUTO, "auto", website=Website.GETCHU)
 
     if "getchu" in file_path_str or "里番" in file_path_str or "裏番" in file_path_str:
-        return ScrapeClassification(FixedScrapingType.AUTO, "auto", website=Website.GETCHU_DMM)
+        return ScrapeClassification(FixedScrapingType.AUTO, "auto", website=Website.GETCHU)
 
     if "mywife" in file_path_str:
         return ScrapeClassification(FixedScrapingType.YOUMA, "auto", website=Website.MYWIFE)

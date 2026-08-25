@@ -7863,7 +7863,7 @@
                               <string notr="true">color: rgb(8, 128, 128);</string>
                             </property>
                             <property name="text">
-                              <string>&lt;p&gt;「网站偏好」-「指定网站」指定 getchu、dmm、getchu_dmm，或文件路径含有「里番」、「动漫」时，将自动使用 getchu_dmm（二合一） 刮削&lt;/p&gt;</string>
+                              <string>&lt;p&gt;「网站偏好」-「指定网站」指定 getchu、dmm，或文件路径含有「里番」、「动漫」时，将自动使用 getchu 刮削&lt;/p&gt;</string>
                             </property>
                               <property name="wordWrap">
                                 <bool>true</bool>
@@ -24624,7 +24624,7 @@ p, li { white-space: pre-wrap; }
  &lt;li&gt;&lt;b&gt;无码&lt;/b&gt;：Kin8、AVSOX 及综合站（JavBus、JavDB 系、MissAV 系、MMTV、airav.cc、AVSex、Official、JavDay、IQQTV）&lt;/li&gt;
  &lt;li&gt;&lt;b&gt;素人&lt;/b&gt;：MGStage（259LUXU 等）、Prestige、JavBus、JavDB 系、DMM、DMM-API、AVBase、MMTV、Jav321、MissAV 系、MyWife、IQQTV&lt;/li&gt;
  &lt;li&gt;&lt;b&gt;FC2&lt;/b&gt;：FC2、FC2Club、FC2Hub、FC2PPVDB、Love6、JavDB 系&lt;/li&gt;
- &lt;li&gt;&lt;b&gt;国产&lt;/b&gt;：HDOUBAN、CNMDB、MADOUQU、IQQTV、MDTV、JavDay、HSCangku&lt;/li&gt;
+ &lt;li&gt;&lt;b&gt;国产&lt;/b&gt;：HDOUBAN、CNMDB、MADOUQU、MADOU_CLUB、IQQTV、MDTV、JavDay、HSCangku&lt;/li&gt;
  &lt;li&gt;&lt;b&gt;欧美&lt;/b&gt;：THEPORNDB、AVHEAT&lt;/li&gt;
  &lt;/ul&gt;
 

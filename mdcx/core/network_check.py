@@ -560,7 +560,7 @@ async def _build_site_specs() -> list[NetworkCheckSpec]:
                 )
             )
             continue
-        elif site == Website.GETCHU or site == Website.GETCHU_DMM:
+        elif site == Website.GETCHU:
             specs.append(
                 NetworkCheckSpec(
                     name=site.value,

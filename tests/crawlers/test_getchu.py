@@ -10,7 +10,6 @@ from mdcx.crawlers.getchu import (
     get_title,
     normalize_detail_url,
 )
-from mdcx.crawlers.getchu_dmm import GetchuDmmCrawler
 from mdcx.models.model_types import CrawlerInput
 
 
@@ -153,16 +152,5 @@ async def test_getchu_crawler_uses_new_framework():
     assert res.data.thumb == "http://www.getchu.com/brandnew/1355679/c1355679package.jpg"
 
 
-@pytest.mark.asyncio
-async def test_getchu_dmm_crawler_wraps_getchu_data():
-    res = await _run_crawler(GetchuDmmCrawler)
-
-    assert res.debug_info.error is None
-    assert res.data is not None
-    assert res.data.source == "getchu_dmm"
-    assert res.data.title == "TITLE-001 Sample"
-
-
-def test_getchu_crawlers_are_registered():
+def test_getchu_crawler_is_registered():
     assert get_crawler(Website.GETCHU) is GetchuCrawler
-    assert get_crawler(Website.GETCHU_DMM) is GetchuDmmCrawler

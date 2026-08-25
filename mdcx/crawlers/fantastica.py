@@ -91,6 +91,8 @@ class FantasticaContext(Context):
 
 class FantasticaCrawler(GenericBaseCrawler[FantasticaContext]):
     description = "Fantastica VR 内容（仅覆盖本厂）"
+    # 本厂系列 FAPL/FAVI，官网搜索页实测收录（2026-08）
+    probe_number = "FAPL058"
 
     @classmethod
     @override

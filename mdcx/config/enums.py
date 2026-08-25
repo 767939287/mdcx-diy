@@ -463,6 +463,7 @@ class Website(Enum):
     LIBREDMM = "libredmm"
     LULUBAR = "lulubar"
     MADOUQU = "madouqu"
+    MADOUCLUB = "madou_club"
     MDTV = "mdtv"
     MISSAV = "missav"
     MISSAV_API = "missav_api"
@@ -475,7 +476,6 @@ class Website(Enum):
     XCITY = "xcity"
 
     DAHLIA = "dahlia"
-    GETCHU_DMM = "getchu_dmm"
     OFFICIAL = "official"
 
     @classmethod

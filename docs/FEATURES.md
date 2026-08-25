@@ -46,8 +46,7 @@ MDCx 支持的功能全景。只想快速上手的话，先看 [QUICKSTART.md](Q
 | hscangku | hsck.net | 国产番号（国产） |
 | 7mmtv | 7mmtv.tv | 无码（综合：有码+无码） |
 | mywife | mywife.cc | No. 素人番号（素人） |
-| getchu | getchu.com | 游戏/视频综合（仅能有码） |
-| getchu_dmm | getchu.com | 委托 getchu 执行（不在前端显示）（仅能有码） |
+| getchu | getchu.com | 游戏/视频综合（仅能有码，兼里番/动漫路由） |
 | libredmm | libredmm.com | 开源信息站（仅能有码） |
 | xcity | xcity.jp | 综合（仅能有码） |
 | love6 | love6.tv | FC2 番号（FC2） |
@@ -64,6 +63,7 @@ MDCx 支持的功能全景。只想快速上手的话，先看 [QUICKSTART.md](Q
 | hdouban | hdouban.com | 国产（国产） |
 | cnmdb | cnmdb.tv | 国产（国产） |
 | madouqu | madouqu.com | 国产（国产） |
+| madou_club | madou.club | 麻豆社 国产（国产） |
 | lulubar | lulubar.net | 仅能有码 |
 | iqqtv | iqqtv.com | 综合：有码+无码+素人+国产 |
 | mdtv | mdtv.tv | 国产（国产） |
@@ -73,13 +73,13 @@ MDCx 支持的功能全景。只想快速上手的话，先看 [QUICKSTART.md](Q
 > 注意：missav_api、r18dev、javdb_api、thejavdb_api 这四条是免 CF 通道，默认没启用，需要去「设置→站点」手动加。
 
 **各爬虫适用类型**（刮削类型默认网站源，可在「设置→站点」调整）：
-- **仅能有码**：dmm、dmm_api、thejavdb_api、libredmm、r18dev、avbase、faleno、giga、dahlia、xcity、prestige、mgstage、fantastica、cableav、getchu、getchu_dmm、javlibrary、jav321、freejavbt、lulubar、avmoo
+- **仅能有码**：dmm、dmm_api、thejavdb_api、libredmm、r18dev、avbase、faleno、giga、dahlia、xcity、prestige、mgstage、fantastica、cableav、getchu、javlibrary、jav321、freejavbt、lulubar、avmoo
 - **无码专属**：avsox、kin8
 - **综合（有码+无码）**：javbus、javdb、javdb_api、javdb_app、missav、missav_api、javday、7mmtv、airav_cc、avsex、official、iqqtv
 - **素人**：mgstage、prestige、javbus、javdb 系、dmm、dmm_api、avbase、7mmtv、jav321、missav、missav_api、mywife、iqqtv
 - **FC2**：fc2、fc2club、fc2hub、fc2ppvdb、love6、javdb 系
 - **欧美**：theporndb、avheat
-- **国产**：hdouban、cnmdb、madouqu、iqqtv、mdtv、javday、hscangku
+- **国产**：hdouban、cnmdb、madouqu、madou_club、iqqtv、mdtv、javday、hscangku
 
 ### DMM 官方高清直链
 

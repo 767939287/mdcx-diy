@@ -13048,7 +13048,7 @@ class Ui_MDCx(object):
         self.label_318.setText(
             _translate(
                 "MDCx",
-                "<p>「网站偏好」-「指定网站」指定 getchu、dmm、getchu_dmm，或文件路径含有「里番」、「动漫」时，将自动使用 getchu_dmm（二合一） 刮削</p>",
+                "<p>「网站偏好」-「指定网站」指定 getchu、dmm，或文件路径含有「里番」、「动漫」时，将自动使用 getchu 刮削</p>",
             )
         )
         self.label_323.setText(
@@ -14161,7 +14161,7 @@ class Ui_MDCx(object):
                 " <li><b>无码</b>：Kin8、AVSOX 及综合站（JavBus、JavDB 系、MissAV 系、MMTV、airav.cc、AVSex、Official、JavDay、IQQTV）</li>\n"
                 " <li><b>素人</b>：MGStage（259LUXU 等）、Prestige、JavBus、JavDB 系、DMM、DMM-API、AVBase、MMTV、Jav321、MissAV 系、MyWife、IQQTV</li>\n"
                 " <li><b>FC2</b>：FC2、FC2Club、FC2Hub、FC2PPVDB、Love6、JavDB 系</li>\n"
-                " <li><b>国产</b>：HDOUBAN、CNMDB、MADOUQU、IQQTV、MDTV、JavDay、HSCangku</li>\n"
+                " <li><b>国产</b>：HDOUBAN、CNMDB、MADOUQU、MADOU_CLUB、IQQTV、MDTV、JavDay、HSCangku</li>\n"
                 " <li><b>欧美</b>：THEPORNDB、AVHEAT</li>\n"
                 " </ul>\n"
                 "\n"

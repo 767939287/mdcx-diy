@@ -2,6 +2,10 @@
 
 ## v2.0.7 (2026-08-25)
 
+### 功能
+
+- **新增 madou_club 爬虫（麻豆社）**：madou.club 收录麻豆系 MDX/MD 等国产番号，搜索须无横杠关键词（MDX-0236 无结果、MDX0236 命中）；解析详情页标题（番号 / 片名）、分类（studio）与标签，封面取搜索页缩略图并自动升级原图（去 `-240x180` 尺寸后缀）；站点 CF 对桌面指纹拦截强，接入 Safari iOS 专属指纹池；默认加入国产网站源，网络检测探针番号 MDX0236
+
 ### 修复
 
 - **网络检测刮削探测修复**：`_generate_search_url` 返回空或搜索解析无结果的爬虫（fc2/mywife/cnmdb/prestige/libredmm/kin8/iqqtv/mdtv 等 17 站）自动回退真实刮削路径探测，消除"可达但无法自动探测刮削"误报；探测失败提示改为动态携带实际番号
@@ -16,8 +20,12 @@
 
 ### 优化
 
-- **20 个有限收录站点定制探测番号**：faleno/giga/dahlia/mgstage/jav321/avsex/xcity/fc2 系列×4/mywife/kin8/prestige/libredmm 及国产四站（mdtv/madouqu/cnmdb/hscangku）改用各站实测收录的番号，消除"测试番号未被收录"误报；综合站维持默认 SSNI-647
+- **20 个有限收录站点定制探测番号**：faleno/giga/dahlia/mgstage/jav321/avsex/xcity/fc2 系列×4/mywife/kin8/prestige/libredmm/fantastica/getchu 及国产四站（mdtv/madouqu/cnmdb/hscangku）改用各站实测收录的番号，消除"测试番号未被收录"误报；综合站维持默认 SSNI-647
 - **madouqu 动态域名**：接入官方发布页 wangzhi.icu/config.js 实时解析麻豆区域名列表（24h 缓存+静态回退），默认域名迁移至 madouqu.shop；搜索失败自动切换镜像，详情链接跟随命中域名
+- **站点级 CF 指纹池扩充**：新增 lulubar（Safari iOS + chrome131）与 missav 全镜像（Safari iOS + firefox133）专属指纹池，按 host 自动路由并支持重试轮换排除上次失败指纹
+- **javbus 镜像池清理**：移除已 SSL 失效的 busjav.bond/seejav.cyou/buscdn.bond/javbus.bond 四个镜像，保留实测可用域名
+- **getchu_dmm 合并进 getchu**：两者本就同源同实现（getchu_dmm 仅转发 getchu 并改写 source），合并后里番/动漫文件路由与 UI 文案统一指向 getchu，减少一个冗余站点枚举；默认配置模板同步清理
+- **r18dev 解析兼容修复**：parsel `Selector.get()` 对纯 JSON 文本直接返回 dict，JSON API 爬虫解析入参兼容 str/dict/Selector 三态
 
 ### 工程质量
 

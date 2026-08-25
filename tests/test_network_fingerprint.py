@@ -348,3 +348,50 @@ def test_amazon_fingerprint_pool_uses_desktop_profiles():
 
     assert any(each.startswith("chrome") for each in seen)
     assert any(each.startswith("firefox") for each in seen)
+
+
+def test_select_fingerprint_lulubar_prefers_safari_pool():
+    """lulubar 的 CF 对常见桌面指纹拦截较强，应命中 Safari 专属池."""
+    from mdcx.network_fingerprint import _LULUBAR_FINGERPRINTS, select_fingerprint
+
+    for _ in range(8):
+        fp = select_fingerprint("lulubar.co")
+        assert fp in _LULUBAR_FINGERPRINTS
+        assert "safari" in fp.impersonate or "chrome131" in fp.impersonate
+
+    sub = select_fingerprint("www.lulubar.co")
+    assert sub in _LULUBAR_FINGERPRINTS
+
+
+def test_select_fingerprint_lulubar_retry_excludes_last():
+    from mdcx.network_fingerprint import _LULUBAR_FINGERPRINTS, select_fingerprint
+
+    first = select_fingerprint("lulubar.co")
+    second = select_fingerprint("lulubar.co", exclude_fingerprint_id=first.fingerprint_id)
+    assert second.fingerprint_id != first.fingerprint_id
+    assert second in _LULUBAR_FINGERPRINTS
+
+
+def test_select_fingerprint_madou_club_uses_safari_pool():
+    """madou.club 的 CF 对桌面指纹拦截强，应命中 Safari 专属池."""
+    from mdcx.network_fingerprint import _MADOU_CLUB_FINGERPRINTS, select_fingerprint
+
+    for _ in range(8):
+        fp = select_fingerprint("madou.club")
+        assert fp in _MADOU_CLUB_FINGERPRINTS
+        assert fp.impersonate in ("safari17_2_ios", "chrome131")
+
+    assert select_fingerprint("www.madou.club") in _MADOU_CLUB_FINGERPRINTS
+
+
+def test_select_fingerprint_missav_uses_safari_firefox_pool():
+    """missav 的 CF 对 Chrome 系拦截强，应命中 Safari/Firefox 专属池；三镜像域名全覆盖."""
+    from mdcx.network_fingerprint import _MISSAV_FINGERPRINTS, select_fingerprint
+
+    for _ in range(8):
+        fp = select_fingerprint("missav.ai")
+        assert fp in _MISSAV_FINGERPRINTS
+        assert fp.impersonate in ("safari17_2_ios", "firefox133")
+
+    for host in ("www.missav.ai", "missav.ws", "www.missav.ws", "missav.live", "www.missav.live"):
+        assert select_fingerprint(host) in _MISSAV_FINGERPRINTS, host

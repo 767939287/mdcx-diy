@@ -41,7 +41,6 @@ from .fc2hub import Fc2hubCrawler
 from .fc2ppvdb import Fc2ppvdbCrawler
 from .freejavbt import FreejavbtCrawler
 from .getchu import GetchuCrawler
-from .getchu_dmm import GetchuDmmCrawler
 from .giga import GigaCrawler
 from .hdouban import HdoubanCrawler
 from .hscangku import HscangkuCrawler
@@ -57,6 +56,7 @@ from .kin8 import Kin8Crawler
 from .libredmm import LibredmmCrawler
 from .love6 import Love6Crawler
 from .lulubar import LulubarCrawler
+from .madou_club import MadouClubCrawler
 from .madouqu import MadouquCrawler
 from .mdtv import MdtvCrawler
 from .mgstage import MgstageCrawler
@@ -84,6 +84,7 @@ register_crawler(FalenoCrawler)
 register_crawler(Jav321Crawler)
 register_crawler(CableavCrawler)
 register_crawler(MadouquCrawler)
+register_crawler(MadouClubCrawler)
 register_crawler(MmtvCrawler)
 register_crawler(DahliaCrawler)
 register_crawler(FantasticaCrawler)
@@ -113,7 +114,6 @@ register_crawler(IqqtvCrawler)
 register_crawler(AiravCcCrawler)
 register_crawler(AvsexCrawler)
 register_crawler(GetchuCrawler)
-register_crawler(GetchuDmmCrawler)
 register_crawler(MywifeCrawler)
 register_crawler(Love6Crawler)
 register_crawler(JavlibraryCrawler)

@@ -132,6 +132,8 @@ def get_extrafanart(html):
 
 class GetchuCrawler(BaseCrawler):
     description = "Getchu 游戏/视频综合（仅能有码）"
+    # Getchu 视频区收录 TMA 系 AIV 作品，标准新有码番号（SSNI/MIDE 等）不收（2026-08 实测）
+    probe_number = "AIV"
 
     @classmethod
     @override
