@@ -49,8 +49,6 @@ MDCx 支持的功能全景。只想快速上手的话，先看 [QUICKSTART.md](Q
 | getchu | getchu.com | 游戏/视频综合（仅能有码，兼里番/动漫路由） |
 | libredmm | libredmm.com | 开源信息站（仅能有码） |
 | xcity | xcity.jp | 综合（仅能有码） |
-| love6 | love6.tv | FC2 番号（FC2） |
-| kin8 | kin8.info | 无码（无码专属） |
 | avsox | avsox.click | 无码（无码专属） |
 | avmoo | avmoo.shop | 有码信息站（仅能有码） |
 | avheat | avheat.shop | 欧美（欧美） |
@@ -60,13 +58,10 @@ MDCx 支持的功能全景。只想快速上手的话，先看 [QUICKSTART.md](Q
 | fc2club | fc2club.top | FC2 信息站（FC2） |
 | fc2hub | fc2hub.com | FC2 信息站（FC2） |
 | fc2ppvdb | fc2cmadb.com | FC2 PPV 数据库（FC2） |
-| hdouban | hdouban.com | 国产（国产） |
-| cnmdb | cnmdb.tv | 国产（国产） |
 | madouqu | madouqu.com | 国产（国产） |
 | madou_club | madou.club | 麻豆社 国产（国产） |
 | lulubar | lulubar.net | 仅能有码 |
 | iqqtv | iqqtv.com | 综合：有码+无码+素人+国产 |
-| mdtv | mdtv.tv | 国产（国产） |
 | javday | javday.tv | 综合：有码+无码+国产 |
 | theporndb | api.theporndb.net | 欧美（欧美） |
 
@@ -74,12 +69,12 @@ MDCx 支持的功能全景。只想快速上手的话，先看 [QUICKSTART.md](Q
 
 **各爬虫适用类型**（刮削类型默认网站源，可在「设置→站点」调整）：
 - **仅能有码**：dmm、dmm_api、thejavdb_api、libredmm、r18dev、avbase、faleno、giga、dahlia、xcity、prestige、mgstage、fantastica、cableav、getchu、javlibrary、jav321、freejavbt、lulubar、avmoo
-- **无码专属**：avsox、kin8
+- **无码专属**：avsox
 - **综合（有码+无码）**：javbus、javdb、javdb_api、javdb_app、missav、missav_api、javday、7mmtv、airav_cc、avsex、official、iqqtv
 - **素人**：mgstage、prestige、javbus、javdb 系、dmm、dmm_api、avbase、7mmtv、jav321、missav、missav_api、mywife、iqqtv
-- **FC2**：fc2、fc2club、fc2hub、fc2ppvdb、love6、javdb 系
+- **FC2**：fc2、fc2club、fc2hub、fc2ppvdb、javdb 系
 - **欧美**：theporndb、avheat
-- **国产**：hdouban、cnmdb、madouqu、madou_club、iqqtv、mdtv、javday、hscangku
+- **国产**：madouqu、madou_club、iqqtv、javday、hscangku
 
 ### DMM 官方高清直链
 
@@ -228,7 +223,7 @@ MDCx 支持的功能全景。只想快速上手的话，先看 [QUICKSTART.md](Q
 
 - **HTTP 客户端**：curl-cffi 模拟浏览器 TLS 指纹，6 种浏览器画像自动轮换
 - **网络连通性检测**：网络页「开始检测」按钮逐站检查连通性与刮削能力——镜像/动态域名站点多地址检测（主站+镜像），API 类爬虫走真实刮削探测，结果按基础环境/连通性/刮削站点/账号 API/辅助服务分组展示
-- **代理**：支持 HTTP/HTTPS/SOCKS5 代理；仅对"走代理网站"域名列表中的站点走代理（默认含 amazon.co.jp, m.media-amazon.com, xcity.jp, minnano-av.com, avbase.net, javbus.com, javdb.com, javlibrary.com, r18.dev, mgstage.com, prestige-av.com, seesaawiki.jp, avsox.click, avsox.com, avmoo.shop, avmoo.com, avheat.shop, avheat.com, kin8tengoku.com, github.com, raw.githubusercontent.com, google.com, missav.ws, missav.ai, missav.live），其他直连
+- **代理**：支持 HTTP/HTTPS/SOCKS5 代理；仅对"走代理网站"域名列表中的站点走代理（默认含 amazon.co.jp, m.media-amazon.com, xcity.jp, minnano-av.com, avbase.net, javbus.com, javdb.com, javlibrary.com, r18.dev, mgstage.com, prestige-av.com, seesaawiki.jp, avsox.click, avsox.com, avmoo.shop, avmoo.com, avheat.shop, avheat.com, github.com, raw.githubusercontent.com, google.com, missav.ws, missav.ai, missav.live），其他直连
 - **Cloudflare 绕过**：通过外部 CF 服务（TRAWL `/scrape` 或 FlareSolverr `/v1`）自动绕过 CF 防护页，MDCx 自动拉起协议适配层翻译请求，无需内置浏览器；可选配置独立 Bypass 代理；Bypass 服务失效时自动跳过避免空等
 - **Selenium CF Bypass（JavLibrary 专用）**：JavLibrary 遇 Cloudflare JS challenge 时自动 fallback 到 Selenium+Edge headless 获取页面 HTML（cf_selenium_bypass，默认开启）。需要 Windows 10/11 + Edge 浏览器，首次使用自动安装 selenium；无 Edge 环境优雅降级，连续失败 3 次进入 5 分钟冷却
 - **Bypass 落地域名白名单**：可配置可信落地域名列表（逗号分隔，支持 `*.example.com` 子域通配），校验 Bypass 服务落地/重定向后的最终域名，防止第三方服务被劫持时把恶意页面当数据；留空表示不校验

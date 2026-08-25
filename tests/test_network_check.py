@@ -478,7 +478,7 @@ async def test_probe_crawler_capability_falls_back_to_run_when_search_url_missin
 
 @pytest.mark.anyio
 async def test_probe_crawler_capability_falls_back_to_run_when_parse_empty(monkeypatch: pytest.MonkeyPatch):
-    """mdtv 等重写 _search（POST 搜索）的爬虫 GET 探测解析为空时回退真实刮削探测."""
+    """重写 _search（POST 搜索）的爬虫 GET 探测解析为空时回退真实刮削探测."""
 
     class PostSearchCrawler(ProbeCrawler):
         def __init__(self, client, base_url="", browser=None):
@@ -489,7 +489,7 @@ async def test_probe_crawler_capability_falls_back_to_run_when_parse_empty(monke
             return SimpleNamespace(data=SimpleNamespace(), debug_info=SimpleNamespace(error=None))
 
     monkeypatch.setattr("mdcx.crawlers.get_crawler", lambda site: PostSearchCrawler)
-    spec = NetworkCheckSpec(name="mdtv", group="刮削站点", url="https://www.mdpjzip.xyz", site=Website.MDTV)
+    spec = NetworkCheckSpec(name="madouqu", group="刮削站点", url="https://madouqu.shop", site=Website.MADOUQU)
 
     status, message = await _probe_crawler_capability(ProbeFakeClient(), spec)
 

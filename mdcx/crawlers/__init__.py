@@ -3,7 +3,6 @@ from . import (
     avbase,
     avsox,
     cableav,
-    cnmdb,
     dahlia,
     dmm_api,
     faleno,
@@ -12,10 +11,8 @@ from . import (
     hscangku,
     jav321,
     javday,
-    kin8,
     lulubar,
     madouqu,
-    mdtv,
     mgstage,
     missav,
     mmtv,
@@ -30,7 +27,6 @@ from .avsex import AvsexCrawler
 from .avsox import AvsoxCrawler
 from .base import get_crawler, get_registered_crawler_sites, register_crawler
 from .cableav import CableavCrawler
-from .cnmdb import CnmdbCrawler
 from .dahlia import DahliaCrawler
 from .dmm import DmmCrawler
 from .faleno import FalenoCrawler
@@ -42,7 +38,6 @@ from .fc2ppvdb import Fc2ppvdbCrawler
 from .freejavbt import FreejavbtCrawler
 from .getchu import GetchuCrawler
 from .giga import GigaCrawler
-from .hdouban import HdoubanCrawler
 from .hscangku import HscangkuCrawler
 from .iqqtv import IqqtvCrawler
 from .jav321 import Jav321Crawler
@@ -52,13 +47,10 @@ from .javdb import JavdbCrawler
 from .javdb_api import JavdbApiCrawler
 from .javdb_app import JavdbAppCrawler
 from .javlibrary import JavlibraryCrawler
-from .kin8 import Kin8Crawler
 from .libredmm import LibredmmCrawler
-from .love6 import Love6Crawler
 from .lulubar import LulubarCrawler
 from .madou_club import MadouClubCrawler
 from .madouqu import MadouquCrawler
-from .mdtv import MdtvCrawler
 from .mgstage import MgstageCrawler
 from .missav import MissavCrawler
 from .missav_api import MissavApiCrawler
@@ -91,14 +83,11 @@ register_crawler(FantasticaCrawler)
 register_crawler(AvsoxCrawler)
 register_crawler(AvmooCrawler)
 register_crawler(AvheatCrawler)
-register_crawler(CnmdbCrawler)
 register_crawler(HscangkuCrawler)
-register_crawler(Kin8Crawler)
 register_crawler(LibredmmCrawler)
 register_crawler(LulubarCrawler)
 register_crawler(XcityCrawler)
 register_crawler(GigaCrawler)
-register_crawler(MdtvCrawler)
 register_crawler(MgstageCrawler)
 register_crawler(JavdayCrawler)
 register_crawler(Fc2ppvdbCrawler)
@@ -109,13 +98,11 @@ register_crawler(Fc2Crawler)
 register_crawler(Fc2hubCrawler)
 register_crawler(JavbusCrawler)
 register_crawler(FreejavbtCrawler)
-register_crawler(HdoubanCrawler)
 register_crawler(IqqtvCrawler)
 register_crawler(AiravCcCrawler)
 register_crawler(AvsexCrawler)
 register_crawler(GetchuCrawler)
 register_crawler(MywifeCrawler)
-register_crawler(Love6Crawler)
 register_crawler(JavlibraryCrawler)
 register_crawler(OfficialCrawler)
 register_crawler(TheporndbCrawler)

@@ -13037,7 +13037,7 @@ class Ui_MDCx(object):
         self.label_232.setText(
             _translate(
                 "MDCx",
-                "<span>「网站偏好」-「指定网站」指定 mdtv、hdouban，或文件路径含有「国产」、「麻豆」时，将自动使用以上网站刮削国产番号</span>",
+                "<span>「网站偏好」-「指定网站」指定 madouqu、madou_club，或文件路径含有「国产」、「麻豆」时，将自动使用以上网站刮削国产番号</span>",
             )
         )
         self.label_156.setText(_translate("MDCx", "比如：259LUXU-1111"))
@@ -14161,7 +14161,7 @@ class Ui_MDCx(object):
                 " <li><b>无码</b>：Kin8、AVSOX 及综合站（JavBus、JavDB 系、MissAV 系、MMTV、airav.cc、AVSex、Official、JavDay、IQQTV）</li>\n"
                 " <li><b>素人</b>：MGStage（259LUXU 等）、Prestige、JavBus、JavDB 系、DMM、DMM-API、AVBase、MMTV、Jav321、MissAV 系、MyWife、IQQTV</li>\n"
                 " <li><b>FC2</b>：FC2、FC2Club、FC2Hub、FC2PPVDB、Love6、JavDB 系</li>\n"
-                " <li><b>国产</b>：HDOUBAN、CNMDB、MADOUQU、MADOU_CLUB、IQQTV、MDTV、JavDay、HSCangku</li>\n"
+                " <li><b>国产</b>：MADOUQU、MADOU_CLUB、IQQTV、JavDay、HSCangku</li>\n"
                 " <li><b>欧美</b>：THEPORNDB、AVHEAT</li>\n"
                 " </ul>\n"
                 "\n"
@@ -14178,7 +14178,7 @@ class Ui_MDCx(object):
                 '<p>在"设置 → 网络"中配置：</p>\n'
                 "<ul>\n"
                 "<li><b>启用代理</b>：开启后填写 HTTP / HTTPS 或 SOCKS5 代理地址（如 http://127.0.0.1:7890）。</li>\n"
-                "<li><b>走代理网站</b>：仅指定域名走代理，其余直连。默认包含 amazon.co.jp、m.media-amazon.com、xcity.jp、minnano-av.com、avbase.net、javbus.com、javdb.com、javlibrary.com、r18.dev、mgstage.com、prestige-av.com、seesaawiki.jp、avsox.click、avsox.com、avmoo.shop、avmoo.com、avheat.shop、avheat.com、kin8tengoku.com、github.com、raw.githubusercontent.com、google.com、missav.ws、missav.ai、missav.live。可按需增删。</li>\n"
+                "<li><b>走代理网站</b>：仅指定域名走代理，其余直连。默认包含 amazon.co.jp、m.media-amazon.com、xcity.jp、minnano-av.com、avbase.net、javbus.com、javdb.com、javlibrary.com、r18.dev、mgstage.com、prestige-av.com、seesaawiki.jp、avsox.click、avsox.com、avmoo.shop、avmoo.com、avheat.shop、avheat.com、github.com、raw.githubusercontent.com、google.com、missav.ws、missav.ai、missav.live。可按需增删。</li>\n"
                 "<li><b>CF Bypass 代理</b>：为绕过 Cloudflare 的请求单独设置代理。</li>\n"
                 "</ul>\n"
                 "<p>如持续提示网络 / 代理错误，请检查地址与端口、确认代理软件处于全局模式，或尝试重启代理与网卡。</p>\n"

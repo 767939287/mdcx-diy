@@ -49,7 +49,6 @@ SPECIFIC_CRAWLER_TITLE_LANGUAGE_SITES = {
     Website.IQQTV,
     Website.AVSEX,
     Website.JAVLIBRARY,
-    Website.MDTV,
     Website.MADOUQU,
     Website.MADOUCLUB,
     Website.LULUBAR,
@@ -155,9 +154,6 @@ def classify_scrape_task(task_input: CrawlTask, config: "Config", use_fixed_type
         or re.search(r"MKY-[A-Z]+-\d{3,}", file_number)
     ):
         return ScrapeClassification(FixedScrapingType.GUOCHAN, "auto", sites=config.website_guochan, mosaic="国产")
-
-    if file_number.startswith("KIN8"):
-        return ScrapeClassification(FixedScrapingType.YOUMA, "auto", website=Website.KIN8)
 
     if file_number.startswith("DLID"):
         return ScrapeClassification(FixedScrapingType.AUTO, "auto", website=Website.GETCHU)
@@ -623,8 +619,6 @@ class FileScraper:
 
         if website not in SPECIFIC_CRAWLER_TITLE_LANGUAGE_SITES:
             title_language = Language.JP
-        elif website == Website.MDTV:
-            title_language = Language.ZH_CN
 
         return title_language, org_language
 

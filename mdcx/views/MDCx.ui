@@ -7696,7 +7696,7 @@
                               </size>
                             </property>
                             <property name="text">
-                              <string>&lt;span&gt;「网站偏好」-「指定网站」指定 mdtv、hdouban，或文件路径含有「国产」、「麻豆」时，将自动使用以上网站刮削国产番号&lt;/span&gt;</string>
+                              <string>&lt;span&gt;「网站偏好」-「指定网站」指定 madouqu、madou_club，或文件路径含有「国产」、「麻豆」时，将自动使用以上网站刮削国产番号&lt;/span&gt;</string>
                             </property>
                             <property name="alignment">
                               <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignTop</set>
@@ -24624,7 +24624,7 @@ p, li { white-space: pre-wrap; }
  &lt;li&gt;&lt;b&gt;无码&lt;/b&gt;：Kin8、AVSOX 及综合站（JavBus、JavDB 系、MissAV 系、MMTV、airav.cc、AVSex、Official、JavDay、IQQTV）&lt;/li&gt;
  &lt;li&gt;&lt;b&gt;素人&lt;/b&gt;：MGStage（259LUXU 等）、Prestige、JavBus、JavDB 系、DMM、DMM-API、AVBase、MMTV、Jav321、MissAV 系、MyWife、IQQTV&lt;/li&gt;
  &lt;li&gt;&lt;b&gt;FC2&lt;/b&gt;：FC2、FC2Club、FC2Hub、FC2PPVDB、Love6、JavDB 系&lt;/li&gt;
- &lt;li&gt;&lt;b&gt;国产&lt;/b&gt;：HDOUBAN、CNMDB、MADOUQU、MADOU_CLUB、IQQTV、MDTV、JavDay、HSCangku&lt;/li&gt;
+ &lt;li&gt;&lt;b&gt;国产&lt;/b&gt;：MADOUQU、MADOU_CLUB、IQQTV、JavDay、HSCangku&lt;/li&gt;
  &lt;li&gt;&lt;b&gt;欧美&lt;/b&gt;：THEPORNDB、AVHEAT&lt;/li&gt;
  &lt;/ul&gt;
 
@@ -24641,7 +24641,7 @@ p, li { white-space: pre-wrap; }
 &lt;p&gt;在"设置 → 网络"中配置：&lt;/p&gt;
 &lt;ul&gt;
 &lt;li&gt;&lt;b&gt;启用代理&lt;/b&gt;：开启后填写 HTTP / HTTPS 或 SOCKS5 代理地址（如 http://127.0.0.1:7890）。&lt;/li&gt;
-&lt;li&gt;&lt;b&gt;走代理网站&lt;/b&gt;：仅指定域名走代理，其余直连。默认包含 amazon.co.jp、m.media-amazon.com、xcity.jp、minnano-av.com、avbase.net、javbus.com、javdb.com、javlibrary.com、r18.dev、mgstage.com、prestige-av.com、seesaawiki.jp、avsox.click、avsox.com、avmoo.shop、avmoo.com、avheat.shop、avheat.com、kin8tengoku.com、github.com、raw.githubusercontent.com、google.com、missav.ws、missav.ai、missav.live。可按需增删。&lt;/li&gt;
+&lt;li&gt;&lt;b&gt;走代理网站&lt;/b&gt;：仅指定域名走代理，其余直连。默认包含 amazon.co.jp、m.media-amazon.com、xcity.jp、minnano-av.com、avbase.net、javbus.com、javdb.com、javlibrary.com、r18.dev、mgstage.com、prestige-av.com、seesaawiki.jp、avsox.click、avsox.com、avmoo.shop、avmoo.com、avheat.shop、avheat.com、github.com、raw.githubusercontent.com、google.com、missav.ws、missav.ai、missav.live。可按需增删。&lt;/li&gt;
 &lt;li&gt;&lt;b&gt;CF Bypass 代理&lt;/b&gt;：为绕过 Cloudflare 的请求单独设置代理。&lt;/li&gt;
 &lt;/ul&gt;
 &lt;p&gt;如持续提示网络 / 代理错误，请检查地址与端口、确认代理软件处于全局模式，或尝试重启代理与网卡。&lt;/p&gt;

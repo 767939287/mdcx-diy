@@ -44,10 +44,10 @@ def test_cover_candidate_sites_forced_site_wins(tmp_path: Path):
 def test_cover_candidate_sites_uses_single_website(monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
     file_info = _build_file_info(tmp_path)
 
-    classification = file_crawler.ScrapeClassification(FixedScrapingType.AUTO, "auto", website=Website.KIN8)
+    classification = file_crawler.ScrapeClassification(FixedScrapingType.AUTO, "auto", website=Website.MYWIFE)
     monkeypatch.setattr(cb, "classify_scrape_task", lambda task, config: classification)
 
-    assert cb._cover_candidate_sites(file_info, forced_site=None) == ["kin8"]
+    assert cb._cover_candidate_sites(file_info, forced_site=None) == ["mywife"]
 
 
 def test_cover_candidate_sites_orders_priority_first(monkeypatch: pytest.MonkeyPatch, tmp_path: Path):

@@ -179,7 +179,6 @@ def test_config_default_site_priorities_follow_current_frontend_defaults():
     ]
     assert config.website_wuma == [
         Website.AVSOX,
-        Website.KIN8,
         Website.JAVBUS,
         Website.JAVDB,
         Website.JAVDB_API,
@@ -215,19 +214,15 @@ def test_config_default_site_priorities_follow_current_frontend_defaults():
         Website.FC2CLUB,
         Website.FC2HUB,
         Website.FC2PPVDB,
-        Website.LOVE6,
         Website.JAVDB,
         Website.JAVDB_API,
         Website.JAVDB_APP,
     ]
     assert config.website_oumei == [Website.THEPORNDB, Website.AVHEAT]
     assert config.website_guochan == [
-        Website.HDOUBAN,
-        Website.CNMDB,
         Website.MADOUQU,
         Website.MADOUCLUB,
         Website.IQQTV,
-        Website.MDTV,
         Website.JAVDAY,
         Website.HSCANGKU,
     ]

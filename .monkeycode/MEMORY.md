@@ -54,7 +54,8 @@
   - DMM Affiliate API v3 ItemList 必需 site/service/floor 参数（缺失返回 400 BAD REQUEST）；keyword 需 content_id 形态（小写前缀+编号补零 5 位，如 ssis00200）才能精确命中，带横杠格式搜索为 0 结果，特殊站内前缀系列回退厂牌词模糊搜索。
   - MGStage 主站详情页非日本 IP 返回 403，但 image.mgstage.com 图片 CDN 直链无地域限制，可用 mgstage_direct.py 的直链规律验证番号收录情况。
   - madouqu 域名由官方发布页 wangzhi.icu/config.js 动态维护（web.py::get_madouqu_domains 解析 domainConfig['md'] 区块，24h 缓存+静态回退）；发布页主体是混淆 JS 渲染，真实数据源是其同域明文 config.js——解析外部站点配置时优先找其 JS 引用的数据源。
-  - MDTV 默认域名 mdpjzip.xyz 与 CNMDB 默认域名 cnmdb.net 均已失效（2026-08-25 用户确认）：mdpjzip.xyz 有 JS 挑战防护且迁移至 ww1.mdpjzip.xyz（devbox 无法稳定访问）；cnmdb.net 302 到无关博彩 TG 页（域名被劫持）。两站待用户提供新域名后校准，当前探测番号暂配 MDX-0236。
+  - 五站爬虫已删除（2026-08-25 用户决定）：cnmdb（域名劫持博彩页）、hdouban（DNS 失效）、mdtv（默认域名 302 广告停放）、love6、kin8（站点改版故障）。若用户日后提供新域名，从 git 历史恢复对应 mdcx/crawlers/*.py 并重建 Website 枚举/注册/默认源即可。
+  - 7mmtv 现状（2026-08-25）：7mmtv.sx 新上 CF「Just a moment」JS 挑战，纯 curl_cffi 指纹全拦；7mmtv.tv 在 devbox SSL 断连。过挑战依赖 TRAWL/FlareSolverr 外部 CF Bypass 服务（AsyncWebClient 刮削路径与网络检测均已自动接入）；devbox 出口对该站时段性整体断连，验证失败先换时段重试。
   - devbox 全量连通性实测（2026-08-25）：devbox 出口对部分日本站/被墙站超时属云端限制（faleno/xcity/mywife/7mmtv/javdb 系等），不代表站点死亡；kin8 检测项 SPECIAL_CHECK_PATHS 样例页 /moviepages/3681 已 404 需换新样例；getchu/getchu_dmm/fantastica/cableav/giga 连通但默认番号探测不命中（单收录范围站，probe_number 待校准）；fc2club/fc2ppvdb 探测异常待查。
   - devbox 高频批量测试会触发站点 CF 的 IP 级临时拉黑（首轮 200 的站次轮批量 403），测试结果需区分"站点问题"与"测试频率风控"；httpx 无浏览器指纹会被 javbus/freejavbt 等站软拦截返回空壳页，验证必须用 curl_cffi impersonate 指纹。parsel Selector.get() 对纯 JSON 文本会直接返回 dict 而非字符串，JSON API 类爬虫解析入参需兼容 str/dict/Selector 三态。
   - javbus 镜像池实测（2026-08-25）：可用=dmmsee.cyou/javsee.cyou/cdnbus.bond/cdnbus.cyou/fanbus.bond/dmmbus.bond；SSL 死亡已删=busjav.bond/seejav.cyou/buscdn.bond/javbus.bond；持续 CF 未纳入=busdmm.bond。devbox 对 javbus 系详情页路径会触发 CF（首页正常），本地验证以实际网络检测为准。

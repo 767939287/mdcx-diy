@@ -71,7 +71,6 @@ SPECIAL_CHECK_PATHS: dict[Website, str] = {
     Website.JAVDB: "/v/D16Q5?locale=zh",
     Website.JAVBUS: "/FSDSS-660",
     Website.JAVLIBRARY: "/cn/?v=javme2j2tu",
-    Website.KIN8: "/moviepages/3681/index.html",
     Website.JAVDB_APP: "/api/v2/search?q=SSNI-647&page=1",
 }
 

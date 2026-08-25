@@ -57,12 +57,13 @@ def get_real_url(html, number):
     return url
 
 
-def get_cover(html):
+def get_cover(html, base_url: str = "https://www.7mmtv.sx"):
     result = re.findall(r'class="player-cover" ><a><img src="([^"]+)', html)
     if result:
         result = result[0]
         if "http" not in result:
-            result = "https://7mmtv.tv" + result
+            # 相对路径拼当前镜像域名，避免硬编码单一域名在轮换后失效
+            result = base_url.rstrip("/") + result
     return result if result else ""
 
 
@@ -214,7 +215,7 @@ class MmtvCrawler(BaseCrawler):
             directors=directors,
             studio=get_studio(html_info),
             publisher=get_publisher(html_info),
-            thumb=get_cover(html_content),
+            thumb=get_cover(html_content, self.base_url),
             poster="",
             extrafanart=extrafanart,
             trailer="",

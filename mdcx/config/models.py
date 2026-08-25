@@ -409,7 +409,6 @@ class Config(BaseModel):
         default_factory=lambda: [
             # 无码专属
             Website.AVSOX,
-            Website.KIN8,
             # 综合（有码+无码）
             Website.JAVBUS,
             Website.JAVDB,
@@ -452,7 +451,6 @@ class Config(BaseModel):
             Website.FC2CLUB,
             Website.FC2HUB,
             Website.FC2PPVDB,
-            Website.LOVE6,
             Website.JAVDB,
             Website.JAVDB_API,
             Website.JAVDB_APP,
@@ -465,12 +463,9 @@ class Config(BaseModel):
     )
     website_guochan: list[Website] = Field(
         default_factory=lambda: [
-            Website.HDOUBAN,
-            Website.CNMDB,
             Website.MADOUQU,
             Website.MADOUCLUB,
             Website.IQQTV,
-            Website.MDTV,
             Website.JAVDAY,
             Website.HSCANGKU,
         ],
@@ -709,7 +704,7 @@ class Config(BaseModel):
     use_proxy: bool = Field(default=False, title="代理类型")
     proxy: str = Field(default="http://127.0.0.1:7890", title="代理地址")
     proxy_sites: str = Field(
-        default="amazon.co.jp,m.media-amazon.com,xcity.jp,minnano-av.com,avbase.net,javbus.com,javdb.com,javlibrary.com,r18.dev,mgstage.com,prestige-av.com,seesaawiki.jp,avsox.click,avsox.com,avmoo.shop,avmoo.com,avheat.shop,avheat.com,kin8tengoku.com,github.com,raw.githubusercontent.com,google.com,missav.ws,missav.ai,missav.live",
+        default="amazon.co.jp,m.media-amazon.com,xcity.jp,minnano-av.com,avbase.net,javbus.com,javdb.com,javlibrary.com,r18.dev,mgstage.com,prestige-av.com,seesaawiki.jp,avsox.click,avsox.com,avmoo.shop,avmoo.com,avheat.shop,avheat.com,github.com,raw.githubusercontent.com,google.com,missav.ws,missav.ai,missav.live",
         title="使用代理网站",
     )
     cf_bypass_url: str = Field(default="", title="Cloudflare Bypass地址")

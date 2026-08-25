@@ -181,7 +181,7 @@ class _ClassificationConfig:
     website_suren = {Website.MGSTAGE}
     website_fc2 = {Website.FC2}
     website_oumei = {Website.THEPORNDB}
-    website_guochan = {Website.MDTV}
+    website_guochan = {Website.MADOUQU}
 
 
 def _build_result(site: Website, runtime: str = "", release: str = "", year: str = "") -> CrawlerResult:
@@ -256,7 +256,7 @@ def test_is_suren_number_matches_current_scrape_branch(file_number: str, short_n
         ("ABF-135", "無碼流出", "", FixedScrapingType.YOUMA, {Website.DMM}),
         ("ABF-136", "无码流出", "", FixedScrapingType.YOUMA, {Website.DMM}),
         ("HEYZO-3843", "", "", FixedScrapingType.WUMA, {Website.JAVBUS}),
-        ("MD-1234", "", "", FixedScrapingType.GUOCHAN, {Website.MDTV}),
+        ("MD-1234", "", "", FixedScrapingType.GUOCHAN, {Website.MADOUQU}),
         ("DANDY-732", "", "", FixedScrapingType.YOUMA, {Website.DMM}),
         ("SSNI00321", "", "", FixedScrapingType.YOUMA, {Website.DMM}),
     ],
@@ -283,7 +283,6 @@ def test_classify_scrape_task_keeps_existing_type_branches(
 @pytest.mark.parametrize(
     ("number", "file_path", "expected_website"),
     [
-        ("KIN8-4188", "", Website.KIN8),
         ("MYWIFE-1500", "D:/test/mywife/MYWIFE-1500.mp4", Website.MYWIFE),
     ],
 )
@@ -342,7 +341,7 @@ def test_avwiki_uses_unified_scraping_types():
         (Website.AIRAV_CC, Language.ZH_CN, Language.ZH_CN),
         (Website.IQQTV, Language.ZH_CN, Language.ZH_CN),
         (Website.JAVLIBRARY, Language.ZH_CN, Language.ZH_CN),
-        (Website.MDTV, Language.ZH_CN, Language.ZH_CN),
+        (Website.MADOUQU, Language.ZH_CN, Language.ZH_CN),
         (Website.DMM, Language.JP, Language.ZH_CN),
     ],
 )
