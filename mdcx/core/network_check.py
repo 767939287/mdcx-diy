@@ -32,6 +32,7 @@ class NetworkCheckSpec:
     use_proxy: bool = True
     headers: dict[str, str] = field(default_factory=dict)
     cookies: dict[str, str] = field(default_factory=dict)
+    json_data: dict[str, Any] | None = None
     encoding: str = "utf-8"
     note: str = ""
     warning_if_missing: str = ""
@@ -72,7 +73,6 @@ SPECIAL_CHECK_PATHS: dict[Website, str] = {
     Website.JAVLIBRARY: "/cn/?v=javme2j2tu",
     Website.KIN8: "/moviepages/3681/index.html",
     Website.JAVDB_APP: "/api/v2/search?q=SSNI-647&page=1",
-    Website.MISSAV_API: "/search/SSNI-647?uitype=frontpage",
 }
 
 DEFAULT_SITE_URLS: dict[Website, str] = {
@@ -261,7 +261,12 @@ async def _probe_crawler_by_run(
 
     if response is None or response.data is None:
         error = getattr(getattr(response, "debug_info", None), "error", None) if response else None
-        message = f"刮削探测失败: {error}" if error else "站点可达，但测试番号未被该站点收录，建议用实际番号实测"
+        probe_number = str(getattr(input_data, "number", "") or SCRAPE_PROBE_NUMBER)
+        message = (
+            f"刮削探测失败: {error}"
+            if error
+            else f"站点可达，但测试番号 {probe_number} 未被该站点收录（单厂牌/收录有限站点常见），建议刮削时用实际番号实测"
+        )
         return NetworkCheckStatus.WARNING, message
     return NetworkCheckStatus.OK, "连接正常，刮削正常"
 
@@ -307,11 +312,11 @@ async def _probe_crawler_capability(
         try:
             search_urls = await crawler._generate_search_url(ctx)
         except NotImplementedError:
-            # 重写 _run 的 API 类爬虫（如 avmoo/avheat/avsox/missav_api），
-            # _generate_search_url/_parse_search_page 无实现，改用真实刮削路径探测。
-            return await _probe_crawler_by_run(crawler, input_data)
+            search_urls = None
         if not search_urls:
-            return NetworkCheckStatus.WARNING, "站点可达但无法自动探测刮削，可用设置页指定网址实测"
+            # 重写 _run 的爬虫（aio 系列/fc2/cnmdb 等）不走标准搜索流程，
+            # 统一回退真实刮削路径探测。
+            return await _probe_crawler_by_run(crawler, input_data)
         if isinstance(search_urls, str):
             search_urls = [search_urls]
 
@@ -342,11 +347,9 @@ async def _probe_crawler_capability(
             detail_urls = await crawler._parse_search_page(ctx, selector, search_url)
             if detail_urls:
                 return NetworkCheckStatus.OK, "连接正常，刮削正常"
-            return (
-                NetworkCheckStatus.WARNING,
-                "站点可达，但测试番号 SSNI-647 未被该站点收录（单厂牌/收录有限站点常见），建议刮削时用实际番号实测",
-            )
-        return NetworkCheckStatus.WARNING, "站点可达，但搜索未匹配到测试番号"
+            # mdtv 等重写 _search（POST 搜索）的爬虫 GET 探测拿不到结果，
+            # 回退真实刮削路径再确认一次。
+            return await _probe_crawler_by_run(crawler, input_data)
     except NotImplementedError:
         return NetworkCheckStatus.WARNING, "站点可达但无法自动探测刮削，可用设置页指定网址实测"
     except CrawlerException as exc:
@@ -509,6 +512,8 @@ async def _build_site_specs() -> list[NetworkCheckSpec]:
         url = _join_url(base_url, path)
         headers: dict[str, str] = {}
         cookies: dict[str, str] = {}
+        # 代理路由统一交给全局 proxy_sites 配置决策；强制直连会让被墙环境下
+        # 检测与真实刮削路径脱节（如 javlibrary 自定义 URL + CF Bypass 场景）。
         use_proxy = True
         if site == Website.JAVDB and manager.config.javdb:
             headers["cookie"] = manager.config.javdb
@@ -516,14 +521,21 @@ async def _build_site_specs() -> list[NetworkCheckSpec]:
             headers["Accept-Language"] = "zh-CN,zh;q=0.9,en-US;q=0.8,en;q=0.7,ja;q=0.6"
             if manager.config.javbus:
                 headers["cookie"] = manager.config.javbus
-        elif site == Website.JAVLIBRARY and customized:
-            use_proxy = False
         elif site == Website.MGSTAGE:
             cookies["adc"] = "1"
         elif site == Website.DMM_API:
             from mdcx.crawlers.dmm_api import DmmApiCrawler
 
-            api_url = DmmApiCrawler._build_api_url(keyword="SSIS-200", sort="match", hits="1")
+            # v3 ItemList 必需 site/service/floor，缺失直接 400 BAD REQUEST；
+            # keyword 用厂牌词（实测命中 content_id），验证凭据有效性与搜索能力。
+            api_url = DmmApiCrawler._build_api_url(
+                site="FANZA",
+                service="digital",
+                floor="videoa",
+                keyword="SSIS",
+                sort="match",
+                hits="1",
+            )
             specs.append(
                 NetworkCheckSpec(
                     name=site.value,
@@ -568,13 +580,31 @@ async def _build_site_specs() -> list[NetworkCheckSpec]:
             headers["accept-language"] = "zh"
             headers["User-Agent"] = "Dart/3.5 (dart:io)"
         elif site == Website.MISSAV_API:
-            # missav_api 用 Recombee API，需 HMAC 签名且不走 missav.ws
+            # Recombee search 端点只接受 POST（GET 返回 405），用真实搜索路径检测；
+            # 公开 token 仅授权部分端点，签名逻辑与爬虫刮削共用 _sign_path。
             from ..crawlers.missav_api import MissavApiCrawler
 
             base_url = f"https://{MissavApiCrawler.RECOMBEE_HOST}"
-            url = _join_url(base_url, path)
-            signed_path = MissavApiCrawler._sign_path(path.split("?")[0])
-            url = f"{base_url}{signed_path}"
+            signed_path = MissavApiCrawler._sign_path("/search/users/anonymous/items/")
+            specs.append(
+                NetworkCheckSpec(
+                    name=site.value,
+                    group="账号/API",
+                    url=f"{base_url}{signed_path}",
+                    site=site,
+                    method="POST",
+                    headers={"Accept": "application/json", "Content-Type": "application/json"},
+                    json_data={
+                        "searchQuery": "ssni-647",
+                        "count": 3,
+                        "cascadeCreate": True,
+                        "returnProperties": True,
+                    },
+                    use_proxy=False,
+                    validator="missav_api",
+                )
+            )
+            continue
 
         specs.append(
             NetworkCheckSpec(
@@ -719,6 +749,7 @@ async def run_network_check_item(
             spec.url,
             headers=spec.headers or None,
             cookies=spec.cookies or None,
+            json_data=spec.json_data,
             use_proxy=spec.use_proxy,
             timeout=_diagnostic_timeout(),
             enable_cf_bypass=spec.enable_cf_bypass and bool(_manager().config.cf_bypass_url.strip()),
@@ -809,6 +840,8 @@ async def run_network_check_item(
             status, message = _classify_dmm_api(int(response.status_code), text)
         elif spec.validator == "thejavdb_api":
             status, message = _classify_thejavdb_api(int(response.status_code), text)
+        elif spec.validator == "missav_api":
+            status, message = _classify_missav_api(int(response.status_code), text)
         elif spec.name == "CF Bypass" and status == NetworkCheckStatus.OK:
             message = "服务可用"
 
@@ -860,7 +893,7 @@ def _classify_dmm_api(status_code: int, text: str) -> tuple[NetworkCheckStatus, 
     if status_code == 200 and '"status":200' in text and ("content_id" in text or "ssis" in text.lower()):
         return NetworkCheckStatus.OK, "API 查询正常"
     if status_code == 200:
-        return NetworkCheckStatus.WARNING, "API 可访问，但 SSIS-200 查询返回数据异常"
+        return NetworkCheckStatus.WARNING, "API 可访问，但 SSIS 查询返回数据异常"
     return _classify_http_result(
         NetworkCheckSpec(name="dmm_api", group="账号/API", url="", site=Website.DMM_API), status_code, text
     )
@@ -873,6 +906,18 @@ def _classify_thejavdb_api(status_code: int, text: str) -> tuple[NetworkCheckSta
         return NetworkCheckStatus.WARNING, "API 可访问，但 ssni-200 查询返回数据异常"
     return _classify_http_result(
         NetworkCheckSpec(name="thejavdb_api", group="账号/API", url="", site=Website.THEJAVDB_API), status_code, text
+    )
+
+
+def _classify_missav_api(status_code: int, text: str) -> tuple[NetworkCheckStatus, str]:
+    if status_code == 200 and '"recomms"' in text:
+        return NetworkCheckStatus.OK, "API 查询正常"
+    if status_code == 401:
+        return NetworkCheckStatus.FAILED, "Recombee 公开 token 被拒绝，签名或端点已变更"
+    if status_code == 200:
+        return NetworkCheckStatus.WARNING, "API 可访问，但搜索返回数据异常"
+    return _classify_http_result(
+        NetworkCheckSpec(name="missav_api", group="账号/API", url="", site=Website.MISSAV_API), status_code, text
     )
 
 

@@ -246,6 +246,8 @@ class FalenoParser(DetailPageParser[FalenoContext]):
 
 class FalenoCrawler(GenericBaseCrawler[FalenoContext]):
     description = "Faleno 官网（仅覆盖本厂）"
+    # FNS 系列真实作品（见 tests/crawlers/test_faleno.py 测试数据），官网搜索可命中
+    probe_number = "FNS-165"
     parser = FalenoParser()
 
     @classmethod

@@ -43,6 +43,20 @@
   - GitHub Actions 日志在无 gh CLI 环境中通过 `git credential fill` 获取 GitHub token，再调用 Actions API 下载 job 日志。
   - 使用编辑工具删除函数时，匹配范围包含完整函数和下一函数定义，修改后检查死变量和格式。
 
+## 站点与网络排错
+
+- Date: 2026-08-25
+- Category: 排错调试
+- Instructions:
+  - 各站网络检测探测番号（probe_number）及收录依据见对应爬虫类注释；番号收录情况随站点数据库变化，以实测为准。
+  - javdb 检测失败主因是 Cloudflare 拦截；搜普通番号无需 Cookie，仅 FC2 番号搜索需要 Cookie。
+  - missav_api 的 Recombee search 端点只接受 POST（GET 返回 405），公开 token 仅授权部分端点；检测须走 POST /search/users/anonymous/items/ 真实路径。
+  - DMM Affiliate API v3 ItemList 必需 site/service/floor 参数（缺失返回 400 BAD REQUEST）；keyword 需 content_id 形态（小写前缀+编号补零 5 位，如 ssis00200）才能精确命中，带横杠格式搜索为 0 结果，特殊站内前缀系列回退厂牌词模糊搜索。
+  - MGStage 主站详情页非日本 IP 返回 403，但 image.mgstage.com 图片 CDN 直链无地域限制，可用 mgstage_direct.py 的直链规律验证番号收录情况。
+  - madouqu 域名由官方发布页 wangzhi.icu/config.js 动态维护（web.py::get_madouqu_domains 解析 domainConfig['md'] 区块，24h 缓存+静态回退）；发布页主体是混淆 JS 渲染，真实数据源是其同域明文 config.js——解析外部站点配置时优先找其 JS 引用的数据源。
+  - MDTV 默认域名 mdpjzip.xyz 搜索已 302 到广告停放页疑似失效，待获取新域名后校准（当前探测番号暂配 MDX-0236）。
+  - devbox 出口 IP 被部分站点屏蔽（如 jav321 HTTP 000），沙箱内无法复现的行为以用户浏览器实测为准；AsyncWebClient 在裸脚本中直接调用会在退出时抛 CancelledError，轻量验证改用 httpx。
+
 ## Windows 打包与发布
 
 - Date: 2026-08-24

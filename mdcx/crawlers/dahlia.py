@@ -81,6 +81,7 @@ def get_trailer(html):  # 获取预览片
 
 class DahliaCrawler(BaseCrawler):
     description = "Dahlia 官网（仅覆盖本厂）"
+    probe_number = "DLDSS-539"
 
     @classmethod
     @override

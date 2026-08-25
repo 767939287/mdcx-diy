@@ -391,6 +391,8 @@ def _split_legacy_names(value: str) -> list[str]:
 
 class Jav321Crawler(BaseCrawler):
     description = "综合信息（仅能有码）"
+    # jav321 数据库缺 SSNI-647（用户实测），SSNI-648 已确认收录
+    probe_number = "SSNI-648"
     UNCENSORED_STUDIOS = {
         "一本道",
         "HEYZO",

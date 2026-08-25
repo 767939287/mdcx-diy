@@ -76,3 +76,43 @@ def test_get_detail_info_normalizes_detail_cover_url():
     assert studio == "麻豆传媒"
     assert release == "2022-02-16"
     assert year == "2022"
+
+
+def test_parse_madouqu_domains_extracts_md_block():
+    from mdcx.base.web import _parse_madouqu_domains
+
+    config_js = """
+const domainConfig = [
+    { id: 'md', name: '麻豆区', urls: ['https://madouqu.shop', 'https://madouqu2.sbs', 'https://madouqu.sbs'] },
+    { id: 'bt', name: '国产BT', urls: ['https://gcbt3.sbs'] },
+];
+"""
+    assert _parse_madouqu_domains(config_js) == ["https://madouqu.shop", "https://madouqu2.sbs", "https://madouqu.sbs"]
+
+
+def test_parse_madouqu_domains_empty_on_missing_block():
+    from mdcx.base.web import _parse_madouqu_domains
+
+    assert _parse_madouqu_domains("const x = 1;") == []
+    assert _parse_madouqu_domains("") == []
+
+
+def test_generate_search_urls_use_all_dynamic_domains(monkeypatch):
+    """未自定义 URL 时搜索候选应覆盖发布页解析的全部域名."""
+    import asyncio
+
+    from mdcx.crawlers.madouqu import MadouquCrawler
+    from mdcx.models.model_types import CrawlerInput
+
+    async def fake_domains():
+        return ["https://a.example", "https://b.example"]
+
+    monkeypatch.setattr("mdcx.base.web.get_madouqu_domains", fake_domains)
+    crawler = MadouquCrawler(client=None, base_url="https://madouqu.shop", browser=None)
+    ctx = crawler.new_context(CrawlerInput.empty())
+    ctx.input.number = "MDX-0236"
+
+    urls = asyncio.run(crawler._generate_search_url(ctx))
+
+    hosts = [u.split("/")[2] for u in urls]
+    assert set(hosts) == {"a.example", "b.example"}

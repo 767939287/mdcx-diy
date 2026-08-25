@@ -1,13 +1,23 @@
 # Changelog
 
-## v2.0.7 (2026-08-24)
+## v2.0.7 (2026-08-25)
 
 ### 修复
 
+- **网络检测刮削探测修复**：`_generate_search_url` 返回空或搜索解析无结果的爬虫（fc2/mywife/cnmdb/prestige/libredmm/kin8/iqqtv/mdtv 等 17 站）自动回退真实刮削路径探测，消除"可达但无法自动探测刮削"误报；探测失败提示改为动态携带实际番号
+- **missav_api 检测修复**：Recombee search 端点仅接受 POST（原 GET 必返 405），改走真实搜索路径并新增响应校验
+- **dmm_api 检测与爬虫双重修复**：网络检测补全 v3 ItemList 必需参数 site/service/floor（缺失返回 400）；爬虫 keyword 改用 content_id 形态候选序列（带横杠番号搜索为 0 结果）；`iteminfo` 模型类型放宽修复真实响应校验崩溃
+- **javlibrary 检测代理路由修复**：移除自定义 URL 时强制直连的逻辑，避免被墙环境下 CF Bypass 一并被阻断
+- **DMM 高清直链学习闭环修复**：主爬虫同时接受 pics.dmm 图源证据写入前缀学习表，静态前缀表外的新站内前缀系列（如 HONB/h_1133）不再永久缺失高清图
 - **网络设置说明对齐修复**：代理说明统一使用与 Cookie 获取方法相同的左上对齐和 20px 行高
 - **NFO 库管理批量提示修复**：提高“批量保存”下方换行提示的最小高度，避免 Windows 字体和 DPI 缩放下文字底部显示不全
 - **导航树使用说明修复**：补足左侧导航按钮容器高度，恢复“使用说明”按钮完整显示和点击入口
 - **使用说明内容更新**：修正设置路径、主界面按钮名称、NFO 合并策略枚举和章节编号，补齐当前 48 个爬虫、CF Bypass、NFO 库管理及工具页面说明
+
+### 优化
+
+- **20 个有限收录站点定制探测番号**：faleno/giga/dahlia/mgstage/jav321/avsex/xcity/fc2 系列×4/mywife/kin8/prestige/libredmm 及国产四站（mdtv/madouqu/cnmdb/hscangku）改用各站实测收录的番号，消除"测试番号未被收录"误报；综合站维持默认 SSNI-647
+- **madouqu 动态域名**：接入官方发布页 wangzhi.icu/config.js 实时解析麻豆区域名列表（24h 缓存+静态回退），默认域名迁移至 madouqu.shop；搜索失败自动切换镜像，详情链接跟随命中域名
 
 ### 工程质量
 

@@ -230,7 +230,10 @@ class DmmCrawler(GenericBaseCrawler[DMMContext]):
     def _record_dmm_cover_evidence(ctx: DMMContext, image_url: str) -> None:
         """从已验证的 DMM 图 URL 提取 cid 写入前缀学习表（静默失败）。"""
         normalized = str(image_url or "").strip()
-        if "awsimgsrc.dmm.co.jp" not in normalized:
+        # pics.dmm 图 URL 同样携带真实 cid（如 /digital/video/h_1133honb00487/...）。
+        # 若只认 awsimgsrc，静态前缀表外的新站内前缀系列（如 HONB/h_1133）
+        # 直链候选全 miss、升级必失败，学习表永远拿不到证据形成死锁。
+        if "awsimgsrc.dmm.co.jp" not in normalized and "pics.dmm.co.jp" not in normalized:
             return
         number = str(getattr(ctx.input, "number", "") or "").strip()
         if not number:

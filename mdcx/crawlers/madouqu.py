@@ -3,7 +3,7 @@ import re
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import override
-from urllib.parse import urlencode, urlsplit, urlunsplit
+from urllib.parse import urlencode, urljoin, urlsplit, urlunsplit
 
 from lxml import etree
 from parsel import Selector
@@ -136,6 +136,8 @@ class MadouquContext(Context):
 
 class MadouquCrawler(BaseCrawler[MadouquContext]):
     description = "麻豆 国产（国产）"
+    # madouqu.shop 已实测收录 MDX-0236（2026-08）
+    probe_number = "MDX-0236"
 
     @classmethod
     @override
@@ -145,7 +147,34 @@ class MadouquCrawler(BaseCrawler[MadouquContext]):
     @classmethod
     @override
     def base_url_(cls) -> str:
-        return manager.config.get_site_url(Website.MADOUQU, "https://madouqu.com")
+        # 动态域名见 check_urls/_search_domains；此处返回静态兜底首选
+        return manager.config.get_site_url(Website.MADOUQU, "https://madouqu.shop")
+
+    @classmethod
+    @override
+    async def check_urls(cls) -> list[str]:
+        """网络检测用发布页实时解析的域名列表."""
+        try:
+            from ..base.web import get_madouqu_domains
+
+            return await get_madouqu_domains()
+        except Exception:
+            return [cls.base_url_()]
+
+    async def _search_domains(self) -> list[str]:
+        """搜索域名序列：用户自定义优先，否则发布页实时解析，失败回退静态列表。"""
+        custom_url = str(manager.config.get_site_url(Website.MADOUQU) or "").strip().rstrip("/")
+        if custom_url:
+            return [custom_url]
+        try:
+            from ..base.web import get_madouqu_domains
+
+            domains = await get_madouqu_domains()
+            if domains:
+                return domains
+        except Exception:
+            pass
+        return [self.base_url_()]
 
     @override
     def new_context(self, input: CrawlerInput) -> MadouquContext:
@@ -157,7 +186,9 @@ class MadouquCrawler(BaseCrawler[MadouquContext]):
         number_list, filename_list = get_number_list(ctx.input.number, ctx.input.appoint_number, file_path)
         exact_number_list = _extract_number_candidates(ctx.input.number, ctx.input.appoint_number, file_path)
         ctx.number_candidates = _dedupe(exact_number_list + number_list[:1] + filename_list)
-        return [f"{self.base_url}/?{urlencode({'s': each})}" for each in ctx.number_candidates]
+        # 逐域名生成搜索候选，BaseCrawler._search 对失效域名自动切换下一个
+        domains = await self._search_domains()
+        return [f"{domain}/?{urlencode({'s': each})}" for domain in domains for each in ctx.number_candidates]
 
     @override
     async def _parse_search_page(self, ctx: MadouquContext, html: Selector, search_url: str) -> list[str] | str | None:
@@ -168,7 +199,8 @@ class MadouquCrawler(BaseCrawler[MadouquContext]):
             return None
         ctx.matched_number = number
         ctx.search_cover_url = cover_url
-        return [detail_url]
+        # 多镜像域名下详情链接必须跟随命中域名的搜索地址
+        return [urljoin(search_url, detail_url)]
 
     @override
     async def _parse_detail_page(self, ctx: MadouquContext, html: Selector, detail_url: str) -> CrawlerData | None:

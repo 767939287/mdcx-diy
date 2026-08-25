@@ -95,3 +95,33 @@ def test_unknown_series_prefix_split():
 
 def test_mismatched_number_cid_returns_empty():
     assert dmm_prefix_learn._split_cid("sone-833", "other00100") == ("", "")
+
+
+def test_pics_dmm_cover_evidence_feeds_learn_table(_isolated_learn):
+    """主爬虫 pics.dmm 图源应能喂学习表，静态表外新前缀系列（HONB/h_1133）不再死锁."""
+    from types import SimpleNamespace
+
+    from mdcx.crawlers.dmm import DmmCrawler
+
+    ctx = SimpleNamespace(input=SimpleNamespace(number="HONB-487"))
+    DmmCrawler._record_dmm_cover_evidence(
+        ctx, "https://pics.dmm.co.jp/digital/video/h_1133honb00487/h_1133honb00487ps.jpg"
+    )
+    # 单次证据为 provisional；再积累一个编号后升级 verified
+    assert "h_1133" in dmm_prefix_learn.get_learned_prefixes("honb")[1]
+    ctx2 = SimpleNamespace(input=SimpleNamespace(number="HONB-498"))
+    DmmCrawler._record_dmm_cover_evidence(
+        ctx2, "https://pics.dmm.co.jp/digital/video/h_1133honb00498/h_1133honb00498ps.jpg"
+    )
+    assert "h_1133" in dmm_prefix_learn.get_learned_prefixes("honb")[0]
+
+
+def test_mono_cid_noise_filtered_by_code_check(_isolated_learn):
+    """mono 图 cid 数字段不补零（118abf042），endswith 校验应拒绝其入表."""
+    from types import SimpleNamespace
+
+    from mdcx.crawlers.dmm import DmmCrawler
+
+    ctx = SimpleNamespace(input=SimpleNamespace(number="ABF-42"))
+    DmmCrawler._record_dmm_cover_evidence(ctx, "https://pics.dmm.co.jp/mono/movie/adult/118abf042/118abf042pl.jpg")
+    assert dmm_prefix_learn.get_learned_prefixes("abf") == ([], [])

@@ -80,6 +80,7 @@ def normalize_fc2_number(number: str) -> str:
 
 class Fc2clubCrawler(BaseCrawler):
     description = "FC2Club 信息站（FC2）"
+    probe_number = "FC2-743423"
 
     @classmethod
     @override

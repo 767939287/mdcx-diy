@@ -59,6 +59,8 @@ class HscangkuContext(Context):
 
 class HscangkuCrawler(BaseCrawler[HscangkuContext]):
     description = "收藏库 国产番号（国产）"
+    # 动态域名（如 556825.xyz）人工实测收录 MD0101
+    probe_number = "MD0101"
 
     @classmethod
     @override

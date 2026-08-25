@@ -149,6 +149,8 @@ def build_candidate_numbers(number: str, short_number: str) -> list[str]:
 
 class MgstageCrawler(BaseCrawler):
     description = "MGStage 官网（仅能有码+素人）"
+    # MGStage 主打素人系列（image.mgstage.com 直链已验证收录）；SSNI 等 S1 番号未收录
+    probe_number = "259LUXU-1111"
 
     @classmethod
     @override

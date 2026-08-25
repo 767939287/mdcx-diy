@@ -454,6 +454,43 @@ def _parse_aio_site_urls(response: str) -> dict[str, str]:
     return result
 
 
+# madouqu 官方发布页（bitbucket fabuye/madouqu 公告指向）的域名配置，
+# 域名变更时官方只需更新 config.js，客户端实时解析即可跟进。
+_WANGZHI_CONFIG_URL = "https://wangzhi.icu/config.js"
+_MADOUQU_FALLBACK_DOMAINS = ("https://madouqu.shop", "https://madouqu2.sbs", "https://madouqu.sbs")
+_MADOUQU_DOMAINS_CACHE: dict[str, tuple[float, list[str]]] = {}
+_MADOUQU_DOMAINS_CACHE_LOCK = threading.Lock()
+_MADOUQU_DOMAINS_CACHE_TTL = 24 * 3600.0  # 1 天
+
+
+def _parse_madouqu_domains(response: str) -> list[str]:
+    """从发布页 config.js 解析麻豆区 urls 列表，结构见 domainConfig['md']."""
+    if not response:
+        return []
+    block = re.search(r"id:\s*['\"]md['\"].*?urls:\s*\[(.*?)\]", response, re.S)
+    if not block:
+        return []
+    return [url.rstrip("/") for url in re.findall(r"https?://[^\s'\"]+", block.group(1))]
+
+
+async def get_madouqu_domains() -> list[str]:
+    """获取麻豆站当前可用域名列表（发布页实时解析，失败回退静态列表）。"""
+    now = time.time()
+    with _MADOUQU_DOMAINS_CACHE_LOCK:
+        cached = _MADOUQU_DOMAINS_CACHE.get("domains")
+        if cached and now - cached[0] < _MADOUQU_DOMAINS_CACHE_TTL:
+            return cached[1]
+    try:
+        async with manager.acquire_computed() as computed:
+            response, _ = await computed.async_client.get_text(_WANGZHI_CONFIG_URL)
+    except Exception:
+        response = None
+    domains = _parse_madouqu_domains(response or "")
+    with _MADOUQU_DOMAINS_CACHE_LOCK:
+        _MADOUQU_DOMAINS_CACHE["domains"] = (now, domains or list(_MADOUQU_FALLBACK_DOMAINS))
+    return domains or list(_MADOUQU_FALLBACK_DOMAINS)
+
+
 async def get_aio_domain(site: str) -> str:
     """获取 tellme.pw AIO 系列站点（avmoo/avsox/avheat）的最新直连地址。
 

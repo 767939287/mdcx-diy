@@ -283,6 +283,23 @@ class TestBuildApiUrl:
         assert "10278-996" in url
 
 
+class TestSearchKeywords:
+    def test_standard_number_converts_to_content_id_form(self):
+        # 带横杠格式 keyword 实测 0 结果，content_id 形态精确命中
+        assert DmmApiCrawler._search_keywords("SSIS-200") == ["ssis00200", "ssis"]
+
+    def test_number_with_leading_zeros(self):
+        assert DmmApiCrawler._search_keywords("MIDE-083") == ["mide00083", "mide"]
+
+    def test_prefix_containing_digits(self):
+        assert DmmApiCrawler._search_keywords("T28-655") == ["t2800655", "t28"]
+
+    def test_non_standard_number_falls_back_to_raw(self):
+        assert DmmApiCrawler._search_keywords("ssis00200") == ["ssis00200"]
+        assert DmmApiCrawler._search_keywords("SSIS-200001") == ["SSIS-200001"]
+        assert DmmApiCrawler._search_keywords("") == [""]
+
+
 def test_build_aws_thumb_candidates_includes_dmm_direct_prefix(monkeypatch):
     """特殊前缀系列（ABF）的低清图应能构造出 dmm_direct 前缀表高清候选."""
     from mdcx.crawlers.dmm import DmmCrawler

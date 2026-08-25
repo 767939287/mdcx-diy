@@ -174,6 +174,8 @@ class MdtvContext(Context):
 
 class MdtvCrawler(BaseCrawler[MdtvContext]):
     description = "MDTV 国产（国产）"
+    # 国产站不收 SSNI 番号；MDX-0236 为项目注释中真实文件名样本，待站点实测校准
+    probe_number = "MDX-0236"
 
     @classmethod
     @override

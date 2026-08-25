@@ -102,6 +102,7 @@ def get_cover_from_detail(html, key):
 
 class Kin8Crawler(BaseCrawler):
     description = "Kin8 无码（无码专属）"
+    probe_number = "kin8-4188"
 
     @classmethod
     @override

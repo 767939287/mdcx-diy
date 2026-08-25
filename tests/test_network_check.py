@@ -203,8 +203,59 @@ async def test_dmm_api_spec_uses_real_query_url(monkeypatch: pytest.MonkeyPatch)
 
     dmm_api = next(spec for spec in specs if spec.site == Website.DMM_API)
     assert "api.dmm.com/affiliate/v3/ItemList" in dmm_api.url
-    assert "keyword=SSIS-200" in dmm_api.url
+    # v3 ItemList 必需参数缺失会 400 BAD REQUEST，keyword 用厂牌词验证搜索能力
+    assert "site=FANZA" in dmm_api.url
+    assert "service=digital" in dmm_api.url
+    assert "floor=videoa" in dmm_api.url
+    assert "keyword=SSIS" in dmm_api.url
+    assert "keyword=SSIS-" not in dmm_api.url
     assert dmm_api.validator == "dmm_api"
+
+
+@pytest.mark.anyio
+async def test_missav_api_spec_uses_post_search(monkeypatch: pytest.MonkeyPatch):
+    """Recombee search 端点只接受 POST（GET 405），检测须用真实搜索路径."""
+
+    class MissavApiCrawlerStub:
+        RECOMBEE_HOST = "client-rapi-missav.recombee.com"
+
+        @classmethod
+        def base_url_(cls):
+            return "https://missav.ws"
+
+        @classmethod
+        def _sign_path(cls, path: str) -> str:
+            return f"/missav-default{path}?frontend_timestamp=1&frontend_sign=sig"
+
+    fake_crawlers = SimpleNamespace(
+        get_registered_crawler_sites=lambda include_hidden=False: [Website.MISSAV_API],
+        get_crawler=lambda site: MissavApiCrawlerStub,
+    )
+    monkeypatch.setitem(sys.modules, "mdcx.crawlers", fake_crawlers)
+
+    specs = await build_network_check_specs()
+
+    missav_api = next(spec for spec in specs if spec.site == Website.MISSAV_API)
+    assert missav_api.method == "POST"
+    assert "/search/users/anonymous/items/" in missav_api.url
+    assert missav_api.json_data is not None and missav_api.json_data["searchQuery"] == "ssni-647"
+    assert missav_api.validator == "missav_api"
+
+
+@pytest.mark.anyio
+async def test_run_network_check_item_passes_json_body():
+    spec = NetworkCheckSpec(
+        name="missav_api",
+        group="账号/API",
+        url="https://client-rapi-missav.recombee.com/search",
+        method="POST",
+        json_data={"searchQuery": "ssni-647"},
+    )
+    client = FakeClient()
+
+    await run_network_check_item(spec, client=client)
+
+    assert client.calls[0]["json_data"] == {"searchQuery": "ssni-647"}
 
 
 def test_format_result_line_does_not_duplicate_error():
@@ -314,6 +365,9 @@ class ProbeCrawler:
         self.detail_urls: list[str] | None = ["https://example.test/works/1"]
         self.raise_not_implemented = False
 
+    async def run(self, input_data):
+        return SimpleNamespace(data=None, debug_info=SimpleNamespace(error=None))
+
     def new_context(self, input_data):
         return SimpleNamespace(input=input_data, debug=lambda msg: None)
 
@@ -399,11 +453,77 @@ async def test_probe_crawler_capability_warns_when_search_url_unavailable(monkey
     status, message = await _probe_crawler_capability(ProbeFakeClient(), spec)
 
     assert status == NetworkCheckStatus.WARNING
-    assert "无法自动探测" in message
+    assert "未被该站点收录" in message
 
 
 @pytest.mark.anyio
-async def test_probe_crawler_capability_ok_when_run_rewritten_and_succeeds(monkeypatch: pytest.MonkeyPatch):
+async def test_probe_crawler_capability_falls_back_to_run_when_search_url_missing(monkeypatch: pytest.MonkeyPatch):
+    """重写 _run 的爬虫（fc2/cnmdb 等）_generate_search_url 返回 None 时回退真实刮削探测."""
+
+    class RunOnlyCrawler(ProbeCrawler):
+        async def _generate_search_url(self, ctx):
+            return None
+
+        async def run(self, input_data):
+            return SimpleNamespace(data=SimpleNamespace(), debug_info=SimpleNamespace(error=None))
+
+    monkeypatch.setattr("mdcx.crawlers.get_crawler", lambda site: RunOnlyCrawler)
+    spec = NetworkCheckSpec(name="fc2ppvdb", group="刮削站点", url="https://fc2cmadb.com", site=Website.FC2PPVDB)
+
+    status, message = await _probe_crawler_capability(ProbeFakeClient(), spec)
+
+    assert status == NetworkCheckStatus.OK
+    assert "刮削正常" in message
+
+
+@pytest.mark.anyio
+async def test_probe_crawler_capability_falls_back_to_run_when_parse_empty(monkeypatch: pytest.MonkeyPatch):
+    """mdtv 等重写 _search（POST 搜索）的爬虫 GET 探测解析为空时回退真实刮削探测."""
+
+    class PostSearchCrawler(ProbeCrawler):
+        def __init__(self, client, base_url="", browser=None):
+            super().__init__(client, base_url, browser)
+            self.detail_urls = None
+
+        async def run(self, input_data):
+            return SimpleNamespace(data=SimpleNamespace(), debug_info=SimpleNamespace(error=None))
+
+    monkeypatch.setattr("mdcx.crawlers.get_crawler", lambda site: PostSearchCrawler)
+    spec = NetworkCheckSpec(name="mdtv", group="刮削站点", url="https://www.mdpjzip.xyz", site=Website.MDTV)
+
+    status, message = await _probe_crawler_capability(ProbeFakeClient(), spec)
+
+    assert status == NetworkCheckStatus.OK
+    assert "刮削正常" in message
+
+
+@pytest.mark.anyio
+async def test_probe_crawler_capability_uses_probe_number_attribute(monkeypatch: pytest.MonkeyPatch):
+    """爬虫类自定义 probe_number 时探测使用专属番号."""
+
+    captured = {}
+
+    class BrandedCrawler(ProbeCrawler):
+        probe_number = "FNS-165"
+
+        async def _generate_search_url(self, ctx):
+            captured["number"] = ctx.input.number
+            return [f"{self.base_url}/works?q={ctx.input.number}"]
+
+        async def _parse_search_page(self, ctx, html, search_url):
+            return ["https://example.test/works/1"]
+
+    monkeypatch.setattr("mdcx.crawlers.get_crawler", lambda site: BrandedCrawler)
+    spec = NetworkCheckSpec(name="faleno", group="刮削站点", url="https://faleno.jp", site=Website.FALENO)
+
+    status, _message = await _probe_crawler_capability(ProbeFakeClient(), spec)
+
+    assert status == NetworkCheckStatus.OK
+    assert captured["number"] == "FNS-165"
+
+
+@pytest.mark.anyio
+async def test_probe_crawler_capability_warns_when_run_rewritten_and_succeeds(monkeypatch: pytest.MonkeyPatch):
     """重写 _run 的 API 类爬虫走真实刮削探测, run() 成功时返回 OK."""
 
     class RewrittenCrawler(ProbeCrawler):

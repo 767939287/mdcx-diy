@@ -30,7 +30,9 @@ class _DmmApiItem(BaseModel):
     review: dict[str, Any] | None = None
     imageURL: dict[str, str] | None = None
     sampleImageURL: dict | None = None
-    iteminfo: dict[str, list[dict[str, str]]] | None = None
+    # DMM 真实响应的 iteminfo 条目除 name 外还含 int 型 id 等字段，
+    # 值类型须用 Any，声明 dict[str, str] 会让所有真实响应校验失败。
+    iteminfo: dict[str, list[dict[str, Any]]] | None = None
     URL: str | None = None
     affiliateURL: str | None = None
 
@@ -136,6 +138,22 @@ class DmmApiCrawler(DmmCrawler):
         return f"{cls.base_url_()}{_API_PATH}?{query}"
 
     @staticmethod
+    def _search_keywords(number: str) -> list[str]:
+        """DMM keyword 全文检索的候选序列.
+
+        带横杠格式（SSIS-200）实测返回 0 结果；content_id 形态
+        （小写前缀 + 编号补零到 5 位，如 ssis00200）可精确命中。
+        特殊站内前缀番号（如 T28 系列 cid=55t2800645）转换后可能落空，
+        回退小写厂牌词模糊搜索，交由 _find_best_item 打分挑选。
+        """
+        stripped = number.strip()
+        m = re.fullmatch(r"([A-Za-z0-9]+)-(\d{1,5})", stripped)
+        if not m:
+            return [stripped]
+        prefix, digits = m.group(1).lower(), m.group(2)
+        return [f"{prefix}{digits.zfill(5)}", prefix]
+
+    @staticmethod
     def _match_score(item: _DmmApiItem, number_clean: str) -> int:
         """按匹配质量打分，数字段忽略前导零。
 
@@ -193,24 +211,30 @@ class DmmApiCrawler(DmmCrawler):
 
         self._set_number_context(ctx, number)
 
-        api_url = self._build_api_url(keyword=number, sort="match", hits="20")
-        ctx.debug(f"API URL: {api_url}")
-        ctx.debug_info.search_urls = [api_url]
+        items: list[_DmmApiItem] = []
+        search_urls: list[str] = []
+        for keyword in self._search_keywords(number):
+            api_url = self._build_api_url(keyword=keyword, sort="match", hits="20")
+            search_urls.append(api_url)
+            ctx.debug(f"API URL: {api_url}")
+            ctx.debug_info.search_urls = list(search_urls)
 
-        response, error = await self.async_client.get_json(api_url, headers={"Accept": "application/json"})
-        if response is None:
-            raise CrawlerException(f"API 请求失败: {error}")
+            response, error = await self.async_client.get_json(api_url, headers={"Accept": "application/json"})
+            if response is None:
+                raise CrawlerException(f"API 请求失败: {error}")
 
-        result = response.get("result", {}) or {}
-        status_code = result.get("status")
-        if status_code != 200:
-            raise CrawlerException(f"API 返回错误: status={status_code}, message={result.get('message', '')}")
+            result = response.get("result", {}) or {}
+            status_code = result.get("status")
+            if status_code != 200:
+                raise CrawlerException(f"API 返回错误: status={status_code}, message={result.get('message', '')}")
 
-        raw_items = result.get("items", []) or []
-        if not raw_items:
+            raw_items = result.get("items", []) or []
+            if raw_items:
+                items = [_DmmApiItem.model_validate(item) for item in raw_items]
+                break
+
+        if not items:
             raise CrawlerException(f"API 无搜索结果: {number}")
-
-        items = [_DmmApiItem.model_validate(item) for item in raw_items]
         best = self._find_best_item(items, number)
         if not best:
             ctx.debug(f"未找到匹配项，共 {len(items)} 条结果")

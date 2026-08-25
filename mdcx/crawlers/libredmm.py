@@ -194,6 +194,7 @@ def _upgrade_extrafanart_urls(urls: list[str], number: str) -> list[str]:
 
 class LibredmmCrawler(BaseCrawler):
     description = "LibreDMM 开源信息站（仅能有码）"
+    probe_number = "IPX-535"
 
     @classmethod
     @override
