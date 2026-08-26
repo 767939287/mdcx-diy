@@ -245,15 +245,17 @@ class FalenoParser(DetailPageParser[FalenoContext]):
 
 
 class FalenoCrawler(GenericBaseCrawler[FalenoContext]):
-    description = "Faleno 官网（仅覆盖本厂）"
+    # 已取消独立站点身份（2026-08-26）：数据被 DMM 系全覆盖，仅作 official 的 FNS/JIMMY 厂牌子爬虫
+    description = "Faleno 官网（official 子爬虫）"
     # FNS 系列真实作品（见 tests/crawlers/test_faleno.py 测试数据），官网搜索可命中
     probe_number = "FNS-165"
     parser = FalenoParser()
+    _skip_auto_register = True
 
     @classmethod
     @override
     def site(cls) -> Website:
-        return Website.FALENO
+        return Website.OFFICIAL
 
     @classmethod
     @override

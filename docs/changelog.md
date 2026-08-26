@@ -11,14 +11,13 @@
 ### 功能
 
 - **新增 madou_club 爬虫（麻豆社）**：madou.club 收录麻豆系 MDX/MD 等国产番号，搜索须无横杠关键词（MDX-0236 无结果、MDX0236 命中）；解析详情页标题（番号 / 片名）、分类（studio）与标签，封面取搜索页缩略图并自动升级原图（去 `-240x180` 尺寸后缀）；站点 CF 对桌面指纹拦截强，接入 Safari iOS 专属指纹池；默认加入国产网站源，网络检测探针番号 MDX0236
-- **删除 5 个失效/停用爬虫**：移除 cnmdb（域名劫持至博彩页）、hdouban（DNS 失效）、mdtv（默认域名 302 广告停放）、love6、kin8（站点改版故障）五个站点爬虫及全部配置/路由/UI 引用；国产默认源更新为 madouqu/madou_club/iqqtv/javday/hscangku，旧配置文件中的已删站点自动跳过迁移
+- **精简 11 个冗余/失效爬虫**：失效站 cnmdb（域名劫持）、hdouban（DNS 失效）、mdtv（302 广告停放）、love6、kin8、giga、cableav（站点改版解析失效）；数据重复站 jav321/faleno/dahlia/fantastica（内容被 DMM 系与综合站全覆盖）。dahlia/faleno 模块保留为 official 的 DLDSS/FNS/JIMMY 厂牌子爬虫（不再作为独立站点暴露）；注册爬虫 48 → 37，旧配置中的已删站点自动跳过迁移
+- **无码官网五站接入默认代理列表**：caribbeancom/heyzo/1pondo/pacopacomama/10musume 及 mywife 实测需代理访问，加入默认「走代理网站」域名列表
 
 ### 修复
 
+- **official 无码官网 studio 字段污染修复**：1pondo/10musume/pacopacomama JSON 的 UCNAME 键实为分类标签数组，原取值链误作厂牌导致 studio 产出 "['AV女優', ...]" 式脏值且三站标签全空；改为 Maker/Studio 取值 + 站点兜底，UCNAME 归入 tags 来源
 - **7mmtv 应对 CF JS 挑战**：站点新上「Just a moment」挑战（纯浏览器指纹无法通过），确认走 TRAWL/FlareSolverr 外部 CF Bypass 服务自动通过（刮削与网络检测双链路已就绪）；修复封面相对路径硬编码 7mmtv.tv 域名的问题，改为跟随当前镜像域名
-
-### 修复
-
 - **网络检测刮削探测修复**：`_generate_search_url` 返回空或搜索解析无结果的爬虫（fc2/mywife/cnmdb/prestige/libredmm/kin8/iqqtv/mdtv 等 17 站）自动回退真实刮削路径探测，消除"可达但无法自动探测刮削"误报；探测失败提示改为动态携带实际番号
 - **missav_api 检测修复**：Recombee search 端点仅接受 POST（原 GET 必返 405），改走真实搜索路径并新增响应校验
 - **dmm_api 检测与爬虫双重修复**：网络检测补全 v3 ItemList 必需参数 site/service/floor（缺失返回 400）；爬虫 keyword 改用 content_id 形态候选序列（带横杠番号搜索为 0 结果）；`iteminfo` 模型类型放宽修复真实响应校验崩溃

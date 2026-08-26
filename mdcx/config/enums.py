@@ -434,20 +434,15 @@ class Website(Enum):
     AVMOO = "avmoo"
     AVSEX = "avsex"
     AVSOX = "avsox"
-    CABLEAV = "cableav"
     DMM = "dmm"
-    FALENO = "faleno"
-    FANTASTICA = "fantastica"
     FC2 = "fc2"
     FC2CLUB = "fc2club"
     FC2HUB = "fc2hub"
     FC2PPVDB = "fc2ppvdb"
     FREEJAVBT = "freejavbt"
     GETCHU = "getchu"
-    GIGA = "giga"
     HSCANGKU = "hscangku"
     IQQTV = "iqqtv"
-    JAV321 = "jav321"
     JAVBUS = "javbus"
     JAVDAY = "javday"
     JAVDB = "javdb"
@@ -470,7 +465,6 @@ class Website(Enum):
     THEPORNDB = "theporndb"
     XCITY = "xcity"
 
-    DAHLIA = "dahlia"
     OFFICIAL = "official"
 
     @classmethod

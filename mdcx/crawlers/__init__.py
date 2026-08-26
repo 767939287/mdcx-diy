@@ -2,14 +2,8 @@ from ..config.models import Website
 from . import (
     avbase,
     avsox,
-    cableav,
-    dahlia,
     dmm_api,
-    faleno,
-    fantastica,
-    giga,
     hscangku,
-    jav321,
     javday,
     lulubar,
     madouqu,
@@ -26,21 +20,15 @@ from .avmoo import AvmooCrawler
 from .avsex import AvsexCrawler
 from .avsox import AvsoxCrawler
 from .base import get_crawler, get_registered_crawler_sites, register_crawler
-from .cableav import CableavCrawler
-from .dahlia import DahliaCrawler
 from .dmm import DmmCrawler
-from .faleno import FalenoCrawler
-from .fantastica import FantasticaCrawler
 from .fc2 import Fc2Crawler
 from .fc2club import Fc2clubCrawler
 from .fc2hub import Fc2hubCrawler
 from .fc2ppvdb import Fc2ppvdbCrawler
 from .freejavbt import FreejavbtCrawler
 from .getchu import GetchuCrawler
-from .giga import GigaCrawler
 from .hscangku import HscangkuCrawler
 from .iqqtv import IqqtvCrawler
-from .jav321 import Jav321Crawler
 from .javbus import JavbusCrawler
 from .javday import JavdayCrawler
 from .javdb import JavdbCrawler
@@ -72,14 +60,9 @@ register_crawler(TheJavdbApiCrawler)
 register_crawler(AvbaseCrawler)
 register_crawler(missav.MissavCrawler)
 register_crawler(MissavApiCrawler)
-register_crawler(FalenoCrawler)
-register_crawler(Jav321Crawler)
-register_crawler(CableavCrawler)
 register_crawler(MadouquCrawler)
 register_crawler(MadouClubCrawler)
 register_crawler(MmtvCrawler)
-register_crawler(DahliaCrawler)
-register_crawler(FantasticaCrawler)
 register_crawler(AvsoxCrawler)
 register_crawler(AvmooCrawler)
 register_crawler(AvheatCrawler)
@@ -87,7 +70,6 @@ register_crawler(HscangkuCrawler)
 register_crawler(LibredmmCrawler)
 register_crawler(LulubarCrawler)
 register_crawler(XcityCrawler)
-register_crawler(GigaCrawler)
 register_crawler(MgstageCrawler)
 register_crawler(JavdayCrawler)
 register_crawler(Fc2ppvdbCrawler)

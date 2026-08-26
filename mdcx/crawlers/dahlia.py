@@ -80,13 +80,15 @@ def get_trailer(html):  # 获取预览片
 
 
 class DahliaCrawler(BaseCrawler):
-    description = "Dahlia 官网（仅覆盖本厂）"
+    # 已取消独立站点身份（2026-08-26）：数据被 DMM 系全覆盖，仅作 official 的 DLDSS 厂牌子爬虫
+    description = "Dahlia 官网（official 子爬虫）"
     probe_number = "DLDSS-539"
+    _skip_auto_register = True
 
     @classmethod
     @override
     def site(cls) -> Website:
-        return Website.DAHLIA
+        return Website.OFFICIAL
 
     @classmethod
     @override

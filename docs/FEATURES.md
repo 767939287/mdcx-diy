@@ -28,20 +28,14 @@ MDCx 支持的功能全景。只想快速上手的话，先看 [QUICKSTART.md](Q
 | javdb_api | JavDB 镜像站 | 镜像站 HTML 直连，带简繁转换和异体字修正（综合：有码+无码） |
 | javdb_app | JavDB 移动端 API | APK 逆向签名直连（综合：有码+无码） |
 | javbus | javbus.com | 有码/无码分类搜索（综合：有码+无码） |
-| jav321 | jav321.com | 综合信息（仅能有码） |
 | javlibrary | javlibrary.com | 老牌信息站（仅能有码） |
 | missav | missav.ai | 综合搜索（综合：有码+无码） |
 | missav_api | Recombee API | 免 CF 直连，演员字段留空（综合：有码+无码） |
 | mgstage | mgstage.com | 有码/素人官网（仅能有码+素人） |
 | prestige | prestige-av.com | Prestige 官网 JSON API（仅能有码+素人） |
 | r18dev | r18.dev | JSON API 直连，番号自动补零（仅能有码） |
-| faleno | faleno.jp | Faleno 官网（仅能有码） |
-| fantastica | fantastica-av.com | VR 内容（仅能有码） |
-| giga | giga.co.jp | Giga 官网（仅能有码） |
-| dahlia | dahlia.co.jp | Dahlia 官网（不在前端显示）（仅能有码） |
 | official | 各官网 | 按番号前缀路由到子爬虫（综合：有码+无码） |
 | avbase | av-base.net | 有码信息站（仅能有码+素人） |
-| cableav | cableav.video | 综合信息（仅能有码） |
 | freejavbt | freejavbt.com | 磁力信息站（仅能有码） |
 | hscangku | hsck.net | 国产番号（国产） |
 | 7mmtv | 7mmtv.tv | 无码（综合：有码+无码） |
@@ -68,10 +62,10 @@ MDCx 支持的功能全景。只想快速上手的话，先看 [QUICKSTART.md](Q
 > 注意：missav_api、r18dev、javdb_api、thejavdb_api 这四条是免 CF 通道，默认没启用，需要去「设置→站点」手动加。
 
 **各爬虫适用类型**（刮削类型默认网站源，可在「设置→站点」调整）：
-- **仅能有码**：dmm、dmm_api、thejavdb_api、libredmm、r18dev、avbase、faleno、giga、dahlia、xcity、prestige、mgstage、fantastica、cableav、getchu、javlibrary、jav321、freejavbt、lulubar、avmoo
+- **仅能有码**：dmm、dmm_api、thejavdb_api、libredmm、r18dev、avbase、xcity、prestige、mgstage、getchu、javlibrary、freejavbt、lulubar、avmoo
 - **无码专属**：avsox
 - **综合（有码+无码）**：javbus、javdb、javdb_api、javdb_app、missav、missav_api、javday、7mmtv、airav_cc、avsex、official、iqqtv
-- **素人**：mgstage、prestige、javbus、javdb 系、dmm、dmm_api、avbase、7mmtv、jav321、missav、missav_api、mywife、iqqtv
+- **素人**：mgstage、prestige、javbus、javdb 系、dmm、dmm_api、avbase、7mmtv、missav、missav_api、mywife、iqqtv
 - **FC2**：fc2、fc2club、fc2hub、fc2ppvdb、javdb 系
 - **欧美**：theporndb、avheat
 - **国产**：madouqu、madou_club、iqqtv、javday、hscangku

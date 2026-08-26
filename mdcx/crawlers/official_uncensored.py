@@ -499,8 +499,10 @@ async def _crawl_json_site(ctx: Context, client, site: UncensoredOfficialSite, m
     release = normalize_release(_json_value(data, "Release", "ReleaseDate", "Year"))
     runtime = seconds_to_minutes(_json_value(data, "Duration", "Runtime"))
     thumb, poster, extrafanart = _json_images(data)
-    series = _clean_text(_json_value(data, "Series", "UCNAME"))
-    studio = _clean_text(_json_value(data, "UCNAME", "Maker", "Studio")) or spec.studio
+    # UCNAME 在 1pondo/10musume/paco 的 JSON 里是分类标签数组而非厂牌，
+    # 不能进 studio/series 取值链（会产出 "['AV女優', ...]" 式污染值）
+    series = _clean_text(_json_value(data, "Series"))
+    studio = _clean_text(_json_value(data, "Maker", "Studio")) or spec.studio
     trailer = _clean_text(_json_value(data, "SampleMovie", "SampleMovieHigh", "MovieSample"))
     if not trailer and spec.sample_base_url:
         trailer = f"{spec.sample_base_url}/sample/movies/{movie_id}/sample.mp4"
@@ -513,7 +515,7 @@ async def _crawl_json_site(ctx: Context, client, site: UncensoredOfficialSite, m
         all_actors=actors,
         outline=_clean_text(_json_value(data, "Desc", "Description")),
         originalplot=_clean_text(_json_value(data, "Desc", "Description")),
-        tags=split_tags(_json_value(data, "Tag", "Tags", "Genre", "Genres")),
+        tags=split_tags(_json_value(data, "Tag", "Tags", "Genre", "Genres", "UCNAME")),
         release=release,
         year=get_year(release),
         runtime=runtime,

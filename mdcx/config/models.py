@@ -139,7 +139,6 @@ DEFAULT_FIELD_SITE_PRIORITY = [
     Website.MGSTAGE,
     Website.PRESTIGE,
     Website.AVBASE,
-    Website.JAV321,
     Website.MMTV,
     Website.JAVDB,
     Website.JAVBUS,
@@ -375,17 +374,11 @@ class Config(BaseModel):
             Website.LIBREDMM,
             Website.R18DEV,
             Website.AVBASE,
-            Website.FALENO,
-            Website.GIGA,
-            Website.DAHLIA,
             Website.XCITY,
             Website.PRESTIGE,
             Website.MGSTAGE,
-            Website.FANTASTICA,
-            Website.CABLEAV,
             Website.GETCHU,
             Website.JAVLIBRARY,
-            Website.JAV321,
             Website.FREEJAVBT,
             Website.LULUBAR,
             # 综合（有码+无码）
@@ -437,7 +430,6 @@ class Config(BaseModel):
             Website.DMM_API,
             Website.AVBASE,
             Website.MMTV,
-            Website.JAV321,
             Website.MISSAV,
             Website.MISSAV_API,
             Website.MYWIFE,
@@ -704,7 +696,7 @@ class Config(BaseModel):
     use_proxy: bool = Field(default=False, title="代理类型")
     proxy: str = Field(default="http://127.0.0.1:7890", title="代理地址")
     proxy_sites: str = Field(
-        default="amazon.co.jp,m.media-amazon.com,xcity.jp,minnano-av.com,avbase.net,javbus.com,javdb.com,javlibrary.com,r18.dev,mgstage.com,prestige-av.com,seesaawiki.jp,avsox.click,avsox.com,avmoo.shop,avmoo.com,avheat.shop,avheat.com,github.com,raw.githubusercontent.com,google.com,missav.ws,missav.ai,missav.live",
+        default="amazon.co.jp,m.media-amazon.com,xcity.jp,minnano-av.com,avbase.net,javbus.com,javdb.com,javlibrary.com,r18.dev,mgstage.com,prestige-av.com,seesaawiki.jp,avsox.click,avsox.com,avmoo.shop,avmoo.com,avheat.shop,avheat.com,caribbeancom.com,heyzo.com,1pondo.tv,pacopacomama.com,10musume.com,mywife.cc,github.com,raw.githubusercontent.com,google.com,missav.ws,missav.ai,missav.live",
         title="使用代理网站",
     )
     cf_bypass_url: str = Field(default="", title="Cloudflare Bypass地址")
@@ -1026,11 +1018,11 @@ class Config(BaseModel):
         )
         field_configs[CrawlerResultFields.ORIGINALPLOT] = field_configs.get(
             CrawlerResultFields.OUTLINE,
-            FieldConfig(site_prority=[Website.THEPORNDB, Website.DMM, Website.JAV321], language=Language.ZH_CN),
+            FieldConfig(site_prority=[Website.THEPORNDB, Website.DMM], language=Language.ZH_CN),
         )
         field_configs[CrawlerResultFields.ORIGINALTITLE] = field_configs.get(
             CrawlerResultFields.TITLE,
-            FieldConfig(site_prority=[Website.THEPORNDB, Website.DMM, Website.JAV321], language=Language.ZH_CN),
+            FieldConfig(site_prority=[Website.THEPORNDB, Website.DMM], language=Language.ZH_CN),
         )
         d["field_configs"] = field_configs
 

@@ -514,7 +514,7 @@ async def test_probe_crawler_capability_uses_probe_number_attribute(monkeypatch:
             return ["https://example.test/works/1"]
 
     monkeypatch.setattr("mdcx.crawlers.get_crawler", lambda site: BrandedCrawler)
-    spec = NetworkCheckSpec(name="faleno", group="刮削站点", url="https://faleno.jp", site=Website.FALENO)
+    spec = NetworkCheckSpec(name="xcity", group="刮削站点", url="https://xcity.jp", site=Website.XCITY)
 
     status, _message = await _probe_crawler_capability(ProbeFakeClient(), spec)
 
