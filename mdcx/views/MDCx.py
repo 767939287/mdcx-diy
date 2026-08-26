@@ -11532,15 +11532,6 @@ class Ui_MDCx(object):
         self.gridLayout_20.addWidget(self.label_426, 11, 0, 1, 1)
         self.horizontalLayout_dock_2 = QtWidgets.QHBoxLayout()
         self.horizontalLayout_dock_2.setObjectName("horizontalLayout_dock_2")
-        self.checkBox_highdpi_passthrough = QtWidgets.QCheckBox(parent=self.gridLayoutWidget_20)
-        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Policy.Fixed, QtWidgets.QSizePolicy.Policy.Fixed)
-        sizePolicy.setHorizontalStretch(0)
-        sizePolicy.setVerticalStretch(0)
-        sizePolicy.setHeightForWidth(self.checkBox_highdpi_passthrough.sizePolicy().hasHeightForWidth())
-        self.checkBox_highdpi_passthrough.setSizePolicy(sizePolicy)
-        self.checkBox_highdpi_passthrough.setMinimumSize(QtCore.QSize(0, 30))
-        self.checkBox_highdpi_passthrough.setObjectName("checkBox_highdpi_passthrough")
-        self.horizontalLayout_dock_2.addWidget(self.checkBox_highdpi_passthrough)
         self.comboBox_ui_scale = QtWidgets.QComboBox(parent=self.gridLayoutWidget_20)
         sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Policy.Fixed, QtWidgets.QSizePolicy.Policy.Fixed)
         sizePolicy.setHorizontalStretch(0)
@@ -13265,7 +13256,8 @@ class Ui_MDCx(object):
                 "                                注意：<br>\n"
                 "                                1，模板中的 / 表示创建子目录，字段值中的 / 会自动转为 -；Jinja2 只负责生成文本；<br>\n"
                 "                                2，视频目录名留空时，表示不创建视频目录；<br>\n"
-                "                                3，名称超长时会优先缩短简介、标题等长字段，保留番号等关键字段。</p>",
+                "                                3，名称超长时会优先缩短简介、标题等长字段，保留番号等关键字段；<br>\n"
+                "                                4，勾选「成功后不移动文件」时，同样不会创建视频目录。</p>",
             )
         )
         self.label_63.setText(_translate("MDCx", "视频文件名："))
@@ -14053,7 +14045,6 @@ class Ui_MDCx(object):
         self.label_246.setText(_translate("MDCx", "界面外观："))
         self.label_420.setText(_translate("MDCx", "选择对话框："))
         self.label_426.setText(_translate("MDCx", "高分屏缩放："))
-        self.checkBox_highdpi_passthrough.setText(_translate("MDCx", "非整数倍缩放"))
         self.comboBox_ui_scale.setToolTip(_translate("MDCx", "界面缩放比例，保存后重启软件生效"))
         self.comboBox_ui_scale.setItemText(0, _translate("MDCx", "跟随系统"))
         self.comboBox_ui_scale.setItemText(1, _translate("MDCx", "80%"))

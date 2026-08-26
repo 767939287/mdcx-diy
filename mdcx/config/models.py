@@ -784,7 +784,6 @@ class Config(BaseModel):
             Switch.SORT_DEL,
             Switch.THEPORNDB_NO_HASH,
             Switch.HIDE_DOCK,
-            Switch.PASSTHROUGH,
             Switch.HIDE_MENU,
             Switch.DARK_MODE,
             Switch.COPY_NETDISK_NFO,

@@ -62,7 +62,7 @@ jobs:
 
       - name: Set up uv
         if: steps.changes.outputs.code_changed == 'true'
-        uses: astral-sh/setup-uv@v6
+        uses: astral-sh/setup-uv@v7
 
       - name: Install dependencies
         if: steps.changes.outputs.code_changed == 'true'
@@ -151,7 +151,7 @@ jobs:
 
       - name: Set up uv
         if: steps.changes.outputs.code_changed == 'true'
-        uses: astral-sh/setup-uv@v6
+        uses: astral-sh/setup-uv@v7
         with:
           activate-environment: true
 

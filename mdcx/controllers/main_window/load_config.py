@@ -28,11 +28,10 @@ from mdcx.config.enums import (
 from mdcx.config.extend import get_movie_path_setting
 from mdcx.config.manager import manager
 from mdcx.config.resources import resources
-from mdcx.consts import GITHUB_ISSUES_URL, IS_WINDOWS, LOCAL_VERSION, MAIN_PATH, SYSTEM_INFO, VERSION_NAME
+from mdcx.consts import GITHUB_ISSUES_URL, IS_WINDOWS, LOCAL_VERSION, SYSTEM_INFO, VERSION_NAME
 from mdcx.gen.field_enums import CrawlerResultFields
 from mdcx.models.flags import Flags
 from mdcx.signals import signal_qt
-from mdcx.utils.file import delete_file_sync
 
 from .bind_utils import set_checkboxes, set_radio_buttons
 from .site_priority_dialog import apply_site_priority_theme, refresh_site_priority_ui
@@ -1083,16 +1082,7 @@ def load_config(self: "MyMAinWindow"):
                         QIcon(resources.icon_ico),
                         3000,
                     )
-            if Switch.PASSTHROUGH in switch_on:
-                self.Ui.checkBox_highdpi_passthrough.setChecked(True)
-                if not os.path.isfile(os.path.join(MAIN_PATH, "highdpi_passthrough")):
-                    open(os.path.join(MAIN_PATH, "highdpi_passthrough"), "w").close()
-            else:
-                self.Ui.checkBox_highdpi_passthrough.setChecked(False)
-                if os.path.isfile(os.path.join(MAIN_PATH, "highdpi_passthrough")):
-                    delete_file_sync(os.path.join(MAIN_PATH, "highdpi_passthrough"))
-        else:
-            self.Ui.checkBox_highdpi_passthrough.setEnabled(False)
+            # 高分屏 PassThrough 缩放已默认启用（main.py），老配置中的 PASSTHROUGH 开关静默忽略
 
         scale_factor: float = manager.config.ui_scale_factor
         scale_index = 0

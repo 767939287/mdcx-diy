@@ -704,7 +704,6 @@ def save_config(self: "MyMAinWindow"):
         (self.Ui.checkBox_dialog_qt, Switch.QT_DIALOG),
         (self.Ui.checkBox_theporndb_hash, Switch.THEPORNDB_NO_HASH),
         (self.Ui.checkBox_hide_dock_icon, Switch.HIDE_DOCK),
-        (self.Ui.checkBox_highdpi_passthrough, Switch.PASSTHROUGH),
         (self.Ui.checkBox_hide_menu_icon, Switch.HIDE_MENU),
         (self.Ui.checkBox_dark_mode, Switch.DARK_MODE),
         (self.Ui.checkBox_copy_netdisk_nfo, Switch.COPY_NETDISK_NFO),
