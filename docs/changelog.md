@@ -2,47 +2,37 @@
 
 ## v2.0.7 (2026-08-25)
 
-### 优化
-
-- **高分屏缩放默认启用非整数倍缩放（PassThrough）**：Windows 125%/150% 等系统缩放下界面不再被取整导致模糊或过大；原「非整数倍缩放」勾选开关移除，老配置中的开关项静默忽略
-- **CI 工具链升级**：setup-uv v6 → v7
-- **命名规则说明补充**：明确勾选「成功后不移动文件」时同样不会创建视频目录
-
 ### 功能
 
-- **新增 aventertainments 爬虫（AVENTERTAINMENTS）**：aventertainments.com 无码专属站点，同时收录 DVD 和 PPV 两种类型；搜索自动识别番号类型（日期格式 YYMMDD_XXX → PPV，其他 → DVD）并走对应路径（/ppv/search 或 /dvd/search）；详情页解析番号/标题/演员/简介/标签/系列/发行日期/时长/封面/厂牌，自动去除 DL 前缀（下载版标记）；支持 Caribbeancom（横杠格式 082226-001）和 1pondo（下划线格式 082226_001）两种 PPV 番号，分隔符差异用于区分厂牌（横杠仅返回 carib，下划线返回 1pondo + carib）；仅收录两个厂牌 PPV，覆盖范围较窄，默认加入无码网站源末位（综合站点之后），默认启用代理，探针番号 082226_001
-- **新增 javfree 爬虫（JAVFREE）**：javfree.me 收录有码/无码/FC2（素人）多种内容；搜索直接命中带横杠番号（SSNI-647、HEYZO-3924、FC2-PPV-4965111），解析详情页 blockquote 元数据（発売日/収録時間/出演者/メーカー/レーベル/ジャンル/品番，品番后为剧情简介）；有码/无码按条目分类判定（mosaic=有码，avi/demosaic=无码），FC2 番号归位 FC2 分类；封面取站点 HLIC 大图，数字后缀剧照作 extrafanart；注意站点 IP 级限流（429）需放慢请求。默认加入有码/FC2 网站源，默认启用代理，探针番号 SSNI-647
-- **新增 madou_club 爬虫（麻豆社）**：madou.club 收录麻豆系 MDX/MD 等国产番号，搜索须无横杠关键词（MDX-0236 无结果、MDX0236 命中）；解析详情页标题（番号 / 片名）、分类（studio）与标签，封面取搜索页缩略图并自动升级原图（去 `-240x180` 尺寸后缀）；站点 CF 对桌面指纹拦截强，接入 Safari iOS 专属指纹池；默认加入国产网站源，网络检测探针番号 MDX0236
-- **精简 15 个冗余/失效爬虫**：失效站 cnmdb（域名劫持）、hdouban（DNS 失效）、mdtv（302 广告停放）、love6、kin8、giga、cableav、7mmtv（CF JS 挑战维护成本高且无码覆盖与 missav 重叠）、hscangku（探测失效）、fc2club/fc2hub（JS 挑战壳纯指纹无法通过）；数据重复站 jav321/fantastica + dahlia/faleno（内容被 DMM 系与综合站全覆盖）。dahlia/faleno 模块保留为 official 的 DLDSS/FNS/JIMMY 厂牌子爬虫（不再作为独立站点暴露）；thejavdb_api 转为默认启用加入有码网站源；注册爬虫 48 → 33，旧配置中的已删站点自动跳过迁移
+- **新增三个爬虫**：
+  - **javfree**：javfree.me 收录有码/无码/FC2（素人），按条目分类判定（mosaic=有码，avi/demosaic=无码；提供去码版的番号会同时挂多重分类，判定取最深路径）；搜索直接命中带横杠番号，FC2 转 `FC2-PPV-数字` 形态；封面取 HLIC 大图，数字后缀剧照作 extrafanart；站点有 IP 级 429 限流，需放慢请求。默认加入有码+FC2 网站源，默认走代理
+  - **aventertainments**：aventertainments.com 无码站，同时收录 DVD 与 PPV（按番号形态自动走路径）；PPV 分隔符区分厂牌（横杠 082226-001 仅 carib，下划线 082226_001 返回 1pondo+carib）；仅收录 caribbeancom/1pondo 两厂牌，覆盖窄，默认排无码源末位、默认走代理
+  - **madou_club（麻豆社）**：madou.club 收录麻豆系国产番号，搜索须无横杠关键词；封面从搜索页缩略图去尺寸后缀升级原图；CF 对桌面指纹拦截强，接入 Safari iOS 专属指纹池
+- **精简 15 个冗余/失效爬虫**：失效站 cnmdb/hdouban/mdtv/love6/kin8/giga/cableav/hscangku + 7mmtv/fc2club/fc2hub（新上 CF JS 挑战需外部 Bypass 服务，维护成本高于价值）；数据重复站 jav321/fantastica + dahlia/faleno（被 DMM 系与综合站覆盖）。dahlia/faleno 模块保留为 official 的 DLDSS/FNS/JIMMY 厂牌子爬虫（不再独立暴露）；thejavdb_api 转为默认启用加入有码源；注册爬虫 48 → 33，旧配置中的已删站点自动跳过迁移
 - **无码官网五站接入默认代理列表**：caribbeancom/heyzo/1pondo/pacopacomama/10musume 及 mywife 实测需代理访问，加入默认「走代理网站」域名列表
 
 ### 修复
 
-- **official 无码官网 studio 字段污染修复**：1pondo/10musume/pacopacomama JSON 的 UCNAME 键实为分类标签数组，原取值链误作厂牌导致 studio 产出 "['AV女優', ...]" 式脏值且三站标签全空；改为 Maker/Studio 取值 + 站点兜底，UCNAME 归入 tags 来源
-- **7mmtv 应对 CF JS 挑战**：站点新上「Just a moment」挑战（纯浏览器指纹无法通过），确认走 TRAWL/FlareSolverr 外部 CF Bypass 服务自动通过（刮削与网络检测双链路已就绪）；修复封面相对路径硬编码 7mmtv.tv 域名的问题，改为跟随当前镜像域名
-- **网络检测刮削探测修复**：`_generate_search_url` 返回空或搜索解析无结果的爬虫（fc2/mywife/cnmdb/prestige/libredmm/kin8/iqqtv/mdtv 等 17 站）自动回退真实刮削路径探测，消除"可达但无法自动探测刮削"误报；探测失败提示改为动态携带实际番号
-- **missav_api 检测修复**：Recombee search 端点仅接受 POST（原 GET 必返 405），改走真实搜索路径并新增响应校验
-- **dmm_api 检测与爬虫双重修复**：网络检测补全 v3 ItemList 必需参数 site/service/floor（缺失返回 400）；爬虫 keyword 改用 content_id 形态候选序列（带横杠番号搜索为 0 结果）；`iteminfo` 模型类型放宽修复真实响应校验崩溃
-- **javlibrary 检测代理路由修复**：移除自定义 URL 时强制直连的逻辑，避免被墙环境下 CF Bypass 一并被阻断
-- **DMM 高清直链学习闭环修复**：主爬虫同时接受 pics.dmm 图源证据写入前缀学习表，静态前缀表外的新站内前缀系列（如 HONB/h_1133）不再永久缺失高清图
-- **网络设置说明对齐修复**：代理说明统一使用与 Cookie 获取方法相同的左上对齐和 20px 行高
-- **NFO 库管理批量提示修复**：提高“批量保存”下方换行提示的最小高度，避免 Windows 字体和 DPI 缩放下文字底部显示不全
-- **导航树使用说明修复**：补足左侧导航按钮容器高度，恢复“使用说明”按钮完整显示和点击入口
-- **使用说明内容更新**：修正设置路径、主界面按钮名称、NFO 合并策略枚举和章节编号，补齐当前 48 个爬虫、CF Bypass、NFO 库管理及工具页面说明
+- **official 无码官网 studio 字段污染**：1pondo/10musume/pacopacomama JSON 的 UCNAME 键实为分类标签数组，原取值链误作厂牌导致 studio 产出脏值且三站标签全空；改为 Maker/Studio 取值 + 站点兜底，UCNAME 归入 tags 来源
+- **网络检测多项修复**：搜索解析无结果的爬虫自动回退真实刮削路径探测，消除"可达但无法探测"误报；missav_api 检测改走真实搜索（Recombee 仅接受 POST）；dmm_api 补全 v3 ItemList 必需参数；javlibrary 移除自定义 URL 强制直连的逻辑（避免 CF Bypass 被一并阻断）；探测失败提示动态携带实际番号
+- **dmm_api 爬虫修复**：keyword 改用 content_id 形态候选序列（带横杠番号搜索为 0 结果）；`iteminfo` 模型类型放宽修复真实响应校验崩溃
+- **DMM 高清直链学习闭环修复**：主爬虫同时接受 pics.dmm 图源证据写入前缀学习表，静态前缀表外的新站内前缀系列不再永久缺失高清图
+- **UI 修复**：网络设置代理说明对齐 Cookie 获取方法排版；NFO 库管理"批量保存"提示最小高度提高避免 Windows 下文字截底；补足左侧导航容器高度恢复"使用说明"按钮；使用说明内容全面更新对齐当前版本
 
 ### 优化
 
-- **20 个有限收录站点定制探测番号**：faleno/giga/dahlia/mgstage/jav321/avsex/xcity/fc2 系列×4/mywife/kin8/prestige/libredmm/fantastica/getchu 及国产四站（mdtv/madouqu/cnmdb/hscangku）改用各站实测收录的番号，消除"测试番号未被收录"误报；综合站维持默认 SSNI-647
-- **madouqu 动态域名**：接入官方发布页 wangzhi.icu/config.js 实时解析麻豆区域名列表（24h 缓存+静态回退），默认域名迁移至 madouqu.shop；搜索失败自动切换镜像，详情链接跟随命中域名
-- **站点级 CF 指纹池扩充**：新增 lulubar（Safari iOS + chrome131）与 missav 全镜像（Safari iOS + firefox133）专属指纹池，按 host 自动路由并支持重试轮换排除上次失败指纹
-- **javbus 镜像池清理**：移除已 SSL 失效的 busjav.bond/seejav.cyou/buscdn.bond/javbus.bond 四个镜像，保留实测可用域名
-- **getchu_dmm 合并进 getchu**：两者本就同源同实现（getchu_dmm 仅转发 getchu 并改写 source），合并后里番/动漫文件路由与 UI 文案统一指向 getchu，减少一个冗余站点枚举；默认配置模板同步清理
-- **r18dev 解析兼容修复**：parsel `Selector.get()` 对纯 JSON 文本直接返回 dict，JSON API 爬虫解析入参兼容 str/dict/Selector 三态
+- **高分屏缩放默认启用非整数倍缩放（PassThrough）**：Windows 125%/150% 等系统缩放下界面不再被取整导致模糊或过大；原勾选开关移除，老配置静默忽略
+- **有限收录站点定制探测番号**：mgstage/mywife/prestige/getchu/avsex/xcity/fc2 系列及国产/素人类站点改用各站实测收录的番号探测，消除"测试番号未被收录"误报；综合站维持默认 SSNI-647
+- **madouqu 动态域名**：接入官方发布页 wangzhi.icu/config.js 实时解析域名列表（24h 缓存+静态回退），默认域名迁移至 madouqu.shop；搜索失败自动切换镜像
+- **站点级 CF 指纹池扩充**：新增 lulubar 与 missav 全镜像专属指纹池，按 host 自动路由并支持重试轮换排除上次失败指纹
+- **javbus 镜像池清理**：移除已 SSL 失效的四个镜像，保留实测可用域名
+- **getchu_dmm 合并进 getchu**：两者同源同实现，合并后里番文件路由与 UI 文案统一指向 getchu
+- **r18dev 解析兼容**：parsel `Selector.get()` 对纯 JSON 文本直接返回 dict，JSON API 爬虫解析入参兼容 str/dict/Selector 三态
+- **命名规则说明补充**：明确勾选「成功后不移动文件」时同样不会创建视频目录
 
 ### 工程质量
 
-- **打包与 CI 工作流修复**：统一 2.0.7 版本元数据；CI 按文档/代码变更分级验证并保留完整 Git 历史；PyInstaller 的资源和 Windows DLL 收集参数改用平台路径分隔符
-- **CI 验证分级**：纯文档变更只执行 `git diff --check`，代码、UI、配置和构建文件变更继续执行 Linux 质量检查与 Windows 离线测试；固定 job 名称以兼容分支保护规则
+- **CI/打包工作流修复**：统一 2.0.7 版本元数据；CI 按变更分级验证（纯文档只跑 `git diff --check`，代码变更继续完整质量检查与 Windows 离线测试），固定 job 名称兼容分支保护；PyInstaller 资源与 Windows DLL 收集参数改用平台路径分隔符；CI 加超时并改用 windows-latest 运行器（修复 windows-2025 排队卡死）；setup-uv v6 → v7
 
 ## v2.0.6 (2026-08-23)
 
