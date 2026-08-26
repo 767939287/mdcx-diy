@@ -11,7 +11,7 @@
 ### 功能
 
 - **新增 madou_club 爬虫（麻豆社）**：madou.club 收录麻豆系 MDX/MD 等国产番号，搜索须无横杠关键词（MDX-0236 无结果、MDX0236 命中）；解析详情页标题（番号 / 片名）、分类（studio）与标签，封面取搜索页缩略图并自动升级原图（去 `-240x180` 尺寸后缀）；站点 CF 对桌面指纹拦截强，接入 Safari iOS 专属指纹池；默认加入国产网站源，网络检测探针番号 MDX0236
-- **精简 13 个冗余/失效爬虫**：失效站 cnmdb（域名劫持）、hdouban（DNS 失效）、mdtv（302 广告停放）、love6、kin8、giga、cableav、7mmtv（CF JS 挑战维护成本高且无码覆盖与 missav 重叠）、hscangku（探测失效）；数据重复站 jav321/fantastica + dahlia/faleno（内容被 DMM 系与综合站全覆盖）。dahlia/faleno 模块保留为 official 的 DLDSS/FNS/JIMMY 厂牌子爬虫（不再作为独立站点暴露）；thejavdb_api 转为默认启用加入有码网站源；注册爬虫 48 → 35，旧配置中的已删站点自动跳过迁移
+- **精简 15 个冗余/失效爬虫**：失效站 cnmdb（域名劫持）、hdouban（DNS 失效）、mdtv（302 广告停放）、love6、kin8、giga、cableav、7mmtv（CF JS 挑战维护成本高且无码覆盖与 missav 重叠）、hscangku（探测失效）、fc2club/fc2hub（JS 挑战壳纯指纹无法通过）；数据重复站 jav321/fantastica + dahlia/faleno（内容被 DMM 系与综合站全覆盖）。dahlia/faleno 模块保留为 official 的 DLDSS/FNS/JIMMY 厂牌子爬虫（不再作为独立站点暴露）；thejavdb_api 转为默认启用加入有码网站源；注册爬虫 48 → 33，旧配置中的已删站点自动跳过迁移
 - **无码官网五站接入默认代理列表**：caribbeancom/heyzo/1pondo/pacopacomama/10musume 及 mywife 实测需代理访问，加入默认「走代理网站」域名列表
 
 ### 修复
