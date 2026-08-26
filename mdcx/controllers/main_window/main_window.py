@@ -3147,13 +3147,13 @@ class MyMAinWindow(QMainWindow):
 <body>
   <p><span style=" font-weight:700;">所有可用网站:</span></p>
 {sites_html}  <p><span style=" font-weight:700;">指定类型影片可指定刮削网站:<span></p>
-   <p>· 有码：dmm、dmm_api、thejavdb_api、libredmm、r18dev、avbase、xcity、prestige、mgstage、getchu、javlibrary、freejavbt、lulubar、avmoo，以及 javbus、javdb 系、missav 系、official（含 Dahlia/Faleno 厂牌与无码官网路由）、7mmtv、airav_cc、avsex、javday、iqqtv 等综合站；dmm_api/thejavdb_api/missav_api/r18dev 是免 CF 通道</p>
-  <p>· 无码：avsox，以及 javbus、javdb 系、missav 系、7mmtv、airav_cc、avsex、official、javday、iqqtv 等综合站</p>
+   <p>· 有码：dmm、dmm_api、thejavdb_api、libredmm、r18dev、avbase、xcity、prestige、mgstage、getchu、javlibrary、freejavbt、lulubar、avmoo，以及 javbus、javdb 系、missav 系、official（含 Dahlia/Faleno 厂牌与无码官网路由）、airav_cc、avsex、javday、iqqtv 等综合站；dmm_api/thejavdb_api/missav_api/r18dev 是免 CF 通道</p>
+  <p>· 无码：avsox，以及 javbus、javdb 系、missav 系、airav_cc、avsex、official、javday、iqqtv 等综合站</p>
   <p>· 欧美：theporndb、avheat</p>
-  <p>· 国产：madouqu、madou_club、iqqtv、javday、hscangku</p>
+  <p>· 国产：madouqu、madou_club、iqqtv、javday</p>
   <p>· 里番：getchu </p>
   <p>· Mywife：mywife </p>
-  <p>· 素人：mgstage、prestige、javbus、javdb 系、dmm、dmm_api、avbase、7mmtv、missav、missav_api、mywife、iqqtv </p>
+  <p>· 素人：mgstage、prestige、javbus、javdb 系、dmm、dmm_api、avbase、missav、missav_api、mywife、iqqtv </p>
   <p>· FC2：fc2、fc2club、fc2hub、fc2ppvdb、javdb 系 </p>
 </body>
 </html>""")

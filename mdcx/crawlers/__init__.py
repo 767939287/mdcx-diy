@@ -3,13 +3,11 @@ from . import (
     avbase,
     avsox,
     dmm_api,
-    hscangku,
     javday,
     lulubar,
     madouqu,
     mgstage,
     missav,
-    mmtv,
     thejavdb_api,
     xcity,
 )
@@ -27,7 +25,6 @@ from .fc2hub import Fc2hubCrawler
 from .fc2ppvdb import Fc2ppvdbCrawler
 from .freejavbt import FreejavbtCrawler
 from .getchu import GetchuCrawler
-from .hscangku import HscangkuCrawler
 from .iqqtv import IqqtvCrawler
 from .javbus import JavbusCrawler
 from .javday import JavdayCrawler
@@ -42,7 +39,6 @@ from .madouqu import MadouquCrawler
 from .mgstage import MgstageCrawler
 from .missav import MissavCrawler
 from .missav_api import MissavApiCrawler
-from .mmtv import MmtvCrawler
 from .mywife import MywifeCrawler
 from .official import OfficialCrawler
 from .prestige import PrestigeCrawler
@@ -62,11 +58,9 @@ register_crawler(missav.MissavCrawler)
 register_crawler(MissavApiCrawler)
 register_crawler(MadouquCrawler)
 register_crawler(MadouClubCrawler)
-register_crawler(MmtvCrawler)
 register_crawler(AvsoxCrawler)
 register_crawler(AvmooCrawler)
 register_crawler(AvheatCrawler)
-register_crawler(HscangkuCrawler)
 register_crawler(LibredmmCrawler)
 register_crawler(LulubarCrawler)
 register_crawler(XcityCrawler)

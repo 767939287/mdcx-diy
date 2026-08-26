@@ -120,7 +120,7 @@ async def test_write_nfo_escapes_non_cdata_fields_without_double_escape(monkeypa
     data.trailer = "https://example.com/trailer?a=1&b=2"
     data.external_ids = {
         Website.JAVDB: "javdb?id=1&lang=zh",
-        Website.MMTV: "mmtv&amp;id=2",
+        "7mmtv": "mmtv&amp;id=2",
     }
 
     nfo_file = tmp_path / "ABC-123.nfo"

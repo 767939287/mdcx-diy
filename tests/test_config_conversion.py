@@ -164,10 +164,10 @@ def test_config_default_site_priorities_follow_current_frontend_defaults():
         Website.MISSAV,
         Website.MISSAV_API,
         Website.JAVDAY,
-        Website.MMTV,
         Website.AIRAV_CC,
         Website.AVSEX,
         Website.AVMOO,
+        Website.THEJAVDB_API,
         Website.OFFICIAL,
         Website.IQQTV,
     ]
@@ -180,7 +180,6 @@ def test_config_default_site_priorities_follow_current_frontend_defaults():
         Website.MISSAV,
         Website.MISSAV_API,
         Website.JAVDAY,
-        Website.MMTV,
         Website.AIRAV_CC,
         Website.AVSEX,
         Website.OFFICIAL,
@@ -196,7 +195,6 @@ def test_config_default_site_priorities_follow_current_frontend_defaults():
         Website.DMM,
         Website.DMM_API,
         Website.AVBASE,
-        Website.MMTV,
         Website.MISSAV,
         Website.MISSAV_API,
         Website.MYWIFE,
@@ -217,7 +215,6 @@ def test_config_default_site_priorities_follow_current_frontend_defaults():
         Website.MADOUCLUB,
         Website.IQQTV,
         Website.JAVDAY,
-        Website.HSCANGKU,
     ]
     assert config.get_field_config(CrawlerResultFields.TITLE).site_prority == DEFAULT_FIELD_SITE_PRIORITY
     assert config.get_type_field_config(FixedScrapingType.YOUMA, CrawlerResultFields.TITLE).site_prority == [
@@ -227,7 +224,6 @@ def test_config_default_site_priorities_follow_current_frontend_defaults():
         Website.MGSTAGE,
         Website.PRESTIGE,
         Website.AVBASE,
-        Website.MMTV,
         Website.JAVDB,
         Website.JAVBUS,
         Website.IQQTV,

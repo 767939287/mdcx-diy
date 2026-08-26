@@ -7,4 +7,4 @@ def test_get_external_id_tag_name_for_normal_site():
 
 
 def test_get_external_id_tag_name_for_site_starting_with_digit():
-    assert get_external_id_tag_name(Website.MMTV) == "mmtvid"
+    assert get_external_id_tag_name("7mmtv") == "mmtvid"
