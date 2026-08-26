@@ -164,6 +164,7 @@ def test_config_default_site_priorities_follow_current_frontend_defaults():
         Website.MISSAV,
         Website.MISSAV_API,
         Website.JAVDAY,
+        Website.JAVFREE,
         Website.AIRAV_CC,
         Website.AVSEX,
         Website.AVMOO,
@@ -202,6 +203,7 @@ def test_config_default_site_priorities_follow_current_frontend_defaults():
     assert config.website_fc2 == [
         Website.FC2,
         Website.FC2PPVDB,
+        Website.JAVFREE,
         Website.JAVDB,
         Website.JAVDB_API,
         Website.JAVDB_APP,

@@ -447,6 +447,7 @@ class Website(Enum):
     THEJAVDB_API = "thejavdb_api"
     JAVDB_API = "javdb_api"
     JAVDB_APP = "javdb_app"
+    JAVFREE = "javfree"
     JAVLIBRARY = "javlibrary"
     LIBREDMM = "libredmm"
     LULUBAR = "lulubar"

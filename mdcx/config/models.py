@@ -387,6 +387,7 @@ class Config(BaseModel):
             Website.MISSAV,
             Website.MISSAV_API,
             Website.JAVDAY,
+            Website.JAVFREE,
             Website.AIRAV_CC,
             Website.AVSEX,
             Website.AVMOO,
@@ -436,6 +437,7 @@ class Config(BaseModel):
         default_factory=lambda: [
             Website.FC2,
             Website.FC2PPVDB,
+            Website.JAVFREE,
             Website.JAVDB,
             Website.JAVDB_API,
             Website.JAVDB_APP,

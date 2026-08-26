@@ -29,6 +29,7 @@ from .javday import JavdayCrawler
 from .javdb import JavdbCrawler
 from .javdb_api import JavdbApiCrawler
 from .javdb_app import JavdbAppCrawler
+from .javfree import JavfreeCrawler
 from .javlibrary import JavlibraryCrawler
 from .libredmm import LibredmmCrawler
 from .lulubar import LulubarCrawler
@@ -71,6 +72,7 @@ register_crawler(Fc2Crawler)
 register_crawler(JavbusCrawler)
 register_crawler(FreejavbtCrawler)
 register_crawler(IqqtvCrawler)
+register_crawler(JavfreeCrawler)
 register_crawler(AiravCcCrawler)
 register_crawler(AvsexCrawler)
 register_crawler(GetchuCrawler)

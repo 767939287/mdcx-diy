@@ -53,6 +53,7 @@ MDCx 支持的功能全景。只想快速上手的话，先看 [QUICKSTART.md](Q
 | lulubar | lulubar.net | 仅能有码 |
 | iqqtv | iqqtv.com | 综合：有码+无码+素人+国产 |
 | javday | javday.tv | 综合：有码+无码+国产 |
+| javfree | javfree.me | 综合：有码+FC2（素人） |
 | theporndb | api.theporndb.net | 欧美（欧美） |
 
 > 注意：missav_api、r18dev、javdb_api、thejavdb_api 这四条是免 CF 通道，默认没启用，需要去「设置→站点」手动加。
@@ -62,7 +63,7 @@ MDCx 支持的功能全景。只想快速上手的话，先看 [QUICKSTART.md](Q
 - **无码专属**：avsox
 - **综合（有码+无码）**：javbus、javdb、javdb_api、javdb_app、missav、missav_api、javday、airav_cc、avsex、official、iqqtv
 - **素人**：mgstage、prestige、javbus、javdb 系、dmm、dmm_api、avbase、missav、missav_api、mywife、iqqtv
-- **FC2**：fc2、fc2ppvdb、javdb 系
+- **FC2**：fc2、fc2ppvdb、javdb 系、javfree
 - **欧美**：theporndb、avheat
 - **国产**：madouqu、madou_club、iqqtv、javday
 
