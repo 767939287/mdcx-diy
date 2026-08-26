@@ -20,8 +20,6 @@ from .avsox import AvsoxCrawler
 from .base import get_crawler, get_registered_crawler_sites, register_crawler
 from .dmm import DmmCrawler
 from .fc2 import Fc2Crawler
-from .fc2club import Fc2clubCrawler
-from .fc2hub import Fc2hubCrawler
 from .fc2ppvdb import Fc2ppvdbCrawler
 from .freejavbt import FreejavbtCrawler
 from .getchu import GetchuCrawler
@@ -69,9 +67,7 @@ register_crawler(JavdayCrawler)
 register_crawler(Fc2ppvdbCrawler)
 register_crawler(PrestigeCrawler)
 register_crawler(R18devCrawler)
-register_crawler(Fc2clubCrawler)
 register_crawler(Fc2Crawler)
-register_crawler(Fc2hubCrawler)
 register_crawler(JavbusCrawler)
 register_crawler(FreejavbtCrawler)
 register_crawler(IqqtvCrawler)

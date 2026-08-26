@@ -47,8 +47,6 @@ MDCx 支持的功能全景。只想快速上手的话，先看 [QUICKSTART.md](Q
 | airav_cc | airav.cc | 无码（综合：有码+无码） |
 | avsex | avsex.com | 无码（综合：有码+无码） |
 | fc2 | fc2.com | FC2 官网（FC2） |
-| fc2club | fc2club.top | FC2 信息站（FC2） |
-| fc2hub | fc2hub.com | FC2 信息站（FC2） |
 | fc2ppvdb | fc2cmadb.com | FC2 PPV 数据库（FC2） |
 | madouqu | madouqu.com | 国产（国产） |
 | madou_club | madou.club | 麻豆社 国产（国产） |
@@ -64,7 +62,7 @@ MDCx 支持的功能全景。只想快速上手的话，先看 [QUICKSTART.md](Q
 - **无码专属**：avsox
 - **综合（有码+无码）**：javbus、javdb、javdb_api、javdb_app、missav、missav_api、javday、airav_cc、avsex、official、iqqtv
 - **素人**：mgstage、prestige、javbus、javdb 系、dmm、dmm_api、avbase、missav、missav_api、mywife、iqqtv
-- **FC2**：fc2、fc2club、fc2hub、fc2ppvdb、javdb 系
+- **FC2**：fc2、fc2ppvdb、javdb 系
 - **欧美**：theporndb、avheat
 - **国产**：madouqu、madou_club、iqqtv、javday
 

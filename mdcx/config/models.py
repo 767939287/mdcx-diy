@@ -146,7 +146,6 @@ DEFAULT_FIELD_SITE_PRIORITY = [
     Website.MISSAV,
     Website.AVSOX,
     Website.AVMOO,
-    Website.FC2HUB,
     Website.FC2,
     Website.FC2PPVDB,
 ]
@@ -409,7 +408,6 @@ class Config(BaseModel):
             Website.MISSAV,
             Website.MISSAV_API,
             Website.JAVDAY,
-            Website.AIRAV_CC,
             Website.AVSEX,
             Website.OFFICIAL,
             Website.IQQTV,
@@ -437,8 +435,6 @@ class Config(BaseModel):
     website_fc2: list[Website] = Field(
         default_factory=lambda: [
             Website.FC2,
-            Website.FC2CLUB,
-            Website.FC2HUB,
             Website.FC2PPVDB,
             Website.JAVDB,
             Website.JAVDB_API,
@@ -454,6 +450,7 @@ class Config(BaseModel):
         default_factory=lambda: [
             Website.MADOUQU,
             Website.MADOUCLUB,
+            Website.AVSEX,
             Website.IQQTV,
             Website.JAVDAY,
         ],

@@ -155,22 +155,22 @@ class _Fc2PosterPriorityConfig(_FakeConfig):
 
     def get_field_config(self, field: CrawlerResultFields) -> FieldConfig:
         if field == CrawlerResultFields.TITLE:
-            return FieldConfig(site_prority=[Website.FC2, Website.FC2HUB])
+            return FieldConfig(site_prority=[Website.FC2])
         if field == CrawlerResultFields.POSTER:
-            return FieldConfig(site_prority=[Website.FC2HUB])
+            return FieldConfig(site_prority=[Website.FC2PPVDB])
         if field == CrawlerResultFields.THUMB:
-            return FieldConfig(site_prority=[Website.FC2HUB, Website.FC2])
+            return FieldConfig(site_prority=[Website.FC2PPVDB, Website.FC2])
         return FieldConfig(site_prority=[])
 
     def get_type_field_config(
         self, scraping_type: FixedScrapingType, field: CrawlerResultFields
     ) -> FieldPriorityConfig:
         if scraping_type == FixedScrapingType.FC2 and field == CrawlerResultFields.TITLE:
-            return FieldPriorityConfig(site_prority=[Website.FC2, Website.FC2HUB])
+            return FieldPriorityConfig(site_prority=[Website.FC2])
         if scraping_type == FixedScrapingType.FC2 and field == CrawlerResultFields.POSTER:
-            return FieldPriorityConfig(site_prority=[Website.FC2HUB])
+            return FieldPriorityConfig(site_prority=[Website.FC2PPVDB])
         if scraping_type == FixedScrapingType.FC2 and field == CrawlerResultFields.THUMB:
-            return FieldPriorityConfig(site_prority=[Website.FC2HUB, Website.FC2])
+            return FieldPriorityConfig(site_prority=[Website.FC2PPVDB, Website.FC2])
         return FieldPriorityConfig()
 
 
@@ -545,9 +545,9 @@ async def test_call_crawlers_collects_poster_candidates_only_from_type_poster_pr
                 poster="https://example.test/fc2-poster.jpg",
                 image_download=False,
             ),
-            Website.FC2HUB: _build_image_result(
-                Website.FC2HUB,
-                poster="https://example.test/fc2hub-poster.jpg",
+            Website.FC2PPVDB: _build_image_result(
+                Website.FC2PPVDB,
+                poster="https://example.test/fcppvdb-poster.jpg",
                 image_download=True,
             ),
         }
@@ -558,15 +558,15 @@ async def test_call_crawlers_collects_poster_candidates_only_from_type_poster_pr
 
     result = await scraper._call_crawlers(
         task_input,
-        classification=classify_scrape_task(task_input, Config(website_fc2=[Website.FC2, Website.FC2HUB])),
+        classification=classify_scrape_task(task_input, Config(website_fc2=[Website.FC2, Website.FC2PPVDB])),
     )
 
     assert result is not None
     assert result.title == "fc2 title"
-    assert result.poster == "https://example.test/fc2hub-poster.jpg"
-    assert result.poster_from == Website.FC2HUB.value
+    assert result.poster == "https://example.test/fcppvdb-poster.jpg"
+    assert result.poster_from == Website.FC2PPVDB.value
     assert result.poster_list == [
-        (Website.FC2HUB.value, "https://example.test/fc2hub-poster.jpg", True),
+        (Website.FC2PPVDB.value, "https://example.test/fcppvdb-poster.jpg", True),
     ]
 
 

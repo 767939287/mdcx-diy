@@ -436,8 +436,6 @@ class Website(Enum):
     AVSOX = "avsox"
     DMM = "dmm"
     FC2 = "fc2"
-    FC2CLUB = "fc2club"
-    FC2HUB = "fc2hub"
     FC2PPVDB = "fc2ppvdb"
     FREEJAVBT = "freejavbt"
     GETCHU = "getchu"

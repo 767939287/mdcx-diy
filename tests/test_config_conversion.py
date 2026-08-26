@@ -180,7 +180,6 @@ def test_config_default_site_priorities_follow_current_frontend_defaults():
         Website.MISSAV,
         Website.MISSAV_API,
         Website.JAVDAY,
-        Website.AIRAV_CC,
         Website.AVSEX,
         Website.OFFICIAL,
         Website.IQQTV,
@@ -202,8 +201,6 @@ def test_config_default_site_priorities_follow_current_frontend_defaults():
     ]
     assert config.website_fc2 == [
         Website.FC2,
-        Website.FC2CLUB,
-        Website.FC2HUB,
         Website.FC2PPVDB,
         Website.JAVDB,
         Website.JAVDB_API,
@@ -213,6 +210,7 @@ def test_config_default_site_priorities_follow_current_frontend_defaults():
     assert config.website_guochan == [
         Website.MADOUQU,
         Website.MADOUCLUB,
+        Website.AVSEX,
         Website.IQQTV,
         Website.JAVDAY,
     ]
@@ -233,7 +231,6 @@ def test_config_default_site_priorities_follow_current_frontend_defaults():
     ]
     assert config.get_type_field_config(FixedScrapingType.FC2, CrawlerResultFields.TITLE).site_prority == [
         Website.JAVDB,
-        Website.FC2HUB,
         Website.FC2,
         Website.FC2PPVDB,
     ]

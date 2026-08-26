@@ -482,8 +482,6 @@ class ManualConfig:
         "avheat": Website.AVHEAT,
         "dmm.co": Website.DMM,
         "fc2.com": Website.FC2,
-        "fc2club": Website.FC2CLUB,
-        "fc2hub": Website.FC2HUB,
         "fc2ppvdb": Website.FC2PPVDB,
         "iqq": Website.IQQTV,
         "javbus": Website.JAVBUS,

@@ -38,7 +38,7 @@
   - madouqu 域名由发布页 wangzhi.icu/config.js 动态维护（web.py::get_madouqu_domains，24h 缓存）；解析外部站点配置时优先找其 JS 引用的明文数据源。
   - madou.club：番号无横杠+集数后缀（MDX0236-01），搜索必须无横杠关键词；封面只在搜索页缩略图（covers 去 -240x180 后缀即原图）；Safari iOS 指纹稳定过 CF。
   - 7mmtv.sx 新上 CF「Just a moment」JS 挑战，纯指纹全拦，依赖 TRAWL/FlareSolverr 外部 CF Bypass 服务自动通过；javbus 镜像池实测结论见 mdcx/crawlers/javbus.py 注释。
-  - 已删 13 站（2026-08 用户决定）：失效=cnmdb/hdouban/mdtv/love6/kin8/giga/cableav/7mmtv（CF 挑战维护成本高）/hscangku（探测失效）；数据重复下线=jav321/fantastica + dahlia/faleno（模块保留为 official 厂牌子爬虫，_skip_auto_register=True 且 site() 返回 OFFICIAL）。若恢复从 git 历史找回并重建枚举/注册/默认源。
+  - 已删 15 站（2026-08 用户决定）：失效=cnmdb/hdouban/mdtv/love6/kin8/giga/cableav/7mmtv（CF 挑战维护成本高）/hscangku（探测失效）/fc2club+fc2hub（JWT/CF JS 挑战壳，需 bypass 服务）；数据重复下线=jav321/fantastica + dahlia/faleno（模块保留为 official 厂牌子爬虫，_skip_auto_register=True 且 site() 返回 OFFICIAL）。若恢复从 git 历史找回并重建枚举/注册/默认源。
   - heyzo.com/caribbeancom.com/1pondo.tv 五个无码官网由 official 爬虫统一路由（mdcx/crawlers/official_uncensored.py），勿重复开发独立爬虫；三站均被墙，已加入默认走代理列表；1pondo 首页有反 bot 壳（curl_cffi 指纹也拿不到数据），但其 dyn/phpauto JSON API 不设防可直接访问。
   - 日本 IP 地理限制站点（2026-08-26 实测）：faleno.jp（非日本 IP 403 且对 TLS 指纹苛刻，免费日本节点全被拒）、giga-web.jp（年龄确认 cookie 机制）、mywife.cc（被墙+日本节点才通）。测这类站用 `scripts/dev_proxy.py start --port 7891 --regions "jp|日本"` 起纯日本节点实例；mgstage 主站同样非日本 IP 403。免费节点里 maflya 订阅日本节点最多（23 个）。
   - 全站访问成本三层结论（2026-08-26 devbox 实测，7mmtv/hscangku 已删）：直通=airav_cc/avheat/avmoo/avsex/avsox/fc2/freejavbt/javbus/javday/javdb_api/javdb_app/libredmm/madouqu/missav_api/official/r18dev/thejavdb_api；需代理=getchu/iqqtv/madou_club/missav/xcity；日本节点验证通过=dmm/mgstage/prestige/mywife（其余 avbase/dmm_api/fc2club/fc2hub/fc2ppvdb/hscangku/javdb/javlibrary/lulubar/theporndb 在免费节点下不稳，属 devbox 云端限制为主，用户本地多数可直连）。批量探测判定必须校验 data.title 为真实字符串——部分爬虫异常路径会返回空壳对象造成假阳性。
