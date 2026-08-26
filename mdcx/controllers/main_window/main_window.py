@@ -513,6 +513,18 @@ class MyMAinWindow(QMainWindow):
             self.resize(1030, 700)  # 首次显示时应用默认窗口大小
         super().showEvent(a0)
 
+    def resizeEvent(self, a0):
+        # 全局 UI 为绝对定位布局（上游遗留），centralwidget 无布局管理器，
+        # 窗口缩放时手动同步导航栏/内容区/顶部进度条几何，否则最大化后内容区固定 820x692
+        super().resizeEvent(a0)
+        ui = getattr(self, "Ui", None)
+        if ui is None:
+            return
+        width, height = self.width(), self.height()
+        ui.widget_setting.setGeometry(0, 0, 210, height)
+        ui.stackedWidget.setGeometry(210, 6, max(width - 210 - 2, 400), max(height - 8, 300))
+        ui.progressBar_scrape.setGeometry(209, -1, max(width - 211, 100), 7)
+
     # 当隐藏边框时，最小化后，点击任务栏时，需要监听事件，在恢复窗口时隐藏边框
     def changeEvent(self, a0):
         # self.show_traceback_log(QEvent.WindowStateChange)
