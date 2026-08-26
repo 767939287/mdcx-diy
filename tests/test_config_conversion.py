@@ -184,6 +184,7 @@ def test_config_default_site_priorities_follow_current_frontend_defaults():
         Website.AVSEX,
         Website.OFFICIAL,
         Website.IQQTV,
+        Website.AVENTERTAINMENTS,
     ]
     assert config.website_suren == [
         Website.MGSTAGE,

@@ -43,6 +43,7 @@ MDCx 支持的功能全景。只想快速上手的话，先看 [QUICKSTART.md](Q
 | xcity | xcity.jp | 综合（仅能有码） |
 | avsox | avsox.click | 无码（无码专属） |
 | avmoo | avmoo.shop | 有码信息站（仅能有码） |
+| aventertainments | aventertainments.com | 无码（DVD+PPV） |
 | avheat | avheat.shop | 欧美（欧美） |
 | airav_cc | airav.cc | 无码（综合：有码+无码） |
 | avsex | avsex.com | 无码（综合：有码+无码） |
@@ -60,7 +61,7 @@ MDCx 支持的功能全景。只想快速上手的话，先看 [QUICKSTART.md](Q
 
 **各爬虫适用类型**（刮削类型默认网站源，可在「设置→站点」调整）：
 - **仅能有码**：dmm、dmm_api、thejavdb_api、libredmm、r18dev、avbase、xcity、prestige、mgstage、getchu、javlibrary、freejavbt、lulubar、avmoo
-- **无码专属**：avsox
+- **无码专属**：aventertainments、avsox
 - **综合（有码+无码）**：javbus、javdb、javdb_api、javdb_app、missav、missav_api、javday、airav_cc、avsex、official、iqqtv
 - **素人**：mgstage、prestige、javbus、javdb 系、dmm、dmm_api、avbase、missav、missav_api、mywife、iqqtv
 - **FC2**：fc2、fc2ppvdb、javdb 系、javfree

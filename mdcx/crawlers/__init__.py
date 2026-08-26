@@ -13,6 +13,7 @@ from . import (
 )
 from .airav_cc import AiravCcCrawler
 from .avbase import AvbaseCrawler
+from .aventertainments import AventertainmentsCrawler
 from .avheat import AvheatCrawler
 from .avmoo import AvmooCrawler
 from .avsex import AvsexCrawler

@@ -10,7 +10,8 @@
 
 ### 功能
 
-- **新增 javfree 爬虫（JAVFREE）**：javfree.me 收录有码/无码/FC2（素人）多种内容；搜索直接命中带横杠番号（SSNI-647、HEYZO-3924、FC2-PPV-4965111），解析详情页 blockquote 元数据（発売日/収録時間/出演者/メーカー/レーベル/ジャンル/品番，品番后为剧情简介）；有码/无码按条目分类判定（mosaic=有码，avi/demosaic=无码），FC2 番号归位 FC2 分类；封面取站点 HLIC 大图，数字后缀剧照作 extrafanart；注意站点 IP 级限流（429）需放慢请求。默认加入有码/FC2 网站源，探针番号 SSNI-647
+- **新增 aventertainments 爬虫（AVENTERTAINMENTS）**：aventertainments.com 无码专属站点，同时收录 DVD 和 PPV 两种类型；搜索自动识别番号类型（日期格式 YYMMDD_XXX → PPV，其他 → DVD）并走对应路径（/ppv/search 或 /dvd/search）；详情页解析番号/标题/演员/简介/标签/系列/发行日期/时长/封面/厂牌，自动去除 DL 前缀（下载版标记）；支持 Caribbeancom（横杠格式 082226-001）和 1pondo（下划线格式 082226_001）两种 PPV 番号，分隔符差异用于区分厂牌（横杠仅返回 carib，下划线返回 1pondo + carib）；仅收录两个厂牌 PPV，覆盖范围较窄，默认加入无码网站源末位（综合站点之后），默认启用代理，探针番号 082226_001
+- **新增 javfree 爬虫（JAVFREE）**：javfree.me 收录有码/无码/FC2（素人）多种内容；搜索直接命中带横杠番号（SSNI-647、HEYZO-3924、FC2-PPV-4965111），解析详情页 blockquote 元数据（発売日/収録時間/出演者/メーカー/レーベル/ジャンル/品番，品番后为剧情简介）；有码/无码按条目分类判定（mosaic=有码，avi/demosaic=无码），FC2 番号归位 FC2 分类；封面取站点 HLIC 大图，数字后缀剧照作 extrafanart；注意站点 IP 级限流（429）需放慢请求。默认加入有码/FC2 网站源，默认启用代理，探针番号 SSNI-647
 - **新增 madou_club 爬虫（麻豆社）**：madou.club 收录麻豆系 MDX/MD 等国产番号，搜索须无横杠关键词（MDX-0236 无结果、MDX0236 命中）；解析详情页标题（番号 / 片名）、分类（studio）与标签，封面取搜索页缩略图并自动升级原图（去 `-240x180` 尺寸后缀）；站点 CF 对桌面指纹拦截强，接入 Safari iOS 专属指纹池；默认加入国产网站源，网络检测探针番号 MDX0236
 - **精简 15 个冗余/失效爬虫**：失效站 cnmdb（域名劫持）、hdouban（DNS 失效）、mdtv（302 广告停放）、love6、kin8、giga、cableav、7mmtv（CF JS 挑战维护成本高且无码覆盖与 missav 重叠）、hscangku（探测失效）、fc2club/fc2hub（JS 挑战壳纯指纹无法通过）；数据重复站 jav321/fantastica + dahlia/faleno（内容被 DMM 系与综合站全覆盖）。dahlia/faleno 模块保留为 official 的 DLDSS/FNS/JIMMY 厂牌子爬虫（不再作为独立站点暴露）；thejavdb_api 转为默认启用加入有码网站源；注册爬虫 48 → 33，旧配置中的已删站点自动跳过迁移
 - **无码官网五站接入默认代理列表**：caribbeancom/heyzo/1pondo/pacopacomama/10musume 及 mywife 实测需代理访问，加入默认「走代理网站」域名列表
