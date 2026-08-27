@@ -1,6 +1,22 @@
 # 配置参考
 
-每个配置项是干什么用的。按设置界面的标签页分组说明。
+每个配置项是干什么用的。按功能分组说明，各组内容与设置页标签的对应关系如下：
+
+| 文档分组 | 设置页标签 |
+|---------|-----------|
+| 通用 | 刮削目录 |
+| 清理 | 刮削目录 → 「清理文件」区 |
+| 刮削 | 刮削模式 + 刮削网站 |
+| 字段优先级 | 刮削网站 → 各类型旁「字段优先级」按钮 |
+| 翻译 | 翻译 |
+| 下载 | 下载（海报/缩略图/背景图/额外剧照/预告片/NFO 分别在该页分组内；下方「字幕」「水印」「NFO」章节的详细选项在设置页同名字幕、水印、NFO 标签页） |
+| 字幕 | 字幕 |
+| 水印 | 水印 |
+| 命名 | 命名 |
+| 服务器（Emby/Jellyfin） | 左侧导航「Emby演员管理」页 |
+| 网络 | 网络 |
+| 界面外观（缩放/调试模式） | 高级 |
+| 其他（更新检查、演员数据库） | 高级 + 演员 |
 
 ## 通用
 
@@ -51,11 +67,11 @@
 
 每个字段独立的来源网站优先级。
 
-支持的字段：标题、原始标题、简介、演员、海报、缩略图、剧照、预告片、发行日期、片长、评分、标签、导演、系列、制作商、发行商。
+支持的字段共 19 项：标题、原始标题、简介、原始剧情、演员、所有演员、缩略图、海报、剧照、标签、发行日期、片长、评分、导演、系列、制作商、发行商、预告片、想看。
 
 每个字段行还可勾选「跳过」：勾选后该字段不从任何来源抓取，保留 NFO 既有值。
 
-还可以按刮削类型（有码/无码/FC2/国产/欧美）分别设置不同的字段优先级。
+还可以按刮削类型（有码/无码/FC2/国产/欧美/素人）分别设置不同的字段优先级。
 
 ## 翻译
 
@@ -67,8 +83,7 @@
 | DeepL Key | DeepL API 密钥 |
 | DeepLX URL | 自建 DeepL 代理地址 |
 | LLM API | 大模型翻译的 Base URL / API Key / Model / Prompt |
-| 目标语言 | 简体中文 / 繁体中文 / 日语 |
-| 简繁转换 | 繁体转简体 |
+| 繁体转简体 | 刮出的繁体字段自动转简体中文 |
 
 ## 下载
 
@@ -88,12 +103,10 @@
 
 | 配置项 | 作用 |
 |-------|------|
-| 水印类型 | 无/字幕/有码/无码/破解/流出/高清 |
-| 水印文本 | 自定义显示的文字 |
-| 字体 | 字体、大小、颜色 |
-| 位置 | 九宫格任意位置 |
-| 透明度 | 0-255 |
-| 旋转角度 | -180~180 |
+| 水印类型 | 字幕/有码/破解/流出/无码/高清（按影片属性自动选择对应的图标徽标）|
+| 作用图片 | 分别开关海报/缩略图/背景图是否加水印 |
+| 水印大小 | 按图片高度比例分档（大/中/小等）|
+| 添加规则 | 不固定（自动轮转角落）/ 固定位置（四角任选）/ 固定水印类型（每种类型单独指定角落）|
 
 ## 命名
 
@@ -103,30 +116,37 @@
 |------|------|
 | `{{ number }}` | 番号 |
 | `{{ title }}` | 标题 |
-| `{{ actor }}` | 第一名演员 |
-| `{{ all_actor }}` | 全部演员（用逗号隔开）|
-| `{{ studio }}` | 制作商 |
-| `{{ publisher }}` | 发行商 |
-| `{{ series }}` | 系列 |
+| `{{ originaltitle }}` | 原标题 |
+| `{{ actor }}` | 演员（主演员）|
+| `{{ first_actor }}` | 首位演员 |
+| `{{ all_actor }}` | 全部演员 |
+| `{{ letters }}` | 番号字母前缀 |
+| `{{ first_letter }}` | 番号首字符 |
+| `{{ outline }}` | 简介 |
 | `{{ director }}` | 导演 |
-| `{{ year }}` | 年份 |
+| `{{ series }}` | 系列 |
+| `{{ studio }}` | 片商 |
+| `{{ publisher }}` | 发行商 |
 | `{{ release }}` | 发行日期 |
-| `{{ runtime }}` | 片长 |
+| `{{ year }}` | 年份 |
+| `{{ runtime }}` | 时长 |
+| `{{ mosaic }}` | 有码/无码标识 |
+| `{{ definition }}` | 清晰度（1080p/HD 等）|
+| `{{ cnword }}` | 中文字幕标识 |
+| `{{ moword }}` | 无码流出等版本标识 |
+| `{{ filename }}` | 原文件名 |
+| `{{ wanted }}` | 想看人数 |
 | `{{ score }}` | 评分 |
-| `{{ tag }}` | 第一个标签 |
-| `{{ ext }}` | 文件扩展名 |
-| `{{ cd }}` | CD 序号 |
-| `{{ definition }}` | 分辨率（1080p/4K 等）|
-| `{{ codec }}` | 编码格式 |
+| `{{ four_k }}` | 4K 标识 |
 
-条件渲染示例：
+条件渲染示例（扩展名由程序自动追加，不要写进模板）：
 ```
-[{% if number %}{{ number }}{% endif %}]{{ title }}.{{ ext }}
+[{% if number %}{{ number }}{% endif %}]{{ title }}
 ```
 
 三种命名目标：
 - **文件夹命名**：`[{{ number }}]{{ title }}` 这种
-- **文件命名**：`{{ number }}.{{ ext }}`
+- **文件命名**：`{{ number }}-{{ title }}` 这种
 - **NFO 标题**：Emby 库中显示的标题
 
 ## 服务器（Emby/Jellyfin）
@@ -151,7 +171,7 @@
 |-------|------|
 | HTTP 代理 | 代理地址（http://127.0.0.1:10809 这种）|
 | SOCKS5 代理 | SOCKS5 代理地址 |
-| 走代理网站 | 只对这些网站用代理，其他直连（默认含 `amazon.co.jp, m.media-amazon.com, xcity.jp, minnano-av.com, avbase.net, javbus.com, javdb.com, javlibrary.com, r18.dev, mgstage.com, prestige-av.com, seesaawiki.jp, avsox.click, avsox.com, avmoo.shop, avmoo.com, avheat.shop, avheat.com, heyzo.com, caribbeancom.com, 1pondo.tv, pacopacomama.com, 10musume.com, mywife.cc, github.com, raw.githubusercontent.com, google.com, missav.ws, missav.ai, missav.live`）|
+| 走代理网站 | 只对这些网站用代理，其他直连（默认含 `amazon.co.jp, m.media-amazon.com, xcity.jp, minnano-av.com, avbase.net, javbus.com, javdb.com, javlibrary.com, r18.dev, mgstage.com, prestige-av.com, seesaawiki.jp, avsox.click, avsox.com, avmoo.shop, avmoo.com, avheat.shop, avheat.com, heyzo.com, caribbeancom.com, 1pondo.tv, pacopacomama.com, 10musume.com, mywife.cc, github.com, raw.githubusercontent.com, google.com, missav.ws, missav.ai, missav.live, aventertainments.com, javfree.me`）|
 | 外部 CF 服务 | TRAWL / FlareSolverr 风格外部 CF 服务地址（如 `http://127.0.0.1:8191`），MDCx 自动拉起协议适配层 |
 | CF 服务后端 | 外部 CF 服务类型：TRAWL（走 /scrape）或 FlareSolverr（走 /v1） |
 | Selenium CF Bypass | JavLibrary 遇 Cloudflare JS challenge 时自动 fallback 到 Selenium+Edge headless（默认开启，需 Windows 10/11 + Edge）|
@@ -162,13 +182,12 @@
 | 站点 Cookie | 手动传 Cookie 给需要登录的网站 |
 | 站点 Token | 手动传 Token 给需要鉴权的网站 |
 
-## 界面外观
+## 界面外观（设置 → 高级）
 
 | 配置项 | 作用 |
 |-------|------|
-| 主题 | 亮色 / 暗色 |
-| 缩放比例 | 8 档：跟随系统 / 80% / 90% / 100% / 125% / 150% / 175% / 200% |
-| 日志显示 | 控制日志区显示哪些类型的消息 |
+| 高分屏缩放 | 8 档：跟随系统 / 80% / 90% / 100% / 125% / 150% / 175% / 200%（PassThrough 非整数倍缩放已默认启用）|
+| 调试模式 | 日志页面显示 DEBUG 日志 / 堆栈信息 / 网络日志（「调试模式」组三个复选框）|
 
 ## 其他
 
@@ -183,4 +202,4 @@
 
 默认配置文件在 `resources/config/default_config.json`。
 
-用户数据目录（演员数据库 `actor_database.xlsx`（含日文名/中文名/繁体名/别名/信息链接/TMDB ID/出生日期/简介共 9 列）、Amazon ASIN 缓存等）在配置文件同目录的 `userdata/` 下。
+用户数据目录（演员数据库 `actor_database.xlsx`（日文原名/中文名/繁体名/别名/链接/tmdbid/tmdb url/出生日期/简介共 9 列）、Amazon ASIN 缓存等）在配置文件同目录的 `userdata/` 下。

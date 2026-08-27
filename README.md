@@ -3,7 +3,7 @@
 ![python](https://img.shields.io/badge/Python-3.13+-3776AB.svg?style=flat&logo=python&logoColor=white)
 ![License](https://img.shields.io/badge/License-GPLv3-blue.svg)
 ![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey.svg)
-![Crawlers](https://img.shields.io/badge/Sites-48-brightgreen.svg)
+![Crawlers](https://img.shields.io/badge/Sites-35-brightgreen.svg)
 
 <p align="center"><b>如果你觉得不错可否赏我杯奶茶费，谢谢！ 😊</b></p>
 
@@ -17,7 +17,7 @@
 
 ## MDCx-diy 是什么
 
-MDCx-diy 是一个桌面工具，自动从 43 个网站抓取视频文件的元数据（标题、演员、封面、简介等），生成标准的 .nfo 文件和整理好的文件夹，给 Emby、Jellyfin、Kodi 这类媒体服务器直接用。
+MDCx-diy 是一个桌面工具，自动从 35 个网站抓取视频文件的元数据（标题、演员、封面、简介等），生成标准的 .nfo 文件和整理好的文件夹，给 Emby、Jellyfin、Kodi 这类媒体服务器直接用。
 
 一句话：把一堆乱七八糟的视频文件，变成媒体服务器能认的整齐资料库。
 
@@ -37,7 +37,7 @@ MDCx-diy 是一个桌面工具，自动从 43 个网站抓取视频文件的元�
 |------|---------|------|
 | [QUICKSTART.md](docs/QUICKSTART.md) | 所有人 | 5 分钟上手，完成第一次刮削 |
 | [INSTALL.md](docs/INSTALL.md) | 需要安装的人 | 系统要求、Release/源码/Docker 三种安装方式 |
-| [FEATURES.md](docs/FEATURES.md) | 想了解能做什么的人 | 全部功能、43 个网站列表、四种刮削模式 |
+| [FEATURES.md](docs/FEATURES.md) | 想了解能做什么的人 | 全部功能、35 个网站列表、四种刮削模式 |
 | [USER_GUIDE.md](docs/USER_GUIDE.md) | 日常使用的人 | 完整使用手册、常见问题、实际场景 |
 | [CONFIGURATION.md](docs/CONFIGURATION.md) | 想调设置的人 | 每个配置项是干什么的 |
 | [changelog.md](docs/changelog.md) | 关注版本更新的人 | 每个版本改了啥 |
@@ -45,7 +45,7 @@ MDCx-diy 是一个桌面工具，自动从 43 个网站抓取视频文件的元�
 
 ## 核心特色
 
-- **43 个网站爬虫** — 有码、无码、FC2、国产、欧美全覆盖，部分站点免 CF 直连
+- **35 个网站爬虫** — 有码、无码、FC2、国产、欧美全覆盖，部分站点免 CF 直连
 - **智能番号识别** — 自动判断番号类型（有码/无码/FC2/国产/欧美）
 - **标准 NFO 生成** — 30+ 元数据字段，Emby/Jellyfin/Kodi 通用
 - **多引擎翻译** — Google、Bing、Baidu、DeepL、DeepLX、LLM 共 6 种
@@ -53,7 +53,7 @@ MDCx-diy 是一个桌面工具，自动从 43 个网站抓取视频文件的元�
 - **演员数据库** — Excel 数据库 + TMDB/Wikidata/Gfriends 多源补全
 - **Emby/Jellyfin 集成** — 自动同步演员信息和头像
 - **异步并发** — 同时刮多个文件，不卡界面
-- **Cloudflare 绕过** — 支持 TRAWL / FlareSolverr 外部 CF 服务自动绕过防护页；JavLibrary 专属 Selenium+Edge headless fallback；部分站点免 CF 通道（missav_api、r18dev、javdb_api）
+- **Cloudflare 绕过** — 支持 TRAWL / FlareSolverr 外部 CF 服务自动绕过防护页；JavLibrary 专属 Selenium+Edge headless fallback；部分站点免 CF 通道（javdb_api、javdb_app、missav_api、r18dev、thejavdb_api）
 
 ## 开发者
 

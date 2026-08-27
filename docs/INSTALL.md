@@ -12,12 +12,10 @@
 
 | 系统 | 下载什么 |
 |------|---------|
-| Windows | `MDCx_win64.zip` |
-| macOS (Intel) | `MDCx_macos_x64.zip` |
-| macOS (Apple Silicon) | `MDCx_macos_arm64.zip` |
-| Linux | `MDCx_linux_x64.zip` |
+| Windows 10/11（64 位） | `MDCx-...-windows-x86_64-....exe`（单文件，直接运行）|
+| macOS（Apple Silicon）| `MDCx-...-macos-aarch64-....dmg` |
 
-解压后双击运行即可。
+Linux 和 Intel 芯片 Mac 没有预编译包，请从下文的源码方式运行。
 
 ## 方法二：从源码运行
 
@@ -50,15 +48,8 @@ uv run python main.py
 sudo apt install libxcb-xinerama0 libxcb-cursor0
 ```
 
-## 方法三：Docker
-
-```bash
-docker pull ...
-docker run ...
-```
-
 ## 遇到问题
 
-- 界面太大或太小：设置 → 界面外观 → 缩放比例
-- 网络不通：设置 → 网络 → 配置代理
+- 界面太大或太小：设置 → 高级 → 高分屏缩放
+- 网络不通：设置 → 网络 → 配置代理；左侧导航「检测网络」页可批量测试站点连通性
 - 其他：看 [USER_GUIDE.md](USER_GUIDE.md) 的常见问题部分

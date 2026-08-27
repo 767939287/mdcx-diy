@@ -6,14 +6,12 @@
 
 主界面分成几块：
 
-- **顶部**：工具栏（开始、停止、扫描等按钮）
-- **左侧**：站点列表树（显示各个网站的可用状态）
-- **中间**：主工作区（刮削结果展示、图片预览、日志）
+- **顶部**：工具栏（开始、停止、播放等按钮）
+- **左侧**：导航栏（主界面、日志、工具、Emby演员管理、NFO库管理、设置、检测网络、使用说明）
+- **中间**：主工作区（待刮列表、刮削结果树「成功/失败」、封面预览）
 - **底部**：进度条和状态信息
 
-设置界面通过顶部菜单「设置」进入，分为多个标签页。
-
-左侧导航栏可在主界面、日志、工具、NFO库管理、设置、检测网络、使用说明之间切换。
+设置界面通过左侧导航「设置」进入，分为 12 个标签页（刮削目录、刮削模式、刮削网站、下载、命名、翻译、字幕、水印、NFO、演员、网络、高级）。网站的连通性与可用状态在左侧导航「检测网络」页查看。
 
 ## NFO 库管理
 
@@ -31,22 +29,22 @@
 
 ### 1. 配置媒体路径
 
-设置 → 通用：
+设置 → 刮削目录：
 - **媒体路径**：放视频文件的文件夹
 - **成功输出目录**：（可选）处理好后复制一份到另一个地方
 - **软链接路径**：（可选）创建软链接的目标目录
 
 ### 2. 选网站源
 
-设置 → 刮削：
+设置 → 刮削网站：
 - 按影片类型分别配置：有码、无码、FC2、国产、欧美、素人
 - 每个类型可以选多个网站，拖动排序决定优先级
-- **免 CF 通道**（missav_api、r18dev、javdb_api）默认没启用，需要在这手动加到列表
+- **免 CF 通道**（javdb_api、javdb_app、missav_api、r18dev、thejavdb_api）默认已加入网站源，稳定性好可优先使用
 
 ### 3. 字段优先级
 
-设置 → 字段优先级：
-- 每个字段（标题、简介、演员、海报等）都可以独立配置来源网站顺序
+设置 → 刮削网站 页每个类型旁的「字段优先级」按钮：
+- 每种字段（标题、简介、演员、海报等）都可以独立配置来源网站顺序，也可勾选「跳过」不从任何来源抓取
 - 比如标题优先用 JavBus，评分优先用 DMM
 - 每种刮削类型（有码/无码等）还可以有不同的字段优先级配置
 
@@ -69,15 +67,14 @@
 
 设置 → 命名：
 - 用 Jinja2 模板定义文件命名规则
-- 常用模板：`[{{ number }}]{{ title }}.{{ ext }}`
+- 常用模板：`[{{ number }}]{{ title }}`（扩展名由程序自动追加）
 - 也可以单独设置文件夹命名和 Emby 标题展示格式
 
 ### 7. 开始刮削
 
-1. 回主界面，点「扫描」
-2. 勾选要处理的文件（新用户建议先选 1 个试试）
-3. 点「开始」，看日志区跑进度
-4. 刮完后查结果报告，处理失败的文件
+1. 回主界面，点「开始」，程序自动扫描刮削目录中的全部视频并开始并发刮削（新用户建议先用只放 1 个文件的目录试跑）
+2. 看日志区跑进度，结果树的「成功/失败」列表随每个文件完成而实时更新
+3. 刮完后处理失败项：右键「重新刮削」（输入正确番号重刮）或「输入网址重新刮削」（指定详情页网址重刮）
 
 ## 四种模式怎么选
 
@@ -106,17 +103,17 @@ sudo apt install libxcb-xinerama0 libxcb-cursor0
 export QT_QPA_PLATFORM=xcb
 ```
 
-**界面太大或太小**：设置 → 界面外观 → 缩放比例，选一个合适的，保存后重启。
+**界面太大或太小**：设置 → 高级 → 高分屏缩放，选一个合适的比例，保存后重启。
 
 ### 刮削问题
 
 **刮不出数据**：
 1. 检查设置里有没有勾选对应类型的网站
-2. 试试设置 → 网络 → 勾选「网络连通性检查」，看网站可不可达
+2. 点左侧导航「检测网络」页的「开始检测」，看网站可不可达
 3. 配置代理（设置 → 网络）
 
 **有的网站一直失败**：可能是被墙了。试试：
-- 启用免 CF 通道（在刮削设置里加 missav_api、r18dev、javdb_api）
+- 改用免 CF 通道（javdb_api、javdb_app、missav_api、r18dev、thejavdb_api，默认已加入网站源）
 - 或者配置外部 CF 服务（设置 → 网络 → 外部 CF 服务，填 TRAWL / FlareSolverr 地址）
 - JavLibrary 遇 Cloudflare JS challenge 时会自动 fallback 到 Selenium+Edge headless 获取页面（cf_selenium_bypass，默认开启，需要 Windows 10/11 + Edge 浏览器，无 Edge 环境优雅降级，连续失败 3 次进入 5 分钟冷却）
 
@@ -126,7 +123,7 @@ export QT_QPA_PLATFORM=xcb
 
 **数据库在哪**：`userdata/actor_database.xlsx`
 
-**工具页操作**：工具页「演员库维护」区域有十二个操作——补全中文名（按 TMDB ID 补翻译）、补全 LibreDMM 链接、补全别名（可选来源：TMDB、minnano 或 JavDB；默认仅补缺别名的行，勾选「全量更新」则并入全部行且不覆盖本地已有别名；配套「起始行/限量」分片续跑——中断后日志输出"将起始行填入 N-1 即可续跑"，处理日志带 [行N] 前缀便于人工定位，长任务无需从头重发请求）、JavDB 中文名（从 JavDB 移动端 API 查询演员中文名/繁体名，仅处理「中文名 == 日文原名」的行，用 name_zht 转简体补全，无需 TMDB API Key，支持分片续跑）、minnano 补全（从 minnano-av 补缺生日/简介，日文字段自动翻译）、检查用户库（扫描格式/结构/数据异常并弹窗报告，安全项可一键自动修复，tmdb 项给人工修复步骤）、剔除男演员、校验 tmdbid 有效性、更新 nfo tmdbid、打开演员数据库、停止当前维护任务。前九个自动扫描数据库并批量处理，打开用系统默认程序打开 xlsx 供手工编辑，停止按钮独立于主界面刮削停止、一键请求停止当前维护任务（会保存已处理部分，可再次运行继续）。每个联网维护工具默认限量 5000 条逐片处理，配合幂等可多次运行完成全部 2 万+ 行。进度实时显示在日志页。
+**工具页操作**：工具页「演员库维护」区域有十一个操作——补全中文名（按 TMDB ID 补翻译）、补全 LibreDMM 链接、补全别名（可选来源：TMDB、minnano 或 JavDB；默认仅补缺别名的行，勾选「全量更新」则并入全部行且不覆盖本地已有别名；配套「起始行/限量」分片续跑——中断后日志输出"将起始行填入 N-1 即可续跑"，处理日志带 [行N] 前缀便于人工定位，长任务无需从头重发请求）、JavDB 中文名（从 JavDB 移动端 API 查询演员中文名/繁体名，仅处理「中文名 == 日文原名」的行，用 name_zht 转简体补全，无需 TMDB API Key，支持分片续跑）、minnano 补全（从 minnano-av 补缺生日/简介，日文字段自动翻译）、检查用户库（扫描格式/结构/数据异常并弹窗报告，安全项可一键自动修复，tmdb 项给人工修复步骤）、剔除男演员、校验 tmdbid 有效性、更新 nfo tmdbid、打开演员数据库、停止当前维护任务。前九个自动扫描数据库并批量处理，打开用系统默认程序打开 xlsx 供手工编辑，停止按钮独立于主界面刮削停止、一键请求停止当前维护任务（会保存已处理部分，可再次运行继续）。每个联网维护工具默认限量 5000 条逐片处理，配合幂等可多次运行完成全部 2 万+ 行。进度实时显示在日志页。
 
 **数据库坏了**：有备份就用备份恢复。可以定期备份这个文件。
 
@@ -152,7 +149,7 @@ export QT_QPA_PLATFORM=xcb
 3. 在设置里申请 API Key
 4. 填到 MDCx 设置里
 
-**配置代理**：设置 → 网络 → 代理，支持 HTTP/HTTPS/SOCKS5。只对"走代理网站"域名列表中的站点走代理，其他默认直连；默认列表包含 `amazon.co.jp, m.media-amazon.com, xcity.jp, minnano-av.com, avbase.net, javbus.com, javdb.com, javlibrary.com, r18.dev, mgstage.com, prestige-av.com, seesaawiki.jp, avsox.click, avsox.com, avmoo.shop, avmoo.com, avheat.shop, avheat.com, heyzo.com, caribbeancom.com, 1pondo.tv, pacopacomama.com, 10musume.com, mywife.cc, github.com, raw.githubusercontent.com, google.com, missav.ws, missav.ai, missav.live`，可按需追加。
+**配置代理**：设置 → 网络 → 代理，支持 HTTP/HTTPS/SOCKS5。只对"走代理网站"域名列表中的站点走代理，其他默认直连；默认列表包含 `amazon.co.jp, m.media-amazon.com, xcity.jp, minnano-av.com, avbase.net, javbus.com, javdb.com, javlibrary.com, r18.dev, mgstage.com, prestige-av.com, seesaawiki.jp, avsox.click, avsox.com, avmoo.shop, avmoo.com, avheat.shop, avheat.com, heyzo.com, caribbeancom.com, 1pondo.tv, pacopacomama.com, 10musume.com, mywife.cc, github.com, raw.githubusercontent.com, google.com, missav.ws, missav.ai, missav.live, aventertainments.com, javfree.me`，可按需追加。
 
 **CF Bypass 落地白名单**：设置 → 网络 →「Bypass落地白名单」可填写可信落地域名（逗号分隔，支持 `*.example.com` 子域通配，如 `javbus.com,*.javdb.com`）。用于校验 Bypass 服务落地/重定向后的最终域名，防止第三方 Bypass 服务被劫持时把恶意页面当数据写入 NFO；留空表示不校验（默认）。
 
@@ -182,15 +179,14 @@ export QT_QPA_PLATFORM=xcb
 每周下载新视频后的操作：
 
 1. 把新视频扔到媒体文件夹
-2. 开 MDCx，点扫描
-3. 选新增的文件，点开始
-4. 检查失败列表，对失败的文件单独处理
+2. 开 MDCx，点「开始」——断点续刮会自动跳过已刮削且未变化的文件，只刮新增和失败的
+3. 检查失败列表，右键「重新刮削」或「输入网址重新刮削」单独处理
 
 ### 场景：补充缺失的封面/缩略图
 
 刮削完成后发现某个影片缺少封面图或缩略图：
 
-1. 进入「设置 → 工具」页面，找到「封面补图」区域
+1. 进入左侧导航「工具」页面，找到「封面补图」区域
 2. 输入番号（多个番号用空格分隔，如 `SSIS-001 ABF-371`）
 3. 勾选「覆盖已有图片」可重新下载已存在的封面
 4. 取消「添加水印」可跳过水印步骤

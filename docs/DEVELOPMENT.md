@@ -10,9 +10,9 @@ mdcx/
 ├── cmd/               # 命令行工具（crawl 调试爬虫、gen_enums）
 ├── config/            # 配置管理（Pydantic 模型、枚举、管理器）
 ├── controllers/       # 控制器（主窗口、海报裁剪）
-│   └── main_window/   # 主窗口逻辑（~3400 行）
+│   └── main_window/   # 主窗口逻辑（按职责拆分约 20 个模块，共 ~9600 行）
 ├── core/              # 核心业务（刮削器、NFO、命名、图片、翻译等）
-├── crawlers/          # 43 个网站爬虫 + 基类框架
+├── crawlers/          # 35 个网站爬虫 + 基类框架
 ├── gen/               # 自动生成的枚举
 ├── models/            # 数据模型（FileInfo、CrawlerResult 等）
 ├── tools/             # 工具（演员数据库、Emby 同步、字幕等）
@@ -28,7 +28,7 @@ mdcx/
 UI 层 (PyQt6)         → 界面展示、用户操作
 控制器层               → 事件处理、配置管理、信号调度
 核心业务层             → 刮削器、NFO 生成、翻译、图片处理
-爬虫框架               → 43 个爬虫，统一基类
+爬虫框架               → 35 个爬虫，统一基类
 基础设施层             → HTTP 客户端、文件系统、OpenCV
 ```
 
@@ -53,7 +53,7 @@ FileInfo → CrawlerInput → CrawlTask
           ShowData ← 界面展示
 ```
 
-关键数据类在 `mdcx/models/types.py`：
+关键数据类在 `mdcx/models/model_types.py`（CrawlerData 另见 `mdcx/crawlers/base/base_types.py`）：
 
 - **FileInfo**：视频文件信息（番号、路径、分辨率等）
 - **CrawlerInput**：爬虫输入参数（番号、语言、指定 URL）
@@ -134,7 +134,7 @@ Jinja2 模板引擎，支持条件渲染、智能截断。三类命名目标：�
 
 ### CrawlerData
 
-爬虫解析的中间数据，所有字段默认 `NOT_SUPPORT`（表示本站不支持此字段）。可选字段包括 title、actors、poster、outline、score、tags、series 等 76 个。
+爬虫解析的中间数据，所有字段默认 `NOT_SUPPORT`（表示本站不支持此字段）。可选字段包括 title、actors、poster、outline、score、tags、series 等 25 个。
 
 ### 注册机制
 
@@ -151,7 +151,7 @@ Jinja2 模板引擎，支持条件渲染、智能截断。三类命名目标：�
 
 ### 镜像域名轮询
 
-`mdcx/utils/domain_rotate.py` 的 `DomainRotator` 提供镜像域名轮询：声明类属性 `_domains` 后，请求失败（连接/SSL/超时等可重试错误）自动切换下一镜像域名重试。`_init_rotator(domains, custom_url)` 支持用户自定义 URL 优先。已接入：javbus（12 个镜像）、freejavbt、xcity。
+`mdcx/utils/domain_rotate.py` 的 `DomainRotator` 提供镜像域名轮询：声明类属性 `_domains` 后，请求失败（连接/SSL/超时等可重试错误）自动切换下一镜像域名重试。`_init_rotator(domains, custom_url)` 支持用户自定义 URL 优先。已接入：javbus（7 个镜像）、freejavbt、xcity。
 
 ### API 类爬虫（AioSiteCrawler）
 
@@ -179,8 +179,8 @@ ASIN 数据库（Excel `amazon_asin_database.xlsx`），搜索到的 ASIN 与番
 ## 网络层
 
 - **异步 HTTP**：httpx（默认）+ curl-cffi（指纹伪装）
-- **浏览器指纹**：6 种 TLS 指纹（Chrome 124/131/136、Firefox 133/135），按请求类型动态调整，定期轮换
-- **限流**：每个域名独立令牌桶，默认 8 req/s，失败自动退避重试
+- **浏览器指纹**：curl-cffi 模拟浏览器 TLS 指纹，默认池 7 种画像（Chrome 124/131/136 Win、Chrome 136 Mac、Firefox 133/135 Win、Safari 17.2 iOS）按请求轮换；Amazon 刮削用纯桌面池 6 种（不含 Safari iOS，避免偶发返回移动版页面）
+- **限流**：并发数与全局线程延时控制请求节奏；Amazon 等高风控源使用自适应退避（`AdaptiveRequestThrottle`，命中 429 自动降速冷却），失败指数退避重试
 - **Cloudflare Bypass**：通过 `trawl_adapter.py` 把请求翻译给外部 CF 服务（TRAWL `/scrape` 或 FlareSolverr `/v1`），自动绕过 CF 防护页；JavLibrary 额外支持 Selenium+Edge headless fallback（`selenium_adapter.py`，cf_selenium_bypass 默认开启）
 - **代理**：HTTP/HTTPS/SOCKS5，按"走代理网站"域名路由（默认含 amazon.co.jp, m.media-amazon.com, xcity.jp, minnano-av.com, avbase.net, javbus.com, javdb.com, javlibrary.com, r18.dev, mgstage.com, prestige-av.com, seesaawiki.jp, avsox.click, avsox.com, avmoo.shop, avmoo.com, avheat.shop, avheat.com, heyzo.com, caribbeancom.com, 1pondo.tv, pacopacomama.com, 10musume.com, mywife.cc, github.com, raw.githubusercontent.com, google.com, missav.ws, missav.ai, missav.live）
 
@@ -219,7 +219,7 @@ ASIN 数据库（Excel `amazon_asin_database.xlsx`），搜索到的 ASIN 与番
 从 `pyproject.toml` 读取，核心依赖：
 - PyQt6 6.11.0（UI 框架）
 - httpx（HTTP 客户端）
-- curl-cffi 0.11.4（TLS 指纹模拟）
+- curl-cffi >=0.15.0（TLS 指纹模拟；0.12 起 sentinel 更名已兼容）
 - lxml + parsel + beautifulsoup4（HTML/XML 解析）
 - Pillow + opencv-contrib-python-headless（图片处理）
 - Jinja2（命名模板）
@@ -235,7 +235,7 @@ ASIN 数据库（Excel `amazon_asin_database.xlsx`），搜索到的 ASIN 与番
   uv run pytest tests/                          # 全部测试
   uv run pytest tests/ --tb=short -m "not network" -x  # 仅不联网测试
   ```
-- **CI 平台分工**：Linux CI 执行 ruff、mypy、完整离线测试、数据库检查、线程安全检查和 UI 布局检查；Windows CI 在 `windows-2025` runner 上执行同一组离线 pytest，覆盖 Windows 路径和文件系统条件分支。PyInstaller EXE 由 Release 工作流和手动 `build-windows.yml` 工作流验证。
+- **CI 平台分工**：Linux CI 执行 ruff、mypy、完整离线测试、数据库检查、线程安全检查和 UI 布局检查；Windows CI 在 `windows-latest` runner 上执行同一组离线 pytest，覆盖 Windows 路径和文件系统条件分支；Release 打包则用固定的 `windows-2025` runner 构建 EXE。PyInstaller EXE 由 Release 工作流和手动 `build-windows.yml` 工作流验证。
 - **覆盖**：tests/crawlers/ 爬虫测试、tests/core/ 核心测试、NFO 测试、配置测试、`tests/test_ui_structure.py`（UI 结构）、`tests/test_actor_clean.py`（演员数据语义清洗）等
 - **演员数据清洗测试**（`tests/test_actor_clean.py`）：验证 `mdcx/utils/actor_clean.py` 对名字/别名字段的语义清洗——系列标签/年份/国籍/事务所标注剥离、作品标题剔除、悬空斜杠修复、占位符识别置空，同时确保罗马音/日文映射、读音、韩文别名等合法内容不被误伤。新数据写入（刮削写入 `update_actor_db_row`）前统一经此模块清洗
 - **演员库完整性测试**（`tests/test_check_actor_db.py`）：验证 `scripts/check_actor_db.py` 对出厂 `actor_database.xlsx` 的完整性检查——jp 重复、tmdbid 重复、url 错配、**孤儿 hyperlink**（XML 层解析 `<c>` 定义集合与 `<hyperlink>` ref 差集）等。`clean_actor_db_non_actors.py` 删行后按 cell 实际坐标重建超链接，配合保存后校验防止孤儿 hyperlink 进入仓库
@@ -253,7 +253,7 @@ ASIN 数据库（Excel `amazon_asin_database.xlsx`），搜索到的 ASIN 与番
 ## 代码规范
 
 - **格式化**：ruff（行宽 120，启用 isort/pyupgrade/flake8）
-- **类型检查**：mypy（全项目零 `disable_error_code`；`mdcx/controllers/main_window/init.py`、`load_config.py`、`views/`、`gen/` 等豁免）、pyright（部分文件豁免）
+- **类型检查**：mypy（全项目零 `disable_error_code`；`mdcx/controllers/main_window/init.py`、`load_config.py`、`views/`、`gen/` 等豁免，CI `ci.yaml` 强制执行）；pyright 仅在 `pyproject.toml` 中保留配置，未纳入 CI 门禁
 - **Git 钩子**：项目不要求安装 pre-commit；统一使用 `uv run quick-check` 和 `uv run check --skip-hook-install` 完成检查
 - **检查和修复**：
   ```bash

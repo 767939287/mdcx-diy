@@ -17,7 +17,7 @@ MDCx 支持的功能全景。只想快速上手的话，先看 [QUICKSTART.md](Q
 | 欧美 | 数字.数字.数字.数字 | 123.45.67.89 |
 | 素人 | SIRO- 等 | SIRO-1234 |
 
-### 全部 43 个爬虫
+### 全部 35 个爬虫
 
 | 爬虫名 | 数据源 | 说明 |
 |--------|-------|------|
@@ -57,23 +57,23 @@ MDCx 支持的功能全景。只想快速上手的话，先看 [QUICKSTART.md](Q
 | javfree | javfree.me | 综合：有码+FC2（素人） |
 | theporndb | api.theporndb.net | 欧美（欧美） |
 
-> 注意：missav_api、r18dev、javdb_api、thejavdb_api 这四条是免 CF 通道，默认没启用，需要去「设置→站点」手动加。
+> 注意：javdb_api、javdb_app、missav_api、r18dev、thejavdb_api 这五条是免 CF 直连通道，稳定性好，建议优先选用。
 
 **各爬虫适用类型**（刮削类型默认网站源，可在「设置→站点」调整）：
 - **仅能有码**：dmm、dmm_api、thejavdb_api、libredmm、r18dev、avbase、xcity、prestige、mgstage、getchu、javlibrary、freejavbt、lulubar、avmoo
 - **无码专属**：aventertainments、avsox
-- **综合（有码+无码）**：javbus、javdb、javdb_api、javdb_app、missav、missav_api、javday、airav_cc、avsex、official、iqqtv
+- **综合（有码+无码）**：javbus、javdb、javdb_api、javdb_app、missav、missav_api、javday、javfree、airav_cc、avsex、official、iqqtv
 - **素人**：mgstage、prestige、javbus、javdb 系、dmm、dmm_api、avbase、missav、missav_api、mywife、iqqtv
 - **FC2**：fc2、fc2ppvdb、javdb 系、javfree
 - **欧美**：theporndb、avheat
-- **国产**：madouqu、madou_club、iqqtv、javday
+- **国产**：madouqu、madou_club、avsex、iqqtv、javday
 
 ### DMM 官方高清直链
 
 - 封面/海报统一走 DMM 官方 awsimgsrc CDN 高清直链（竖版 `ps` 通常 1032×1469，部分系列为 745×1081 等中尺寸档；横版 `pl` 通常 2184×1469），由 `mdcx/crawlers/dmm_direct.py` 的番号→DMM cid 前缀映射生成，内置静态前缀表覆盖约 110 个主流系列（含 `h_xxx`/数字特殊前缀与跨厂商附加前缀），并叠加学习表自动扩充未收录系列的前缀。升级时校验分辨率宽≥700 过滤 147×200 缩略图占位图，避免把海报覆盖成低清缩略图。
-- **LibreDMM / R18.dev / JavBus / JavDB / JavDB API / JavDB App / DMM / DMM API / avbase** 九个爬虫在刮削时直接把返回的低清封面/海报升级为 DMM 高清（R18.dev 的 `jacket_full_url` 是 pics.dmm.co.jp 低清且部分系列 cid 未补零，JavBus 是自家 CDN 低清镜像，JavDB 三站是 javdb 图床缩略图 `c0.jdbstatic.com` 哈希路径非高清，DMM/avbase 用域名替换 + dmm_direct 前缀表候选），无码番号自动跳过。
+- **LibreDMM / R18.dev / JavBus / JavDB / JavDB API / JavDB App / DMM / DMM API / JavLibrary / avbase** 十个爬虫在刮削时直接把返回的低清封面/海报升级为 DMM 高清（R18.dev 的 `jacket_full_url` 是 pics.dmm.co.jp 低清且部分系列 cid 未补零，JavBus 是自家 CDN 低清镜像，JavDB 三站是 javdb 图床缩略图 `c0.jdbstatic.com` 哈希路径非高清，DMM/avbase 用域名替换 + dmm_direct 前缀表候选），无码番号自动跳过。
 - 开启「Poster 选优」（poster_auto_best）时，候选池自动注入 DMM 竖版高清候选，按尺寸自动胜过低清原图，其他爬虫也能受益。
-- DMM 图下载失败自动重试一次，应对 awsimgsrc 偶发的随机 404/连接抖动。
+- DMM 图下载失败按「设置→网络→重试」次数（默认 3 次）自动重试，应对 awsimgsrc 偶发的连接抖动。
 
 ### 多网站结果合并
 
@@ -123,7 +123,7 @@ MDCx 支持的功能全景。只想快速上手的话，先看 [QUICKSTART.md](Q
 - **分类**：标签、类型、系列
 - **制作**：制作商、厂牌、发行商
 - **媒体**：海报 URL、缩略图 URL、背景图 URL、预告片 URL
-- **外部 ID**：各网站 ID（javdbid、javlibid 等）
+- **外部 ID**：各网站 ID（javdbid、javlibraryid 等）
 
 写入时可通过 **NFO 合并策略**控制如何处理已存在的 NFO（主界面读取模式区域下拉框，5 选 1）：偏好刮削结果 / 偏好本地 NFO / 数组字段合并 / 保留现有 / 仅填空缺，防止重刮覆盖手动整理的内容（如手改的简介、标签）。
 
@@ -139,11 +139,10 @@ MDCx 支持的功能全景。只想快速上手的话，先看 [QUICKSTART.md](Q
 
 ### 水印
 
-支持在图片上添加文字水印，可配置：
-- 水印内容（支持多行文本）
-- 位置（九宫格任意位置）
-- 字体、大小、颜色
-- 透明度、旋转角度
+支持在图片角落添加图标徽标水印（字幕/有码/无码/破解/流出/高清 4K·8K），可配置：
+- 作用的图片类型（海报/缩略图/背景图分别开关）
+- 水印大小（按图片高度比例档位）
+- 添加规则（不固定自动轮转 / 固定到指定角落 / 按水印类型分别指定角落）
 
 ### Amazon 高清封面
 
@@ -162,7 +161,7 @@ MDCx 支持的功能全景。只想快速上手的话，先看 [QUICKSTART.md](Q
   - 状态机管理：≥2 个不同番号验证成功转正（verified）、连续构造失败 ≥3 次隔离（quarantined）、新证据解除隔离重新验证
   - 学习数据持久化到 `userdata/dmm_prefix_learned.json`（原子写），仅记录验证成功的证据
   - CID 候选构造顺序：学习表 verified → 静态前缀表 → 学习表 provisional → 常见前缀盲试
-- **MGStage**：站点图源全部失败时，直构 MGStage 官方 CDN 高清图——`pb_e` 横版大图（840~980 宽）作封面兜底、`pf_e` 竖版小图（~422×600）作海报兜底（系列映射表：LUXU/OTIM/CHUC/GERK/ONEZ/ONEX/MFC/ARA，来自 JavDB 高清图替换油猴脚本实测并经多番号实测验证），补上 DMM 不收录的素人番号场景
+- **MGStage**：站点图源全部失败时，直构 MGStage 官方 CDN 高清图——`pb_e` 横版大图（840 宽，高度随片源比例约 470~560）作封面兜底、`pf_e` 竖版小图（422×600）作海报兜底（系列映射表：LUXU/OTIM/CHUC/GERK/ONEZ/ONEX/MFC/ARA，来自 JavDB 高清图替换油猴脚本实测并经多番号实测验证），补上 DMM 不收录的素人番号场景
 - 所有图片下载统一设 50MB 大小上限，防止异常大文件占用磁盘
 
 ## 五、翻译系统
@@ -195,7 +194,7 @@ MDCx 支持的功能全景。只想快速上手的话，先看 [QUICKSTART.md](Q
 
 使用 Jinja2 模板引擎自定义命名规则，支持条件渲染。
 
-**支持的变量**：番号、标题、演员（第一名/全部）、标签、系列、制作商、发行商、导演、分辨率、编码格式、发行年份、发行日期、片长、评分、CD 序号等。
+**支持的变量**：番号、标题、原标题、演员（当前名/第一名/全部）、番号字母前缀、简介、导演、系列、制作商、发行商、发行日期、发行年份、片长、有码/无码标识、清晰度、中文字幕标识、无码流出标识、原文件名、想看数、评分、4K 标识等（完整列表见设置 → 命名页内提示）。
 
 **三种命名目标**：
 1. 文件夹命名（如 `[ABP-123] 标题`）
@@ -213,13 +212,13 @@ MDCx 支持的功能全景。只想快速上手的话，先看 [QUICKSTART.md](Q
 
 ## 九、网络与反爬
 
-- **HTTP 客户端**：curl-cffi 模拟浏览器 TLS 指纹，6 种浏览器画像自动轮换
+- **HTTP 客户端**：curl-cffi 模拟浏览器 TLS 指纹，默认 7 种浏览器画像自动轮换（Chrome 124/131/136 Win + Chrome 136 Mac + Firefox 133/135 Win + Safari iOS；Amazon 刮削用专用桌面池 6 种）
 - **网络连通性检测**：网络页「开始检测」按钮逐站检查连通性与刮削能力——镜像/动态域名站点多地址检测（主站+镜像），API 类爬虫走真实刮削探测，结果按基础环境/连通性/刮削站点/账号 API/辅助服务分组展示
-- **代理**：支持 HTTP/HTTPS/SOCKS5 代理；仅对"走代理网站"域名列表中的站点走代理（默认含 amazon.co.jp, m.media-amazon.com, xcity.jp, minnano-av.com, avbase.net, javbus.com, javdb.com, javlibrary.com, r18.dev, mgstage.com, prestige-av.com, seesaawiki.jp, avsox.click, avsox.com, avmoo.shop, avmoo.com, avheat.shop, avheat.com, github.com, raw.githubusercontent.com, google.com, missav.ws, missav.ai, missav.live），其他直连
+- **代理**：支持 HTTP/HTTPS/SOCKS5 代理；仅对"走代理网站"域名列表中的站点走代理（默认含 amazon.co.jp、m.media-amazon.com、xcity.jp、minnano-av.com、avbase.net、javbus.com、javdb.com、javlibrary.com、r18.dev、mgstage.com、prestige-av.com、seesaawiki.jp、avsox/avmoo/avheat 主镜像、无码官网五站、mywife.cc、github.com 系、google.com、missav 三镜像、aventertainments.com、javfree.me 等共 33 个域名，完整列表见设置 → 网络页），其他直连
 - **Cloudflare 绕过**：通过外部 CF 服务（TRAWL `/scrape` 或 FlareSolverr `/v1`）自动绕过 CF 防护页，MDCx 自动拉起协议适配层翻译请求，无需内置浏览器；可选配置独立 Bypass 代理；Bypass 服务失效时自动跳过避免空等
 - **Selenium CF Bypass（JavLibrary 专用）**：JavLibrary 遇 Cloudflare JS challenge 时自动 fallback 到 Selenium+Edge headless 获取页面 HTML（cf_selenium_bypass，默认开启）。需要 Windows 10/11 + Edge 浏览器，首次使用自动安装 selenium；无 Edge 环境优雅降级，连续失败 3 次进入 5 分钟冷却
 - **Bypass 落地域名白名单**：可配置可信落地域名列表（逗号分隔，支持 `*.example.com` 子域通配），校验 Bypass 服务落地/重定向后的最终域名，防止第三方服务被劫持时把恶意页面当数据；留空表示不校验
-- **限流**：每个网站独立令牌桶限流，自适应退避重试
+- **限流**：并发数与全局线程延时控制请求节奏；Amazon 等高风控源使用自适应退避（429 自动降速冷却）
 - **指纹伪装**：完整 sec-ch-ua、Accept-Language 等请求头，按请求类型动态调整
 
 ## 十、实用工具

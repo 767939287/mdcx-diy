@@ -2,6 +2,10 @@
 
 ## v2.0.7 (2026-08-25)
 
+### 文档
+
+- **文档与 UI 文案全面对齐代码**：注册爬虫数统一为 35（README/DEVELOPMENT/FEATURES/main_window 弹窗/UI 使用说明）；models.py 注释分组修正（AVMOO、TheJavDB-API 标注为「仅能有码」，枚举顺序与配置默认不变）；DMM 高清封面来源清单补 JavLibrary（共十站）；水印功能描述按图标徽标+角落轮转实际行为重写；MGStage pb_e 兜底图尺寸 840~980 修正为实测 840 宽；命名变量表删 tag/ext/cd/codec 四项、补齐 24 个真实变量；「强制重刮」表述改为「重新刮削/输入网址重新刮削」并说明绕过断点续刮；多集识别默认后缀与「允许识别分集」开关说明对齐字段检测实际行为；删除不存在的「每域名令牌桶限流（默认 8 req/s）」描述；指纹池 6→7 种；代理默认列表补齐 aventertainments.com/javfree.me 等 33 个域名；设置页 12 Tab 名称与功能分组对照表补入 CONFIGURATION；演员数据库 9 列清单修正为日文原名/中文名/繁体名/别名/链接/tmdbid/tmdb url/出生日期/简介（与代码 DB_HEADERS 一致）；USER_GUIDE 扫描/开始流程改写、设置入口改左侧导航、Tab 名修正；INSTALL 删除 Docker 占位节、修正 release 产物名为 MDCx-...-windows-x86_64.exe / macos-aarch64.dmg；DEVELOPMENT 爬虫统计 types→model_types.py、主窗口行数 3400→9600、Windows CI runner 说明 windows-latest vs release windows-2025、pyright 说明未入 CI 门禁；QUICKSTART 扫描/开始流程与 Tab 名修正
+
 ### 功能
 
 - **新增三个爬虫**：
