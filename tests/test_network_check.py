@@ -729,3 +729,28 @@ def test_region_tags_reference_valid_websites():
     valid = {w.value for w in Website}
     assert set(ManualConfig.SITE_REGION_TAGS) <= valid
     assert set(ManualConfig.SITE_REGION_TAGS) == {"dmm", "mgstage", "javdb", "javdb_api"}
+
+
+@pytest.mark.anyio
+async def test_run_network_check_reports_structured_progress(monkeypatch: pytest.MonkeyPatch):
+    async def fake_specs():
+        return [
+            NetworkCheckSpec(name="env", group="基础环境", url="https://env.example"),
+            NetworkCheckSpec(name="a", group="基础连通性", url="https://a.example"),
+            NetworkCheckSpec(name="b", group="刮削站点", url="https://b.example"),
+            NetworkCheckSpec(name="c", group="刮削站点", url="https://c.example"),
+        ]
+
+    monkeypatch.setattr("mdcx.core.network_check.build_network_check_specs", fake_specs)
+    seen: list[tuple[int, int]] = []
+
+    results = await run_network_check(
+        on_item_done=lambda done, total: seen.append((done, total)),
+        client=FakeClient(),
+        concurrency=3,
+        emit_header=False,
+    )
+
+    # "基础环境"组不参与计数：total=3，done 单调递增到 3
+    assert seen == [(1, 3), (2, 3), (3, 3)]
+    assert len(results) == 3  # "基础环境"组是输出横幅非实际检测项，不执行也不计进度

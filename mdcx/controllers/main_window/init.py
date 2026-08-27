@@ -493,6 +493,7 @@ def Init_Singal(self: "MyMAinWindow"):
     self.label_show_version.connect(self.Ui.label_show_version.setText)  # endregion
     self.version_check_done.connect(self._on_version_check_done)
     self.net_check_done.connect(self._on_net_check_done)
+    self.net_check_progress.connect(self._on_net_check_progress)
 
 
 def Init_QSystemTrayIcon(self: "MyMAinWindow"):

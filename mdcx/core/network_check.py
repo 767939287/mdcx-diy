@@ -941,6 +941,7 @@ def _classify_missav_api(status_code: int, text: str) -> tuple[NetworkCheckStatu
 async def run_network_check(
     *,
     progress: ProgressCallback | None = None,
+    on_item_done: "Callable[[int, int], None] | None" = None,
     cancel_event: threading.Event | None = None,
     concurrency: int = 10,
     client: "AsyncWebClient | Any | None" = None,
@@ -950,6 +951,7 @@ async def run_network_check(
     """执行网络检测。
 
     specs: 指定检测子集（用于"重试失败项"只重测失败/警告项）；None 表示全量构建检测项。
+    on_item_done: 每完成一项回调 (done, total) 结构化进度（"基础环境"组不参与计数）；供 UI 显示百分比。
     """
     progress = progress or (lambda line: None)
     if emit_header:
@@ -958,6 +960,7 @@ async def run_network_check(
 
     check_specs = specs if specs is not None else await build_network_check_specs()
     results: list[NetworkCheckResult] = []
+    total = sum(1 for s in check_specs if s.group != "基础环境")
     grouped_specs = {group: [spec for spec in check_specs if spec.group == group] for group in GROUP_ORDER}
     semaphore = asyncio.Semaphore(max(int(concurrency), 1))
 
@@ -986,6 +989,8 @@ async def run_network_check(
             for task in done:
                 result = task.result()
                 results.append(result)
+                if on_item_done is not None:
+                    on_item_done(len(results), total)
                 if result.spec.group == "基础连通性":
                     if result.status == NetworkCheckStatus.FAILED and _is_proxy_error(result.error):
                         proxy_down = True

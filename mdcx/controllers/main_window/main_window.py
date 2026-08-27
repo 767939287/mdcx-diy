@@ -155,6 +155,7 @@ class MyMAinWindow(QMainWindow):
     label_show_version = pyqtSignal(str)
     version_check_done = pyqtSignal(bool)  # 版本检查完成（参数为是否有新版本），主线程执行 UI 操作
     net_check_done = pyqtSignal()  # 网络检测完成，主线程恢复按钮状态
+    net_check_progress = pyqtSignal(int, int)  # 网络检测单项完成 (done, total)，主线程刷新按钮进度文本
     nfo_lib_data_loaded = pyqtSignal(str)  # NFO 库管理：后台读取 NFO 完成，主线程填充表单
     nfo_lib_save_done = pyqtSignal(str)  # NFO 库管理：后台保存完成，主线程恢复按钮
     nfo_lib_batch_done = pyqtSignal(str)  # NFO 库管理：批量操作完成，主线程更新状态
@@ -3479,7 +3480,12 @@ class MyMAinWindow(QMainWindow):
                 self._net_check_lines.append(line)
                 signal_qt.show_net_info(line)
 
-            self.network_check_future = executor.submit(run_network_check(progress=progress, cancel_event=cancel_event))
+            def on_item_done(done: int, total: int):
+                self.net_check_progress.emit(done, total)
+
+            self.network_check_future = executor.submit(
+                run_network_check(progress=progress, on_item_done=on_item_done, cancel_event=cancel_event)
+            )
             self.network_check_results = self.network_check_future.result()
             merge_site_check_cache(self.network_check_results)  # 持久化供站点选择列表回显
         except Exception as e:
@@ -3519,8 +3525,17 @@ class MyMAinWindow(QMainWindow):
                 self._net_check_lines.append(line)
                 signal_qt.show_net_info(line)
 
+            def on_item_done(done: int, total: int):
+                self.net_check_progress.emit(done, total)
+
             self.network_check_future = executor.submit(
-                run_network_check(progress=progress, cancel_event=cancel_event, specs=failed_specs, emit_header=False)
+                run_network_check(
+                    progress=progress,
+                    on_item_done=on_item_done,
+                    cancel_event=cancel_event,
+                    specs=failed_specs,
+                    emit_header=False,
+                )
             )
             self.network_check_results = self.network_check_future.result()
             merge_site_check_cache(self.network_check_results)  # 部分重测同样合并进缓存
@@ -3568,6 +3583,11 @@ class MyMAinWindow(QMainWindow):
             "=" * 88,
         ]
 
+    def _on_net_check_progress(self, done: int, total: int):
+        """主线程：检测进行中，按钮文本显示进度百分比。"""
+        if total > 0 and self.network_check_future is not None:
+            self.Ui.pushButton_check_net.setText(f"停止检测 {done}/{total}")
+
     def _on_net_check_done(self):
         """主线程：网络检测完成，恢复按钮状态并刷新站点下拉框的检测状态徽标。"""
         from .init import refresh_network_check_badges
@@ -3595,7 +3615,7 @@ class MyMAinWindow(QMainWindow):
             except Exception:
                 signal_qt.show_traceback_log(traceback.format_exc())
                 signal_qt.show_net_info(traceback.format_exc())
-        elif self.Ui.pushButton_check_net.text() == "停止检测":
+        elif self.Ui.pushButton_check_net.text().startswith("停止检测"):
             if self.network_check_cancel_event:
                 self.network_check_cancel_event.set()
             signal_qt.show_net_info("\n⛔️ 正在停止网络检测...")
