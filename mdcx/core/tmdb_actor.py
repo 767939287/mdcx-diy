@@ -1489,8 +1489,7 @@ async def fetch_libredmm_link(actor_name: str) -> str:
     libredmm_proxy: str | None = None
     cfg = manager.config
     if cfg.use_proxy and cfg.proxy:
-        proxy_sites = [s.strip() for s in (cfg.proxy_sites or "").split(",") if s.strip()]
-        if is_proxy_host("www.libredmm.com", proxy_sites):
+        if is_proxy_host("www.libredmm.com", cfg.proxy_hosts_list()):
             libredmm_proxy = cfg.proxy
 
     await _libredmm_rate_limiter.acquire()

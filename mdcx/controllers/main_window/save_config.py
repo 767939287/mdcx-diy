@@ -648,6 +648,7 @@ def save_config(self: "MyMAinWindow"):
     )  # Bypass 落地域名白名单
     manager.config.verify_ssl = self.Ui.checkBox_verify_ssl.isChecked()  # HTTPS 证书校验
     manager.config.proxy_sites = self.Ui.lineEdit_no_proxy_sites.text().strip()  # 使用代理的网站
+    manager.config.proxy_route_all = self.Ui.checkBox_proxy_route_all.isChecked()  # 全部流量走代理
     manager.config.timeout = self.Ui.horizontalSlider_timeout.value()  # 超时时间
     manager.config.retry = self.Ui.horizontalSlider_retry.value()  # 重试次数
 

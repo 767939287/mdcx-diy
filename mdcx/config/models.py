@@ -697,6 +697,12 @@ class Config(BaseModel):
         default="amazon.co.jp,m.media-amazon.com,xcity.jp,minnano-av.com,avbase.net,javbus.com,javdb.com,javlibrary.com,r18.dev,mgstage.com,prestige-av.com,seesaawiki.jp,avsox.click,avsox.com,avmoo.shop,avmoo.com,avheat.shop,avheat.com,caribbeancom.com,heyzo.com,1pondo.tv,pacopacomama.com,10musume.com,mywife.cc,github.com,raw.githubusercontent.com,google.com,missav.ws,missav.ai,missav.live,aventertainments.com,javfree.me",
         title="使用代理网站",
     )
+    proxy_route_all: bool = Field(
+        default=False,
+        title="全部流量走代理",
+        description="开启后所有请求都发往上方代理地址，由代理软件（如 Clash）按规则分流；"
+        '关闭时按上方"使用代理网站"列表分流。默认关闭。注意：开启后会显著增加代理流量消耗（高清图为大流量来源）。',
+    )
     cf_bypass_url: str = Field(default="", title="Cloudflare Bypass地址")
     cf_bypass_proxy: str = Field(default="", title="Cloudflare Bypass代理地址")
     cf_bypass_trawl_url: str = Field(
@@ -845,6 +851,12 @@ class Config(BaseModel):
 
     def model_post_init(self, context) -> None:
         self.ensure_type_field_configs()
+
+    def proxy_hosts_list(self) -> list[str]:
+        """代理路由列表：开启"全部流量走代理"时返回 ["*"]（is_proxy_host 通配全匹配），否则为 proxy_sites 解析结果。"""
+        if self.proxy_route_all:
+            return ["*"]
+        return [s.strip() for s in (self.proxy_sites or "").split(",") if s.strip()]
 
     def get_site_config(self, site: Website) -> SiteConfig:
         return self.site_configs.get(site, SiteConfig())

@@ -74,6 +74,9 @@ class FakeConfig:
     theporndb_api_token = ""
     proxy_sites = ""
 
+    def proxy_hosts_list(self):
+        return [s.strip() for s in (self.proxy_sites or "").split(",") if s.strip()]
+
     def get_site_url(self, site, default=""):
         return default
 

@@ -247,7 +247,7 @@ def _compute_used_proxy(spec: NetworkCheckSpec) -> bool:
     try:
         from mdcx.web_async import is_proxy_host
 
-        return is_proxy_host(host, manager.config.proxy_sites.split(",") if manager.config.proxy_sites else None)
+        return is_proxy_host(host, manager.config.proxy_hosts_list())
     except Exception:
         return False
 

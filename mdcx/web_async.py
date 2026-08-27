@@ -74,6 +74,8 @@ def is_proxy_host(host: str, proxy_sites: list[str] | tuple[str, ...] | None) ->
     """判断目标 host 是否应使用代理, 基于用户配置的 proxy_sites 列表.
 
     匹配规则（满足任一分支即视为应走代理）：
+      0. 全匹配通配：站点值为 ``*`` 时任意 host 均走代理（"全部流量走代理"开关由
+         ``Config.proxy_hosts_list()`` 注入此值）
       1. 直接域名匹配：``www.dmm.co.jp`` vs ``dmm.co.jp``
       2. 站点值映射 WEB_DIC：``javdb`` → ``javdb.com``
       3. 站点值加常见 TLD 兜底：``libredmm`` → ``libredmm.com/.net/...``
@@ -95,6 +97,10 @@ def is_proxy_host(host: str, proxy_sites: list[str] | tuple[str, ...] | None) ->
         proxy_site = raw.strip().lower()
         if not proxy_site:
             continue
+
+        # 0. 全匹配通配（"全部流量走代理"开关注入）
+        if proxy_site == "*":
+            return True
 
         # 1. 直接匹配 + 4. 子域后缀
         if host == proxy_site or host.endswith("." + proxy_site):

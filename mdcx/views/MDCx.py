@@ -10512,6 +10512,9 @@ class Ui_MDCx(object):
         )
         self.lineEdit_no_proxy_sites.setObjectName("lineEdit_no_proxy_sites")
         self.horizontalLayout_no_proxy.addWidget(self.lineEdit_no_proxy_sites)
+        self.checkBox_proxy_route_all = QtWidgets.QCheckBox(parent=self.gridLayoutWidget_9)
+        self.checkBox_proxy_route_all.setObjectName("checkBox_proxy_route_all")
+        self.horizontalLayout_no_proxy.addWidget(self.checkBox_proxy_route_all)
         self.gridLayout_9.addLayout(self.horizontalLayout_no_proxy, 2, 1, 1, 1)
         self.label_cf_bypass = QtWidgets.QLabel(parent=self.gridLayoutWidget_9)
         sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Policy.Fixed, QtWidgets.QSizePolicy.Policy.Fixed)
@@ -13928,7 +13931,7 @@ class Ui_MDCx(object):
         self.label_103.setText(
             _translate(
                 "MDCx",
-                '<p style=\'line-height:20px\'>支持 http(s), socks5(h) 代理. 示例: http://127.0.0.1:7897<br>需要用户名和密码时格式为: schema://username:password@host:port<br>Cloudflare Bypass 地址留空时，若配置了下方"外部 CF 服务"则自动启动适配层；两者均留空时关闭 CF Bypass 功能<br>"使用代理"仅控制常规网络请求代理开关，不控制 CF Bypass 代理<br>"CF Bypass代理"仅作用于 bypass 服务请求（mirror/html）</p>',
+                '<p style=\'line-height:20px\'>支持 http(s), socks5(h) 代理. 示例: http://127.0.0.1:7897<br>需要用户名和密码时格式为: schema://username:password@host:port<br>Cloudflare Bypass 地址留空时，若配置了下方"外部 CF 服务"则自动启动适配层；两者均留空时关闭 CF Bypass 功能<br>"使用代理"仅控制常规网络请求代理开关，不控制 CF Bypass 代理<br>"CF Bypass代理"仅作用于 bypass 服务请求（mirror/html）<br>勾选"全部走代理"后，"使用代理"列表不再生效，分流交给代理软件裁决</p>',
             )
         )
         self.checkBox_use_proxy.setToolTip(_translate("MDCx", "仅控制常规网络请求代理开关，不控制 CF Bypass 代理"))
@@ -13937,6 +13940,13 @@ class Ui_MDCx(object):
         self.label_no_proxy_sites.setText(_translate("MDCx", "使用代理："))
         self.comboBox_no_proxy_sites.setCurrentText(_translate("MDCx", "选择网站..."))
         self.lineEdit_no_proxy_sites.setPlaceholderText(_translate("MDCx", "逗号分隔，如 api.tmdb.org,libredmm"))
+        self.checkBox_proxy_route_all.setToolTip(
+            _translate(
+                "MDCx",
+                '开启后所有请求都发给代理地址，分流规则交给代理软件（Clash 等）裁决；"使用代理"列表不再生效。会显著增加代理流量消耗（高清图为大流量来源），默认关闭。',
+            )
+        )
+        self.checkBox_proxy_route_all.setText(_translate("MDCx", "全部走代理"))
         self.label_cf_bypass.setText(_translate("MDCx", "CF Bypass："))
         self.lineEdit_cf_bypass_url.setPlaceholderText(
             _translate("MDCx", "留空则由外部 CF 服务自动启动（高级：手动指定 cf_bypasser 协议服务地址）")

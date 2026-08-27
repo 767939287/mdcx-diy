@@ -146,6 +146,14 @@ def test_is_proxy_host_empty_inputs():
     assert not is_proxy_host("javdb.com", None)
 
 
+def test_is_proxy_host_wildcard_match_all():
+    # "全部流量走代理"开关注入 "*" 时任意 host 走代理
+    assert is_proxy_host("javdb.com", ["*"])
+    assert is_proxy_host("anything.example", ["*"])
+    assert is_proxy_host("dmm.co.jp", ["javdb", "*"])
+    assert not is_proxy_host("", ["*"])
+
+
 # ---- _replace_dir_atomic：目录原子替换与失败回滚 ----
 
 
