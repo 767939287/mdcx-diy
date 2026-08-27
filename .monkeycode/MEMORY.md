@@ -22,6 +22,7 @@
 - Instructions:
   - 改 UI 先改 `.ui`（唯一权威源），再 pyuic 重生成 MDCx.py、`ruff format`、`tests/test_ui_structure.py`；禁手工改生成的 MDCx.py。
   - 主窗口全局绝对定位、无布局管理器：长文本 QLabel 用 wordWrap 并查 sizeHint，固定高度底部留约 60px 余量；scroll 内容走 CustomScrollArea.sync_content_min_height；新增顶层悬浮控件须纳入 resizeEvent 手动几何同步。
+  - QComboBox 显示文本如要加装饰性后缀（如站点区域标签"（日本IP限定）"）：`addItem(icon, 文本含后缀, UserRole 纯值)`，所有消费点统一从 `currentData()/itemData(UserRole)` 取值，不能只改 DisplayRole 后缀留文本旧逻辑；信号 handler（如 `textActivated`/`currentTextChanged`）只收到文本时须 `split("（")[0]` 剥后缀。改动必查：所有 currentText/itemText/currentData 调用点、信号连接点、AllItems.index 匹配点。
   - 打包前逐页切 stackedWidget 审计边界溢出（scripts/check_ui_layout.py、tests/test_ui_geometry.py、test_main_window_startup.py）。
   - Qt 同名 API 重载签名不同（如 QLayout/QSplitter 的 setStretchFactor），改前先确认目标类签名；测试桩显式枚举属性方法，不用 __getattr__ 通配（生产代码可能依赖 AttributeError 降级）。
   - Onefile 无控制台异常用 faulthandler + crash/ 日志定位；GUI 日志走 signal_qt.show_log_text。
