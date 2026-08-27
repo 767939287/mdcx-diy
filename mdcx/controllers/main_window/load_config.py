@@ -161,7 +161,11 @@ def load_config(self: "MyMAinWindow"):
         # endregion
 
         # region website
-        AllItems = [self.Ui.comboBox_website_all.itemText(i) for i in range(self.Ui.comboBox_website_all.count())]
+        AllItems = [
+            self.Ui.comboBox_website_all.itemData(i, Qt.ItemDataRole.UserRole)
+            or self.Ui.comboBox_website_all.itemText(i)
+            for i in range(self.Ui.comboBox_website_all.count())
+        ]
         # 指定单个刮削网站
         website_single_value = manager.config.website_single.value
         if website_single_value in AllItems:
@@ -926,7 +930,7 @@ def load_config(self: "MyMAinWindow"):
         self.Ui.lcdNumber_retry.display(int(manager.config.retry))
 
         # site config
-        site = self.Ui.comboBox_custom_website.currentText()
+        site = self.Ui.comboBox_custom_website.currentData() or self.Ui.comboBox_custom_website.currentText()
         if site in Website:
             self.Ui.lineEdit_site_custom_url.setText(manager.config.get_site_url(Website(site)))
 

@@ -5,14 +5,19 @@ from types import SimpleNamespace
 import pytest
 
 from mdcx.config.enums import Website
+from mdcx.core import network_check as nc
 from mdcx.core.network_check import (
+    NetworkCheckResult,
     NetworkCheckSpec,
     NetworkCheckStatus,
     _compute_used_proxy,
     _is_cloudflare_challenge,
     _probe_crawler_capability,
+    _site_result_level,
     build_network_check_specs,
     format_result_line,
+    load_site_check_cache,
+    merge_site_check_cache,
     run_network_check,
     run_network_check_item,
 )
@@ -644,3 +649,83 @@ def test_format_result_line_shows_direct_when_not_using_proxy(monkeypatch: pytes
     line = format_result_line(result)
 
     assert "直连" in line
+
+
+# ---- 站点检测缓存（持久化 & 合并，供站点选择列表回显）----
+
+
+def _mk_cache_result(site, status, *, group="刮削站点", used_proxy=True):
+    spec = NetworkCheckSpec(name=str(site), group=group, url="https://example.test", site=site)
+    return NetworkCheckResult(spec=spec, status=status, message="", used_proxy=used_proxy)
+
+
+def test_site_result_level_mapping():
+    assert _site_result_level(NetworkCheckStatus.OK) == "ok"
+    assert _site_result_level(NetworkCheckStatus.WARNING) == "warn"
+    assert _site_result_level(NetworkCheckStatus.FAILED) == "fail"
+    assert _site_result_level(NetworkCheckStatus.SKIPPED) == "skip"
+    assert _site_result_level(NetworkCheckStatus.CANCELLED) == "skip"
+
+
+def test_merge_and_load_cache_roundtrip(monkeypatch: pytest.MonkeyPatch, tmp_path):
+    cache = tmp_path / "cache.json"
+    monkeypatch.setattr(nc, "_site_cache_path", lambda: cache)
+
+    merge_site_check_cache([_mk_cache_result(Website.JAVDB, NetworkCheckStatus.OK, used_proxy=True)])
+
+    loaded = load_site_check_cache()
+    assert loaded["javdb"]["status"] == "ok"
+    assert loaded["javdb"]["route"] == "proxy"
+    assert loaded["javdb"]["checked_at"]
+
+
+def test_merge_cache_ignores_non_scrape_groups(monkeypatch: pytest.MonkeyPatch, tmp_path):
+    cache = tmp_path / "cache.json"
+    monkeypatch.setattr(nc, "_site_cache_path", lambda: cache)
+
+    merge_site_check_cache([_mk_cache_result(Website.JAVDB, NetworkCheckStatus.OK, group="基础环境")])
+
+    assert load_site_check_cache() == {}
+
+
+def test_merge_cache_partial_overwrite_preserves_history(monkeypatch: pytest.MonkeyPatch, tmp_path):
+    cache = tmp_path / "cache.json"
+    monkeypatch.setattr(nc, "_site_cache_path", lambda: cache)
+
+    merge_site_check_cache([_mk_cache_result(Website.JAVDB, NetworkCheckStatus.FAILED, used_proxy=False)])
+    # 重试失败项场景：只重测部分站点，其余历史保留
+    merge_site_check_cache([_mk_cache_result(Website.DMM, NetworkCheckStatus.OK)])
+
+    loaded = load_site_check_cache()
+    assert loaded["javdb"]["status"] == "fail"
+    assert loaded["javdb"]["route"] == "direct"
+    assert loaded["dmm"]["status"] == "ok"
+
+
+def test_merge_cache_new_run_overwrites_same_site(monkeypatch: pytest.MonkeyPatch, tmp_path):
+    cache = tmp_path / "cache.json"
+    monkeypatch.setattr(nc, "_site_cache_path", lambda: cache)
+
+    merge_site_check_cache([_mk_cache_result(Website.JAVDB, NetworkCheckStatus.FAILED)])
+    merge_site_check_cache([_mk_cache_result(Website.JAVDB, NetworkCheckStatus.OK)])
+
+    assert load_site_check_cache()["javdb"]["status"] == "ok"
+
+
+def test_load_cache_bad_or_missing_file(monkeypatch: pytest.MonkeyPatch, tmp_path):
+    cache = tmp_path / "cache.json"
+    monkeypatch.setattr(nc, "_site_cache_path", lambda: cache)
+    assert load_site_check_cache() == {}
+    cache.write_text("not-json", encoding="utf-8")
+    assert load_site_check_cache() == {}
+    cache.write_text('{"version":1,"sites":"oops"}', encoding="utf-8")
+    assert load_site_check_cache() == {}
+
+
+def test_region_tags_reference_valid_websites():
+    # 地域标签数据源防漂移：键必须是真实存在的站点值
+    from mdcx.manual import ManualConfig
+
+    valid = {w.value for w in Website}
+    assert set(ManualConfig.SITE_REGION_TAGS) <= valid
+    assert set(ManualConfig.SITE_REGION_TAGS) == {"dmm", "mgstage", "javdb", "javdb_api"}

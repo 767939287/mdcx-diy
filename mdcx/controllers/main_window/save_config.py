@@ -130,7 +130,7 @@ def save_config(self: "MyMAinWindow"):
 
     # region website
     # 网站相关字段需要转换为枚举或列表
-    website_single_text = self.Ui.comboBox_website_all.currentText()
+    website_single_text = self.Ui.comboBox_website_all.currentData() or self.Ui.comboBox_website_all.currentText()
     try:
         manager.config.website_single = Website(website_single_text)
     except ValueError:
@@ -652,7 +652,7 @@ def save_config(self: "MyMAinWindow"):
     manager.config.timeout = self.Ui.horizontalSlider_timeout.value()  # 超时时间
     manager.config.retry = self.Ui.horizontalSlider_retry.value()  # 重试次数
 
-    site_text = self.Ui.comboBox_custom_website.currentText()
+    site_text = self.Ui.comboBox_custom_website.currentData() or self.Ui.comboBox_custom_website.currentText()
     with suppress(ValueError):
         site = Website(site_text)
         if site == Website.AIRAV:

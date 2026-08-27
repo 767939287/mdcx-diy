@@ -1007,3 +1007,71 @@ async def run_network_check(
             result.spec.name,
         ),
     )
+
+
+# ===== 站点检测结果缓存（持久化到 userdata，供站点选择列表回显） =====
+
+NETWORK_CHECK_CACHE_VERSION = 1
+
+
+def _site_result_level(status: NetworkCheckStatus) -> str:
+    """归一化检测状态：ok/warn/fail/skip。"""
+    if status == NetworkCheckStatus.OK:
+        return "ok"
+    if status == NetworkCheckStatus.WARNING:
+        return "warn"
+    if status == NetworkCheckStatus.FAILED:
+        return "fail"
+    return "skip"
+
+
+def _site_cache_path():
+    from mdcx.config.resources import resources
+
+    return resources.u("network_check_cache.json")
+
+
+def load_site_check_cache() -> dict[str, dict]:
+    """加载站点检测缓存（站点值 → {status, route, checked_at}）。坏 JSON/缺失一律返回空。"""
+    import json
+
+    try:
+        raw = json.loads(_site_cache_path().read_text(encoding="utf-8"))
+        if isinstance(raw, dict) and isinstance(raw.get("sites"), dict):
+            return raw["sites"]
+    except Exception:
+        pass
+    return {}
+
+
+def merge_site_check_cache(results: "list[NetworkCheckResult]") -> None:
+    """把检测结果中"刮削站点"分组的站点项合并进持久化缓存。
+
+    只收集刮削站点（基础环境/共享平台等项不映射到站点选择列表）；
+    重试失败项等部分结果按站点值覆盖更新，其余历史记录保留。
+    写文件失败静默降级（缓存仅用于展示标注，不影响功能）。
+    """
+    import json
+    from datetime import datetime
+
+    sites = load_site_check_cache()
+    now = datetime.now().astimezone().isoformat(timespec="seconds")
+    for result in results:
+        site = result.spec.site
+        if result.spec.group != "刮削站点" or site is None:
+            continue
+        route = ""
+        if result.used_proxy is True:
+            route = "proxy"
+        elif result.used_proxy is False:
+            route = "direct"
+        sites[site.value] = {"status": _site_result_level(result.status), "route": route, "checked_at": now}
+    try:
+        path = _site_cache_path()
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(
+            json.dumps({"version": NETWORK_CHECK_CACHE_VERSION, "sites": sites}, ensure_ascii=False, indent=1),
+            encoding="utf-8",
+        )
+    except Exception:
+        pass

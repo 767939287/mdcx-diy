@@ -4,7 +4,7 @@ import webbrowser
 from typing import TYPE_CHECKING
 
 from PyQt6.QtCore import QSize, Qt
-from PyQt6.QtGui import QAction, QIcon
+from PyQt6.QtGui import QAction, QColor, QIcon, QPainter, QPixmap
 from PyQt6.QtWidgets import QAbstractItemView, QComboBox, QListView, QMenu, QSystemTrayIcon, QTreeWidgetItem
 
 from mdcx.config.extend import get_movie_path_setting
@@ -21,21 +21,97 @@ if TYPE_CHECKING:
     from .main_window import MyMAinWindow
 
 
+def _site_status_icon(level: str) -> QIcon:
+    """站点检测状态圆点图标：ok 绿 / warn 黄 / fail 红；未知或 skip 返回空图标。"""
+    color = {"ok": "#43a047", "warn": "#f9a825", "fail": "#e53935"}.get(level)
+    if not color:
+        return QIcon()
+    pixmap = QPixmap(QSize(12, 12))
+    pixmap.fill(Qt.GlobalColor.transparent)
+    painter = QPainter(pixmap)
+    painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+    painter.setBrush(QColor(color))
+    painter.setPen(Qt.PenStyle.NoPen)
+    painter.drawEllipse(1, 1, 10, 10)
+    painter.end()
+    return QIcon(pixmap)
+
+
+def _site_combo_item_tooltip(value: str, description: str) -> str:
+    """拼装站点项 tooltip：站点定位说明 + 区域标签 + 上次检测结果。"""
+    from mdcx.manual import ManualConfig
+
+    parts = [p for p in (description, ManualConfig.SITE_REGION_TAGS.get(value, "")) if p]
+    tip = "\n".join(parts)
+    cache = _load_check_cache()
+    entry = cache.get(value)
+    if entry:
+        label = {"ok": "✅ 可连通", "warn": "⚠️ 有需关注项", "fail": "❌ 连不通", "skip": "⏭ 上次未测"}.get(
+            str(entry.get("status") or ""), ""
+        )
+        if label:
+            route = {"proxy": "走代理", "direct": "直连"}.get(str(entry.get("route") or ""), "")
+            when = str(entry.get("checked_at") or "")[:16].replace("T", " ")
+            tip += (f"\n上次检测（{when}）：{label}" + (f" · {route}" if route else "")) if when else ""
+    return tip
+
+
+_CHECK_CACHE: dict | None = None
+
+
+def _load_check_cache() -> dict[str, dict]:
+    """懒加载并缓存检测结果；refresh_network_check_badges() 调用后重新读取。"""
+    global _CHECK_CACHE
+    if _CHECK_CACHE is None:
+        from mdcx.core.network_check import load_site_check_cache
+
+        _CHECK_CACHE = load_site_check_cache()
+    return _CHECK_CACHE
+
+
+def invalidate_check_cache() -> None:
+    global _CHECK_CACHE
+    _CHECK_CACHE = None
+
+
 def _populate_site_combo(combo: QComboBox, site_values: list[str]) -> None:
-    """填充站点下拉框，并为每项附带站点定位说明 tooltip。"""
+    """填充站点下拉框：客观区域标签入显示文本，检测状态入图标,说明与上次检测结果入 tooltip。"""
     from mdcx.config.models import Website
     from mdcx.crawlers import get_crawler
+    from mdcx.manual import ManualConfig
 
     for value in site_values:
-        combo.addItem(value)
+        tag = ManualConfig.SITE_REGION_TAGS.get(value, "")
+        cache_entry = _load_check_cache().get(value)
+        icon = _site_status_icon(cache_entry.get("status", "")) if cache_entry else QIcon()
+        # UserRole 存纯站点值：显示文本带区域标签后缀，消费方统一经 currentData()/itemData(UserRole) 取纯值
+        combo.addItem(icon, f"{value}（{tag}）" if tag else value, value)
+        description = ""
         try:
             crawler_cls = get_crawler(Website(value))
             if crawler_cls is not None and hasattr(crawler_cls, "site_description"):
-                description = crawler_cls.site_description()
-                if description:
-                    combo.setItemData(combo.count() - 1, description, Qt.ItemDataRole.ToolTipRole)
+                description = crawler_cls.site_description() or ""
         except Exception:
             pass
+        combo.setItemData(combo.count() - 1, _site_combo_item_tooltip(value, description), Qt.ItemDataRole.ToolTipRole)
+        combo.setItemData(combo.count() - 1, description, Qt.ItemDataRole.UserRole + 1)  # 纯说明供刷新时重建 tooltip
+    view = combo.view()
+    if view is not None:
+        view.setTextElideMode(Qt.TextElideMode.ElideRight)
+
+
+def refresh_network_check_badges(self: "MyMAinWindow") -> None:
+    """检测完成后刷新三个站点下拉框的状态图标与 tooltip（不重排文本，保留当前选中项）。"""
+    invalidate_check_cache()
+    for combo in (self.Ui.comboBox_website_all, self.Ui.comboBox_custom_website, self.Ui.comboBox_no_proxy_sites):
+        for i in range(combo.count()):
+            value = combo.itemData(i, Qt.ItemDataRole.UserRole) or combo.itemText(i).split("（")[0].strip()
+            if not value:
+                continue
+            entry = _load_check_cache().get(value)
+            combo.setItemIcon(i, _site_status_icon(entry["status"]) if entry else QIcon())
+            base = combo.itemData(i, Qt.ItemDataRole.UserRole + 1) or ""
+            combo.setItemData(i, _site_combo_item_tooltip(value, base), Qt.ItemDataRole.ToolTipRole)
 
 
 def Init_Ui(self: "MyMAinWindow"):

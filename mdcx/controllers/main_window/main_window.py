@@ -45,7 +45,7 @@ from mdcx.config.manager import manager
 from mdcx.config.resources import resources
 from mdcx.consts import GITHUB_ISSUES_URL, GITHUB_RELEASES_URL, IS_WINDOWS, LOCAL_VERSION, VERSION_NAME
 from mdcx.core.naming import NameRenderOptions, NamingTarget, render_name
-from mdcx.core.network_check import NetworkCheckStatus, run_network_check
+from mdcx.core.network_check import NetworkCheckStatus, merge_site_check_cache, run_network_check
 from mdcx.core.nfo import write_nfo
 from mdcx.core.scrape_cache import ScrapeStateCache
 from mdcx.core.scraper import again_search, get_remain_list, start_new_scrape
@@ -2232,7 +2232,8 @@ class MyMAinWindow(QMainWindow):
         try:
             before_info = SCRAPE_INFO_EMOJI_RE.sub("", before_info).strip()
             if Flags.file_mode == FileMode.Single:
-                scrape_info = f"单文件刮削\n{Flags.main_mode_text} · {self.Ui.comboBox_website_all.currentText()}"
+                website_label = self.Ui.comboBox_website_all.currentData() or self.Ui.comboBox_website_all.currentText()
+                scrape_info = f"单文件刮削\n{Flags.main_mode_text} · {website_label}"
             else:
                 scrape_info = f"{Flags.main_mode_text} · {Flags.scrape_like_text}"
                 if manager.config.scrape_like == "single":
@@ -3347,6 +3348,8 @@ class MyMAinWindow(QMainWindow):
 
     # 设置-网络-网址设置-下拉框切换
     def switch_custom_website_change(self, site):
+        # 显示文本可能带区域标签后缀（如 "javdb（勿用日本节点）"），剥掉后再转枚举
+        site = site.split("（")[0].strip()
         if site not in Website:
             return
         site = Website(site)
@@ -3357,6 +3360,8 @@ class MyMAinWindow(QMainWindow):
     # 设置 - 网络 - 使用代理 - 添加网站
     def _add_no_proxy_site(self, site_value: str):
         """当用户从下拉框选择网站时，添加到输入框"""
+        # 显示文本可能带区域标签后缀（如 "javdb（勿用日本节点）"），取值时剥掉
+        site_value = site_value.split("（")[0].strip()
         if not site_value or site_value == "选择网站...":
             return
         # 重置下拉框到默认值
@@ -3476,6 +3481,7 @@ class MyMAinWindow(QMainWindow):
 
             self.network_check_future = executor.submit(run_network_check(progress=progress, cancel_event=cancel_event))
             self.network_check_results = self.network_check_future.result()
+            merge_site_check_cache(self.network_check_results)  # 持久化供站点选择列表回显
         except Exception as e:
             signal_qt.show_net_info(f"\n⛔️ 网络检测出现异常：{e}")
             signal_qt.show_net_info(
@@ -3517,6 +3523,7 @@ class MyMAinWindow(QMainWindow):
                 run_network_check(progress=progress, cancel_event=cancel_event, specs=failed_specs, emit_header=False)
             )
             self.network_check_results = self.network_check_future.result()
+            merge_site_check_cache(self.network_check_results)  # 部分重测同样合并进缓存
         except Exception as e:
             signal_qt.show_net_info(f"\n⛔️ 重试失败项出现异常：{e}")
             signal_qt.show_traceback_log(traceback.format_exc())
@@ -3562,7 +3569,10 @@ class MyMAinWindow(QMainWindow):
         ]
 
     def _on_net_check_done(self):
-        """主线程：网络检测完成，恢复按钮状态。"""
+        """主线程：网络检测完成，恢复按钮状态并刷新站点下拉框的检测状态徽标。"""
+        from .init import refresh_network_check_badges
+
+        refresh_network_check_badges(self)
         self.Ui.pushButton_check_net.setEnabled(True)
         self.Ui.pushButton_check_net.setText("开始检测")
         self.Ui.pushButton_check_net.setStyleSheet(
