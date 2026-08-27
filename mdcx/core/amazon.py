@@ -769,10 +769,7 @@ async def get_big_pic_by_amazon(
                 reason="tenhow",
                 url=f"https://www.amazon.co.jp/dp/{cache_hit['asin']}",
             )
-            try:
-                await amazon_database.update_asin_record(number=result.number, poster_url=tenhow_url)
-            except Exception:
-                pass
+            # 注意：tenhow 地址不写入数据库，保持 poster_url 列为纯日亚来源语义
             return tenhow_url
 
         poster_url = cache_hit.get("poster_url", "")

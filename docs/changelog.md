@@ -26,7 +26,7 @@
 
 ### 优化
 
-- **ASIN 缓存命中优先走 tenhow 图床直连下图**：`get_big_pic_by_amazon` 的 ASIN 数据库缓存命中后（无论是否已存封面 URL），先探测免代理图床 `tenhow.net/images/{ASIN}.jpg`（实测图片与日亚 SL1500 同分辨率 ~1055×1500，即日亚原图本体，抽样 8126 个 ASIN 100% 可用），命中即高清直返并把 URL 回写到数据库 poster_url；图片低于 600×800 或不存在时回退原缓存封面 URL，再不行回退日亚搜索。免代理、绕开日亚 CAPTCHA/429，覆盖率约 9%（数据库内 tenhow 来源记录）
+- **ASIN 缓存命中优先走 tenhow 图床直连下图**：`get_big_pic_by_amazon` 的 ASIN 数据库缓存命中后（无论是否已存封面 URL），先探测免代理图床 `tenhow.net/images/{ASIN}.jpg`（实测图片与日亚 SL1500 同分辨率 ~1055×1500，即日亚原图本体，抽样 8126 个 ASIN 100% 可用），命中即高清直返；图片低于 600×800 或不存在时回退原缓存封面 URL，再不行回退日亚搜索。tenhow 地址仅当次使用，不写入数据库，poster_url 列保持纯日亚来源语义。免代理、绕开日亚 CAPTCHA/429，覆盖率约 9%（数据库内 tenhow 来源记录）
 - **高分屏缩放默认启用非整数倍缩放（PassThrough）**：Windows 125%/150% 等系统缩放下界面不再被取整导致模糊或过大；原勾选开关移除，老配置静默忽略
 - **有限收录站点定制探测番号**：mgstage/mywife/prestige/getchu/avsex/xcity/fc2 系列及国产/素人类站点改用各站实测收录的番号探测，消除"测试番号未被收录"误报；综合站维持默认 SSNI-647
 - **站点选择列表双标注**：客观区域标签作为显示后缀（dmm/mgstage「日本IP限定」，javdb/javdb_api「勿用日本节点」，数据源唯一收敛于 `ManualConfig.SITE_REGION_TAGS` 并由测试锁定键集合）；「检测网络」结果持久化到 userdata 缓存，三个站点下拉框显示最近实测状态圆点（✅可连通/⚠️需关注/❌连不通）并在 tooltip 附检测时间与路由（走代理/直连）；显示文本带标签不影响配置取值（UserRole 存纯站点值，全部消费点统一切换）
