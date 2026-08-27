@@ -24588,7 +24588,7 @@ p, li { white-space: pre-wrap; }
 &lt;li&gt;&lt;b&gt;读取模式&lt;/b&gt;：通过读取本地 NFO 文件实现无需联网的查看或更新，4 个独立选项可自由组合——有 NFO 时更新（按更新规则整理）、无 NFO 时刮削（对没 NFO 的文件联网刮）、重新下载（重新下载图片）、更新 NFO（更新 NFO 内容如补演员 TMDB ID）。读取模式不受断点续刮缓存干扰，始终处理全部选中文件。&lt;/li&gt;
  &lt;li&gt;&lt;b&gt;NFO 合并策略&lt;/b&gt;（读取模式区域下拉框）：写入 NFO 前按策略决定如何处理已存在的 NFO——偏好刮削结果（prefer_scraper）/ 偏好本地 NFO（prefer_nfo）/ 数组字段合并（merge_arrays）/ 保留现有（preserve_existing）/ 仅填空缺（fill_missing_only），防止重刮覆盖手动整理的内容。&lt;/li&gt;
 &lt;li&gt;&lt;b&gt;软链接&lt;/b&gt;（设置项，非独立模式）：在任意模式下勾选「创建软链接」即可刮削后不移动原视频，而是在目标目录创建软链接（类快捷方式），便于 PT 下载既刮削又保种；需以管理员 / 有权限身份运行。注意：软链接通常只能在媒体库展示，不能直接播放。&lt;/li&gt;
-&lt;li&gt;&lt;b&gt;调试模式&lt;/b&gt;（设置→高级选项）：在「设置→高级」勾选「调试模式」选项后，日志页面会输出番号对应的完整元数据（封面、导演、演员、简介等）供排查。&lt;/li&gt;
+&lt;li&gt;&lt;b&gt;调试模式&lt;/b&gt;：在「设置→高级」的「调试模式（日志页面）」分组中勾选「显示字段内容信息」（完整排查可同时勾选「显示刮削过程信息」「显示字段来源信息」），日志页面会输出番号对应的完整元数据（封面、导演、演员、简介等）供排查。&lt;/li&gt;
 &lt;/ul&gt;
 
 &lt;h4&gt;三、命名规则&lt;/h4&gt;
@@ -24596,16 +24596,16 @@ p, li { white-space: pre-wrap; }
 &lt;li&gt;&lt;b&gt;目录命名&lt;/b&gt;：存放视频的文件夹名，支持多层目录与自定义符号，例：[actor]/studio/number-【title】。&lt;/li&gt;
 &lt;li&gt;&lt;b&gt;标题命名（媒体库）&lt;/b&gt;：NFO 中的标题，例：number-[title]。&lt;/li&gt;
 &lt;li&gt;&lt;b&gt;标题命名（本地文件）&lt;/b&gt;：本地视频与图片的命名，例：number-[title]。&lt;/li&gt;
-&lt;li&gt;可用变量：title（片名）、actor（演员）、studio（制作商）、director（导演）、release（发售日）、year（年份）、number（番号）、runtime（时长）、series（系列）、publisher（发行商）。支持 Jinja2 模板与自定义符号。&lt;/li&gt;
+&lt;li&gt;可用变量：number（番号）、title（标题）、originaltitle（原标题）、actor（演员）、first_actor（首位演员）、all_actor（全部演员）、letters（番号前缀）、first_letter（番号首字符）、outline（简介）、director（导演）、series（系列）、studio（片商）、publisher（发行商）、release（发行日期）、year（年份）、runtime（时长）、mosaic（有码/无码）、definition（清晰度）、cnword（字幕标识）、moword（版本标识）、filename（原文件名）、wanted（想看人数）、score（评分）、four_k（4K 标识）。支持 Jinja2 模板与自定义符号。&lt;/li&gt;
 &lt;/ul&gt;
 
 &lt;h4&gt;四、网站选择&lt;/h4&gt;
-&lt;p&gt;网站下拉框由已注册的爬虫自动生成（当前 43 个），可按需选用全部网站或指定网站。主要来源包括：&lt;/p&gt;
+&lt;p&gt;网站下拉框由已注册的爬虫自动生成（当前 35 个），可按需选用全部网站或指定网站。主要来源包括：&lt;/p&gt;
  &lt;ul&gt;
- &lt;li&gt;&lt;b&gt;有码&lt;/b&gt;：仅能有码——DMM、DMM-API、TheJavDB-API、LibreDMM、R18.dev、AVBase、Xcity、Prestige、MGStage、Getchu、Getchu-DMM、JavLibrary、FreeJavBT、Lulubar、AVMOO；综合（有码+无码）——JavBus、JavDB 系、MissAV 系、Official、airav.cc、AVSex、JavDay、IQQTV&lt;/li&gt;
- &lt;li&gt;&lt;b&gt;无码&lt;/b&gt;：AVSOX 及综合站（JavBus、JavDB 系、MissAV 系、AVSex、Official、JavDay、IQQTV）&lt;/li&gt;
+ &lt;li&gt;&lt;b&gt;有码&lt;/b&gt;：仅能有码——DMM、DMM-API、TheJavDB-API、LibreDMM、R18.dev、AVBase、Xcity、Prestige、MGStage、Getchu、JavLibrary、FreeJavBT、Lulubar、AVMOO；综合（有码+无码）——JavBus、JavDB 系、MissAV 系、Official、airav.cc、AVSex、JavDay、JavFree、IQQTV&lt;/li&gt;
+ &lt;li&gt;&lt;b&gt;无码&lt;/b&gt;：AVSOX、AVEntertainments 及综合站（JavBus、JavDB 系、MissAV 系、AVSex、Official、JavDay、IQQTV）&lt;/li&gt;
  &lt;li&gt;&lt;b&gt;素人&lt;/b&gt;：MGStage（259LUXU 等）、Prestige、JavBus、JavDB 系、DMM、DMM-API、AVBase、MissAV 系、MyWife、IQQTV&lt;/li&gt;
- &lt;li&gt;&lt;b&gt;FC2&lt;/b&gt;：FC2、FC2PPVDB、JavDB 系&lt;/li&gt;
+ &lt;li&gt;&lt;b&gt;FC2&lt;/b&gt;：FC2、FC2PPVDB、JavDB 系、JavFree&lt;/li&gt;
  &lt;li&gt;&lt;b&gt;国产&lt;/b&gt;：MADOUQU、MADOU_CLUB、AVSex、IQQTV、JavDay&lt;/li&gt;
  &lt;li&gt;&lt;b&gt;欧美&lt;/b&gt;：THEPORNDB、AVHEAT&lt;/li&gt;
  &lt;/ul&gt;
@@ -24616,14 +24616,14 @@ p, li { white-space: pre-wrap; }
 &lt;li&gt;&lt;b&gt;外部 CF 服务&lt;/b&gt;：在"设置 → 网络"填写 TRAWL / FlareSolverr 风格外部 CF 服务地址（如 http://127.0.0.1:8191），并在右侧选择后端类型：TRAWL（走 /scrape 原生 API）或 FlareSolverr（走 /v1 兼容 API）。MDCx 自动在本地拉起协议适配层把请求翻译给外部服务，无需自行填 /v1 地址。&lt;/li&gt;
 &lt;li&gt;&lt;b&gt;Selenium CF Bypass&lt;/b&gt;（JavLibrary 专用）：JavLibrary 遇 Cloudflare JS challenge 时自动 fallback 到 Selenium+Edge headless 获取页面 HTML。默认开启（cf_selenium_bypass），需要 Windows 10/11 + Edge 浏览器，首次使用自动安装 selenium，无 Edge 环境优雅降级，连续失败 3 次进入 5 分钟冷却。&lt;/li&gt;
 &lt;li&gt;&lt;b&gt;Bypass 落地白名单&lt;/b&gt;：可填写可信落地域名白名单（逗号分隔，支持 *.example.com 子域通配），用于校验 Bypass 服务落地/重定向后的最终域名，防止第三方服务被劫持时把恶意页面当数据；留空表示不校验（默认）。&lt;/li&gt;
-&lt;li&gt;&lt;b&gt;免 CF 通道&lt;/b&gt;：部分站点已提供免 CF 的数据接口（missav_api、r18dev、thejavdb_api），默认未启用，需在「设置 → 刮削」手动添加到网站列表。优先选用可获得更稳定的抓取。&lt;/li&gt;
+&lt;li&gt;&lt;b&gt;免 CF 通道&lt;/b&gt;：部分站点提供免 CF 的数据接口（javdb_api、javdb_app、missav_api、r18dev、thejavdb_api），默认已加入网站源，可直接选用获得更稳定的抓取。&lt;/li&gt;
 &lt;/ul&gt;
 
 &lt;h4&gt;六、代理设置&lt;/h4&gt;
 &lt;p&gt;在"设置 → 网络"中配置：&lt;/p&gt;
 &lt;ul&gt;
 &lt;li&gt;&lt;b&gt;启用代理&lt;/b&gt;：开启后填写 HTTP / HTTPS 或 SOCKS5 代理地址（如 http://127.0.0.1:7890）。&lt;/li&gt;
-&lt;li&gt;&lt;b&gt;走代理网站&lt;/b&gt;：仅指定域名走代理，其余直连。默认包含 amazon.co.jp、m.media-amazon.com、xcity.jp、minnano-av.com、avbase.net、javbus.com、javdb.com、javlibrary.com、r18.dev、mgstage.com、prestige-av.com、seesaawiki.jp、avsox.click、avsox.com、avmoo.shop、avmoo.com、avheat.shop、avheat.com、caribbeancom.com、heyzo.com、1pondo.tv、pacopacomama.com、10musume.com、mywife.cc、github.com、raw.githubusercontent.com、google.com、missav.ws、missav.ai、missav.live。可按需增删。&lt;/li&gt;
+&lt;li&gt;&lt;b&gt;走代理网站&lt;/b&gt;：仅指定域名走代理，其余直连。默认包含 amazon.co.jp、m.media-amazon.com、xcity.jp、minnano-av.com、avbase.net、javbus.com、javdb.com、javlibrary.com、r18.dev、mgstage.com、prestige-av.com、seesaawiki.jp、avsox.click、avsox.com、avmoo.shop、avmoo.com、avheat.shop、avheat.com、caribbeancom.com、heyzo.com、1pondo.tv、pacopacomama.com、10musume.com、mywife.cc、github.com、raw.githubusercontent.com、google.com、missav.ws、missav.ai、missav.live、aventertainments.com、javfree.me。可按需增删。&lt;/li&gt;
 &lt;li&gt;&lt;b&gt;CF Bypass 代理&lt;/b&gt;：为绕过 Cloudflare 的请求单独设置代理。&lt;/li&gt;
 &lt;/ul&gt;
 &lt;p&gt;如持续提示网络 / 代理错误，请检查地址与端口、确认代理软件处于全局模式，或尝试重启代理与网卡。&lt;/p&gt;
@@ -24631,14 +24631,14 @@ p, li { white-space: pre-wrap; }
 &lt;h4&gt;七、界面与高分屏&lt;/h4&gt;
 &lt;ul&gt;
 &lt;li&gt;&lt;b&gt;界面缩放&lt;/b&gt;：设置 → 界面外观 → 高分屏缩放，提供 跟随系统 / 80% / 90% / 100% / 125% / 150% / 175% / 200% 共 8 档，保存后重启生效。&lt;/li&gt;
-&lt;li&gt;&lt;b&gt;非整数倍缩放&lt;/b&gt;：勾选后可启用 Windows 高 DPI 非整数缩放，缓解界面模糊。&lt;/li&gt;
+&lt;li&gt;&lt;b&gt;非整数缩放&lt;/b&gt;：PassThrough 高 DPI 非整数缩放已默认启用，无需手动开启，Windows 125%/150% 等缩放档位下界面不再模糊。&lt;/li&gt;
 &lt;li&gt;&lt;b&gt;暗色模式&lt;/b&gt;：内置暗色主题切换。&lt;/li&gt;
 &lt;/ul&gt;
 
 &lt;h4&gt;八、断点续刮与相似推荐&lt;/h4&gt;
 &lt;ul&gt;
 &lt;li&gt;&lt;b&gt;断点续刮&lt;/b&gt;：刮削进度自动保存到本地数据库（userdata/scrape_state.db，WAL 模式 SQLite）。程序重启或崩溃后再次刮削，会自动跳过已完成的文件、恢复上次失败的未超限文件（最多自动重试 3 次），从上次进度继续。&lt;b&gt;读取模式不受断点续刮缓存干扰&lt;/b&gt;，始终处理全部选中文件。如需清除缓存重新全量刮削，可使用工具页的「刮削缓存管理」重置。&lt;/li&gt;
-&lt;li&gt;&lt;b&gt;失败重试&lt;/b&gt;：刮削失败的文件自动记录，下次启动时重新尝试，连续失败 3 次后停止自动重试（可在结果树中对失败项右键强制重刮）。&lt;/li&gt;
+&lt;li&gt;&lt;b&gt;失败重试&lt;/b&gt;：刮削失败的文件自动记录，下次启动时重新尝试，连续失败 3 次后停止自动重试。届时可在结果树中对失败项右键「重新刮削」（输入正确番号重刮）或「输入网址重新刮削」（指定详情页网址重刮），手动重刮不受重试次数限制。&lt;/li&gt;
 &lt;li&gt;&lt;b&gt;相似片推荐&lt;/b&gt;：在右侧结果树中对任意影片右键 →「查看相似片推荐」，基于标签 IDF 加权 Jaccard 相似度 + 系列/片商/发行商/导演/评分/年份/时长/演员等多维特征本地离线计算，自动推荐风格相近的影片，支持全部历史刮削结果（含跨会话），双击推荐项可跳转。&lt;/li&gt;
 &lt;/ul&gt;
 
@@ -24672,7 +24672,7 @@ p, li { white-space: pre-wrap; }
  &lt;li&gt;&lt;b&gt;素人&lt;/b&gt;：MGStage: 259LUXU-1111；JavDB: LUXU-1111；FC2: FC2-111111、FC2-PPV-111111&lt;/li&gt;
 &lt;li&gt;&lt;b&gt;欧美&lt;/b&gt;：JavDB / JavBus: sexart.11.11.11（系列.年.月.日）&lt;/li&gt;
 &lt;li&gt;&lt;b&gt;字幕影片&lt;/b&gt;：ssni-xxx-c.mp4 / -C.mp4（字幕标记靠近扩展名）&lt;/li&gt;
-&lt;li&gt;&lt;b&gt;多集影片&lt;/b&gt;：ssni-xxx-cd1.mp4、ssni-xxx-cd2.mp4（仅支持 -cdN 形式，不支持 -A / -B / -1 / -2，避免与字幕 -C 混淆）&lt;/li&gt;
+&lt;li&gt;&lt;b&gt;多集影片&lt;/b&gt;：ssni-xxx-cd1.mp4、ssni-xxx-cd2.mp4（默认支持 -cdN / -partN / -hdN / 单数字结尾 -1 等形式；如需 -A 字母分集或 -01 两位数字分集，可在设置 → 命名中勾选『允许识别分集』对应选项）&lt;/li&gt;
 &lt;li&gt;&lt;b&gt;外挂字幕&lt;/b&gt;：字幕文件名需与影片一致，支持 srt / ass / sub，方可随影片一起移动&lt;/li&gt;
 &lt;/ul&gt;
 

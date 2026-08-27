@@ -390,6 +390,7 @@ class Config(BaseModel):
             Website.JAVFREE,
             Website.AIRAV_CC,
             Website.AVSEX,
+            # 仅能有码：AVMOO、TheJavDB API
             Website.AVMOO,
             Website.THEJAVDB_API,
             Website.OFFICIAL,
