@@ -57,3 +57,13 @@
   - 文件间批量用 asyncio.wait(FIRST_COMPLETED) 滑动窗口，文件内多站点用 gather；网络请求不跨 executor loop 复用。
   - 后台协程统一 utils/qt_thread.py::run_in_background，不直接碰 QWidget，结果经 Qt signal 回主线程；新增后跑 scripts/check_thread_safety.py。
   - 出厂模板在 resources/userdata/，运行时数据在 manager.data_folder/userdata/ 勿混淆；devbox 代理 127.0.0.1:7890 可能无进程，排查网络临时关闭代理而不改产品默认配置。
+
+## 日亚数据库校正与验证链路
+
+- Date: 2026-08-27
+- Category: 排错调试
+- Instructions:
+  - amazon_asin_database.xlsx 是 ASIN-番号映射库，以 ASIN 为唯一可信锚点（ASIN 唯一，番号可由多个搜索误挂到同一 ASIN）；冲突形态：同一 ASIN 挂多个番号且各行标题相同（都是该 ASIN 真实商品的日亚标题）。
+  - 权威校验源（devbox 免代理无地区锁）：libredmm `https://www.libredmm.com/movies/{番号小写带横杠}`（如 meyd-011），页面 `<h1><span>番号</span><span>DMM标题</span></h1>` 直接给 DMM 商品标题，与 DB 里该 ASIN 的日亚标题比对（归一化后核心子串互相包含）即可裁决正确番号；libredmm 站点慢（单页 2-10s），批量需限速重试。libredmm 无标题全文搜索，只有 fuzzy（返回内部数字 ID，不便反查），反查靠候选番号逐个直查比对。
+  - DMM（dmm.co.jp）/fanza 均地区锁（日本外 302 到 not-available-in-your-region），无法从 devbox 直连；日亚 dp 页 devbox 直连 404（amazon.co.jp 在默认代理表，需代理/日本节点，用户提醒日亚要走日本节点）。封面 OCR（tesseract eng）对日系封面效果差，不可作验证依据。
+  - tenhow.net 图床：图片按 Amazon ASIN 命名 `images/{ASIN}.jpg`（大图）与 icon_/s_ 前缀小图；全站仅 ~250 静态页（演员/类别），BFS 一次收敛，约 8000 条目，条目 DOM 内 ASIN 图与 DMM cid 绑定（cid→番号：去掉厂商数字前缀+去零，如 13gvg00564→GVG-564）。索引内无 ASIN↔cid 冲突。对 DB ASIN 覆盖率仅 ~9%，但图床按需服务——索引外的 ASIN 也有 ~45% 直接可下图（无 cid 信息）。经 13 个冲突 ASIN 对 libredmm 实测 13/13 绑定正确，可信。可用于 T0：拿到 ASIN 后先试 tenhow 直连下图（免代理），404 回退 Amazon。

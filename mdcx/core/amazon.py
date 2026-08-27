@@ -142,6 +142,35 @@ async def _save_asin_record(
         LogBuffer.log().write(f"\n 🟡 Amazon ASIN 数据库保存失败：{e}")
 
 
+# tenhow.net 图床：免代理直连，按 ASIN 提供高清封面图
+TENHOW_IMAGE_URL_TEMPLATE = "https://tenhow.net/images/{asin}.jpg"
+# tenhow 封面实测约 1050x1500，低于该分辨率认为质量不足，回退日亚搜索
+TENHOW_IMAGE_MIN_WIDTH = 600
+TENHOW_IMAGE_MIN_HEIGHT = 800
+
+
+async def _probe_tenhow_image(asin: str) -> tuple[str, tuple[int, int]]:
+    """
+    探测 tenhow 图床是否有该 ASIN 对应的高清封面
+
+    Args:
+        asin: Amazon ASIN
+
+    Returns:
+        (可用的图片 URL, (宽, 高))；不可用返回 ("", (0, 0))
+    """
+    if not re.match(r"^[A-Z0-9]{10}$", asin or ""):
+        return "", (0, 0)
+    url = TENHOW_IMAGE_URL_TEMPLATE.format(asin=asin)
+    try:
+        width, height = await get_imgsize(url)
+    except Exception:
+        return "", (0, 0)
+    if width >= TENHOW_IMAGE_MIN_WIDTH and height >= TENHOW_IMAGE_MIN_HEIGHT:
+        return url, (width, height)
+    return "", (width, height)
+
+
 async def _check_asin_cache(number: str) -> dict | None:
     """
     检查 ASIN 缓存
@@ -730,9 +759,25 @@ async def get_big_pic_by_amazon(
     if cache_hit:
         LogBuffer.log().write(f"\n 📚 Amazon ASIN 缓存：命中 {result.number} → {cache_hit['asin']}")
 
+        # 优先尝试 tenhow 图床直连（免代理，且图片与日亚 SL1500 同源同分辨率）
+        tenhow_url, tenhow_size = await _probe_tenhow_image(cache_hit["asin"])
+        if tenhow_url:
+            LogBuffer.log().write(f"  命中 tenhow 图床高清封面 ({tenhow_size[0]}x{tenhow_size[1]})")
+            _set_amazon_match_state(
+                result,
+                is_hard=False,
+                reason="tenhow",
+                url=f"https://www.amazon.co.jp/dp/{cache_hit['asin']}",
+            )
+            try:
+                await amazon_database.update_asin_record(number=result.number, poster_url=tenhow_url)
+            except Exception:
+                pass
+            return tenhow_url
+
         poster_url = cache_hit.get("poster_url", "")
         if poster_url:
-            LogBuffer.log().write("  使用缓存的封面 URL")
+            LogBuffer.log().write("  tenhow 图床不可用，使用缓存的封面 URL")
             _set_amazon_match_state(
                 result,
                 is_hard=False,
@@ -740,7 +785,11 @@ async def get_big_pic_by_amazon(
                 url=f"https://www.amazon.co.jp/dp/{cache_hit['asin']}",
             )
             return _convert_to_target_size(poster_url)
-        LogBuffer.log().write("  缓存无封面 URL，回退搜索获取")
+
+        if tenhow_size != (0, 0):
+            LogBuffer.log().write(f"  tenhow 图床图片过小 ({tenhow_size[0]}x{tenhow_size[1]})，回退搜索获取")
+        else:
+            LogBuffer.log().write("  tenhow 图床无此封面，回退搜索获取")
 
     if not originaltitle_amazon and not originaltitle_amazon_raw:
         return ""
