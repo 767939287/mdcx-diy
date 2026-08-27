@@ -10,6 +10,7 @@
   - 简体中文回复；面向小白说明按"现象和影响 → 原因 → 可执行步骤"组织。
   - 改动前说明内容与原因；用户明确要求提交/推送后才执行，绝不擅自操作。直接在当前分支操作。
   - 每次代码改动后跑 `uv run quick-check`；提交前跑 `uv run check --skip-hook-install` 并确认退出码。仅改 `docs/*.md` 或本文件时只需 `git diff --check`。
+  - 提交前必看 `git status` 全部未跟踪文件：程序运行时残留（如配置损坏回退 `_failed.json`）不得 `git add -A` 入库，应 `.gitignore` 排除后单独清理；本次已有教训（2026-08-27 误提交后再补救）。
   - 不装 pre-commit；提交前更新 `docs/changelog.md` 当前版本条目并合并同类；文档日期用北京时间。
   - 站点/爬虫/配置改动须同步检查 UI 文案（启动文字 main_window.py、.ui）、README、`docs/*.md`、爬虫总数（`crawler_names()` 长度）。
   - 文档/UI 中写死数字或清单前必须先 grep 代码核实，禁止凭记忆。高频漂移锚点（2026-08 核查实证）：默认网站源顺序（`config/models.py` ↔ `resources/config/default_config.json`，`test_config_conversion.py::test_config_default_site_priorities_follow_current_frontend_defaults` 锁定，改注释勿动枚举）、代理域名列表（`Config.proxy_sites`）、命名变量表（`core/naming/fields.py::FIELD_DESCRIPTIONS`）、设置 Tab 名（tabWidget.setTabText）、水印行为（`MarkType` 徽标+角落轮转，无文字水印）、字段优先级数（`manual.py::REDUCED_FIELDS`）、演员库列（`resources.py::DB_HEADERS`）、指纹池（`network_fingerprint.py`，默认 7/Amazon 6，无令牌桶限流）、主窗口行数（`wc -l controllers/main_window/*.py`）。
