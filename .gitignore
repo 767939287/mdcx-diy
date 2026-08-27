@@ -207,3 +207,6 @@ jav_database/
 # fill_zh_javdb 分批执行脚本及状态文件（本地临时调试用）
 scripts/run_fill_zh_javdb.py
 .fill_zh_javdb_state.json
+
+# 配置文件损坏时的自动回退文件（load_config.py 生成，勿入库）
+_failed.json
