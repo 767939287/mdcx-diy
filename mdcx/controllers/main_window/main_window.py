@@ -1,5 +1,6 @@
 import html
 import os
+import platform
 import re
 import shutil
 import threading
@@ -3536,9 +3537,29 @@ class MyMAinWindow(QMainWindow):
         if not lines:
             signal_qt.show_net_info("⛔️ 暂无可复制内容，请先运行检测")
             return
-        text = "\n".join(lines)
+        header = self._build_net_diagnostic_header()
+        text = "\n".join(header + lines)
         QApplication.clipboard().setText(text)
-        signal_qt.show_net_info(f"✅ 检测结果已复制到剪贴板（{len(lines)} 行）")
+        signal_qt.show_net_info("✅ 检测报告已复制到剪贴板（含版本/系统概要，代理地址已脱敏，可直接粘贴到 issue 求助）")
+
+    @staticmethod
+    def _build_net_diagnostic_header() -> list[str]:
+        """生成复制到剪贴板的诊断报告头部：版本/系统/脱敏后的网络配置概要。"""
+        from mdcx.utils import mask_proxy_url
+
+        config = manager.config
+        use_proxy = bool(config.use_proxy and config.proxy)
+        proxy_info = mask_proxy_url(config.proxy) if use_proxy else "未启用"
+        return [
+            "=" * 88,
+            "MDCx 网络诊断报告（提 issue 时可直接粘贴本段全部内容）",
+            f"  版本: {VERSION_NAME} ({LOCAL_VERSION})",
+            f"  系统: {platform.system()} {platform.release()} ({platform.machine()})",
+            f"  时间: {time.strftime('%Y-%m-%d %H:%M:%S')}",
+            f"  代理: {proxy_info}    CF Bypass: {'已配置' if config.cf_bypass_url.strip() else '未配置'}"
+            f"    外部 CF 服务: {'已配置' if config.cf_bypass_trawl_url.strip() else '未配置'}",
+            "=" * 88,
+        ]
 
     def _on_net_check_done(self):
         """主线程：网络检测完成，恢复按钮状态。"""
@@ -3580,10 +3601,18 @@ class MyMAinWindow(QMainWindow):
                 signal_qt.show_traceback_log(str(e))
                 signal_qt.show_traceback_log(traceback.format_exc())
 
-    # 检测网络界面日志显示
+    # 检测网络界面日志显示；按行首状态图标着色，便于小白快速定位失败项
     def show_net_info(self, text):
         try:
-            self.net_logs_show.emit(add_html_plain_text(text))
+            color = ""
+            stripped = str(text or "").lstrip()
+            if stripped.startswith(("❌", "⛔️", "⛔")):
+                color = "#e53935"
+            elif stripped.startswith("⚠"):
+                color = "#f9a825"
+            elif stripped.startswith("✅"):
+                color = "#43a047"
+            self.net_logs_show.emit(add_html_plain_text(text, color=color))
         except Exception:
             signal_qt.show_traceback_log(traceback.format_exc())
             self.Ui.textBrowser_net_main.append(traceback.format_exc())

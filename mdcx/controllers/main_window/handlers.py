@@ -2,6 +2,7 @@ import time
 
 from mdcx.config.manager import manager
 from mdcx.signals import signal_qt
+from mdcx.utils import mask_proxy_url
 
 
 def show_netstatus() -> None:
@@ -28,7 +29,7 @@ def show_netstatus() -> None:
     else:
         signal_qt.show_net_info(
             f" 当前网络状态：✅ 已启用代理\n"
-            f"   地址：{proxy}\n"
+            f"   地址：{mask_proxy_url(proxy)}\n"
             f"   CF Bypass：{bypass_status}    Bypass代理：{bypass_proxy_status}    外部CF：{trawl_status}    超时：{timeout!s}    重试：{retry_count!s}"
         )
     signal_qt.show_net_info("=" * 80)

@@ -18,6 +18,7 @@ from ..crawlers.base import GenericBaseCrawler, get_crawler
 from ..manual import ManualConfig
 from ..models.model_types import CrawlerInput
 from ..utils import executor
+from ..utils import mask_proxy_url as _mask_proxy
 from ..web_async import AsyncWebClient
 
 app = typer.Typer(help="爬虫调试工具", context_settings={"help_option_names": ["-h", "--help"]})
@@ -25,23 +26,6 @@ console = Console()
 os.environ["MDCX_SHOW_BROWSER"] = "1"  # 显示浏览器界面
 
 proxy_help = "代理地址 (例如: http://127.0.0.1:7890). 如未指定将加载 config 设置"
-
-
-def _mask_proxy(proxy: str) -> str:
-    """脱敏代理地址, 仅保留 host 前 3 字符 + *** + :port, 避免 user:pass 明文泄露到日志/终端。
-
-    支持 scheme://[user:pass@]host:port / user:pass@host:port / host:port 等形态。
-    """
-    s = (proxy or "").strip()
-    if not s:
-        return ""
-    if "@" in s:  # 去掉 user:pass 凭据部分
-        s = s[s.rfind("@") + 1 :]
-    if ":" in s:
-        host, _, port = s.rpartition(":")
-        shown = (host[:3] + "***") if len(host) > 3 else "***"
-        return f"{shown}:{port}"
-    return "***"
 
 
 @app.callback(invoke_without_command=True)

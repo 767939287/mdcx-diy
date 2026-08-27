@@ -246,7 +246,7 @@ def add_html(text: str) -> str:
     return f'<span style="white-space: pre-wrap;">{text}</span>'
 
 
-def add_html_plain_text(text: str) -> str:
+def add_html_plain_text(text: str, color: str = "") -> str:
     text = str(text or "")
     parts: list[str] = []
     last_end = 0
@@ -259,7 +259,27 @@ def add_html_plain_text(text: str) -> str:
         last_end = match.end()
 
     parts.append(html.escape(text[last_end:]))
-    return f'<span style="white-space: pre-wrap;">{"".join(parts)}</span>'
+    style = "white-space: pre-wrap;" + (f"color:{color};" if color else "")
+    return f'<span style="{style}">{"".join(parts)}</span>'
+
+
+def mask_proxy_url(proxy: str) -> str:
+    """脱敏代理地址：仅保留 host 前 3 字符 + *** + :port，隐藏 user:pass 与完整主机名。
+
+    支持 scheme://[user:pass@]host:port / user:pass@host:port / host:port 等形态。
+    """
+    s = (proxy or "").strip()
+    if not s:
+        return ""
+    if "://" in s:  # 先去掉 scheme，否则 host 段会带 scheme 导致脱敏失败
+        s = s.split("://", 1)[1]
+    if "@" in s:  # 去掉 user:pass 凭据部分
+        s = s[s.rfind("@") + 1 :]
+    if ":" in s:
+        host, _, port = s.rpartition(":")
+        shown = (host[:3] + "***") if len(host) > 3 else "***"
+        return f"{shown}:{port}"
+    return "***"
 
 
 def clean_list(a: str) -> str:

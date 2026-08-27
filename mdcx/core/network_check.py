@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING, Any
 from urllib.parse import quote_plus, urljoin
 
 from mdcx.config.enums import Website
+from mdcx.utils import mask_proxy_url
 
 if TYPE_CHECKING:
     from mdcx.web_async import AsyncWebClient
@@ -184,9 +185,12 @@ def _classify_http_result(spec: NetworkCheckSpec, status_code: int, text: str) -
         if "The owner of this website has banned your access based on your browser's behaving" in text:
             ip_address = re.findall(r"(\d+\.\d+\.\d+\.\d+)", text)
             ip_text = f"{ip_address[0]} " if ip_address else ""
-            return NetworkCheckStatus.FAILED, f"当前 IP {ip_text}被 JavDB 封禁"
+            return (
+                NetworkCheckStatus.FAILED,
+                f"当前节点出口 IP {ip_text}被 JavDB 封禁（走代理时是代理节点 IP，请更换节点）",
+            )
         if "Due to copyright restrictions" in text or "Access denied" in text:
-            return NetworkCheckStatus.FAILED, "当前 IP 被 JavDB 限制，请使用非日本节点"
+            return NetworkCheckStatus.FAILED, "当前节点 IP 被 JavDB 限制（版权区域限制），请使用非日本节点"
         if "/logout" in text:
             return NetworkCheckStatus.OK, "连接正常，Cookie 有效"
         if manager.config.javdb:
@@ -208,10 +212,12 @@ def _classify_http_result(spec: NetworkCheckSpec, status_code: int, text: str) -
     if spec.site == Website.MGSTAGE and not text.strip():
         return NetworkCheckStatus.FAILED, "MGStage 返回空页面，通常是地域限制，请使用日本节点"
 
-    if status_code in {401, 403}:
-        return NetworkCheckStatus.WARNING, f"HTTP {status_code}，可能需要 Cookie、API Token 或更换节点"
+    if status_code == 401:
+        return NetworkCheckStatus.WARNING, "HTTP 401 鉴权失败：请在设置 → 网络中配置该站的 Cookie 或 API Token"
+    if status_code == 403:
+        return NetworkCheckStatus.WARNING, "HTTP 403 请求被拒绝：多为反爬或地域限制，请更换代理节点或配置 CF Bypass"
     if status_code == 429:
-        return NetworkCheckStatus.WARNING, "HTTP 429，请求被限流"
+        return NetworkCheckStatus.WARNING, "HTTP 429 请求被限流：请稍等几分钟再重试，或在设置中降低并发数"
     if 200 <= status_code < 400:
         return NetworkCheckStatus.OK, "连接正常"
     if 500 <= status_code:
@@ -264,7 +270,7 @@ async def _probe_crawler_by_run(
         message = (
             f"刮削探测失败: {error}"
             if error
-            else f"站点可达，但测试番号 {probe_number} 未被该站点收录（单厂牌/收录有限站点常见），建议刮削时用实际番号实测"
+            else f"站点可达，但测试番号 {probe_number} 未被该站点收录（单厂牌/收录有限站点常见，属正常情况，若实际刮削正常可忽略本警告）"
         )
         return NetworkCheckStatus.WARNING, message
     return NetworkCheckStatus.OK, "连接正常，刮削正常"
@@ -411,7 +417,7 @@ def _format_header() -> list[str]:
     lines.append("基础环境")
     lines.append(f"  {'代理状态':<16}{'已启用' if use_proxy else '未启用'}")
     if use_proxy:
-        lines.append(f"  {'代理地址':<16}{manager.config.proxy}")
+        lines.append(f"  {'代理地址':<16}{mask_proxy_url(manager.config.proxy)}")
     lines.append(f"  {'CF Bypass':<16}{'已配置' if cf_bypass_url else '未配置'}")
     lines.append(f"  {'CF Bypass代理':<16}{'已配置' if cf_bypass_proxy else '未配置'}")
     lines.append(f"  {'外部CF服务':<16}{'已配置' if trawl_url else '未配置'}")
@@ -457,7 +463,10 @@ def format_summary(
             "⚠️ 全局代理不可用（基础连通性两项均因代理失败）。下方站点失败多为代理导致，请先检查代理软件/节点后再重试。"
         )
     if failed or warning:
-        lines.append("建议优先查看失败/警告项；若基础连通性失败，先检查代理或系统网络。")
+        lines.append(
+            "建议优先查看失败/警告项；若基础连通性失败，先检查代理或系统网络；"
+            "代理/Cookie/CF Bypass 等配置可点上方「打开网络设置」按钮直达。"
+        )
     lines.append("=" * 88)
     return lines
 
@@ -489,7 +498,7 @@ async def _build_site_specs() -> list[NetworkCheckSpec]:
                     group="刮削站点",
                     url="",
                     site=site,
-                    note="没有固定入口，按实际番号动态检测",
+                    note="该站无固定检测入口（按番号动态检测），跳过属正常情况，不用处理",
                 )
             )
             continue
@@ -692,6 +701,15 @@ def _build_static_specs() -> list[NetworkCheckSpec]:
                 group="辅助服务",
                 url=trawl_url.rstrip("/") + health_path,
                 use_proxy=False,
+            )
+        )
+    else:
+        specs.append(
+            NetworkCheckSpec(
+                name="外部 CF 服务",
+                group="辅助服务",
+                url="",
+                note="未配置，可选；部分强反爬站点（JavBus/JavDB 等）被 Cloudflare 挑战拦截时用于绕过",
             )
         )
 
@@ -973,7 +991,7 @@ async def run_network_check(
                         proxy_down = True
                 elif proxy_down and result.status == NetworkCheckStatus.FAILED and _is_proxy_error(result.error):
                     # 全局代理不可用时，站点失败多为代理导致，简化提示避免误导用户以为站点全挂
-                    result = replace(result, message="代理不可用（见顶部提示）", error="")
+                    result = replace(result, message="代理不可用（详见下方检测结果汇总区的提示）", error="")
                 progress(format_result_line(result))
 
     elapsed = time.perf_counter() - start_time

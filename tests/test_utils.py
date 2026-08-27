@@ -102,3 +102,29 @@ def test_add_html_plain_text_escapes_script_like_content_and_keeps_full_message(
 )
 def test_is_probably_english_for_translation(s, expected):
     assert is_probably_english_for_translation(s) == expected
+
+
+@pytest.mark.parametrize(
+    ("proxy", "expected"),
+    [
+        ("", ""),
+        ("http://127.0.0.1:7890", "127***:7890"),
+        ("http://user:secret@proxy.example.com:10809", "pro***:10809"),
+        ("user:secret@192.168.1.1:8080", "192***:8080"),
+        ("localhost:7890", "loc***:7890"),
+        ("ab:8080", "***:8080"),
+        ("no-port-host", "***"),
+    ],
+)
+def test_mask_proxy_url(proxy, expected):
+    from mdcx.utils import mask_proxy_url
+
+    assert mask_proxy_url(proxy) == expected
+
+
+def test_mask_proxy_url_never_leaks_credentials():
+    from mdcx.utils import mask_proxy_url
+
+    out = mask_proxy_url("http://myuser:mypassword@proxy.internal:3128")
+    assert "myuser" not in out
+    assert "mypassword" not in out

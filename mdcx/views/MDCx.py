@@ -554,6 +554,9 @@ class Ui_MDCx(object):
         self.pushButton_net_retry = QtWidgets.QPushButton(parent=self.page_net)
         self.pushButton_net_retry.setGeometry(QtCore.QRect(440, 13, 110, 40))
         self.pushButton_net_retry.setObjectName("pushButton_net_retry")
+        self.pushButton_net_settings = QtWidgets.QPushButton(parent=self.page_net)
+        self.pushButton_net_settings.setGeometry(QtCore.QRect(290, 13, 140, 40))
+        self.pushButton_net_settings.setObjectName("pushButton_net_settings")
         self.stackedWidget.addWidget(self.page_net)
         self.page_tool = QtWidgets.QWidget()
         self.page_tool.setObjectName("page_tool")
@@ -12630,9 +12633,22 @@ class Ui_MDCx(object):
             )
         )
         self.pushButton_scraper_failed_list.setText(_translate("MDCx", "当有失败任务时，点击可以一键刮削当前失败列表"))
+        self.pushButton_check_net.setToolTip(
+            _translate("MDCx", "从头检测全部项目：基础连通性、各刮削站点、账号 API 与辅助服务")
+        )
         self.pushButton_check_net.setText(_translate("MDCx", "开始检测"))
+        self.pushButton_net_copy.setToolTip(
+            _translate(
+                "MDCx", "把本页全部检测结果（含版本与系统概要，代理地址自动脱敏）复制到剪贴板，方便提 issue 求助"
+            )
+        )
         self.pushButton_net_copy.setText(_translate("MDCx", "复制结果"))
+        self.pushButton_net_retry.setToolTip(_translate("MDCx", "只重新检测上次结果为失败/警告的项目，不重复全部检测"))
         self.pushButton_net_retry.setText(_translate("MDCx", "重试失败项"))
+        self.pushButton_net_settings.setToolTip(
+            _translate("MDCx", "跳到「设置 → 网络」页配置代理、Cookie、CF Bypass 等")
+        )
+        self.pushButton_net_settings.setText(_translate("MDCx", "打开网络设置"))
         self.groupBox_7.setTitle(
             _translate("MDCx", "单文件刮削（指定某个文件的番号网址进行刮削，当存在相同番号时可用这个）")
         )
