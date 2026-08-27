@@ -7,7 +7,7 @@ from pathlib import Path
 from pydantic import HttpUrl
 from PyQt6.QtCore import Qt, QThread, QTimer
 from PyQt6.QtCore import pyqtSignal as Signal
-from PyQt6.QtGui import QColor
+from PyQt6.QtGui import QColor, QGuiApplication
 from PyQt6.QtWidgets import (
     QAbstractItemView,
     QCheckBox,
@@ -304,7 +304,20 @@ class EmbyActorManagerDialog(QDialog):
         super().__init__(parent)
         self.setWindowTitle("Emby 演员管理器")
         self.setMinimumSize(1100, 700)
-        self.setWindowFlags(self.windowFlags() | Qt.WindowType.Window | Qt.WindowType.WindowMinimizeButtonHint)
+        self.setWindowFlags(
+            self.windowFlags()
+            | Qt.WindowType.Window
+            | Qt.WindowType.WindowMinimizeButtonHint
+            | Qt.WindowType.WindowMaximizeButtonHint
+        )
+        # 初始落在最小尺寸上体验局促，默认取屏幕可用区 80%（离屏/无屏环境回退最小尺寸）
+        screen = QGuiApplication.primaryScreen()
+        if screen is not None:
+            geo = screen.availableGeometry()
+            self.resize(max(1100, int(geo.width() * 0.8)), max(700, int(geo.height() * 0.8)))
+        else:
+            self.resize(1100, 700)
+        self.setSizeGripEnabled(True)
         self.setStyleSheet(self._load_stylesheet())
         self.cache_dir = resources.u("emby_actor_cache")
         self.cache_dir.mkdir(parents=True, exist_ok=True)
