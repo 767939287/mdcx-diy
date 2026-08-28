@@ -13248,7 +13248,9 @@ class Ui_MDCx(object):
         self.checkBox_amazon_strict_pic_verify.setText(_translate("MDCx", "严格校验 Amazon 图片"))
         self.label_amazon_strict_pic_verify.setText(_translate("MDCx", "对所有 Amazon 结果做图片相似度校验"))
         self.checkBox_amazon_skip_poster_size_precheck.setText(_translate("MDCx", "跳过前置 Poster 大小校验"))
-        self.label_amazon_skip_poster_size_precheck.setText(_translate("MDCx", "不因当前 Poster >=400KB 跳过 Amazon"))
+        self.label_amazon_skip_poster_size_precheck.setText(
+            _translate("MDCx", "不因当前 Poster 已达标跳过 Amazon（DMM >=700px / >=400KB / 不小于右裁剪）")
+        )
         self.checkBox_dmm_fallback.setText(_translate("MDCx", "官方图源兜底（DMM / MGStage）"))
         self.label_dmm_fallback.setText(
             _translate(

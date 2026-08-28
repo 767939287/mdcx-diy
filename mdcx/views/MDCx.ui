@@ -10946,7 +10946,7 @@
                               <string notr="true">color: rgb(8, 128, 128);</string>
                             </property>
                             <property name="text">
-                              <string>不因当前 Poster &gt;=400KB 跳过 Amazon</string>
+                              <string>不因当前 Poster 已达标跳过 Amazon（DMM &gt;=700px / &gt;=400KB / 不小于右裁剪）</string>
                             </property>
                           </widget>
                         </item>
