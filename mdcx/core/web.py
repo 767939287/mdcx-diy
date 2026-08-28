@@ -441,9 +441,34 @@ async def _download_image_to_memory(url: str, media_context: MediaResourceContex
     return await to_thread(_open_rgb_image_from_bytes, content)
 
 
+async def _load_dmm_official_reference(number: str, media_context: MediaResourceContext | None) -> Image.Image | None:
+    """按番号直构 DMM 官方图作为校验参考，优先竖版 ps，失败降级横版 pl 裁右半."""
+    number = (number or "").strip()
+    if not number:
+        return None
+    from mdcx.crawlers.dmm_direct import build_aws_cover_candidates, build_aws_poster_candidates, is_uncensored_number
+
+    if is_uncensored_number(number):
+        return None
+    for url in build_aws_poster_candidates(number):
+        img = await _download_image_to_memory(url, media_context)
+        if img is not None:
+            LogBuffer.log().write("\n 🔎 Amazon图片校验：使用 DMM 官方竖版海报作参考")
+            return img
+    for url in build_aws_cover_candidates(number):
+        img = await _download_image_to_memory(url, media_context)
+        if img is not None:
+            cropped = await to_thread(_cut_thumb_right_image, img)
+            img.close()
+            LogBuffer.log().write("\n 🔎 Amazon图片校验：使用 DMM 官方横版封面(裁右半)作参考")
+            return cropped
+    return None
+
+
 async def _verify_soft_amazon_poster(
     amazon_url: str,
     *,
+    number: str = "",
     thumb_path: Path | None,
     original_poster_url: str,
     original_poster_from: str,
@@ -470,6 +495,12 @@ async def _verify_soft_amazon_poster(
         poster_img = await _download_image_to_memory(original_poster_url, media_context)
         if poster_img is not None:
             reference_images.append(("poster", poster_img))
+
+    if not reference_images:
+        # 兜底：thumb 未下载且 poster 来自 Amazon 本身时，按番号直构 DMM 官方图作参考
+        dmm_ref = await _load_dmm_official_reference(number, media_context)
+        if dmm_ref is not None:
+            reference_images.append(("dmm_direct", dmm_ref))
 
     if not reference_images:
         amazon_img.close()
@@ -714,6 +745,7 @@ async def _get_big_poster(
             should_verify_amazon = manager.config.amazon_strict_pic_verify or not amazon_match_is_hard
             amazon_verify_passed = not should_verify_amazon or await _verify_soft_amazon_poster(
                 amazon_url,
+                number=result.number,
                 thumb_path=other.thumb_path,
                 original_poster_url=poster_url,
                 original_poster_from=poster_from_before_amazon,

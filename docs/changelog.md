@@ -18,6 +18,7 @@
 ### 修复
 
 - **official 无码官网 studio 字段污染**：1pondo/10musume/pacopacomama JSON 的 UCNAME 键实为分类标签数组，原取值链误作厂牌导致 studio 产出脏值且三站标签全空；改为 Maker/Studio 取值 + 站点兜底，UCNAME 归入 tags 来源
+- **DMM 图占位图误判通过**：pics.dmm.co.jp 等 DMM 图床对无效/下架对象会返回 HTTP 200 但仅 142B~2.7KB 的垃圾体，此前 check_url 仅靠 200+Content-Length 判定存在导致占位图被当真实封面入库；真实 DMM 封面最小也 ≥10KB。`_validate_dmm_image_url` 新增 `_DMM_PLACEHOLDER_MAX_BYTES=4096` 阈值，字节数低于 4KB 直接判失败且不可重试
 - **网络检测多项修复**：搜索解析无结果的爬虫自动回退真实刮削路径探测，消除"可达但无法探测"误报；missav_api 检测改走真实搜索（Recombee 仅接受 POST）；dmm_api 补全 v3 ItemList 必需参数；javlibrary 移除自定义 URL 强制直连的逻辑（避免 CF Bypass 被一并阻断）；探测失败提示动态携带实际番号
 - **dmm_api 爬虫修复**：keyword 改用 content_id 形态候选序列（带横杠番号搜索为 0 结果）；`iteminfo` 模型类型放宽修复真实响应校验崩溃
 - **DMM 高清直链学习闭环修复**：主爬虫同时接受 pics.dmm 图源证据写入前缀学习表，静态前缀表外的新站内前缀系列不再永久缺失高清图
@@ -27,6 +28,8 @@
 ### 优化
 
 - **ASIN 缓存命中优先走 tenhow 图床直连下图**：`get_big_pic_by_amazon` 的 ASIN 数据库缓存命中后（无论是否已存封面 URL），先探测免代理图床 `tenhow.net/images/{ASIN}.jpg`（实测图片与日亚 SL1500 同分辨率 ~1055×1500，即日亚原图本体，抽样 8126 个 ASIN 100% 可用），命中即高清直返；图片低于 600×800 或不存在时回退原缓存封面 URL，再不行回退日亚搜索。tenhow 地址仅当次使用，不写入数据库，poster_url 列保持纯日亚来源语义。免代理、绕开日亚 CAPTCHA/429，覆盖率约 9%（数据库内 tenhow 来源记录）
+- **Amazon 软校验参考图缺失兜底**：`_verify_soft_amazon_poster` 在本地无 thumb 且爬虫 poster 来自 Amazon 自身（自证被滤）时，按番号直构 DMM 官方图作裁判（竖版 ps 优先，降级横版 pl 裁右半），避免该边缘场景直接放弃软匹配
+- **ASIN 数据库冲突清洗工具**：新增 `scripts/clean_asin_db_conflicts.py`，用图像相似度（`_cover_similarity` 阈值 0.82）裁决一 ASIN 多番号冲突，基准图取 tenhow/库内 poster_url，裁判图取 DMM ps/pl 裁右半；错配行移「待修正」sheet 保留待补，完全重复行删除，默认预览、`--apply` 执行、`--limit` 冒烟采样
 - **高分屏缩放默认启用非整数倍缩放（PassThrough）**：Windows 125%/150% 等系统缩放下界面不再被取整导致模糊或过大；原勾选开关移除，老配置静默忽略
 - **有限收录站点定制探测番号**：mgstage/mywife/prestige/getchu/avsex/xcity/fc2 系列及国产/素人类站点改用各站实测收录的番号探测，消除"测试番号未被收录"误报；综合站维持默认 SSNI-647
 - **站点选择列表双标注**：客观区域标签作为显示后缀（dmm/mgstage「日本IP限定」，javdb/javdb_api「勿用日本节点」，数据源唯一收敛于 `ManualConfig.SITE_REGION_TAGS` 并由测试锁定键集合）；「检测网络」结果持久化到 userdata 缓存，三个站点下拉框显示最近实测状态圆点（✅可连通/⚠️需关注/❌连不通）并在 tooltip 附检测时间与路由（走代理/直连）；显示文本带标签不影响配置取值（UserRole 存纯站点值，全部消费点统一切换）

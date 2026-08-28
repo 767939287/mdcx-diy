@@ -196,6 +196,15 @@ def _parse_content_length(value: Any) -> int | None:
     return length if length > 0 else None
 
 
+# DMM 图床对无效/下架对象可能返回 200 + 极小字节（实测 142B 垃圾响应、约 2.7KB 占位图），
+# 真实封面即使最小尺寸也在 10KB 以上，低于该阈值一律视为占位图
+_DMM_PLACEHOLDER_MAX_BYTES = 4096
+
+
+def _is_dmm_placeholder_size(size: int | None) -> bool:
+    return size is not None and 0 < size < _DMM_PLACEHOLDER_MAX_BYTES
+
+
 async def _validate_dmm_image_url(url: str, length: bool = False, real_url: bool = False):
     normalized = normalize_media_url(url)
     request_url, added_probe = _build_dmm_probe_url(normalized)
@@ -229,12 +238,21 @@ async def _validate_dmm_image_url(url: str, length: bool = False, real_url: bool
                     return None
 
                 if content_length := _parse_content_length(response.headers.get("Content-Length")):
+                    if _is_dmm_placeholder_size(content_length):
+                        last_error = f"疑似占位图({content_length}B) {true_url}"
+                        signal.add_log(f"🔴 检测链接失败: {last_error}")
+                        return None
                     signal.add_log(f"✅ 检测链接通过: 返回大小({content_length}) {true_url}")
                     return content_length if length else true_url
 
                 if response.content and len(response.content) > 0:
+                    downloaded_size = len(response.content)
+                    if _is_dmm_placeholder_size(downloaded_size):
+                        last_error = f"疑似占位图({downloaded_size}B) {true_url}"
+                        signal.add_log(f"🔴 检测链接失败: {last_error}")
+                        return None
                     signal.add_log(f"✅ 检测链接通过: 预下载成功 {true_url}")
-                    return len(response.content) if length else true_url
+                    return downloaded_size if length else true_url
 
                 last_error = f"未返回大小且预下载失败 {true_url}"
                 if retry_attempt < max_retries - 1:

@@ -67,3 +67,18 @@
   - 权威校验源（devbox 免代理无地区锁）：libredmm `https://www.libredmm.com/movies/{番号小写带横杠}`（如 meyd-011），页面 `<h1><span>番号</span><span>DMM标题</span></h1>` 直接给 DMM 商品标题，与 DB 里该 ASIN 的日亚标题比对（归一化后核心子串互相包含）即可裁决正确番号；libredmm 站点慢（单页 2-10s），批量需限速重试。libredmm 无标题全文搜索，只有 fuzzy（返回内部数字 ID，不便反查），反查靠候选番号逐个直查比对。
   - DMM（dmm.co.jp）/fanza 均地区锁（日本外 302 到 not-available-in-your-region），无法从 devbox 直连；日亚 dp 页 devbox 直连 404（amazon.co.jp 在默认代理表，需代理/日本节点，用户提醒日亚要走日本节点）。封面 OCR（tesseract eng）对日系封面效果差，不可作验证依据。
   - tenhow.net 图床：图片按 Amazon ASIN 命名 `images/{ASIN}.jpg`（大图）与 icon_/s_ 前缀小图；全站仅 ~250 静态页（演员/类别），BFS 一次收敛，约 8000 条目，条目 DOM 内 ASIN 图与 DMM cid 绑定（cid→番号：去掉厂商数字前缀+去零，如 13gvg00564→GVG-564）。索引内无 ASIN↔cid 冲突。对 DB ASIN 覆盖率仅 ~9%，但图床按需服务——索引外的 ASIN 也有 ~45% 直接可下图（无 cid 信息）。经 13 个冲突 ASIN 对 libredmm 实测 13/13 绑定正确，可信。可用于 T0：拿到 ASIN 后先试 tenhow 直连下图（免代理），404 回退 Amazon。
+
+- Date: 2026-08-28
+- Category: 排错调试
+- Instructions:
+  - ASIN 冲突裁决方法梯队（按可靠性排序，已实测验证）：① `_cover_similarity` 图像相似度（阈值 0.82）以 DMM 官方图为裁判最可信——竖版 ps 直接用、横版 pl（800×499 套图）必须 `_cut_thumb_right_image` 裁右半再比；②javdb 的 cover_url 是重压处理图，与 DMM 原图相似度仅 0.5~0.7，**不可作裁判**；③标题文本比对不可用（归一化再好也搞不定 BEST/合集）。脚本沉淀：`scripts/clean_asin_db_conflicts.py`（预览默认、--apply 执行、错配行移「待修正」sheet 不删除）。
+  - 「一 ASIN 挂多个不同分集番号」多数是该 ASIN 对应合集商品（BEST 8時間 类），各番号单集封面 ≠ 合集封面，图像法也救不了，属不可自动裁决类，all_match（同分>0.82）才是「同一商品多番号发行」的都正常。
+  - DMM 图床占位图坑：pics.dmm.co.jp 对无效 cid 会返回 200 + ~2.7KB 甚至 142B 的垃圾体，单凭 check_url 的 200 会通过；真实封面再小也 ≥10KB。已在 `base/web.py::_validate_dmm_image_url` 加 <4096B 拒收（`_DMM_PLACEHOLDER_MAX_BYTES`）。
+  - 爬虫全失败时刮削主流程在 `scraper.py` 直接 return，不会进 `_get_big_poster` → 不会发 Amazon 搜索；`_verify_soft_amazon_poster` 的 DMM 兜底参考（`_load_dmm_official_reference`）只覆盖"爬虫半成功但无图"的边缘路径。
+  - DMM 站点页面会下架但 CDN 图床不删对象：URE-018 网页端已下架（r18.dev 连 jacket 都没有），awsimgsrc/pics.dmm 的 ure00018/ure018 图仍 200。下架番号的参考图始终可以按番号直构 cid 去碰。
+
+- Date: 2026-08-28
+- Category: 工作流协作
+- Instructions:
+  - 批量导入外部数据到 xlsx 前，必须走 `save_asin_to_excel` 这类含去重逻辑的入口函数；直接 `ws.append` 会绕过「同番号去重」产生成批重复行（教训：tenhow 8094 行导入产生 699 完全重复行）。
+  - 错配行处置规则：不删、不丢番号，移到「待修正」sheet 附原因保留待补；主表只留裁决通过的。
