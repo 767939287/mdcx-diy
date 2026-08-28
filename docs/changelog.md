@@ -19,6 +19,8 @@
 
 ### 修复
 
+- **Jellyfin 12（原 10.12）连接失败修复（议题 #32）**：Jellyfin 10.11 后端重写起 auth middleware 要求完整 MediaBrowser 设备标识，仅携带 Token 的请求被拒。`emby_shared._build_jellyfin_headers` 补全 `Client/Device/DeviceId/Version` 字段（向下兼容 10.8+，17 个调用点统一受益）；演员管理器连接测试 Jellyfin 分支去掉 URL 上的 `?api_key=` 明文密钥，统一走 Authorization 头
+
 - **official 无码官网 studio 字段污染**：1pondo/10musume/pacopacomama JSON 的 UCNAME 键实为分类标签数组，原取值链误作厂牌导致 studio 产出脏值且三站标签全空；改为 Maker/Studio 取值 + 站点兜底，UCNAME 归入 tags 来源
 - **DMM 图占位图误判通过**：pics.dmm.co.jp 等 DMM 图床对无效/下架对象会返回 HTTP 200 但仅 142B~2.7KB 的垃圾体，此前 check_url 仅靠 200+Content-Length 判定存在导致占位图被当真实封面入库；真实 DMM 封面最小也 ≥10KB。`_validate_dmm_image_url` 新增 `_DMM_PLACEHOLDER_MAX_BYTES=4096` 阈值，字节数低于 4KB 直接判失败且不可重试
 - **网络检测多项修复**：搜索解析无结果的爬虫自动回退真实刮削路径探测，消除"可达但无法探测"误报；missav_api 检测改走真实搜索（Recombee 仅接受 POST）；dmm_api 补全 v3 ItemList 必需参数；javlibrary 移除自定义 URL 强制直连的逻辑（避免 CF Bypass 被一并阻断）；探测失败提示动态携带实际番号

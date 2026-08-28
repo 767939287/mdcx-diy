@@ -29,9 +29,16 @@ def _is_jellyfin_server() -> bool:
     return manager.config.server_type != "emby"
 
 
-def _build_jellyfin_headers(headers: dict[str, str] | None = None) -> dict[str, str]:
+def _build_jellyfin_headers(headers: dict[str, str] | None = None, token: str | None = None) -> dict[str, str]:
+    # Jellyfin 10.11(=12.x 之前的后端重写版)起 auth middleware 要求完整设备标识,
+    # 只发 Token 的请求会被拒绝(议题 #32: 无法连接 Jellyfin 12 RC);完整字段向下兼容旧版。
+    from ..consts import VERSION_NAME
+
+    api_key = manager.config.api_key if token is None else token
     request_headers = dict(headers or {})
-    request_headers["Authorization"] = f'MediaBrowser Token="{manager.config.api_key}"'
+    request_headers["Authorization"] = (
+        f'MediaBrowser Client="MDCx", Device="MDCx", DeviceId="MDCx", Version="{VERSION_NAME}", Token="{api_key}"'
+    )
     return request_headers
 
 

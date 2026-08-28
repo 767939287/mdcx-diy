@@ -578,7 +578,13 @@ class EmbyActorManagerDialog(QDialog):
         if not url or not key:
             QMessageBox.warning(self, "提示", "请输入 Emby 地址和 API 密钥")
             return
-        headers = {"Authorization": f'MediaBrowser Token="{key}"'}
+        from .emby_shared import _build_jellyfin_headers
+
+        if "emby" in str(manager.config.server_type):
+            headers = {"Authorization": f'MediaBrowser Token="{key}"'}
+        else:
+            # Jellyfin 10.11+/12.x 要求完整 MediaBrowser 设备标识, 复用统一构造器
+            headers = _build_jellyfin_headers(token=key)
         self._emby_url = url
         self._emby_key = key
 
@@ -587,7 +593,7 @@ class EmbyActorManagerDialog(QDialog):
                 test_url = (
                     f"{url.rstrip('/')}/emby/System/Info?api_key={key}"
                     if "emby" in str(manager.config.server_type)
-                    else f"{url.rstrip('/')}/System/Info?api_key={key}"
+                    else f"{url.rstrip('/')}/System/Info"
                 )
                 resp, err = await computed.async_client.get_json(test_url, headers=headers, use_proxy=False)
                 if resp:

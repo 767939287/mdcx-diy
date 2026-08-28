@@ -19,7 +19,8 @@ def test_build_jellyfin_headers_includes_auth_token(monkeypatch: pytest.MonkeyPa
 
     monkeypatch.setattr(manager.config, "api_key", "test-token-123")
     headers = _build_jellyfin_headers()
-    assert headers["Authorization"] == 'MediaBrowser Token="test-token-123"'
+    assert 'Token="test-token-123"' in headers["Authorization"]
+    assert 'Client="MDCx"' in headers["Authorization"]
 
 
 def test_build_jellyfin_headers_merges_provided_headers(monkeypatch: pytest.MonkeyPatch):

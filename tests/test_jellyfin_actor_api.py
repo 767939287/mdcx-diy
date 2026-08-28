@@ -4,6 +4,30 @@ import pytest
 
 from mdcx.config.manager import manager
 from mdcx.tools import emby_actor_image
+from mdcx.tools.emby_shared import _build_jellyfin_headers
+
+
+def _expected_auth(token: str) -> str:
+    """Jellyfin 10.11+/12.x 要求完整 MediaBrowser 设备标识 (议题 #32)."""
+    from mdcx.consts import VERSION_NAME
+
+    return f'MediaBrowser Client="MDCx", Device="MDCx", DeviceId="MDCx", Version="{VERSION_NAME}", Token="{token}"'
+
+
+def test_build_jellyfin_headers_has_full_authorization_fields():
+    headers = _build_jellyfin_headers(token="secret-token")
+    auth = headers["Authorization"]
+    assert 'Client="MDCx"' in auth
+    assert 'Device="MDCx"' in auth
+    assert 'DeviceId="MDCx"' in auth
+    assert "Version=" in auth
+    assert 'Token="secret-token"' in auth
+
+
+def test_build_jellyfin_headers_keeps_extra_headers():
+    headers = _build_jellyfin_headers({"Content-Type": "image/jpeg"}, token="t")
+    assert headers["Content-Type"] == "image/jpeg"
+    assert "Authorization" in headers
 
 
 @pytest.mark.asyncio
@@ -31,7 +55,7 @@ async def test_upload_actor_photo_uses_raw_image_body_for_emby(monkeypatch: pyte
     assert result is True
     assert error == ""
     assert captured["data"] == pic_bytes
-    assert captured["headers"] == {"Content-Type": "image/jpeg", "Authorization": 'MediaBrowser Token=""'}
+    assert captured["headers"] == {"Content-Type": "image/jpeg", "Authorization": _expected_auth("")}
     assert captured["use_proxy"] is False
 
 
@@ -67,7 +91,7 @@ async def test_get_emby_actor_list_uses_jellyfin_actor_endpoint(monkeypatch: pyt
     assert query["userId"] == ["user-1"]
     assert "api_key" not in query
     assert "ApiKey" not in query
-    assert captured["headers"] == {"Authorization": 'MediaBrowser Token="secret-token"'}
+    assert captured["headers"] == {"Authorization": _expected_auth("secret-token")}
     assert captured["use_proxy"] is False
 
 
@@ -97,7 +121,7 @@ async def test_upload_actor_photo_uses_raw_image_body_for_jellyfin(monkeypatch: 
     assert captured["data"] == pic_bytes
     assert captured["headers"] == {
         "Content-Type": "image/jpeg",
-        "Authorization": 'MediaBrowser Token="secret-token"',
+        "Authorization": _expected_auth("secret-token"),
     }
     assert captured["use_proxy"] is False
 

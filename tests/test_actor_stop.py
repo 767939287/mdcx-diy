@@ -118,7 +118,11 @@ async def test_update_emby_actor_photo_execute_uploads_primary_and_backdrop(monk
     )
 
     api_key = manager.config.api_key
-    expected_auth = f'MediaBrowser Token="{api_key}"'
+    from mdcx.consts import VERSION_NAME
+
+    expected_auth = (
+        f'MediaBrowser Client="MDCx", Device="MDCx", DeviceId="MDCx", Version="{VERSION_NAME}", Token="{api_key}"'
+    )
 
     # P1-5: api_key 不再出现在 URL 中, 改为通过 Authorization 头携带, 避免泄露到访问/调试日志。
     assert len(uploads) == 2
