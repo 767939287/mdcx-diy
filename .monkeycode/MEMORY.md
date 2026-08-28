@@ -74,6 +74,7 @@
   - ASIN 冲突裁决方法梯队（按可靠性排序，已实测验证）：① `_cover_similarity` 图像相似度（阈值 0.82）以 DMM 官方图为裁判最可信——竖版 ps 直接用、横版 pl（800×499 套图）必须 `_cut_thumb_right_image` 裁右半再比；②javdb 的 cover_url 是重压处理图，与 DMM 原图相似度仅 0.5~0.7，**不可作裁判**；③标题文本比对不可用（归一化再好也搞不定 BEST/合集）。脚本沉淀：`scripts/clean_asin_db_conflicts.py`（预览默认、--apply 执行、错配行移「待修正」sheet 不删除）。
   - 「一 ASIN 挂多个不同分集番号」多数是该 ASIN 对应合集商品（BEST 8時間 类），各番号单集封面 ≠ 合集封面，图像法也救不了，属不可自动裁决类，all_match（同分>0.82）才是「同一商品多番号发行」的都正常。
   - DMM 图床占位图坑：pics.dmm.co.jp 对无效 cid 会返回 200 + ~2.7KB 甚至 142B 的垃圾体，单凭 check_url 的 200 会通过；真实封面再小也 ≥10KB。已在 `base/web.py::_validate_dmm_image_url` 加 <4096B 拒收（`_DMM_PLACEHOLDER_MAX_BYTES`）。
+  - **裁判图源优先级**（已实测校准，勿改回乱序）：① **thejavdb api** `https://api.thejavdb.net/v1/movies?q={番号}` — 直接返回 DMM 真图 URL（`frontcover_url` 竖版、`frontcover_url` 横版），首选因免猜 cid、免多请求；缺点：少数下架番号（如 URE-018）404。② libredmm `/movies/{番号}` 网页能拿到真实 cid，但没有 API 返回快。③ 直构 cid 枚举（10 个前缀）性能最差但兜底最稳。**注意 javdb573 是另一个爬虫（javdb_api.py），和 thejavdb api（thejavdb_api.py）是两码事**。
   - 爬虫全失败时刮削主流程在 `scraper.py` 直接 return，不会进 `_get_big_poster` → 不会发 Amazon 搜索；`_verify_soft_amazon_poster` 的 DMM 兜底参考（`_load_dmm_official_reference`）只覆盖"爬虫半成功但无图"的边缘路径。
   - DMM 站点页面会下架但 CDN 图床不删对象：URE-018 网页端已下架（r18.dev 连 jacket 都没有），awsimgsrc/pics.dmm 的 ure00018/ure018 图仍 200。下架番号的参考图始终可以按番号直构 cid 去碰。
 

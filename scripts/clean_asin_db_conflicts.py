@@ -45,6 +45,7 @@ SCORE_THRESHOLD = 0.82  # 与 _verify_soft_amazon_poster 软校验同阈值
 TENHOW_URL = "https://tenhow.net/images/{asin}.jpg"
 PICS_DMM_MONO = "https://pics.dmm.co.jp/mono/movie/adult/{cid}/{cid}{suf}.jpg"
 AWSIMGSRC = "https://awsimgsrc.dmm.co.jp/pics_dig/digital/video/{cid}/{cid}{suf}.jpg"
+THEJAVDB_API = "https://api.thejavdb.net/v1/movies"
 
 _http: httpx.AsyncClient | None = None
 
@@ -65,8 +66,49 @@ async def _fetch_image(url: str) -> tuple[Image.Image | None, int]:
         return None, 0
 
 
+async def _dmm_reference_via_thejavdb(number: str) -> tuple[Image.Image | None, str]:
+    """优先源: 查 thejavdb api 拿 DMM 图 URL, 优先 frontcover(竖版), 失败降级 fullcover 裁右半.
+
+    thejavdb 覆盖主流番号但极少数缺(如下架/新番). 返回的就是 pics.dmm 真链, 免去试 cid 前缀.
+    """
+    global _http
+    if _http is None:
+        _http = httpx.AsyncClient(timeout=15, follow_redirects=True)
+    try:
+        r = await _http.get(THEJAVDB_API, params={"q": number}, timeout=10)
+        if r.status_code != 200:
+            return None, ""
+        data = r.json()
+        for key, label in (("frontcover_url", "thejavdb.front"), ("fullcover_url", "thejavdb.full裁右半")):
+            url = data.get(key)
+            if not url or "pics.dmm" not in str(url):
+                continue
+            img, _ = await _fetch_image(url)
+            if img is None:
+                continue
+            if "full" in key and img.size[0] > img.size[1]:
+                img2 = _cut_thumb_right_image(img)
+                img.close()
+                img = img2
+            return img, label
+    except Exception:
+        pass
+    return None, ""
+
+
 async def _dmm_reference(number: str) -> tuple[Image.Image | None, str]:
-    """按番号取 DMM 官方图作裁判：竖版 ps → 横版 pl 裁右半。cid 前缀逐个尝试。"""
+    """按番号取 DMM 官方图作裁判.
+
+    裁决链(实测可信次序):
+    1. thejavdb api (直接返回 DMM 图 URL, 无需猜 cid)
+    2. 直构 DMM cid 前缀枚举 (兼容老规则)
+    """
+    # 1. thejavdb api
+    img, src = await _dmm_reference_via_thejavdb(number)
+    if img is not None:
+        return img, src
+
+    # 2. 直构 cid 逐个试
     norm = number.lower().replace("-", "").replace(" ", "")
     prefixes = ["", "1", "13", "49", "118", "55", "57", "83", "436", "5042", "5642"]
     for suf in ("ps", "pl"):
