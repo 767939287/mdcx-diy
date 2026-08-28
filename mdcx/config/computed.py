@@ -57,10 +57,11 @@ class Computed:
     async def release(self) -> None:
         await asyncio.gather(self.async_client.release(), self.llm_client.release(), return_exceptions=True)
 
-    async def close_when_idle(self) -> None:
+    async def close_when_idle(self, *, timeout: float = 300.0) -> None:
+        """等待底层客户端空闲后关闭；`timeout` 为兜底上限，防止泄漏导致永久驻留（议题 #55）。"""
         await asyncio.gather(
-            self.async_client.close_when_idle(),
-            self.llm_client.close_when_idle(),
+            self.async_client.close_when_idle(timeout=timeout),
+            self.llm_client.close_when_idle(timeout=timeout),
             return_exceptions=True,
         )
 

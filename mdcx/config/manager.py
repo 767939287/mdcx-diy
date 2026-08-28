@@ -312,7 +312,9 @@ class ComputedLease:
         computed = self._computed
         if computed is not None:
             self._computed = None
-            future = executor.submit(computed.release())
+            # 走关键通道：release 若被 cancel_async 取消（如停止刮削），租约永不归零，
+            # 旧网络栈的 close_when_idle 将陷入无限轮询且永不释放（议题 #55）
+            future = executor.submit_critical(computed.release())
             future.add_done_callback(_consume_result)
 
     async def __aenter__(self) -> Computed:

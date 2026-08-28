@@ -1,6 +1,7 @@
 import asyncio
 import contextlib
 import json
+import logging
 import os
 import random
 import re
@@ -46,6 +47,8 @@ try:
 except ImportError:
     TrawlAdapterServer = None  # type: ignore[assignment, misc]
 
+
+logger = logging.getLogger(__name__)
 
 _PROXY_TLDS = (".com", ".net", ".org", ".co", ".jp", ".io")
 _CHUNK_DOWNLOAD_CONCURRENCY = 6  # 分块下载并发数（可调，权衡速度与服务器压力）
@@ -617,10 +620,23 @@ class AsyncWebClient:
         await self.close()
         return True
 
-    async def close_when_idle(self, *, poll_interval: float = 0.2) -> None:
-        """等待所有持有方与进行中的请求结束后关闭连接池。"""
+    async def close_when_idle(self, *, poll_interval: float = 0.2, timeout: float = 300.0) -> None:
+        """等待所有持有方与进行中的请求结束后关闭连接池。
+
+        `timeout` 是兜底上限：租约泄漏或请求卡死时，无上限轮询会让旧客户端连同
+        0.2 秒周期的协程永久驻留，反复重载配置将线性堆积（议题 #55）。
+        超时后强制关闭，宁可打断个别残留请求，也不放任连接池泄漏。
+        """
         self._close_requested = True
+        deadline = time.monotonic() + timeout if timeout > 0 else None
         while not await self._is_idle():
+            if deadline is not None and time.monotonic() >= deadline:
+                logger.warning(
+                    "网络客户端等待空闲超过 %.0f 秒仍未空闲（残留租约 %d），强制关闭连接池",
+                    timeout,
+                    self._lease_count(),
+                )
+                break
             await asyncio.sleep(poll_interval)
         await self.close()
 

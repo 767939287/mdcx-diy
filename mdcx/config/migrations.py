@@ -38,16 +38,39 @@ def _is_removed_airav_site(site: object) -> bool:
 
 _SITE_RENAMES = {"javdbapi": "dmm_api"}
 
+_VALID_SITE_VALUES = frozenset(site.value for site in Website)
+
 
 def _rename_site(site: str) -> str:
     return _SITE_RENAMES.get(site, site)
 
 
+def _is_valid_site(site: object) -> bool:
+    """站点值是否仍存在于当前 `Website` 枚举中。
+
+    2026-08 精简了 15 个失效/重复爬虫（cnmdb/hdouban/mdtv/love6/kin8/giga/cableav/
+    7mmtv/hscangku/fc2club/fc2hub/jav321/fantastica/dahlia/faleno），旧配置里残留的
+    站点值会让 pydantic 校验整体失败，进而使配置被写入 `_failed.json`
+    且界面回写被跳过（表现为「保存不生效」，议题 #55）。故在此静默剔除。
+    """
+    value = _enum_value(site)
+    return isinstance(value, str) and value in _VALID_SITE_VALUES
+
+
+def _clean_sites(sites: list[Any]) -> list[str]:
+    """重命名 + 剔除已移除站点，保持原有顺序。"""
+    return [
+        renamed
+        for site in sites
+        if not _is_removed_airav_site(site) and _is_valid_site(renamed := _rename_site(str(_enum_value(site))))
+    ]
+
+
 def _migrate_site_list(value: Any) -> Any:
     if isinstance(value, str):
-        return [_rename_site(site) for site in _str_to_list(value, ",") if not _is_removed_airav_site(site)]
+        return _clean_sites(_str_to_list(value, ","))
     if isinstance(value, list | set):
-        return [_rename_site(site) for site in value if not _is_removed_airav_site(site)]
+        return _clean_sites(list(value))
     return value
 
 
@@ -56,7 +79,15 @@ def _migrate_field_config_sites(value: Any) -> None:
         return
     sites = value.get("site_prority")
     if isinstance(sites, list):
-        value["site_prority"] = [_rename_site(site) for site in sites if not _is_removed_airav_site(site)]
+        value["site_prority"] = _clean_sites(sites)
+
+
+def _migrate_site_configs(data: dict[str, Any]) -> None:
+    """剔除 site_configs 中键为已移除站点的条目。"""
+    site_configs = data.get("site_configs")
+    if not isinstance(site_configs, dict):
+        return
+    data["site_configs"] = {key: value for key, value in site_configs.items() if _is_valid_site(key)}
 
 
 def _migrate_removed_hd_pic_sources(data: dict[str, Any]) -> None:
@@ -150,7 +181,7 @@ def migrate_config_data(data: dict[str, Any]) -> list[str]:
     _migrate_builtin_naming_templates(data)
     _migrate_removed_hd_pic_sources(data)
 
-    if _is_removed_airav_site(data.get("website_single")):
+    if _is_removed_airav_site(data.get("website_single")) or not _is_valid_site(data.get("website_single")):
         data["website_single"] = Website.AIRAV_CC.value
     for key, value in list(data.items()):
         if key.startswith("website_") and key != "website_single":
@@ -165,6 +196,7 @@ def migrate_config_data(data: dict[str, Any]) -> list[str]:
                 continue
             for value in field_configs.values():
                 _migrate_field_config_sites(value)
+    _migrate_site_configs(data)
 
     if "proxy_type" in data:
         data["use_proxy"] = data["proxy_type"] != "no"

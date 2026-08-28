@@ -1,7 +1,9 @@
 import asyncio
 import contextlib
+import logging
 import re
 import threading
+import time
 from collections.abc import Callable
 from urllib.parse import urlparse
 
@@ -9,6 +11,8 @@ from aiolimiter import AsyncLimiter
 from httpx import AsyncClient, Timeout
 from openai import AsyncOpenAI, BadRequestError
 from openai.types.chat import ChatCompletionMessageParam
+
+logger = logging.getLogger(__name__)
 
 # 各服务商「关闭思考」参数（翻译类任务无需慢思考，且部分服务商默认开启极烧 token）
 # key 为 hostname 子串匹配，value 为注入到 extra_body 的参数字典。
@@ -112,9 +116,21 @@ class LLMClient:
         await self.close()
         return True
 
-    async def close_when_idle(self, *, poll_interval: float = 0.2) -> None:
+    async def close_when_idle(self, *, poll_interval: float = 0.2, timeout: float = 300.0) -> None:
+        """等待进行中的请求与持有方结束后关闭。
+
+        `timeout` 是兜底上限，避免租约泄漏时无限轮询导致旧客户端永久驻留（议题 #55）。
+        """
         self._close_requested = True
+        deadline = time.monotonic() + timeout if timeout > 0 else None
         while not await self._is_idle():
+            if deadline is not None and time.monotonic() >= deadline:
+                logger.warning(
+                    "LLM 客户端等待空闲超过 %.0f 秒仍未空闲（残留租约 %d），强制关闭",
+                    timeout,
+                    self._lease_count(),
+                )
+                break
             await asyncio.sleep(poll_interval)
         await self.close()
 

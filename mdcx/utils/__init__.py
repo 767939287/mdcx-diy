@@ -33,6 +33,7 @@ class AsyncBackgroundExecutor:
         self._loop_started: threading.Event | None = None
         self._startup_error: BaseException | None = None
         self._pending_futures: set[Future] = set()
+        self._critical_futures: set[Future] = set()
         self._lock = threading.RLock()
         self._running = False
 
@@ -52,6 +53,25 @@ class AsyncBackgroundExecutor:
         future.add_done_callback(self._remove_future)
         with self._lock:
             self._pending_futures.add(future)
+        return future
+
+    def submit_critical(self, coro: Coroutine[Any, Any, T]) -> Future[T]:
+        """提交不可被 cancel/cancel_async 取消的关键协程。
+
+        用于资源释放这类必须执行到底的收尾动作：若被取消，引用计数或连接池
+        将永久泄漏（议题 #55：停止刮削时 `Computed.release()` 被一并取消，
+        租约永不归零，旧网络栈的 `close_when_idle()` 陷入无限轮询）。
+        """
+        try:
+            loop = self._ensure_started()
+        except Exception:
+            coro.close()
+            raise
+        future = asyncio.run_coroutine_threadsafe(coro, loop)
+        future.add_done_callback(self._remove_future)
+        with self._lock:
+            self._pending_futures.add(future)
+            self._critical_futures.add(future)
         return future
 
     def run(self, coro: Coroutine[Any, Any, T]) -> T:
@@ -86,12 +106,12 @@ class AsyncBackgroundExecutor:
             raise
 
     def cancel(self):
-        """取消所有任务"""
+        """取消所有任务（`submit_critical` 提交的关键任务除外）"""
         with self._lock:
             if not self._running:
                 return
             self._running = False
-            _pending_futures = list(self._pending_futures)
+            _pending_futures = [f for f in self._pending_futures if f not in self._critical_futures]
 
         # 取消所有待处理的任务
         for future in _pending_futures:
@@ -100,14 +120,14 @@ class AsyncBackgroundExecutor:
         self._running = True  # 此方法不关闭后台线程和事件循环, 仅取消任务
 
     def cancel_async(self):
-        """取消所有任务. cancel 的非阻塞版本
+        """取消所有任务（`submit_critical` 提交的关键任务除外）. cancel 的非阻塞版本
 
         提交一个新的任务到事件循环中去取消其他任务
         """
         with self._lock:
             if not self._running:
                 return None
-            _pending_futures = list(self._pending_futures)
+            _pending_futures = [f for f in self._pending_futures if f not in self._critical_futures]
             if not _pending_futures:
                 return None
 
@@ -152,6 +172,7 @@ class AsyncBackgroundExecutor:
         """自动移除已完成的任务"""
         with self._lock:
             self._pending_futures.discard(future)
+            self._critical_futures.discard(future)
 
     def _start_background_thread(self):
         with self._lock:
