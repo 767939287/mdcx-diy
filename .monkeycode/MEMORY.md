@@ -66,7 +66,7 @@
   - amazon_asin_database.xlsx 是 ASIN-番号映射库，以 ASIN 为唯一可信锚点（ASIN 唯一，番号可由多个搜索误挂到同一 ASIN）；冲突形态：同一 ASIN 挂多个番号且各行标题相同（都是该 ASIN 真实商品的日亚标题）。
   - 权威校验源（devbox 免代理无地区锁）：libredmm `https://www.libredmm.com/movies/{番号小写带横杠}`（如 meyd-011），页面 `<h1><span>番号</span><span>DMM标题</span></h1>` 直接给 DMM 商品标题，与 DB 里该 ASIN 的日亚标题比对（归一化后核心子串互相包含）即可裁决正确番号；libredmm 站点慢（单页 2-10s），批量需限速重试。libredmm 无标题全文搜索，只有 fuzzy（返回内部数字 ID，不便反查），反查靠候选番号逐个直查比对。
   - DMM（dmm.co.jp）/fanza 均地区锁（日本外 302 到 not-available-in-your-region），无法从 devbox 直连；日亚 dp 页 devbox 直连 404（amazon.co.jp 在默认代理表，需代理/日本节点，用户提醒日亚要走日本节点）。封面 OCR（tesseract eng）对日系封面效果差，不可作验证依据。
-  - tenhow.net 图床：图片按 Amazon ASIN 命名 `images/{ASIN}.jpg`（大图）与 icon_/s_ 前缀小图；全站仅 ~250 静态页（演员/类别），BFS 一次收敛，约 8000 条目，条目 DOM 内 ASIN 图与 DMM cid 绑定（cid→番号：去掉厂商数字前缀+去零，如 13gvg00564→GVG-564）。索引内无 ASIN↔cid 冲突。对 DB ASIN 覆盖率仅 ~9%，但图床按需服务——索引外的 ASIN 也有 ~45% 直接可下图（无 cid 信息）。经 13 个冲突 ASIN 对 libredmm 实测 13/13 绑定正确，可信。可用于 T0：拿到 ASIN 后先试 tenhow 直连下图（免代理），404 回退 Amazon。
+  - tenhow.net 图床：图片按 Amazon ASIN 命名 `images/{ASIN}.jpg`（大图）与 icon_/s_ 前缀小图；条目 DOM 内 ASIN 图与 DMM cid 绑定（cid→番号：去掉厂商数字前缀+去零，如 13gvg00564→GVG-564）。**注意：旧索引（8126 条）严重不全**——旧爬取脚本 `tenhow_index_crawl.py` 有 bug（每批 50 页后若该批没挖到新链接就整体退出，只抓了 250/1903 页），已作废。2026-08-28 重爬全站收敛：**1903 页、36441 ASIN**（均无冲突），结果在 `/tmp/opencode/tenhow_index_full.json`，全站页面缓存在 `/tmp/opencode/tenhow_pages/`。另有 ~5388 条目无 cid 未入索引。对 DB ASIN 覆盖率有限，但图床按需服务——索引外的 ASIN 也有 ~45% 直接可下图（无 cid 信息）。经 13 个冲突 ASIN 对 libredmm 实测 13/13 绑定正确，可信。可用于 T0：拿到 ASIN 后先试 tenhow 直连下图（免代理），404 回退 Amazon。**双向价值**（2026-08-28 用户强调）：图床地址末尾拼的就是日亚 ASIN——正向可按 ASIN 直接取图（免代理），反向则凡 tenhow 页面条目里的图文件名都是可入库的 ASIN，tenhow 全站爬一遍本身就是一次 ASIN 增量发现渠道；另有 ~5388 条目只有 ASIN 无 cid，未来可用封面图像比对反查番号补库。
 
 - Date: 2026-08-28
 - Category: 排错调试
@@ -83,3 +83,6 @@
 - Instructions:
   - 批量导入外部数据到 xlsx 前，必须走 `save_asin_to_excel` 这类含去重逻辑的入口函数；直接 `ws.append` 会绕过「同番号去重」产生成批重复行（教训：tenhow 8094 行导入产生 699 完全重复行）。
   - 错配行处置规则：不删、不丢番号，移到「待修正」sheet 附原因保留待补；主表只留裁决通过的。
+  - **版本号归属用户**：不得擅自新开版本号段落（如 v2.0.8），changelog 条目一律追加进当前进行中的版本小节（如 v2.0.7），版本升级由用户自己决定（2026-08-28 用户指正）。
+  - **长时间运行任务的标准做法**（2026-08-28 用户强调）：① 一律用 `background_terminal_create` 建后台终端执行，不许用普通 bash；② 必须实现断点续传（checkpoint state 持久化到磁盘，重启后从断点续跑）；③ 分批处理，批间落盘；④ 用外层 wrapper 每 50 分钟自动重启进程（规避云环境超时杀进程）；⑤ 执行期间要监测进度，定期主动向用户报告，用户询问时能立即给出进度。
+  - cid→番号清洗规则（tenhow 索引用，与仓库 `_parse_number`/DMM 官方约定对齐）：cid 形态 `^(\d*)([a-z]+)(\d+)([a-z])?$` = 可选厂商数字前缀 + 系列字母 + 数字（DMM content_id 5 位补零）+ 可选变体字母。番号 = `系列字母大写 + f"{int(数字):03d}"`（去前导零但至少 3 位，如 24ped00030→PED-030、13gvg00564→GVG-564、onsg00064→ONSG-064；**绝不**缩成 PED-30，旧库 tenhow 行的此类错误写法均待修）；末尾变体字母（b/c/f/r 等）视为同番号变体归并；去重比对一律用 (系列字母, int(数字)) 做 key 以兼容库里去零/补零两种存量写法；不匹配该形态的 cid 进「待人工」sheet 不猜番号。

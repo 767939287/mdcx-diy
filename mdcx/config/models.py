@@ -86,6 +86,12 @@ class TranslateConfig(BaseModel):
     llm_max_req_sec: float = Field(default=1, title="LLM 每秒最大请求数")
     llm_max_try: int = Field(default=5, title="LLM 最大尝试次数")
     llm_temperature: float = Field(default=0.2, title="LLM 温度")
+    llm_disable_thinking: bool = Field(
+        default=False,
+        title="关闭思考模式",
+        description="勾选后按服务商自动下发关闭思考参数（硅基流动/百炼/火山方舟/Ollama/Gemini），"
+        "不支持时自动去参重试；未收录的服务商不下发参数，跟随模型默认行为",
+    )
 
     def model_post_init(self, context) -> None:
         if self.llm_max_req_sec <= 0:

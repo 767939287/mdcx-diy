@@ -3,11 +3,52 @@ import contextlib
 import re
 import threading
 from collections.abc import Callable
+from urllib.parse import urlparse
 
 from aiolimiter import AsyncLimiter
 from httpx import AsyncClient, Timeout
-from openai import AsyncOpenAI
+from openai import AsyncOpenAI, BadRequestError
 from openai.types.chat import ChatCompletionMessageParam
+
+# 各服务商「关闭思考」参数（翻译类任务无需慢思考，且部分服务商默认开启极烧 token）
+# key 为 hostname 子串匹配，value 为注入到 extra_body 的参数字典。
+# 未收录的服务商不下发任何参数，跟随模型默认行为。
+_DISABLE_THINKING_PARAMS: list[tuple[str, dict]] = [
+    ("siliconflow.cn", {"enable_thinking": False}),  # 硅基流动
+    ("dashscope.aliyuncs.com", {"enable_thinking": False}),  # 阿里百炼 compatible-mode
+    ("aliyuncs.com", {"enable_thinking": False}),
+    ("volces.com", {"thinking": {"type": "disabled"}}),  # 火山方舟
+    ("ollama", {"think": False}),  # Ollama openai-compat
+    ("generativelanguage.googleapis.com", {"reasoning_effort": "none"}),  # Gemini openai-compat
+]
+
+
+def get_disable_thinking_extra_body(base_url: str) -> dict | None:
+    """按服务商地址返回关闭思考的 extra_body 参数；未收录的服务商返回 None（不下发）。"""
+    host = urlparse(base_url).hostname or ""
+    host = host.lower()
+    for pattern, params in _DISABLE_THINKING_PARAMS:
+        if pattern in host:
+            return dict(params)
+    return None
+
+
+def _is_unsupported_param_error(e: Exception, extra_body: object) -> bool:
+    """判断 4xx 是否为 extra_body 参数不支持（用于去参重试）。
+
+    仅在返回体里出现参数名时确认，避免把普通的 400（如超长输入）误判为参数问题。
+    """
+    if not isinstance(e, BadRequestError) or not extra_body:
+        return False
+    text = str(e).lower()
+    try:
+        params = list(extra_body) if isinstance(extra_body, dict) else []  # type: ignore[arg-type]
+    except Exception:
+        params = []
+    if any(str(k).lower() in text for k in params):
+        return True
+    # 常见兼容性表述
+    return any(k in text for k in ("unknown parameter", "unsupported parameter", "unexpected keyword", "extra_body"))
 
 
 class LLMClient:
@@ -101,6 +142,7 @@ class LLMClient:
             {"role": "user", "content": user_prompt},
         ]
         wait = 1
+        body = extra_body
         await self._begin_request()
         try:
             async with self.limiter:
@@ -110,10 +152,15 @@ class LLMClient:
                             model=model,
                             messages=messages,
                             temperature=temperature,
-                            extra_body=extra_body,
+                            extra_body=body,
                         )
                         break
                     except Exception as e:
+                        # 参数兼容性错误（如服务商不支持 enable_thinking）：去掉参数重试一次
+                        if body is not None and _is_unsupported_param_error(e, body):
+                            log_fn(f"⚠️ LLM 参数不被支持 ({e})，去掉 extra_body 重试")
+                            body = None
+                            continue
                         log_fn(f"⚠️ LLM API 请求失败: {e}, {wait}s 后重试")
                         await asyncio.sleep(wait)
                         wait *= 2

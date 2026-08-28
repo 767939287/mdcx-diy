@@ -436,6 +436,7 @@ def load_config(self: "MyMAinWindow"):
         self.Ui.doubleSpinBox_llm_max_req_sec.setValue(manager.config.translate_config.llm_max_req_sec)
         self.Ui.spinBox_llm_max_try.setValue(manager.config.translate_config.llm_max_try)
         self.Ui.doubleSpinBox_llm_temperature.setValue(manager.config.translate_config.llm_temperature)
+        self.Ui.checkBox_llm_disable_thinking.setChecked(manager.config.translate_config.llm_disable_thinking)
         # endregion
 
         # region common

@@ -14473,7 +14473,7 @@
                           <x>20</x>
                           <y>30</y>
                           <width>661</width>
-                          <height>561</height>
+                          <height>591</height>
                         </rect>
                       </property>
                       <layout class="QGridLayout" name="gridLayout_llm">
@@ -14769,12 +14769,29 @@
                             <property name="singleStep">
                               <double>0.100000000000000</double>
                             </property>
-                          </widget>
-                        </item>
-                      </layout>
-                    </widget>
-                  </widget>
-                  <widget class="QGroupBox" name="groupBox_82">
+                           </widget>
+                         </item>
+                         <item row="13" column="0">
+                           <widget class="QCheckBox" name="checkBox_llm_disable_thinking">
+                             <property name="text">
+                               <string>关闭思考模式</string>
+                             </property>
+                           </widget>
+                         </item>
+                         <item row="13" column="1">
+                           <widget class="QLabel" name="label_llm_disable_thinking_desc">
+                             <property name="styleSheet">
+                               <string notr="true">color: rgb(8, 128, 128);</string>
+                             </property>
+                             <property name="text">
+                               <string>按服务商自动下发关闭思考参数(硅基流动/百炼/火山方舟/Ollama/Gemini), 不支持时自动去参重试; 未收录的服务商跟随模型默认行为</string>
+                             </property>
+                           </widget>
+                         </item>
+                       </layout>
+                     </widget>
+                   </widget>
+                   <widget class="QGroupBox" name="groupBox_82">
                     <property name="geometry">
                       <rect>
                         <x>30</x>

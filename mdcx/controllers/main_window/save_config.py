@@ -321,6 +321,7 @@ def save_config(self: "MyMAinWindow"):
     manager.config.translate_config.llm_max_req_sec = self.Ui.doubleSpinBox_llm_max_req_sec.value()
     manager.config.translate_config.llm_max_try = self.Ui.spinBox_llm_max_try.value()
     manager.config.translate_config.llm_temperature = self.Ui.doubleSpinBox_llm_temperature.value()
+    manager.config.translate_config.llm_disable_thinking = get_checkbox(self.Ui.checkBox_llm_disable_thinking)
     # endregion
 
     # region common

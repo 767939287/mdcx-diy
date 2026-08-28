@@ -6663,7 +6663,7 @@ class Ui_MDCx(object):
         self.groupBox_llm.setGeometry(QtCore.QRect(30, 354, 701, 601))
         self.groupBox_llm.setObjectName("groupBox_llm")
         self.gridLayoutWidget_llm = QtWidgets.QWidget(parent=self.groupBox_llm)
-        self.gridLayoutWidget_llm.setGeometry(QtCore.QRect(20, 30, 661, 561))
+        self.gridLayoutWidget_llm.setGeometry(QtCore.QRect(20, 30, 661, 591))
         self.gridLayoutWidget_llm.setObjectName("gridLayoutWidget_llm")
         self.gridLayout_llm = QtWidgets.QGridLayout(self.gridLayoutWidget_llm)
         self.gridLayout_llm.setContentsMargins(0, 0, 0, 0)
@@ -6825,6 +6825,13 @@ class Ui_MDCx(object):
         self.doubleSpinBox_llm_temperature.setSingleStep(0.1)
         self.doubleSpinBox_llm_temperature.setObjectName("doubleSpinBox_llm_temperature")
         self.gridLayout_llm.addWidget(self.doubleSpinBox_llm_temperature, 12, 1, 1, 1)
+        self.checkBox_llm_disable_thinking = QtWidgets.QCheckBox(parent=self.gridLayoutWidget_llm)
+        self.checkBox_llm_disable_thinking.setObjectName("checkBox_llm_disable_thinking")
+        self.gridLayout_llm.addWidget(self.checkBox_llm_disable_thinking, 13, 0, 1, 1)
+        self.label_llm_disable_thinking_desc = QtWidgets.QLabel(parent=self.gridLayoutWidget_llm)
+        self.label_llm_disable_thinking_desc.setStyleSheet("color: rgb(8, 128, 128);")
+        self.label_llm_disable_thinking_desc.setObjectName("label_llm_disable_thinking_desc")
+        self.gridLayout_llm.addWidget(self.label_llm_disable_thinking_desc, 13, 1, 1, 1)
         self.groupBox_82 = QtWidgets.QGroupBox(parent=self.scrollAreaWidgetContents_fanyi)
         self.groupBox_82.setGeometry(QtCore.QRect(30, 975, 701, 130))
         self.groupBox_82.setMinimumSize(QtCore.QSize(200, 0))
@@ -13490,6 +13497,13 @@ class Ui_MDCx(object):
         self.label_llm_max_try.setText(_translate("MDCx", "最大尝试次数:"))
         self.label_llm_max_try_desc.setText(_translate("MDCx", "API 请求失败可能只是因为暂时限流, 因此可多重试几次"))
         self.label_llm_temperature.setText(_translate("MDCx", "Temperature:"))
+        self.checkBox_llm_disable_thinking.setText(_translate("MDCx", "关闭思考模式"))
+        self.label_llm_disable_thinking_desc.setText(
+            _translate(
+                "MDCx",
+                "按服务商自动下发关闭思考参数(硅基流动/百炼/火山方舟/Ollama/Gemini), 不支持时自动去参重试; 未收录的服务商跟随模型默认行为",
+            )
+        )
         self.groupBox_82.setTitle(_translate("MDCx", "标题"))
         self.checkBox_title_translate.setText(_translate("MDCx", "使用翻译引擎翻译标题"))
         self.label_242.setText(_translate("MDCx", "标题语言："))

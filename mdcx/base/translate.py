@@ -171,14 +171,21 @@ async def _llm_translate(text: str, prompt_template: str, target_language: str =
     """调用 LLM 翻译文本"""
     if not text:
         return ""
+    translate_config = manager.config.translate_config
+    extra_body = None
+    if translate_config.llm_disable_thinking:
+        from ..llm import get_disable_thinking_extra_body
+
+        extra_body = get_disable_thinking_extra_body(str(translate_config.llm_url))
     async with manager.acquire_computed() as computed:
         translated = await computed.llm_client.ask(
-            model=manager.config.translate_config.llm_model,
+            model=translate_config.llm_model,
             system_prompt="You are a professional translator.",
             user_prompt=prompt_template.replace("{content}", text).replace("{lang}", target_language),
-            temperature=manager.config.translate_config.llm_temperature,
-            max_try=manager.config.translate_config.llm_max_try,
+            temperature=translate_config.llm_temperature,
+            max_try=translate_config.llm_max_try,
             log_fn=signal.add_log,
+            extra_body=extra_body,
         )
     if translated is None:
         return None

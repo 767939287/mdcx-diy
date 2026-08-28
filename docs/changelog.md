@@ -39,6 +39,7 @@
 - **madouqu 动态域名**：接入官方发布页 wangzhi.icu/config.js 实时解析域名列表（24h 缓存+静态回退），默认域名迁移至 madouqu.shop；搜索失败自动切换镜像
 - **站点级 CF 指纹池扩充**：新增 lulubar 与 missav 全镜像专属指纹池，按 host 自动路由并支持重试轮换排除上次失败指纹
 - **javbus 镜像池清理**：移除已 SSL 失效的四个镜像，保留实测可用域名
+- **LLM 翻译支持关闭思考模式**（#54）：设置页 LLM 区域新增「关闭思考模式」开关（默认关），勾选后按服务商自动下发关闭参数——硅基流动/阿里百炼 `enable_thinking:false`、火山方舟 `thinking:{type:disabled}`、Ollama `think:false`、Gemini(OpenAI 兼容) `reasoning_effort:none`；服务商返回 400/422 参数错误时自动去掉该参数重试一次；未收录的服务商不下发任何参数，跟随模型默认行为。新增 `tests/test_llm_disable_thinking.py` 覆盖服务商参数映射与去参重试判定逻辑
 - **getchu_dmm 合并进 getchu**：两者同源同实现，合并后里番文件路由与 UI 文案统一指向 getchu
 - **r18dev 解析兼容**：parsel `Selector.get()` 对纯 JSON 文本直接返回 dict，JSON API 爬虫解析入参兼容 str/dict/Selector 三态
 - **命名规则说明补充**：明确勾选「成功后不移动文件」时同样不会创建视频目录
