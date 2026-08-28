@@ -1005,17 +1005,18 @@ class Scraper:
         show_result(res, start_time)
 
         # 映射或翻译
-        # 当不存在已刮削数据，或者读取模式允许更新nfo时才进行映射翻译
-        if not pre_data and update_nfo:
+        # 无已刮削数据时执行；演员/标签等映射服务于命名变量（{actor}/{tag} 等），与是否写 NFO 解耦
+        if not pre_data:
             deal_some_field(res)  # 处理字段
             replace_special_word(res)  # 替换特殊字符
-            await translate_title_outline(res, file_info.cd_part, movie_number)  # 翻译json_data（标题/介绍）
-            deal_some_field(res)  # 再处理一遍字段，翻译后可能出现要去除的内容
-            # 查询演员 TMDB ID（在演员名映射前，使用原始名）
-            if NfoInclude.ACTOR_TMDBID in manager.config.nfo_include_new:
-                from .tmdb_actor import fetch_actor_tmdb_ids
+            if update_nfo:
+                await translate_title_outline(res, file_info.cd_part, movie_number)  # 翻译json_data（标题/介绍）
+                deal_some_field(res)  # 再处理一遍字段，翻译后可能出现要去除的内容
+                # 查询演员 TMDB ID（在演员名映射前，使用原始名）
+                if NfoInclude.ACTOR_TMDBID in manager.config.nfo_include_new:
+                    from .tmdb_actor import fetch_actor_tmdb_ids
 
-                res.actor_tmdb_ids = await fetch_actor_tmdb_ids(res.actors, self.crawler_provider.client)
+                    res.actor_tmdb_ids = await fetch_actor_tmdb_ids(res.actors, self.crawler_provider.client)
             # 保存原始演员名（映射前），供读取模式反向查找使用
             res.original_actors = res.actors.copy() if res.actors else []
             await translate_actor(res)  # 映射输出演员名/信息

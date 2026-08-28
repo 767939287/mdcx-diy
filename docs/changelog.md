@@ -19,6 +19,8 @@
 
 ### 修复
 
+- **视频整理模式演员名不映射中文（议题 #53）**：演员映射 `translate_actor` 与标签/系列等信息映射 `translate_info` 原被 `if not pre_data and update_nfo:` 一并包住，而整理模式（主模式 2）不写 NFO 使 `update_nfo=False`，整块映射被跳过，`res.actors` 保持爬虫返回的日文原名，命名变量 `{actor}/{first_actor}/{all_actor}` 与 `{tag}/{series}/{studio}` 因此输出日文，文件夹名不走演员数据库中文名。映射服务于命名变量而非仅服务 NFO，故将条件解耦为 `if not pre_data:`：演员/信息映射与 `replace_word` 无条件执行，LLM 标题/简介翻译 `translate_title_outline` 与演员 TMDB ID 查询（须在映射前用日文原名）保留在内层 `update_nfo` 分支，整理模式不引入额外网络开销；新增 AST 结构哨兵测试锁定调用位置防回归
+
 - **Jellyfin 12（原 10.12）连接失败修复（议题 #32）**：Jellyfin 10.11 后端重写起 auth middleware 要求完整 MediaBrowser 设备标识，仅携带 Token 的请求被拒。`emby_shared._build_jellyfin_headers` 补全 `Client/Device/DeviceId/Version` 字段（向下兼容 10.8+，17 个调用点统一受益）；演员管理器连接测试 Jellyfin 分支去掉 URL 上的 `?api_key=` 明文密钥，统一走 Authorization 头
 
 - **official 无码官网 studio 字段污染**：1pondo/10musume/pacopacomama JSON 的 UCNAME 键实为分类标签数组，原取值链误作厂牌导致 studio 产出脏值且三站标签全空；改为 Maker/Studio 取值 + 站点兜底，UCNAME 归入 tags 来源
