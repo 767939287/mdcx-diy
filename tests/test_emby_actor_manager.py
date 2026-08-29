@@ -371,8 +371,6 @@ async def test_delete_actor_image_404_treated_as_success(monkeypatch: pytest.Mon
 @pytest.mark.asyncio
 async def test_get_emby_actor_list_jellyfin_uses_items_endpoint(monkeypatch: pytest.MonkeyPatch):
     """Jellyfin 12 的演员列表必须走 /Items+includeItemTypes（/Persons 列表 401，真机实测议题 #32）。"""
-    import asyncio
-
     from mdcx.config.manager import manager
     from mdcx.tools import emby_actor_manager
 
