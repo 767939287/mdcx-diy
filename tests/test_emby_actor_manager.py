@@ -366,3 +366,52 @@ async def test_delete_actor_image_404_treated_as_success(monkeypatch: pytest.Mon
 
     assert ok is True
     assert "404" in msg
+
+
+@pytest.mark.asyncio
+async def test_get_emby_actor_list_jellyfin_uses_items_endpoint(monkeypatch: pytest.MonkeyPatch):
+    """Jellyfin 12 的演员列表必须走 /Items+includeItemTypes（/Persons 列表 401，真机实测议题 #32）。"""
+    import asyncio
+
+    from mdcx.config.manager import manager
+    from mdcx.tools import emby_actor_manager
+
+    captured: dict = {}
+
+    class _FakeClient:
+        async def get_json(self, url, headers=None, use_proxy=True, **kwargs):
+            captured["url"] = url
+            return {"Items": [{"Name": "演员A"}]}, ""
+
+    class _FakeComputed:
+        async_client = _FakeClient()
+
+    class _FakeAcquire:
+        async def __aenter__(self):
+            return _FakeComputed()
+
+        async def __aexit__(self, *args):
+            return False
+
+    monkeypatch.setattr(manager.config, "server_type", "jellyfin")
+    monkeypatch.setattr(manager.config, "emby_url", "http://127.0.0.1:8096")
+    monkeypatch.setattr(manager.config, "api_key", "token")
+    monkeypatch.setattr(manager.config, "user_id", "user-1")
+    monkeypatch.setattr(emby_actor_manager, "_raise_if_stop_requested", lambda: None)
+
+    real_acquire = type(manager).acquire_computed
+    monkeypatch.setattr(manager, "acquire_computed", lambda: _FakeAcquire())
+    try:
+        actor_list = await emby_actor_manager.get_emby_actor_list(filter_actor_only=True)
+    finally:
+        monkeypatch.setattr(manager, "acquire_computed", real_acquire)
+
+    from urllib.parse import parse_qs, urlparse
+
+    parsed = urlparse(captured["url"])
+    query = parse_qs(parsed.query)
+
+    assert actor_list == [{"Name": "演员A"}]
+    assert parsed.path == "/Items"
+    assert query["includeItemTypes"] == ["Person"]
+    assert query["personTypes"] == ["Actor"]

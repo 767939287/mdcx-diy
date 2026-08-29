@@ -93,8 +93,12 @@ async def _get_emby_actor_list() -> list[dict]:
     else:
         server_name = "Jellyfin"
         url = _append_query(
-            base_url + "/Persons",
+            base_url + "/Items",
             {
+                # Jellyfin 12（原 10.12）的 /Persons 列表端点对鉴权/字段组合返回 401/超时
+                # （真机实测，议题 #32），改走通用 /Items 查询 + includeItemTypes=Person
+                # 后演员列表与图片均正常——参考 fork 767939287 的真机验证修复
+                "includeItemTypes": "Person",
                 "personTypes": "Actor",
                 "fields": ",".join(JELLYFIN_PERSON_FIELDS),
                 "enableImages": "true",

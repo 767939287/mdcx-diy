@@ -131,13 +131,15 @@ async def get_emby_actor_list(filter_actor_only: bool = True) -> list[dict]:
     else:
         server_name = "Jellyfin"
         params = {
+            # 同 emby_actor_image：Jellyfin 12 /Persons 列表 401，改走 /Items+includeItemTypes
+            "includeItemTypes": "Person",
             "fields": "Overview,ProviderIds,ProductionLocations,Taglines,Genres,Tags",
             "enableImages": "true",
             "userId": manager.config.user_id,
         }
         if filter_actor_only:
             params["personTypes"] = "Actor"
-        url = _append_query(base_url + "/Persons", params)
+        url = _append_query(base_url + "/Items", params)
     signal.show_log_text(f"⏳ 连接 {server_name} 服务器...")
     if not manager.config.api_key:
         signal.show_log_text(f"🔴 {server_name} API 密钥未填写！")
