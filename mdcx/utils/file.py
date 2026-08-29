@@ -1,8 +1,10 @@
 import asyncio
+import contextlib
 import os
 import shutil
 import subprocess
 import tempfile
+import time
 import traceback
 from collections.abc import Iterable
 from pathlib import Path
@@ -301,7 +303,12 @@ async def delete_file_async(p: str | Path):
 
 
 async def move_file_async(old: str | Path, new: str | Path):
-    """异步移动文件"""
+    """异步移动文件。
+
+    目标已存在且与源不是同一文件时，把旧目标重命名为 ``{stem}_conflict_{ts}{ext}``
+    保留后再移动——shutil.move 会静默覆盖同名目标，批量任务里命名撞车会
+    造成不可逆的数据丢失（实测复现：受害者内容直接被覆盖消失）。
+    """
     old = Path(old)
     new = Path(new)
     try:
@@ -309,6 +316,14 @@ async def move_file_async(old: str | Path, new: str | Path):
             return True, ""
         if await aiofiles.os.path.isdir(new) and not await aiofiles.os.path.islink(new):
             return False, f"目标是目录，无法覆盖文件: {new}"
+        if await aiofiles.os.path.exists(new):
+            same = False
+            with contextlib.suppress(OSError):
+                same = await asyncio.to_thread(os.path.samefile, old, new)
+            if not same:
+                backup = new.with_name(f"{new.stem}_conflict_{int(time.time())}{new.suffix}")
+                await asyncio.to_thread(os.rename, str(new), str(backup))
+                signal.add_log(f"⚠️ 目标已存在同名文件，旧文件已重命名保留: {backup}")
         await asyncio.to_thread(shutil.move, str(old), str(new))
         return True, ""
     except Exception as e:

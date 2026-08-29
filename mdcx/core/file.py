@@ -80,7 +80,9 @@ async def creat_folder(
     # 如果不存在目标文件夹，则创建文件夹
     elif not await aiofiles.os.path.isdir(folder_new_path):
         try:
-            await aiofiles.os.makedirs(folder_new_path)
+            # exist_ok 吸收并发竞态：多个协程同时创建同一目录时
+            # check-then-act 会抛 FileExistsError 走进失败分支
+            await aiofiles.os.makedirs(folder_new_path, exist_ok=True)
             LogBuffer.log().write("\n 🍀 Folder done! (new)")
             return True
         except Exception as e:
@@ -132,6 +134,12 @@ async def move_movie(other: OtherInfo, file_info: FileInfo, file_path: Path, fil
         raw = file_path
         # 自身是软链接时，获取真实路径
         file_path = file_path.resolve()
+        # 同路径守卫：更新模式扫描已整理目录时，算出的目标路径可能与源相同。
+        # 此时先删后建会把源影片删掉并产生指向自己的死链接（数据不可恢复）。
+        if file_path == file_new_path:
+            file_info.file_path = file_new_path
+            LogBuffer.log().write(f"\n 🍀 Movie done! (源与目标相同，跳过软链接) \n 🙉 [Movie] {file_new_path}")
+            return True
         # 删除目标路径存在的文件，否则会创建失败，
         await delete_file_async(file_new_path)
         try:
@@ -152,6 +160,11 @@ async def move_movie(other: OtherInfo, file_info: FileInfo, file_path: Path, fil
 
     # 硬链接模式开时，创建硬链接
     elif manager.config.soft_link == 2:
+        # 同路径守卫：同上，硬链接分支同样先删后建，同路径会删掉源文件
+        if file_path == file_new_path:
+            file_info.file_path = file_new_path
+            LogBuffer.log().write(f"\n 🍀 Movie done! (源与目标相同，跳过硬链接) \n 🙉 [Movie] {file_new_path}")
+            return True
         try:
             await delete_file_async(file_new_path)
             await aiofiles.os.link(file_path, file_new_path)
@@ -989,16 +1002,13 @@ async def deal_old_files(
         elif trailer_old_file_path != trailer_new_file_path and await aiofiles.os.path.exists(
             str(trailer_old_file_path)
         ):
-            if not await aiofiles.os.path.exists(str(trailer_new_folder_path)):
-                await aiofiles.os.makedirs(str(trailer_new_folder_path))
+            await aiofiles.os.makedirs(str(trailer_new_folder_path), exist_ok=True)
             await move_file_async(trailer_old_file_path, trailer_new_file_path)
         elif await aiofiles.os.path.exists(str(trailer_new_file_path_with_filename)):
-            if not await aiofiles.os.path.exists(str(trailer_new_folder_path)):
-                await aiofiles.os.makedirs(str(trailer_new_folder_path))
+            await aiofiles.os.makedirs(str(trailer_new_folder_path), exist_ok=True)
             await move_file_async(trailer_new_file_path_with_filename, trailer_new_file_path)
         elif await aiofiles.os.path.exists(str(trailer_old_file_path_with_filename)):
-            if not await aiofiles.os.path.exists(str(trailer_new_folder_path)):
-                await aiofiles.os.makedirs(str(trailer_new_folder_path))
+            await aiofiles.os.makedirs(str(trailer_new_folder_path), exist_ok=True)
             await move_file_async(trailer_old_file_path_with_filename, trailer_new_file_path)
 
         # 删除旧文件夹，用不到了

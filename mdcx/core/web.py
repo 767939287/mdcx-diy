@@ -634,9 +634,9 @@ async def trailer_download(
     # 下载预告片,检测链接有效性
     content_length = await check_url(trailer_url, length=True)
     if content_length:
-        # 创建文件夹
-        if trailer_name == 1 and not await aiofiles.os.path.exists(trailer_folder_path):
-            await aiofiles.os.makedirs(trailer_folder_path)
+        # 创建文件夹（exist_ok 吸收并发竞态）
+        if trailer_name == 1:
+            await aiofiles.os.makedirs(trailer_folder_path, exist_ok=True)
 
         # 开始下载
         download_files = manager.config.download_files
@@ -1412,10 +1412,9 @@ async def extrafanart_download(extrafanart: list[str], extrafanart_from: str, fo
             extrafanart_folder_path_temp = extrafanart_folder_path.with_name(
                 extrafanart_folder_path.name + "[DOWNLOAD]"
             )
-            if not await aiofiles.os.path.exists(extrafanart_folder_path_temp):
-                await aiofiles.os.makedirs(extrafanart_folder_path_temp)
+            await aiofiles.os.makedirs(extrafanart_folder_path_temp, exist_ok=True)
         else:
-            await aiofiles.os.makedirs(extrafanart_folder_path_temp)
+            await aiofiles.os.makedirs(extrafanart_folder_path_temp, exist_ok=True)
 
         extrafanart_count = 0
         extrafanart_count_succ = 0

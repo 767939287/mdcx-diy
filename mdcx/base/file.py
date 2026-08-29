@@ -158,8 +158,7 @@ async def copy_trailer_to_theme_videos(folder_new_path: Path, naming_rule: str) 
         return
 
     # 存在预告片时复制
-    if not await aiofiles.os.path.exists(theme_videos_folder_path):
-        await aiofiles.os.makedirs(theme_videos_folder_path)
+    await aiofiles.os.makedirs(theme_videos_folder_path, exist_ok=True)
     if await aiofiles.os.path.exists(theme_videos_new_path):
         await delete_file_async(theme_videos_new_path)
     await copy_file_async(trailer_file_path, theme_videos_new_path)
@@ -531,8 +530,7 @@ async def newtdisk_creat_symlink(
                     continue
 
                 local_dir = local_path / root.relative_to(netdisk_path)
-                if not local_dir.is_dir():
-                    os.makedirs(local_dir)
+                os.makedirs(local_dir, exist_ok=True)
                 for f in files:
                     # 跳过隐藏文件、预告片、主题视频
                     if f.startswith("."):
@@ -609,9 +607,9 @@ async def move_file_to_failed_folder(failed_folder: Path, file_path: Path, folde
         return file_path
 
     # 创建failed文件夹
-    if manager.config.failed_file_move == 1 and not await aiofiles.os.path.exists(failed_folder):
+    if manager.config.failed_file_move == 1:
         try:
-            await aiofiles.os.makedirs(failed_folder)
+            await aiofiles.os.makedirs(failed_folder, exist_ok=True)
         except Exception:
             signal.show_traceback_log(traceback.format_exc())
             signal.show_log_text(traceback.format_exc())

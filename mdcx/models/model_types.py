@@ -282,7 +282,10 @@ class BaseCrawlerResult:
             publisher="",
             release="",
             runtime="",
-            score="0.0",
+            # 评分不能初始化为 "0.0"：字段优先级合并用 `not getattr(reduced, field)`
+            # 判定"待填充"，"0.0" 为 truthy 会导致爬虫返回的真实评分被永远跳过，
+            # 全库 NFO <rating> 恒为 0.0（实测复现：站点返回 8.5 被丢弃）
+            score="",
             series="",
             studio="",
             tags=[],

@@ -366,8 +366,7 @@ class MediaResourceContext:
             LogBuffer.log().write(f"\n 🥺 Download failed! {url}")
             return False
 
-        if not await aiofiles.os.path.exists(folder_path):
-            await aiofiles.os.makedirs(folder_path)
+        await aiofiles.os.makedirs(folder_path, exist_ok=True)
 
         if self._should_convert_to_jpg(url, file_path):
             return await self._save_converted_jpg(image, file_path)

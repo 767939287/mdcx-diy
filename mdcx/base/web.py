@@ -983,8 +983,8 @@ async def download_file_with_filepath(url: str, file_path: Path, folder_new_path
     if not url:
         return False
 
-    if not await aiofiles.os.path.exists(folder_new_path):
-        await aiofiles.os.makedirs(folder_new_path)
+    # exist_ok 直接吸收并发竞态（多协程同时建同一目录时 check-then-act 必然 FileExistsError）
+    await aiofiles.os.makedirs(folder_new_path, exist_ok=True)
     try:
         async with manager.acquire_computed() as computed:
             if await computed.async_client.download(url, file_path, max_bytes=_IMAGE_DOWNLOAD_MAX_BYTES):
@@ -1000,8 +1000,8 @@ async def download_content_with_filepath(url: str, file_path: Path, folder_new_p
     if not url:
         return False
 
-    if not await aiofiles.os.path.exists(folder_new_path):
-        await aiofiles.os.makedirs(folder_new_path)
+    # exist_ok 直接吸收并发竞态（多协程同时建同一目录时 check-then-act 必然 FileExistsError）
+    await aiofiles.os.makedirs(folder_new_path, exist_ok=True)
 
     try:
         headers = build_jdbstatic_headers(url) if is_jdbstatic_image_url(url) else None
@@ -1039,8 +1039,8 @@ async def download_dmm_extrafanart_with_filepath(url: str, file_path: Path, fold
     if not url:
         return False
 
-    if not await aiofiles.os.path.exists(folder_new_path):
-        await aiofiles.os.makedirs(folder_new_path)
+    # exist_ok 直接吸收并发竞态（多协程同时建同一目录时 check-then-act 必然 FileExistsError）
+    await aiofiles.os.makedirs(folder_new_path, exist_ok=True)
 
     normalized_url = normalize_media_url(url)
     if _is_invalid_image_redirect_url(normalized_url):

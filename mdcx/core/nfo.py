@@ -184,8 +184,7 @@ async def write_nfo(
     tags = prioritize_nfo_tags(data.tags, series_tag=series_tag, series_template=manager.config.nfo_tag_series)
 
     try:
-        if not await aiofiles.os.path.exists(output_dir):
-            await aiofiles.os.makedirs(output_dir)
+        await aiofiles.os.makedirs(output_dir, exist_ok=True)
         # 原子写入（临时文件 + os.replace）：避免115出现重复文件，同时防止写入中断损坏旧 NFO
 
         code = StringIO()

@@ -2605,7 +2605,7 @@ class MyMAinWindow(QMainWindow):
             des_path = movie_path / "Movie_moved"
             if not des_path.exists():
                 signal_qt.show_log_text(f"Created folder: {des_path}")
-                os.makedirs(des_path)
+            os.makedirs(des_path, exist_ok=True)
             file_name = file_path.name
             file_ext = file_path.suffix.lower()
             try:

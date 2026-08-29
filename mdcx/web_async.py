@@ -824,14 +824,26 @@ class AsyncWebClient:
         return response
 
     async def _close_response(self, response: Response | None) -> None:
+        """立即关闭响应，不等剩余数据传输完成。
+
+        curl_cffi 流式模式下 ``aclose()`` 只 await 内部接收任务，会把剩余
+        响应体全部拉完才返回（实测：提前放弃 4MB 响应仍阻塞 3.5s 拉满全量，
+        图片尺寸探测因此退化成整图下载）；同步 ``close()`` 会设置
+        curl 的 quit_now 立即中断传输（实测同场景 0.00s 返回）。
+        ``_attach_stream_release`` 包装后的 close() 同样会触发租约释放，
+        连接池配平不受影响。
+        """
         if response is None:
             return
-        if hasattr(response, "aclose"):
+        close_fn = getattr(response, "close", None)
+        if callable(close_fn):
             with contextlib.suppress(Exception):
-                await response.aclose()
+                close_fn()
             return
-        with contextlib.suppress(Exception):
-            response.close()
+        aclose_fn = getattr(response, "aclose", None)
+        if callable(aclose_fn):
+            with contextlib.suppress(Exception):
+                await aclose_fn()
 
     def _log(self, message: str) -> None:
         try:
