@@ -223,6 +223,11 @@ class HostConnectionPool:
             raise
 
     async def end_request(self, generation: int) -> None:
+        # 修复 C6: 连接池关闭后不再接受归还，直接释放槽位即可
+        if self._closed:
+            self._request_slots.release()
+            return
+
         sessions_to_close: list[AsyncSession] = []
         async with self._session_lock:
             current_count = self._active_by_generation.get(generation, 0)
