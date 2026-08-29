@@ -33,9 +33,21 @@
 - Instructions:
   - **仓库根 `config.json` 是脏配置**（含已删站点值），`manager.load()` 遇校验失败会走 except 分支保留旧配置、不调 `_replace_config`。拿它写验证脚本会看到"一切正常"的假象。验证配置加载/网络栈相关行为须用 `Config()` 默认配置写临时文件再指 `manager.path`。
   - 泄漏/累积类问题先写最小复现脚本量化再下结论：统计 `gc.get_objects()` 中目标类存活数、事件循环 `asyncio.all_tasks()` 未完成数，跑 N 轮看是否线性增长。必须做对照实验区分"每次操作都泄漏"与"泄漏一次后被钉住"（议题 #55 靠对照确认单纯点保存无害，必须先有一次停止刮削造成的租约泄漏）。
+  - **行为修复一律"先写复现测试跑红 → 修 → 绿"**，缺一步都不算完成。修复后再做一轮反向审查（边界、调用点语义分类），2026-08-29 实证：C2 修完后未先红跑，审查才发现水印流程（`.[MARK].jpg` 落位）每次重刮留 `_conflict` 垃圾——31 个 `move_file_async` 调用点须分"素材移动（冲突保留，默认）"与"临时落位（覆盖期望，显式 `overwrite=True`）"两类，12 处落位点易漏。pytest-asyncio 是 strict 模式：async 测试文件顶部须 `pytestmark = pytest.mark.asyncio`，缺了报 "not natively supported"。
   - 结构约束类修复（要求某调用必须在/不在某条件分支内）用 AST 哨兵测试锁定位置，行为测试覆盖不到。写完必须拿**修复前的代码片段**反向喂哨兵确认能判定失败，否则哨兵可能恒真（先例：`tests/test_actor_mapping_decoupled.py`、`tests/test_issue55_memory_leak.py`）。
-  - conftest 用 dummy 模块替换了 `mdcx.config.manager`、`mdcx.config.resources`、`mdcx.signals`，测试内无法 import 这些模块的真实类；需要检查其源码结构时直接读文件做 AST 解析。
-  - 用 subagent 做大范围根因排查时，要求它输出"已排除的假设清单 + 每条排除理由"，比只给可疑点更有价值——可直接写进议题回帖，也能防止自己重复走同一条死路。
+  - conftest 用 dummy 模块替换了 `mdcx.config.manager`、`mdcx.config.resources`、`mdcx.signals`，测试内无法 import 这些模块的真实类；需要检查其源码结构时直接读文件做 AST 解析。**写独立验证脚本时须在 import mdcx 前手工注入同样的 dummy**（`types.ModuleType` + `manager`/`resources`/`signal` 属性），否则 ImportError。
+  - 用 subagent 做大范围根因排查时，要求它输出"已排除的假设清单 + 每条排除理由"，比只给可疑点更有价值——可直接写进议题回帖，也能防止自己重复走同一条死路。**subagent 标注"已验证"的结论同样不可直接采信**（2026-08-29 实证：22 项宣称 11 项编造/夸大——引用了不存在的方法 `_return_session`、死锁模型把两个独立线程池当成一个、描述了不存在的 API 签名）。自己修复前必须用独立复现脚本重现每一条，"半数编造"的审查报告曾导致整批修复被撤销重做（4fc9546→6a47ec2）。
+  - 大范围多文件改动后撤回用 `git revert --no-commit <多个提交>` 合并成单个撤销提交，历史可追溯且不强推。
+
+## 并发与网络库行为（实测实证）
+
+- Date: 2026-08-29
+- Category: 排错调试
+- Instructions:
+  - **curl_cffi 0.16 流式响应关闭语义**：`aclose()` 只 await 内部接收任务、会把剩余响应体全部拉完（实测提前放弃 4MB 响应仍阻塞 3.5s 拉满全量）；同步 `close()` 设 quit_now 立即中止（0.00s）。**中止流后该 session 的 `close()` 会抛库内 TypeError**（`curl_multi_remove_handle` 遇 `curl._curl=None`），但同一 session 的后续请求复用完全正常——真项目里 session 由连接池长期持有且 `_close_sessions` 有 suppress，故应"close 优先中止流"，session 关闭异常按噪声处理。涉及网络层关闭/清理行为改动前先看 `web_async.py::_close_response` 的注释与 `tests/test_stream_close_aborts.py`。
+  - **asyncio 线程池归属事实**：全局 `AsyncBackgroundExecutor`（`mdcx/utils/__init__.py`）的后台事件循环有**独立的** default executor（线程名 `asyncio_0`），与主 loop 的 default executor（跑 `asyncio.to_thread` 的池）是两个池。判断"executor.run 嵌套 to_thread 会不会死锁"必须先实测两个池是否同一个——线程池隔离时不构成循环等待（2026-08-29 实证：subagent 宣称的裁剪死锁因此不成立，8 并发全过）。
+  - **LogBuffer 任务树归因**（2026-08-29 引入）：写入按 `_ROOT` contextvar 归因落键，`create_task` 子协程自动继承、`to_thread` 线程内可见（ctx.run 语义）；兄弟任务在 `process_one_file` 入口 `new_root()` 切断继承。新增并发诊断日志时**不要**再按 task_id 做全局隔离/聚合的假设，改走 root 归因；不要回退到"get() 拼全局 all_buffers"的旧模式（会复现跨影片错误污染，`tests/test_log_buffer_tree.py` 锁定）。
+
 
 ## UI 开发与排错
 
