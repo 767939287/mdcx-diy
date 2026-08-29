@@ -238,7 +238,8 @@ async def add_mark_thread(pic_path: Path, mark_list: list[str]):
         signal.show_log_text(traceback.format_exc())
     img_pic.close()
     if await check_pic_async(temp_pic_path):
-        await move_file_async(temp_pic_path, pic_path)
+        # 临时水印图落位：目标本就是旧版本，直接覆盖（不产生 _conflict 残留）
+        await move_file_async(temp_pic_path, pic_path, overwrite=True)
 
 
 async def add_del_extrafanart_copy(mode: str) -> None:

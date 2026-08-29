@@ -302,12 +302,16 @@ async def delete_file_async(p: str | Path):
         return False, error_info
 
 
-async def move_file_async(old: str | Path, new: str | Path):
+async def move_file_async(old: str | Path, new: str | Path, *, overwrite: bool = False):
     """异步移动文件。
 
-    目标已存在且与源不是同一文件时，把旧目标重命名为 ``{stem}_conflict_{ts}{ext}``
-    保留后再移动——shutil.move 会静默覆盖同名目标，批量任务里命名撞车会
-    造成不可逆的数据丢失（实测复现：受害者内容直接被覆盖消失）。
+    目标已存在且与源不是同一文件时，默认把旧目标重命名为
+    ``{stem}_conflict_{ts}{ext}`` 保留后再移动——shutil.move 会静默覆盖
+    同名目标，批量任务里命名撞车会造成不可逆的数据丢失（实测复现：
+    受害者内容直接被覆盖消失）。
+
+    ``overwrite=True`` 用于「临时文件落位」语义（.[MARK].jpg / _temp /
+    .tmp 等移动到正式名）：目标本就是同一资源的旧版本，直接覆盖。
     """
     old = Path(old)
     new = Path(new)
@@ -316,7 +320,7 @@ async def move_file_async(old: str | Path, new: str | Path):
             return True, ""
         if await aiofiles.os.path.isdir(new) and not await aiofiles.os.path.islink(new):
             return False, f"目标是目录，无法覆盖文件: {new}"
-        if await aiofiles.os.path.exists(new):
+        if not overwrite and await aiofiles.os.path.exists(new):
             same = False
             with contextlib.suppress(OSError):
                 same = await asyncio.to_thread(os.path.samefile, old, new)

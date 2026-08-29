@@ -202,7 +202,7 @@ async def move_movie(other: OtherInfo, file_info: FileInfo, file_path: Path, fil
         temp_folder, temp_file = split_path(str(file_new_path))
         if temp_file not in await aiofiles.os.listdir(temp_folder):
             tmp_path = str(file_new_path) + ".MDCx.tmp"
-            await move_file_async(str(file_path), tmp_path)
+            await move_file_async(str(file_path), tmp_path, overwrite=True)
             await asyncio.to_thread(os.rename, tmp_path, str(file_new_path))
         LogBuffer.log().write(f"\n 🍀 Movie done! \n 🙉 [Movie] {file_new_path}")
         file_info.file_path = file_new_path
@@ -782,15 +782,15 @@ async def _migrate_picture_resource(
             async with Flags._pic_catch_lock:
                 if not await aiofiles.os.path.exists(final_path):
                     if new_path_with_filename != final_path and await aiofiles.os.path.exists(new_path_with_filename):
-                        moved, _ = await move_file_async(new_path_with_filename, final_path)
+                        moved, _ = await move_file_async(new_path_with_filename, final_path, overwrite=True)
                         if not moved:
                             exists = False
                     elif old_path_with_filename != final_path and await aiofiles.os.path.exists(old_path_with_filename):
-                        moved, _ = await move_file_async(old_path_with_filename, final_path)
+                        moved, _ = await move_file_async(old_path_with_filename, final_path, overwrite=True)
                         if not moved:
                             exists = False
                     elif old_path_no_filename != final_path and await aiofiles.os.path.exists(old_path_no_filename):
-                        moved, _ = await move_file_async(old_path_no_filename, final_path)
+                        moved, _ = await move_file_async(old_path_no_filename, final_path, overwrite=True)
                         if not moved:
                             exists = False
                     else:

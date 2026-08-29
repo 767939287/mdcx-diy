@@ -118,3 +118,41 @@ async def test_c2_move_same_file_still_succeeds(tmp_path: Path):
     assert ok is True
     assert src.read_bytes() == b"SAME"
     assert len(list(tmp_path.iterdir())) == 1, "同文件移动不应产生任何多余文件"
+
+
+async def test_c2_overwrite_true_replaces_temp_without_conflict(tmp_path: Path):
+    """overwrite=True 的「临时文件落位」语义：直接覆盖，不得留 _conflict 残留。
+
+    场景：水印流程 image.py:241 —— poster.[MARK].jpg 移到 poster.jpg，
+    目标本就是旧版本，产生 _conflict 文件会污染输出目录（审查中发现的回归，
+    实测每次加水印都留一个垃圾文件）。
+    """
+    from mdcx.utils.file import move_file_async
+
+    pic = tmp_path / "poster.jpg"
+    pic.write_bytes(b"OLD")
+    temp = tmp_path / "poster.[MARK].jpg"
+    temp.write_bytes(b"NEW-WITH-MARK")
+
+    ok, err = await move_file_async(temp, pic, overwrite=True)
+
+    assert ok is True
+    assert pic.read_bytes() == b"NEW-WITH-MARK"
+    assert len(list(tmp_path.iterdir())) == 1, f"临时落位不应产生多余文件: {list(tmp_path.iterdir())}"
+
+
+async def test_c2_overwrite_false_keeps_conflict_backup(tmp_path: Path):
+    """overwrite=False（默认）的「素材移动」语义：冲突必须保留旧文件。"""
+    from mdcx.utils.file import move_file_async
+
+    src = tmp_path / "src.mp4"
+    src.write_bytes(b"NEW-MOVIE")
+    dst = tmp_path / "dst.mp4"
+    dst.write_bytes(b"OLD-VICTIM")
+
+    ok, _ = await move_file_async(src, dst)
+
+    assert ok is True
+    contents = {p.name: p.read_bytes() for p in tmp_path.iterdir()}
+    assert b"OLD-VICTIM" in contents.values(), f"默认语义下旧文件必须保留: {contents}"
+    assert dst.read_bytes() == b"NEW-MOVIE"

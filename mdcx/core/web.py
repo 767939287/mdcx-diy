@@ -652,7 +652,7 @@ async def trailer_download(
                 )
                 signal.show_traceback_log(f"✅ {result.number} trailer done!")
                 if trailer_file_path_temp != trailer_file_path:
-                    await move_file_async(trailer_file_path_temp, trailer_file_path)
+                    await move_file_async(trailer_file_path_temp, trailer_file_path, overwrite=True)
                     await delete_file_async(trailer_file_path_temp)
                 done_trailer_path = Flags.file_done_dic.get(result.number, cast(FileDoneDict, {})).get("trailer")
                 async with Flags._file_done_lock:
@@ -859,7 +859,7 @@ async def thumb_download(
                 if cover_size:
                     # 图片下载正常，替换旧的 thumb.jpg
                     if thumb_final_path_temp != thumb_final_path:
-                        await move_file_async(thumb_final_path_temp, thumb_final_path)
+                        await move_file_async(thumb_final_path_temp, thumb_final_path, overwrite=True)
                         await delete_file_async(thumb_final_path_temp)
                     if cd_part:
                         Flags.file_done_dic[result.number].update({"thumb": thumb_final_path})
@@ -889,7 +889,7 @@ async def thumb_download(
                 cover_size = await check_pic_async(thumb_final_path_temp)
                 if cover_size:
                     if thumb_final_path_temp != thumb_final_path:
-                        await move_file_async(thumb_final_path_temp, thumb_final_path)
+                        await move_file_async(thumb_final_path_temp, thumb_final_path, overwrite=True)
                         await delete_file_async(thumb_final_path_temp)
                     if cd_part:
                         Flags.file_done_dic[result.number].update({"thumb": thumb_final_path})
@@ -918,7 +918,7 @@ async def thumb_download(
                 cover_size = await check_pic_async(thumb_final_path_temp)
                 if cover_size:
                     if thumb_final_path_temp != thumb_final_path:
-                        await move_file_async(thumb_final_path_temp, thumb_final_path)
+                        await move_file_async(thumb_final_path_temp, thumb_final_path, overwrite=True)
                         await delete_file_async(thumb_final_path_temp)
                     if cd_part:
                         Flags.file_done_dic[result.number].update({"thumb": thumb_final_path})
@@ -1059,7 +1059,7 @@ async def _download_poster_candidate(
         return False
 
     if poster_final_path_temp != poster_final_path:
-        await move_file_async(poster_final_path_temp, poster_final_path)
+        await move_file_async(poster_final_path_temp, poster_final_path, overwrite=True)
         await delete_file_async(poster_final_path_temp)
     if cd_part:
         Flags.file_done_dic[result.number].update({"poster": poster_final_path})
@@ -1237,7 +1237,7 @@ async def poster_download(
                 poster_size = await check_pic_async(poster_final_path_temp)
                 if poster_size:
                     if poster_final_path_temp != poster_final_path:
-                        await move_file_async(poster_final_path_temp, poster_final_path)
+                        await move_file_async(poster_final_path_temp, poster_final_path, overwrite=True)
                         await delete_file_async(poster_final_path_temp)
                     if cd_part:
                         Flags.file_done_dic[result.number].update({"poster": poster_final_path})
@@ -1269,7 +1269,7 @@ async def poster_download(
         cut_thumb_to_poster, result, thumb_path, poster_final_path_temp, result.scraping_type, cut_log
     ):
         # 裁剪成功，替换旧图
-        await move_file_async(poster_final_path_temp, poster_final_path)
+        await move_file_async(poster_final_path_temp, poster_final_path, overwrite=True)
         if cd_part:
             Flags.file_done_dic[result.number].update({"poster": poster_final_path})
         other.poster_path = poster_final_path
