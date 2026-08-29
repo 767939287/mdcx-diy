@@ -138,9 +138,6 @@ async def test_stream_failure_response_is_closed(monkeypatch: pytest.MonkeyPatch
         status_code = 500
         headers = {}
 
-        def close(self):
-            closed.append(True)
-
         async def aclose(self):
             closed.append(True)
 

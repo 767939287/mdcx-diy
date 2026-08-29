@@ -223,11 +223,6 @@ class HostConnectionPool:
             raise
 
     async def end_request(self, generation: int) -> None:
-        # 修复 C6: 连接池关闭后不再接受归还，直接释放槽位即可
-        if self._closed:
-            self._request_slots.release()
-            return
-
         sessions_to_close: list[AsyncSession] = []
         async with self._session_lock:
             current_count = self._active_by_generation.get(generation, 0)
@@ -829,14 +824,12 @@ class AsyncWebClient:
         return response
 
     async def _close_response(self, response: Response | None) -> None:
-        """立即关闭响应，不等待剩余数据传输完成。
-
-        修复 C3：curl_cffi 的 aclose() 在流式模式下会阻塞等待响应体全部接收，
-        导致图片尺寸探测（只需前16KB）变成全量下载。使用 close() 立即中断连接。
-        """
         if response is None:
             return
-        # 优先使用 close()（立即中断），而非 aclose()（等待传输完成）
+        if hasattr(response, "aclose"):
+            with contextlib.suppress(Exception):
+                await response.aclose()
+            return
         with contextlib.suppress(Exception):
             response.close()
 

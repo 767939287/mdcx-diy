@@ -19,16 +19,6 @@
 
 ### 修复
 
-- **读取模式同路径时数据永久丢失（C1+C2）**：两个独立的数据丢失风险。C1：读取模式 + 软链接/硬链接模式 + 算出新路径与当前路径相同时，`move_movie` 先调用 `delete_file_async(file_new_path)` 删除目标文件（即源文件自己），再执行 `symlink(file_path, file_path)` 创建指向自己的死链接，源影片永久丢失且不可恢复。C2：`move_file_async` 直接调用 `shutil.move` 未检查目标已存在，批量刮削时若命名模板有 bug 导致多文件重名，后处理的文件会静默覆盖先处理的文件。修复：① `scraper.py` 在路径计算后比对源与目标，相同时强制 `skip_reorganize=True` 跳过整理分支；② `file.py` 软链接/硬链接创建前检查源与目标路径，相同时跳过并记录日志；③ `utils/file.py` 的 `move_file_async` 在目标已存在且非同一文件时，将旧文件重命名为 `{stem}_conflict_{timestamp}{ext}` 保留并记录警告
-
-- **流式响应关闭导致内存耗尽与性能崩溃（C3）**：`web_async.py` 的 `_close_response` 调用 `await response.aclose()` 在 curl_cffi 流式模式下会阻塞等待响应体全部接收（而非立即中断），导致：① 图片尺寸探测只需前 16KB 实际拉满 7+ MB，耗时 2-3 秒/张，性能降低 50-100 倍；② 预告片分块下载 Range 失效时（服务端返回 200 而非 206），每个分块协程都把完整响应体（200 MB）灌进内存，实测 RSS 从 46 MB 飙到 244 MB 触发 OOM。修复：改用 `response.close()` 立即中断连接，不等待剩余数据传输；测试补充 `close()` 方法适配修复
-
-- **并发裁剪时永久死锁（C4）**：`image.py` 的 `cut_thumb_to_poster` 在 `ThreadPoolExecutor` 工作线程内调用 `executor.run(check_pic_async())`，线程池工作线程阻塞等待事件循环执行异步任务，而事件循环在同一线程池的另一线程运行。当并发裁剪数 ≥ 线程池容量（默认 10）时，所有工作线程互相等待，永久死锁，界面完全卡死不响应。修复：改用同步版本 `check_pic_sync()` 避免跨线程等待事件循环
-
-- **NFO 评分恒为 0.0 功能完全失效（C5）**：`model_types.py` 的 `BaseCrawlerResult.empty()` 将 `score` 初始化为 `"0.0"`，而字段优先级合并时 `is_primary_field_value` 判定函数将 `"0.0"` 列入排除列表视为无效值，导致所有站点爬虫返回的真实评分都不生效，最终全库 NFO `<rating>` 标签恒为 `0.0`，Emby/Jellyfin 刮削库评分栏全空。修复：`score` 初始化改为空字符串 `""`，真实评分能正确写入 NFO
-
-- **连接池关闭后资源泄漏（C6）**：`web_async.py` 的 `HostConnectionPool.end_request()` 未检查 `_closed` 标志，连接池关闭后仍可能有在途请求完成并调用 `end_request` 归还会话，导致会话被添加到已清空的 `_sessions` 字典永不被关闭。长时间运行（数小时批量刮削）后累积大量僵尸连接，最终触发 `too many open files` 系统错误。修复：`end_request` 开头检查 `_closed`，已关闭时只释放信号量槽位不再操作字典
-
 - **保存设置/停止刮削后内存占满卡死（议题 #55）**：两个时机是同一条泄漏链的上下游。`ComputedLease.__exit__` 通过 `executor.submit` 异步提交 `Computed.release()` 释放网络栈租约，而点「停止」调用的 `executor.cancel_async()` 会无差别取消所有 pending future——刮削中事件循环繁忙、release 尚在排队即被取消，租约计数永久 +1 且永不归零；此后点「保存」末尾的 `load_config` 会重建整个网络栈（AsyncWebClient + LLMClient + httpx/curl_cffi 连接池），旧栈交给 `close_when_idle()` 而该函数以 0.2 秒周期无上限轮询 `_is_idle()`，租约不归零则永不退出，旧栈连同轮询协程永久驻留。实测「刮削→停止→保存」循环 8 轮累积 10 个网络栈与 28 个 pending 协程，线性增长直至事件循环饥饿卡死。修复三处：① `AsyncBackgroundExecutor` 新增 `submit_critical` 关键任务通道，`cancel`/`cancel_async` 跳过该通道，`ComputedLease.__exit__` 改走关键通道确保 release 必然执行；② `AsyncWebClient.close_when_idle` 与 `LLMClient.close_when_idle` 增加 300 秒超时兜底，超时记警告并强制 `close()`，杜绝无限轮询；③ 配置迁移补齐 2026-08 精简的 15 个站点值（cnmdb/hdouban/mdtv/love6/kin8/giga/cableav/7mmtv/hscangku/fc2club/fc2hub/jav321/fantastica/dahlia/faleno）清洗，覆盖 `website_*`/`field_configs`/`type_field_configs.site_prority`/`site_configs` 与 `website_single` 回落——旧配置残留这些值会让 pydantic 校验整体失败（实测某用户配置报 152 条错误），导致保存目标被改指 `_failed.json` 且界面回写跳过，表现为「保存不生效」。修复后同一循环 8 轮网络栈稳定不增长
 
 - **视频整理模式演员名不映射中文（议题 #53）**：演员映射 `translate_actor` 与标签/系列等信息映射 `translate_info` 原被 `if not pre_data and update_nfo:` 一并包住，而整理模式（主模式 2）不写 NFO 使 `update_nfo=False`，整块映射被跳过，`res.actors` 保持爬虫返回的日文原名，命名变量 `{actor}/{first_actor}/{all_actor}` 与 `{tag}/{series}/{studio}` 因此输出日文，文件夹名不走演员数据库中文名。映射服务于命名变量而非仅服务 NFO，故将条件解耦为 `if not pre_data:`：演员/信息映射与 `replace_word` 无条件执行，LLM 标题/简介翻译 `translate_title_outline` 与演员 TMDB ID 查询（须在映射前用日文原名）保留在内层 `update_nfo` 分支，整理模式不引入额外网络开销；新增 AST 结构哨兵测试锁定调用位置防回归

@@ -1034,17 +1034,6 @@ class Scraper:
         # 读模式不勾"重新整理分类"时跳过路径计算
         skip_reorganize = manager.config.main_mode == 4 and is_nfo_existed and ReadMode.HAS_NFO_UPDATE not in read_mode
 
-        # 修复 C1：即使非读取模式，若算出的新路径与当前路径相同也应跳过整理，
-        # 避免软链接模式下 delete_file + symlink(file_path, file_path) 导致源文件被删除并创建死链接
-        if not skip_reorganize:
-            # 先算出新路径（复用下方逻辑）
-            naming_rule = _generate_file_name(file_info.cd_part, file_info, res)
-            file_new_name = naming_rule + file_ex.lower()
-            temp_new_path = success_folder / file_new_name
-            if file_path == temp_new_path:
-                LogBuffer.log().write(f"\n ℹ️ 源路径与目标路径相同，跳过整理: {file_path}")
-                skip_reorganize = True
-
         if skip_reorganize:
             naming_rule = _generate_file_name(file_info.cd_part, file_info, res)
             file_new_name = naming_rule + file_ex.lower()

@@ -282,7 +282,7 @@ class BaseCrawlerResult:
             publisher="",
             release="",
             runtime="",
-            score="",  # 修复 C5: 改为空字符串，避免 "0.0" 被字段优先级合并时判定为无效值
+            score="0.0",
             series="",
             studio="",
             tags=[],
