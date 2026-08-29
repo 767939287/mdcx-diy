@@ -132,6 +132,13 @@ async def move_movie(other: OtherInfo, file_info: FileInfo, file_path: Path, fil
         raw = file_path
         # 自身是软链接时，获取真实路径
         file_path = file_path.resolve()
+
+        # 修复 C1：防止创建指向自己的死链接
+        if file_path == file_new_path:
+            LogBuffer.log().write(f"\n ⚠️ 源与目标路径相同，跳过软链接创建: {file_path}")
+            file_info.file_path = file_new_path
+            return True
+
         # 删除目标路径存在的文件，否则会创建失败，
         await delete_file_async(file_new_path)
         try:
@@ -152,6 +159,12 @@ async def move_movie(other: OtherInfo, file_info: FileInfo, file_path: Path, fil
 
     # 硬链接模式开时，创建硬链接
     elif manager.config.soft_link == 2:
+        # 修复 C1：防止硬链接指向自己（虽然硬链接技术上允许，但语义上不应该这么做）
+        if file_path == file_new_path:
+            LogBuffer.log().write(f"\n ℹ️ 源与目标路径相同，跳过硬链接创建: {file_path}")
+            file_info.file_path = file_new_path
+            return True
+
         try:
             await delete_file_async(file_new_path)
             await aiofiles.os.link(file_path, file_new_path)

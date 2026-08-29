@@ -309,6 +309,22 @@ async def move_file_async(old: str | Path, new: str | Path):
             return True, ""
         if await aiofiles.os.path.isdir(new) and not await aiofiles.os.path.islink(new):
             return False, f"目标是目录，无法覆盖文件: {new}"
+
+        # 修复 C2：目标文件已存在且非同一文件时，重命名保留旧文件而非静默覆盖
+        if await aiofiles.os.path.exists(new):
+            try:
+                # 尝试判断是否为同一文件（inode级）
+                if not await asyncio.to_thread(os.path.samefile, old, new):
+                    # 不同文件，重命名旧目标文件保留
+                    import time
+
+                    backup = new.with_stem(f"{new.stem}_conflict_{int(time.time())}")
+                    await asyncio.to_thread(os.rename, str(new), str(backup))
+                    signal.add_log(f"⚠️ 目标文件已存在，旧文件已重命名保留: {backup}")
+            except (FileNotFoundError, OSError):
+                # 文件不存在或无法 samefile（例如跨设备），跳过检查直接 move
+                pass
+
         await asyncio.to_thread(shutil.move, str(old), str(new))
         return True, ""
     except Exception as e:
