@@ -16,8 +16,8 @@ from ..config.manager import manager
 from ..models.log_buffer import LogBuffer
 from ..models.model_types import CrawlersResult, FileInfo, OtherInfo
 from ..signals import signal
-from ..utils import executor, get_used_time
-from ..utils.file import check_pic_async, copy_file_sync, delete_file_sync
+from ..utils import get_used_time
+from ..utils.file import check_pic_sync, copy_file_sync, delete_file_sync
 from .mosaic import has_leak_mark, has_umr_mark, has_uncensored_mark, is_censored_mosaic
 
 YOUMA_RIGHT_CROP_TYPES = {FixedScrapingType.YOUMA}
@@ -190,7 +190,10 @@ def cut_thumb_to_poster(
         img_new = cast("Image.Image", img_new)
         img_new_png = img_new.crop((ax, ay, bx, by))
         img_new_png.save(poster_path, quality=95, subsampling=0)
-        if executor.run(check_pic_async(poster_path)):
+
+        # 修复 C4：改用同步版本 check_pic_sync，避免在线程池内调用 executor.run()
+        # 导致阻塞等待自身事件循环，并发裁剪数 >= 线程池容量时永久死锁
+        if check_pic_sync(str(poster_path)):
             log(f"\n 🍀 Poster done! ({json_data.poster_from})({get_used_time(start_time)}s)")
             return True
         log(f"\n 🥺 Poster cut failed! ({json_data.poster_from})({get_used_time(start_time)}s)")
