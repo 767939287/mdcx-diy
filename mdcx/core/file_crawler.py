@@ -417,6 +417,11 @@ class FileScraper:
                         task.exception()
 
         # 按字段分别处理，每个字段按优先级尝试获取
+        # 站点级失败去重：同一站点的失败信息在 field_log 只记一次。
+        # 旧实现每字段重复一行 "(已失败, 跳过)"，实测单文件可累积
+        # 140+ 行重复标记（66 个失败文件的会话产生 9400 行噪声，
+        # 议题 #55 报告日志实证），信息量趋近于零。
+        failed_notified: set[Website] = set()
         for field in ManualConfig.REDUCED_FIELDS:
             # 获取该字段的优先级列表
             f_config = self.config.get_field_config(field)
@@ -453,8 +458,10 @@ class FileScraper:
                 if key in all_res:
                     site_data = all_res[key]
                 elif key in failed:
-                    # 不再请求已失败的网站
-                    reduced.field_log += f"\n    🔴 {site:<15} (已失败, 跳过)"
+                    # 不再请求已失败的网站；失败信息站点级去重（见 failed_notified 说明）
+                    if site not in failed_notified:
+                        failed_notified.add(site)
+                        reduced.field_log += f"\n    🔴 {site:<15} (已失败, 后续字段将跳过该站)"
                     continue
                 else:
                     # 如果网站数据尚未请求，则进行请求
