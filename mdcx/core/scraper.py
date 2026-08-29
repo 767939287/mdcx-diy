@@ -357,6 +357,11 @@ class Scraper:
             signal.exec_exit_app.emit()
 
     async def process_one_file(self, task: tuple[Path, int, int]) -> None:
+        # 并发刮削的兄弟任务从这里各自开启新的日志任务组：
+        # 本任务派生的子协程（fanart/poster/TMDB 等）与 to_thread 线程写入
+        # 都归入本组，get() 只聚合本组——避免别的影片的失败原因混入
+        # 本片的 failed_list/断点缓存（跨任务日志污染），finally 整树回收。
+        LogBuffer.new_root()
         try:
             await self._process_one_file_impl(task)
         finally:
