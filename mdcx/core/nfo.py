@@ -82,7 +82,13 @@ def _build_generated_read_tags(
 
 
 async def write_nfo(
-    file_info: FileInfo, data: CrawlersResult, nfo_file: Path, output_dir: Path, update=False, skip_merge=False
+    file_info: FileInfo,
+    data: CrawlersResult,
+    nfo_file: Path,
+    output_dir: Path,
+    update=False,
+    skip_merge=False,
+    preserve_tag_order=False,
 ) -> bool:
     start_time = time.time()
     download_files = manager.config.download_files
@@ -181,7 +187,10 @@ async def write_nfo(
     trailer = data.trailer
     year = data.year
     series_tag = manager.config.nfo_tag_series.replace("series", series) if series else ""
-    tags = prioritize_nfo_tags(data.tags, series_tag=series_tag, series_template=manager.config.nfo_tag_series)
+    if preserve_tag_order:
+        tags = data.tags
+    else:
+        tags = prioritize_nfo_tags(data.tags, series_tag=series_tag, series_template=manager.config.nfo_tag_series)
 
     try:
         await aiofiles.os.makedirs(output_dir, exist_ok=True)
@@ -479,11 +488,18 @@ async def get_nfo_data(file_path: Path, movie_number: str) -> tuple[CrawlersResu
     originalplot = "".join(xml_nfo.xpath("//originalplot/text()"))
     outline = xml_nfo.xpath("string(//plot)") or xml_nfo.xpath("string(//outline)")
     outline = outline.replace("\r\n", "\n").replace("\r", "\n").strip()
+    # 若 plot/outline 均无可读文本，尝试用 originalplot 作为"简介"
+    if not outline and originalplot:
+        outline = originalplot
+        # fallback 后 outline == originalplot，跳过下面的"剥离原文"逻辑
+        is_fallback_outline = True
+    else:
+        is_fallback_outline = False
     if outline:
         if match := re.search(r"(?:\n\s*\n|<br>\s*<br>)由\s*(.+?)\s*提供翻译\s*$", outline, re.S):
             json_data.outline_from = match.group(1).strip()
             outline = outline[: match.start()].rstrip()
-        if originalplot and originalplot in outline:
+        if originalplot and originalplot in outline and not is_fallback_outline:
             outline = outline.replace(originalplot, "", 1).strip()
             outline = re.sub(r"(?:\n\s*){3,}", "\n\n", outline)
     tag = ",".join(xml_nfo.xpath("//tag/text()"))

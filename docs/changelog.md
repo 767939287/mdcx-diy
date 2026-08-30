@@ -1,5 +1,22 @@
 # Changelog
 
+## v2.0.7 (2026-08-30)
+
+### 修复
+
+- **议题 #32 Jellyfin 演员列表分页修复**：`fetch_person_item_stats` 原将 `Limit=100000` 硬塞给单次请求， Jellyfin 在含数万条演员数据的库中直接超时；改为 `Limit=500` + `StartIndex` 分页遍历，配置 `IncludeItemTypes=Movie,Episode`，且禁用了 `EnableImages/EnableUserData` 以减轻负载（报告人 fork commit c412939a 方案吸收）
+- **议题 #56 400 修复**：`update_person_info` POST 请求缺少 `Content-Type: application/json` 请求头，导致 Emby 4.9 全量 400 错误，1273 演员全部失败；补显式头并在测试中锁定
+- **议题 #56 401 修复**：`emby_actor_info.py:176` 的鉴权头构造被 `_is_jellyfin_server()` 条件分支误判为 Jellyfin 时置 `None` ，导致 Emby 时 POST 请求未带鉴权头，全量 401；改为无条件 `_build_jellyfin_headers()`，并新增测试防止同名函数调用点漏改
+- **议题 #57 NFO 库管理三个症状的修复**：
+  - **保存后简介丢（表单不含的字段丢失）**：`_collect_form_data` 原从 `CrawlersResult.empty()` 新建，只填表单可见字段，`originalplot` / `external_ids` / `wanted` / `mosaic` / `outline_from` / `original_actors` / `actor_tmdb_ids` 等字段全部丢；现在改为从 `_nfo_lib_original_data`（加载时保留的原数据）继承表单没有字段的值
+  - **简介读不出来**：`get_nfo_data` 读简介只查 `<plot>`/`<outline>` 元素，当数据只存在 `<originalplot>` 时无法读取；增加 fallback：当 plot/outline 均空时尝试从 `<originalplot>` 读取
+  - **标签顺序保存后失效**：NFO 库管理保存路径会被 `prioritize_nfo_tags` 重排优先标签；给 `write_nfo` 新加 `preserve_tag_order` 参数，NFO 库管理保存/批量路径传入 `True` 保留用户原始顺序
+  - **批量路径防御**：`_batch_modify` 的 `write_nfo` 调用补 `skip_merge=True + preserve_tag_order=True`，与单条保存路径一致
+
+### 文档
+
+- **README Telegram 群地址更新**：徽章链接 `t.me/mdcx_chat` → `https://t.me/+OVnB6Cw8gkxlYzM1`；`mdcx/views/MDCx.ui` 使用说明补群地址
+
 ## v2.0.7 (2026-08-25)
 
 ### 文档

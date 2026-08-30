@@ -236,7 +236,8 @@ def on_nfo_lib_data_loaded(self: MyMAinWindow, nfo_path_str: str) -> None:
 
 
 def _collect_form_data(self: MyMAinWindow) -> CrawlersResult:
-    """从表单控件收集数据构造 CrawlersResult。"""
+    """从表单控件收集数据构造 CrawlersResult。
+    补充表单没有但每次保存会丢失的字段（originalplot, external_ids 等），从原数据中继承。"""
     data = CrawlersResult.empty()
     data.number = self.Ui.lineEdit_nfo_lib_number.text().strip()
     data.title = self.Ui.lineEdit_nfo_lib_title.text().strip()
@@ -257,6 +258,19 @@ def _collect_form_data(self: MyMAinWindow) -> CrawlersResult:
     data.tags = [t.strip() for t in tag_text.replace("，", ",").split(",") if t.strip()] if tag_text else []
     data.thumb = self.Ui.lineEdit_nfo_lib_cover_url.text().strip()
     data.poster = self.Ui.lineEdit_nfo_lib_poster_url.text().strip()
+
+    # 表单没有但 write_nfo 会读取的字段：从原数据继承，避免保存后丢失
+    original: CrawlersResult | None = getattr(self, "_nfo_lib_original_data", None)
+    if original is not None:
+        data.originalplot = original.originalplot
+        data.external_ids = original.external_ids.copy() if original.external_ids else {}
+        data.wanted = original.wanted
+        data.letters = original.letters
+        data.mosaic = original.mosaic
+        data.outline_from = original.outline_from
+        data.original_actors = original.original_actors
+        data.actor_tmdb_ids = original.actor_tmdb_ids.copy() if original.actor_tmdb_ids else {}
+
     return data
 
 
@@ -327,7 +341,9 @@ def pushButton_nfo_lib_save_clicked(self: MyMAinWindow) -> None:
 
     async def _save():
         try:
-            success = await write_nfo(file_info, data, nfo_path, nfo_folder, update=True, skip_merge=True)
+            success = await write_nfo(
+                file_info, data, nfo_path, nfo_folder, update=True, skip_merge=True, preserve_tag_order=True
+            )
             self._nfo_lib_save_result = success
             self.nfo_lib_save_done.emit(str(nfo_path))
         except Exception:
@@ -432,7 +448,9 @@ async def _batch_modify(
                 continue
             modify_fn(data)
             file_info = _make_file_info(nfo_path)
-            await write_nfo(file_info, data, nfo_path, nfo_path.parent, update=True)
+            await write_nfo(
+                file_info, data, nfo_path, nfo_path.parent, update=True, skip_merge=True, preserve_tag_order=True
+            )
             success += 1
         except Exception:
             failed += 1
