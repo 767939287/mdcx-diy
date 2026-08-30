@@ -4,6 +4,7 @@
 
 ### 修复
 
+- **议题 #68 Windows 原生窗口边框下缩放/切页布局错乱**：`QStackedWidget` 只会把当前可见页 resize 到自身尺寸，休眠页永远停留在设计尺寸 820x692——「先缩放窗口再切页」时休眠页内组件全部按陈旧尺寸布局（日志页上栏只占设计高 61%≈292px 留大片空白、按钮按设计宽锚定飘出页面右侧/底部、工具页 scrollArea 右侧被裁），且 `show_hide_logs()` 硬编码 `resize(790, 418/689)` 会覆盖窗口缩放同步结果。修复：`_sync_page_layouts()` 先统一 resize 所有 stacked pages 再同步内部组件（沿用 #66 tab page 修复模式），`stackedWidget.currentChanged` 连接切页即时同步；日志页下栏隐藏时上栏铺满整页、显示时恢复 61:39 分栏；日志页/网络页按钮按页面右缘/下缘动态锚定；`show_hide_logs()` 移除硬编码改由 `_sync_page_layouts()` 统一处理。新增 `tests/test_window_state_matrix.py` 6 项矩阵回归（休眠页尺寸/先缩放再切页/日志收起铺满/设置页 12 tab/原生边框与隐藏边框两种模式）。附带修复测试基建：conftest `_DummySignals` 缺 `get_log()` 使任何带 `processEvents` 的主窗口测试触发 PyQt6 槽内 `AttributeError` → `qFatal` abort（qt_assert 栈崩溃的根因），已补空串桩
 - **议题 #32 Jellyfin 演员列表分页修复**：`fetch_person_item_stats` 原将 `Limit=100000` 硬塞给单次请求， Jellyfin 在含数万条演员数据的库中直接超时；改为 `Limit=500` + `StartIndex` 分页遍历，配置 `IncludeItemTypes=Movie,Episode`，且禁用了 `EnableImages/EnableUserData` 以减轻负载（报告人 fork commit c412939a 方案吸收）
 - **议题 #56 400 修复**：`update_person_info` POST 请求缺少 `Content-Type: application/json` 请求头，导致 Emby 4.9 全量 400 错误，1273 演员全部失败；补显式头并在测试中锁定
 - **议题 #56 401 修复**：`emby_actor_info.py:176` 的鉴权头构造被 `_is_jellyfin_server()` 条件分支误判为 Jellyfin 时置 `None` ，导致 Emby 时 POST 请求未带鉴权头，全量 401；改为无条件 `_build_jellyfin_headers()`，并新增测试防止同名函数调用点漏改

@@ -59,6 +59,11 @@ class _DummySignals:
     def add_log(self, *args, **kwargs):
         return None
 
+    def get_log(self, *args, **kwargs):
+        # show_detail_log 是主窗口 timer.timeout 回调，缺此方法会抛
+        # AttributeError，PyQt6 下槽内未捕获异常会触发 qFatal abort。
+        return ""
+
     def show_traceback_log(self, *args, **kwargs):
         return None
 

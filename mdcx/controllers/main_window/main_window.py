@@ -236,6 +236,9 @@ class MyMAinWindow(QMainWindow):
         resources.start_data_loading()
         self.Ui = Ui_MDCx()  # 实例化 Ui
         self.Ui.setupUi(self)  # 初始化 Ui
+        # QStackedWidget 只会把当前可见页 resize 到自身尺寸，休眠页永远停留在设计尺寸；
+        # 切页后必须重新同步一次内部几何，否则"先改窗口尺寸再切页"时页面内容全部按陈旧尺寸布局
+        self.Ui.stackedWidget.currentChanged.connect(self._sync_page_layouts)
         self._bind_system_theme_refresh()
         self.cutwindow = CutWindow(self)
         self.preview_image_loader = PreviewImageLoader(self)
@@ -550,6 +553,13 @@ class MyMAinWindow(QMainWindow):
         avail_w = max(self.width() - 210 - 2, 400)
         avail_h = max(self.height() - self._CONTENT_TOP_OFFSET - self._CONTENT_BOTTOM_MARGIN, 300)
 
+        # 关键前置：QStackedWidget 只 resize 当前可见页，休眠页永远停留在设计尺寸。
+        # 必须先把所有页面统一 resize 到 stackedWidget 尺寸，后续基于 page.width()/height()
+        # 的计算才有正确基准（否则"先缩放窗口再切页"时全部按设计尺寸 820x692 布局）。
+        stacked = ui.stackedWidget
+        for index in range(stacked.count()):
+            stacked.widget(index).resize(avail_w, avail_h)
+
         # ============ page_setting: tabWidget + 内部12个 scrollArea ============
         # tabWidget 设计参考几何(20,10,800,682) → scrollArea(0,0,796,658)
         # 保持 tabWidget 固定 X/Y=20,10，宽高跟随主窗口
@@ -576,11 +586,14 @@ class MyMAinWindow(QMainWindow):
         if scroll_10 is not None and scroll_10.parentWidget() == tool_area:
             scroll_10.setGeometry(20, 0, max(tool_area.width() - 20 - 20, 400), max(tool_area.height() - 0, 300))
 
-        # ============ page_net: textBrowser_net_main ============
+        # ============ page_net: textBrowser_net_main + 右侧按钮 ============
         net_area = ui.page_net
         net_browser = ui.textBrowser_net_main
         if net_browser.parentWidget() == net_area:
             net_browser.setGeometry(30, 0, max(net_area.width() - 30 - 2, 400), max(net_area.height() - 0, 300))
+        # 设计基准页面宽 822：check_net 右缘 800(右距20)、net_copy 右缘 670(右距152)
+        ui.pushButton_check_net.move(max(net_area.width() - 142, 20), 13)
+        ui.pushButton_net_copy.move(max(net_area.width() - 262, 20), 13)
 
         # ============ page_about: textBrowser_about ============
         about_browser = ui.textBrowser_about
@@ -593,14 +606,24 @@ class MyMAinWindow(QMainWindow):
         log_page = ui.page_log
         log_w = max(log_page.width() - 28 - 2, 300)
         log_h_total = log_page.height()
-        # 上下两段按原比例 (421:271 ≈ 3:2) 分高； 上栏占 3/5， 下栏占 2/5 并留 1px 间隙
-        upper_h = max(int(log_h_total * 0.61), 100)
+        # 下栏（失败日志）隐藏时上栏铺满整页；显示时上下按原比例 (421:271 ≈ 61%:39%) 分高
+        lower_browser = ui.textBrowser_log_main_2
+        if lower_browser.isHidden():
+            upper_h = max(log_h_total, 100)
+        else:
+            upper_h = max(int(log_h_total * 0.61), 100)
         lower_h = max(log_h_total - upper_h - 1, 100)
         upper_w = max(log_w, 300)
         ui.textBrowser_log_main.setGeometry(28, 0, upper_w, upper_h)
-        ui.textBrowser_log_main_2.setGeometry(28, upper_h + 1, upper_w, lower_h)
+        if not lower_browser.isHidden():
+            lower_browser.setGeometry(28, upper_h + 1, upper_w, lower_h)
         # 覆盖性日志视图 (失败列表) 铺满整个日志页
         ui.textBrowser_log_main_3.setGeometry(0, 0, max(log_page.width() - 2, 300), max(log_page.height() - 2, 300))
+        # 设计基准页面宽 822/高 692：按钮右缘锚定右侧、底部按钮锚定下缘
+        ui.pushButton_start_cap2.move(max(log_page.width() - 142, 20), 13)
+        ui.pushButton_view_failed_list.move(max(log_page.width() - 257, 20), 13)
+        ui.pushButton_show_hide_logs.move(0, max(log_page.height() - 42, 13))
+        ui.pushButton_save_failed_list.move(0, max(log_page.height() - 42, 13))
 
     # 当隐藏边框时，最小化后，点击任务栏时，需要监听事件，在恢复窗口时隐藏边框
     def changeEvent(self, a0):
@@ -2375,7 +2398,8 @@ class MyMAinWindow(QMainWindow):
         if show:
             self.Ui.pushButton_show_hide_logs.setIcon(QIcon(resources.hide_logs_icon))
             self.Ui.textBrowser_log_main_2.show()
-            self.Ui.textBrowser_log_main.resize(790, 418)
+            # 硬编码 resize 会覆盖窗口缩放同步结果（议题 #68），统一交给 _sync_page_layouts
+            self._sync_page_layouts()
             self.Ui.textBrowser_log_main.verticalScrollBar().setValue(
                 self.Ui.textBrowser_log_main.verticalScrollBar().maximum()
             )
@@ -2388,7 +2412,7 @@ class MyMAinWindow(QMainWindow):
         else:
             self.Ui.pushButton_show_hide_logs.setIcon(QIcon(resources.show_logs_icon))
             self.Ui.textBrowser_log_main_2.hide()
-            self.Ui.textBrowser_log_main.resize(790, 689)
+            self._sync_page_layouts()
             self.Ui.textBrowser_log_main.verticalScrollBar().setValue(
                 self.Ui.textBrowser_log_main.verticalScrollBar().maximum()
             )
