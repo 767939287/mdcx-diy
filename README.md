@@ -72,7 +72,7 @@ uv run check --skip-hook-install
 
 ## 交流群
 
-[![Telegram](https://img.shields.io/badge/Telegram-Join_Chat-2CA5E0?style=flat&logo=telegram&logoColor=white)](https://t.me/mdcx_chat)
+[![Telegram](https://img.shields.io/badge/Telegram-Join_Chat-2CA5E0?style=flat&logo=telegram&logoColor=white)](https://t.me/+OVnB6Cw8gkxlYzM1)
 
 ## 上游项目
 

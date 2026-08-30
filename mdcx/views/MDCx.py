@@ -14269,7 +14269,7 @@ class Ui_MDCx(object):
                 "<li>项目主页：https://github.com/cdlongbow/mdcx-diy</li>\n"
                 "<li>Release 下载：https://github.com/cdlongbow/mdcx-diy/releases</li>\n"
                 "<li>常见问题：docs/USER_GUIDE.md（使用手册）、docs/CONFIGURATION.md（配置参考）、docs/FEATURES.md（功能总览）</li>\n"
-                "<li>问题反馈：GitHub Issues；交流：Telegram 群</li>\n"
+                "<li>问题反馈：GitHub Issues；交流：Telegram 群 https://t.me/+OVnB6Cw8gkxlYzM1</li>\n"
                 "</ul>\n"
                 '<p style="color:#888888;">MDCx-diy 由 cdlongbow 基于开源社区项目（sqzw-x/mdcx → Hazard804/mdcx → ZiPenOk/mdcx）持续维护，仅供学习与技术交流。向相关开发者表示敬意！</p>\n'
                 "</body></html>",
