@@ -9,12 +9,12 @@
 - Instructions:
   - 简体中文回复；面向小白说明按"现象和影响 → 原因 → 可执行步骤"组织；日期时间一律用北京时间 (UTC+8) 表述并显式注明，避免歧义。
   - 改动前说明内容与原因；用户明确要求提交/推送后才执行，绝不擅自操作。直接在当前分支操作。
-  - 每次代码改动后跑 `uv run quick-check`；提交前跑 `uv run check --skip-hook-install` 并确认退出码。仅改 `docs/*.md` 或本文件时只需 `git diff --check`。
+  - 每次代码改动后跑 `uv run quick-check`；提交前跑 `uv run check --skip-hook-install` 并确认退出码。仅改 `docs/*.md` 或本文件时只需 `git diff --check`。**全绿判定必须"退出码 + 显式 grep 错误行"双确认**：`grep -E "\.py:[0-9]+: error|Found [0-9]+ error"` 无输出才算过——H2 提交时 mypy 错误行被 `tail` 截断、退出码 grep 又漏检，误判全绿推上去 CI 连挂三次（2026-08-30 教训）。`scripts/` 下的脚本同样在 check 范围内（ruff format/check），写完临时脚本入库前必须先格式化。
   - 提交前必看 `git status` 全部未跟踪文件：程序运行时残留与脚本中间产物（如 `_failed.json`、`amazon_asin_manual_review_*.xlsx`）不得 `git add -A` 入库，应先 `.gitignore` 排除再单独清理（2026-08-27 误提交后补救的教训）。
   - 不装 pre-commit；提交前更新 `docs/changelog.md` 当前版本条目并合并同类。**版本号归属用户**：不得擅自新开版本号段落（如 v2.0.8），条目一律追加进当前进行中的版本小节（2026-08-28 用户指正）。
   - 站点/爬虫/配置改动须同步检查：UI 文案（启动文字 main_window.py、.ui）、README、`docs/*.md`、爬虫总数（`crawler_names()` 长度）、**`config/migrations.py` 旧值清洗**。删站点漏写迁移的后果是旧配置 pydantic 校验整体失败 → 配置被写入 `_failed.json` 且界面回写被跳过，用户表现为"保存不生效"（2026-08 删 15 站漏迁移，一个月后才由议题 #55 带出）。
   - 文档/UI 中写死数字或清单前必须先 grep 代码核实，禁止凭记忆。高频漂移锚点（2026-08 核查实证）：默认网站源顺序（`config/models.py` ↔ `resources/config/default_config.json`，`test_config_conversion.py::test_config_default_site_priorities_follow_current_frontend_defaults` 锁定，改注释勿动枚举）、代理域名列表（`Config.proxy_sites`）、命名变量表（`core/naming/fields.py::FIELD_DESCRIPTIONS`）、设置 Tab 名（tabWidget.setTabText）、水印行为（`MarkType` 徽标+角落轮转，无文字水印）、字段优先级数（`manual.py::REDUCED_FIELDS`）、演员库列（`resources.py::DB_HEADERS`）、指纹池（`network_fingerprint.py`，默认 7/Amazon 6，无令牌桶限流）、主窗口行数（`wc -l controllers/main_window/*.py`）。
-  - **长时间运行任务的标准做法**（2026-08-28 用户强调）：① 一律用 `background_terminal_create` 建后台终端执行，不许用普通 bash；② 必须实现断点续传（checkpoint state 持久化到磁盘，重启后从断点续跑）；③ 分批处理，批间落盘；④ 用外层 wrapper 每 50 分钟自动重启进程（规避云环境超时杀进程）；⑤ 执行期间监测进度，定期主动汇报，用户询问时能立即给出。
+  - **长时间运行任务的标准做法**（2026-08-28 用户强调）：① 一律用 `background_terminal_create` 建后台终端执行，不许用普通 bash；② 必须实现断点续传（checkpoint state 持久化到磁盘，重启后从断点续跑）；③ 分批处理，批间落盘；④ 用外层 wrapper 每 50 分钟自动重启进程（规避云环境超时杀进程）；⑤ 执行期间监测进度，定期主动汇报，用户询问时能立即给出。**判进度看 state/批次产物文件，别看后台终端日志**——wrapper 外挂 `tail` 管道时子进程 stdout 全缓冲，日志可能长时间 0 字节造成"卡死"假象（libredmm 抓取实测：state 与 batch 正常推进而终端日志空）；进度落盘文件（progress json）按小间隔写，供随时汇报。
 
 ## GitHub 议题处理
 
@@ -25,6 +25,7 @@
   - 读议题正文/评论优先 `gh api`。退化到抓 GitHub 网页 HTML 时，评论正文要从内联 JSON 的 `"body"` 字段提取（`comment-body markdown-body` 类名已不存在）；未认证直连 `api.github.com` 会撞 IP 级 rate limit。
   - 回帖用 `gh api ... -F body=@文件` 传 Markdown 文件，避免命令行转义问题。
   - 关闭议题的判断标准：修复完整且用户明确要求才 `-f state=closed -f state_reason=completed`。根因未完全查清时保留 open，回帖如实写明"已修的部分解释了什么、解释不了什么"，并给出需报告人补充的具体信息（日志文件、进程内存数值、复现操作序列、特征文件是否存在）与已排除的假设清单，避免对方往错方向猜。不硬套一个原因去凑完整叙事。
+  - **CI 失败排查**：`gh api repos/<owner>/<repo>/actions/runs?per_page=N` 列运行 → `runs/{id}/jobs` 用 jq `select(.conclusion=="failure")` 定位失败 job → `actions/jobs/{job_id}/logs` 拉全量日志后 grep `\.py:[0-9]+: error`（直接在线 grep 常拿空，先落盘再 grep 稳）。注意失败的 run 有重跑后同 head_sha 会新旧两条记录，看最新一条。
 
 ## 排查与本地验证
 
@@ -98,8 +99,11 @@
 - Category: 排错调试
 - Instructions:
   - amazon_asin_database.xlsx 是 ASIN-番号映射库，**以 ASIN 为唯一可信锚点**（ASIN 唯一，番号可由多个搜索误挂到同一 ASIN）。冲突形态：同一 ASIN 挂多个番号且各行标题相同。
-  - **冲突裁决梯队**（已实测校准）：① `_cover_similarity` 图像相似度（阈值 0.82）以 DMM 官方图为裁判最可信——竖版 ps 直接用、横版 pl（800×499 套图）必须 `_cut_thumb_right_image` 裁右半再比；② javdb 的 cover_url 是重压处理图，与 DMM 原图相似度仅 0.5~0.7，**不可作裁判**；③ 标题文本比对不可用（归一化再好也搞不定 BEST/合集）。脚本沉淀 `scripts/clean_asin_db_conflicts.py`（默认预览、--apply 执行、--limit 采样）。
-  - **裁判图源优先级**（勿改回乱序）：① thejavdb api `https://api.thejavdb.net/v1/movies?q={番号}` 直接返回 DMM 真图 URL，首选（少数下架番号如 URE-018 会 404）；② libredmm `/movies/{番号小写带横杠}` 网页可拿真实 cid，页面 `<h1><span>番号</span><span>DMM标题</span></h1>` 也给 DMM 标题可作标题裁决，但单页 2-10s 慢且无标题全文搜索；③ 直构 cid 前缀枚举（10 个前缀）最慢但最稳。**注意 javdb_api.py 与 thejavdb_api.py 是两个不同爬虫**。
+  - **冲突裁决梯队**（已实测校准，2026-08-30 修订）：① `_cover_similarity` 图像相似度以 **DMM 官方图为裁判**最可信——竖版 ps 直接用、横版 pl（800×499 套图）必须 `_cut_thumb_right_image` 裁右半再比；② javdb/javbus 的 cover_url 是重压处理图，与 DMM 原图相似度仅 0.5~0.7，**不可作严格裁判**，只可作低置信参考（放宽阈值 score≥0.60 且不计入匹配率）；③ 标题文本比对不可用。**注意 `_cover_similarity` 返回三元组 (score, hash_sim, hist_sim)，生产软校验判定是三阈值同时满足：score≥0.82 AND hash≥0.86 AND hist≥0.70**——写验证脚本时当单值用会全部误判（2026-08-30 实测踩坑）。脚本沉淀 `scripts/clean_asin_db_conflicts.py`。
+  - **裁判图源优先级**（2026-08-30 实测修订，旧 thejavdb 链已废弃——生产 `web.py::_load_dmm_official_reference` 早已改用 DMM 高清直链）：① **DMM 直链**（`dmm_direct.build_aws_poster_candidates/cover_candidates`，含学习表前缀）严格判定主力，60 条抽查中 50/60；② **libredmm** `/movies/{番号小写带横杠}` 页面给真实 DMM 大图 URL（pl ~150KB 中清 + ps ~12KB 低清），对下架老片一击全中（补判 10/10），**价值在 cid 真值发现而非高清图源**；③ r18dev/javbus 兜底实测零出场可不留。libredmm 缺点：部分地区需代理，故优先把它**归纳成静态枚举知识**而非运行时依赖。
+  - **DMM cid 结构规律**（2026-08-30 从 libredmm 真实 cid 实证修订，修正"content_id 一律 5 位补零"的旧认知）：cid = `{前缀}{系列}{数字}{变体?}`，四要素——① 前缀按系列映射（lid→24、mild→84、hmd→143、hmpd→41、yst→540、amz→28、sprd→18、mdtm/mkmp→84，现有静态表 `_PREFIX_GROUPS`/`_COMMON_PREFIXES` 缺大量老片系列）；② **数字形态双态**：5 位补零（digital 新片）与 3 位原样（mono 老片，n≥100）**同系列可并存**（mild: 00953 与 781 都真）；③ **双路径**：`pics.dmm.co.jp/digital/video/{cid}/` 与 `/mono/movie/adult/{cid}/` 各占约半，枚举须双路径都试；④ 变体后缀（如 84mdtm388dod 的 dod 企划）**无需枚举**——不带后缀的 84mdtm388ps 同样存在。四层补全后 10 条下架老片直链 10/10 命中。
+  - **libredmm 全站数据源**（枚举库归纳用）：`/movies?page=N` 每页 30 条按字母序、末页 23472、总计 ~70.4 万番号；**列表页缩略图 src 直接含完整 DMM cid URL**（配对结构 `<a href="/movies/番号"><img src="...cid...ps.jpg"/></a>` 同元素），翻页即批量取「番号↔cid」，无需逐详情页；0.35-0.5s 礼貌间隔无限速。番号与 cid 字母部分**不要求一致**（厂牌自定义编号，如 000_339↔n_630aps176），配对校验时勿用字母匹配。全量抓取脚本与批次产物在 /tmp/opencode/（断点续传按页号，~1.2s/页含连接复用）。
+  - **枚举库改进路线**（2026-08-30 定论）：全量归纳**系列级规则**（每系列的前缀集合+数字形态+路径，几千条）预置为学习表静态种子 > 运行时逐番号依赖 libredmm > 70 万条直塞枚举库。直构命中后全链路（直链/升级/软校验/ASIN 判定）零额外请求受益，且彻底摆脱 libredmm 的代理可达性问题。抓取归纳完成后，运行时 libredmm 仅留作枚举漏网的最后兜底。
   - 「一 ASIN 挂多个不同分集番号」多数是合集商品（BEST 8時間 类），各番号单集封面 ≠ 合集封面，图像法也救不了，属不可自动裁决类；all_match（同分 >0.82）才是"同一商品多番号发行"的正常情况。
   - 环境限制：DMM/fanza 地区锁（日本外 302 到 not-available-in-your-region），devbox 无法直连；日亚 dp 页 devbox 直连 404（amazon.co.jp 需代理/日本节点）；封面 OCR（tesseract eng）对日系封面效果差不可作依据。DMM 站点页面会下架但 CDN 图床不删对象（URE-018 网页端已下架，awsimgsrc/pics.dmm 的 ure00018 图仍 200），下架番号的参考图始终可按番号直构 cid 去碰。
   - DMM 图床占位图坑：pics.dmm.co.jp 对无效 cid 返回 200 + ~2.7KB 甚至 142B 垃圾体，单凭 check_url 的 200 会通过；真实封面再小也 ≥10KB。已在 `base/web.py::_validate_dmm_image_url` 加 <4096B 拒收。
