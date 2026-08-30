@@ -4,19 +4,28 @@ DMM 官方高清封面托管在 awsimgsrc CDN，URL 规律:
     https://awsimgsrc.dmm.co.jp/pics_dig/digital/video/{cid}/{cid}pl.jpg   (横版高清, 如 2184x1469)
     https://awsimgsrc.dmm.co.jp/pics_dig/digital/video/{cid}/{cid}ps.jpg   (竖版高清, 如 1032x1469)
 
-cid = {mPrefix}{series}{编号5位补零}，mPrefix 由品牌(series)决定，不同品牌有各自的目录前缀。
+cid = {mPrefix}{series}{编号}，mPrefix 由品牌(series)决定，不同品牌有各自的目录前缀。
 该 CDN 对不存在的图直接返回 404(区别于 pics.dmm.co.jp 返回占位图)，适合做无爬虫直连兜底。
+
+静态路由种子（resources/userdata/dmm_cid_routes.json，libredmm 全站 23472 页
+58.9 万番号↔cid 对归纳）：series -> [{prefix, cid_series, 变体, 补零位数, 路径}]，
+覆盖 9627 个系列 96.5% 直构命中；剩余重编号番号走 2 万条白名单逐条映射。
+mono 老片路径的图托管在 pics.dmm.co.jp 低清图床（占位图由
+_validate_dmm_image_url 的 <4KB 拒收兜底），digital 新片仍走 awsimgsrc 高清。
 """
 
 from __future__ import annotations
 
 import asyncio
+import json
 import re
 import threading
 import time
+from pathlib import Path
 from typing import Any
 
 _DMM_CDN_BASE = "https://awsimgsrc.dmm.co.jp/pics_dig/digital/video"
+_DMM_PICS_BASE = "https://pics.dmm.co.jp"
 
 _PREFIX_GROUPS: dict[str, list[str]] = {
     "": [
@@ -190,10 +199,109 @@ def _learned_prefixes_for(series: str) -> tuple[list[str], list[str]]:
         return [], []
 
 
+# ===== 静态路由种子（libredmm 全站归纳） =====
+_routes_lock = threading.Lock()
+_routes_loaded = False
+_routes_rules: dict[str, list[dict[str, Any]]] = {}
+_routes_whitelist: dict[str, dict[str, str]] = {}
+
+
+def _routes_seed_path() -> Path | None:
+    try:
+        from mdcx.config.resources import Resources
+
+        resources = Resources()
+        path = resources.r("userdata/dmm_cid_routes.json")
+        return path if path.is_file() else None
+    except Exception:
+        return None
+
+
+def _load_routes() -> None:
+    """惰性加载静态路由种子；任何异常静默降级为空表（不影响既有候选链）。"""
+    global _routes_loaded
+    if _routes_loaded:
+        return
+    with _routes_lock:
+        if _routes_loaded:
+            return
+        path = _routes_seed_path()
+        if path is not None:
+            try:
+                data = json.loads(path.read_text(encoding="utf-8"))
+                rules = data.get("rules")
+                whitelist = data.get("whitelist")
+                if isinstance(rules, dict):
+                    _routes_rules.update(rules)
+                if isinstance(whitelist, dict):
+                    _routes_whitelist.update(whitelist)
+            except Exception:
+                return
+        _routes_loaded = True
+
+
+def reset_routes_for_testing() -> None:
+    """测试复位：清空静态路由表与加载状态。"""
+    global _routes_loaded
+    with _routes_lock:
+        _routes_rules.clear()
+        _routes_whitelist.clear()
+        _routes_loaded = False
+
+
+def _route_cids_for(series: str, num: int) -> list[str]:
+    """按静态路由规则生成候选 cid（prefix×pads 全枚举，含变体后缀）。
+
+    规则键为番号系列大写（归纳口径），生产 _parse_number 返回小写，这里统一大写查表。
+    """
+    cids: list[str] = []
+    for combo in _routes_rules.get(series.upper(), []):
+        prefix = str(combo.get("p", ""))
+        cid_series = str(combo.get("s", ""))
+        variant = str(combo.get("v", ""))
+        if not cid_series:
+            continue
+        for pad in combo.get("pads", []):
+            if not isinstance(pad, int) or pad <= 0:
+                continue
+            cids.append(f"{prefix}{cid_series}{num:0{pad}d}{variant}")
+    return cids
+
+
+def _whitelist_entry(number: str) -> dict[str, str] | None:
+    """查白名单（重编号番号 -> cid/path 逐条映射），未命中返回 None。
+
+    白名单键为 libredmm 番号原形态（如 04IDLD-01 / 000_339）；
+    调用方传入的番号可能带连字符/空格差异，这里同时尝试原串与规范化形态。
+    """
+    if not number:
+        return None
+    _load_routes()
+    cleaned = number.strip()
+    norm = _normalize_dmm_number(cleaned)
+    for key in (cleaned, cleaned.upper(), cleaned.lower(), norm, norm.upper()):
+        entry = _routes_whitelist.get(key)
+        if isinstance(entry, dict):
+            return entry
+    return None
+
+
 def generate_cid_candidates(number: str) -> list[str]:
     seen: set[str] = set()
     candidates: list[str] = []
+    # 白名单（重编号番号）优先：全站归纳无法用规则表达，直接逐条映射
+    wl = _whitelist_entry(number)
+    if wl is not None:
+        cid = str(wl.get("cid", ""))
+        if cid:
+            return [cid]
+    _load_routes()
     for series, num, padded in _parse_number(number):
+        # 静态路由种子（全站归纳，含 3/5/6 位补零与变体）：最优先
+        for cid in _route_cids_for(series, num):
+            if cid not in seen:
+                seen.add(cid)
+                candidates.append(cid)
         learned_verified, learned_provisional = _learned_prefixes_for(series)
         static_prefixes = _prefixes_for(series, num)
         prefix_order = list(dict.fromkeys([*learned_verified, *static_prefixes, *learned_provisional]))
@@ -206,12 +314,47 @@ def generate_cid_candidates(number: str) -> list[str]:
 
 
 def generate_image_candidates(number: str) -> list[tuple[str, str]]:
-    """返回 (orientation, url) 候选。orientation 为 landscape(横版 pl) 或 portrait(竖版 ps)。"""
+    """返回 (orientation, url) 候选。orientation 为 landscape(横版 pl) 或 portrait(竖版 ps)。
+
+    digital 路径（新片）走 awsimgsrc 高清；mono 路径（老片）走 pics.dmm.co.jp 低清
+    原图床（占位图由 _validate_dmm_image_url <4KB 拒收兜底）。
+    """
+    # 白名单命中：直接按记录的真实 cid + 路径生成唯一候选对
+    wl = _whitelist_entry(number)
+    if wl is not None:
+        cid = str(wl.get("cid", ""))
+        path = str(wl.get("path", "digital/video")) or "digital/video"
+        if cid:
+            if path.startswith("digital"):
+                base = f"{_DMM_CDN_BASE}/{cid}/{cid}"
+            else:
+                base = f"{_DMM_PICS_BASE}/{path}/{cid}/{cid}"
+            return [("portrait", f"{base}ps.jpg"), ("landscape", f"{base}pl.jpg")]
+    _load_routes()
     candidates: list[tuple[str, str]] = []
     for cid in generate_cid_candidates(number):
         candidates.append(("portrait", f"{_DMM_CDN_BASE}/{cid}/{cid}ps.jpg"))
         candidates.append(("landscape", f"{_DMM_CDN_BASE}/{cid}/{cid}pl.jpg"))
-    return candidates
+    # mono 路径补充：静态路由标记了 mono path 的系列，追加低清图床候选
+    # （规则直构的 cid 若已在 digital 高清候选中会因 URL 不同自然保留）
+    for series, num, _padded in _parse_number(number):
+        for combo in _routes_rules.get(series.upper(), []):
+            paths = combo.get("paths") or []
+            mono_path = next((p for p in paths if str(p).startswith("mono")), None)
+            if mono_path is None:
+                continue
+            for cid in _route_cids_for(series, num):
+                base = f"{_DMM_PICS_BASE}/{mono_path}/{cid}/{cid}"
+                candidates.append(("portrait", f"{base}ps.jpg"))
+                candidates.append(("landscape", f"{base}pl.jpg"))
+    # 去重（保持顺序）
+    seen: set[str] = set()
+    unique: list[tuple[str, str]] = []
+    for orient, url in candidates:
+        if url not in seen:
+            seen.add(url)
+            unique.append((orient, url))
+    return unique
 
 
 _UNCENSORED_PREFIXES = ("FC2", "HEYZO", "1PONDO", "CARIB", "10MUCH", "200GANA", "PACO", "MKD", "MIUM")
