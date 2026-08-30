@@ -140,6 +140,8 @@ async def test_nfo_save_preserves_user_tag_order(monkeypatch: pytest.MonkeyPatch
             """.encode(),
         ),
     )
+    # random.shuffle 结果跨平台不一致（OS entropy），与 test_nfo_tag_priority 对齐统一反向
+    monkeypatch.setattr(tag_priority.random, "shuffle", lambda items: items.reverse())
     tag_priority.clear_priority_tag_cache()
 
     data = CrawlersResult.empty()
@@ -153,29 +155,22 @@ async def test_nfo_save_preserves_user_tag_order(monkeypatch: pytest.MonkeyPatch
     file_info.file_path.write_bytes(b"")
     nfo_file = tmp_path / "ABC-123.nfo"
 
-    # 主刮削流程：should prioritize
+    # 主刮削流程：preserve_tag_order=False (默认) 应触发 prioritize 重排 — M女 前置
     await nfo_module.write_nfo(file_info, data, nfo_file, tmp_path, update=True, skip_merge=True)
-    tag_priority.clear_priority_tag_cache()
     root = etree.fromstring(nfo_file.read_text(encoding="utf-8").encode("utf-8"))
-    # 巨乳是优先标签，M女是优先标签，这两个相差一段距离
-    # prioritize_nfo_tags 会把 priority_tags（随机shuffle）放最前 + series + 其他
     tag_texts = root.xpath("//tag/text()")
-    # 优先级标签应排前面
-    assert tag_texts[0] in {"巨乳", "M女"}, f"tag[0]={tag_texts[0]}，应被重排到优先级标签"
+    assert tag_texts[0] == "M女", f"主刮削路径标签应重排优先, 实际: {tag_texts}"
+    assert tag_texts == ["M女", "巨乳", "其他标签"]
 
-    # NFO 库管理保存：应保留用户原序
-    # 模拟：用户把标签顺序改为 "巨乳,M女,其他标签" 并保存
-    # 若 write_nfo 被 nfo_library 调用时传了某种标记保留原顺序，那顺序应被保留
-    # 当前 write_nfo 没有这样的参数，看 prioritized 结果还是原来的
-    tag_priority.clear_priority_tag_cache()
+    # NFO 库管理场景：用户手动把"其他标签"调整到最后 -> 保存后顺序不变
     loaded, _ = await nfo_module.get_nfo_data(file_info.file_path, "ABC-123")
     assert loaded is not None
-    # 读取后 tag 顺序保持写入顺序（NFO 库管理应写入原顺序）
+    # 模拟用户在表单中把 tag 改为 "巨乳,M女,其他标签"（把 M女 放巨乳后）
+    loaded.tags = ["巨乳", "M女", "其他标签"]
     await nfo_module.write_nfo(
         file_info, loaded, nfo_file, tmp_path, update=True, skip_merge=True, preserve_tag_order=True
     )
-    tag_priority.clear_priority_tag_cache()
     root2 = etree.fromstring(nfo_file.read_text(encoding="utf-8").encode("utf-8"))
     tag_texts2 = root2.xpath("//tag/text()")
-    # 用户原来的顺序应被保留
-    assert tag_texts2 == ["巨乳", "M女", "其他标签"], f"期望保留用户顺序，实际: {tag_texts2}"
+    # NFO库管理保存后顺序应被完整保留（哪怕 M女 在优先级列表中仍被 Relocate 到前部）
+    assert tag_texts2 == ["巨乳", "M女", "其他标签"], f"NFO库管理应保留用户顺序, 实际: {tag_texts2}"
