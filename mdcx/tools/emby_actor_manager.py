@@ -205,49 +205,74 @@ async def fetch_actor_detail(actor_name: str) -> dict | None:
 async def fetch_person_item_stats(
     parent_ids: list[str] | None = None,
     filter_actor_only: bool = True,
+    page_limit: int = 500,
 ) -> tuple[dict[str, int], dict[str, list[str]], set]:
+    """按分页统计各影片的出演演员。
+
+    议题 #32：>1W 演员的服务器上 Limit=100000 单次响应过大导致服务端组装超时
+    （真机 3 连超时后放弃整库，只剩另一个库的 66 个）。改为 StartIndex 分页拉取，
+    并用 IncludeItemTypes/EnableImages/EnableUserData 缩减响应体积。
+    """
     counts: dict = {}
     titles: dict = {}
     person_names: set = set()
-    urls = []
     base_url = str(manager.config.emby_url).rstrip("/")
     headers = _build_jellyfin_headers()
     if parent_ids:
-        for lib_id in parent_ids:
-            if "emby" == manager.config.server_type:
-                urls.append(f"{base_url}/emby/Items?Recursive=true&Fields=People&ParentId={lib_id}&Limit=100000")
-            else:
-                urls.append(f"{base_url}/Items?Recursive=true&Fields=People&ParentId={lib_id}&Limit=100000")
+        # 每个媒体库独立分页；不带 ParentId 时统一走单循环（lib_id=None 不拼参数）
+        target_lib_ids: list[str | None] = list(parent_ids)
     else:
-        if "emby" == manager.config.server_type:
-            urls.append(f"{base_url}/emby/Items?Recursive=true&Fields=People&Limit=100000")
-        else:
-            urls.append(f"{base_url}/Items?Recursive=true&Fields=People&Limit=100000")
+        target_lib_ids = [None]
+
+    def _items_url(lib_id: str | None, start_index: int) -> str:
+        prefix = f"{base_url}/emby" if "emby" == manager.config.server_type else base_url
+        url = (
+            f"{prefix}/Items?"
+            "Recursive=true&Fields=People"
+            "&IncludeItemTypes=Movie,Episode"
+            "&EnableImages=false&EnableUserData=false"
+            f"&StartIndex={start_index}&Limit={page_limit}"
+        )
+        if lib_id:
+            url += f"&ParentId={lib_id}"
+        return url
+
     async with manager.acquire_computed() as computed:
-        for url in urls:
-            response, error = await computed.async_client.get_json(url, headers=headers, use_proxy=False)
-            if response is None:
-                continue
-            items = response.get("Items", [])
-            for item in items:
-                people = item.get("People") or []
-                item_name = item.get("Name", "")
-                item_type = item.get("Type", "")
-                seen_in_item = set()
-                for person in people:
-                    # filter_actor_only: 只统计 Type=Actor 的角色（Emby 默认返回导演/编剧等）
-                    if filter_actor_only and person.get("Type") not in ("Actor", None):
-                        continue
-                    name = person.get("Name", "")
-                    if not name:
-                        continue
-                    seen_in_item.add(name)
-                    person_names.add(name)
-                for name in seen_in_item:
-                    counts[name] = counts.get(name, 0) + 1
-                    if name not in titles:
-                        titles[name] = []
-                    titles[name].append(f"[{item_type}] {item_name}")
+        for lib_id in target_lib_ids:
+            start_index = 0
+            while True:
+                response, error = await computed.async_client.get_json(
+                    _items_url(lib_id, start_index), headers=headers, use_proxy=False
+                )
+                if response is None:
+                    # 该库失败（如超时）只跳过本库，其余库照常统计
+                    break
+                items = response.get("Items", [])
+                if not items:
+                    break
+                for item in items:
+                    people = item.get("People") or []
+                    item_name = item.get("Name", "")
+                    item_type = item.get("Type", "")
+                    seen_in_item = set()
+                    for person in people:
+                        # filter_actor_only: 只统计 Type=Actor 的角色（Emby 默认返回导演/编剧等）
+                        if filter_actor_only and person.get("Type") not in ("Actor", None):
+                            continue
+                        name = person.get("Name", "")
+                        if not name:
+                            continue
+                        seen_in_item.add(name)
+                        person_names.add(name)
+                    for name in seen_in_item:
+                        counts[name] = counts.get(name, 0) + 1
+                        if name not in titles:
+                            titles[name] = []
+                        titles[name].append(f"[{item_type}] {item_name}")
+                total_count = int(response.get("TotalRecordCount") or 0)
+                start_index += page_limit
+                if start_index >= total_count or len(items) < page_limit:
+                    break
     return counts, titles, person_names
 
 

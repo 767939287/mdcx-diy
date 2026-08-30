@@ -413,3 +413,176 @@ async def test_get_emby_actor_list_jellyfin_uses_items_endpoint(monkeypatch: pyt
     assert parsed.path == "/Items"
     assert query["includeItemTypes"] == ["Person"]
     assert query["personTypes"] == ["Actor"]
+
+
+def _fake_acquire(monkeypatch: pytest.MonkeyPatch, fake_client) -> None:
+    """按 test_get_emby_actor_list_jellyfin_uses_items_endpoint 同款方式替换 acquire_computed。"""
+    from mdcx.config.manager import manager
+
+    class _FakeComputed:
+        async_client = fake_client
+
+    class _FakeAcquire:
+        async def __aenter__(self):
+            return _FakeComputed()
+
+        async def __aexit__(self, *args):
+            return False
+
+    monkeypatch.setattr(manager, "acquire_computed", lambda: _FakeAcquire())
+
+
+@pytest.mark.asyncio
+async def test_fetch_person_item_stats_pages_instead_of_limit_100000(monkeypatch: pytest.MonkeyPatch):
+    """议题 #32：>1W 演员的服务器上 Limit=100000 单次响应过大导致服务端组装超时（真机 3 连超时放弃整库）。
+
+    必须改为 StartIndex 分页拉取，禁止一次性全量请求。
+    """
+
+    from mdcx.config.manager import manager
+    from mdcx.tools import emby_actor_manager
+
+    captured_urls: list[str] = []
+
+    class _FakeClient:
+        async def get_json(self, url, headers=None, use_proxy=True, **kwargs):
+            captured_urls.append(url)
+            return {"Items": [], "TotalRecordCount": 0}, ""
+
+    monkeypatch.setattr(manager.config, "server_type", "jellyfin")
+    monkeypatch.setattr(manager.config, "emby_url", "http://127.0.0.1:8096")
+    monkeypatch.setattr(manager.config, "api_key", "token")
+    _fake_acquire(monkeypatch, _FakeClient())
+
+    await emby_actor_manager.fetch_person_item_stats(parent_ids=["lib-1"])
+
+    assert captured_urls, "至少发起一次请求"
+    for url in captured_urls:
+        assert "Limit=100000" not in url
+        assert "StartIndex=" in url
+
+
+@pytest.mark.asyncio
+async def test_fetch_person_item_stats_paginates_and_counts_across_pages(monkeypatch: pytest.MonkeyPatch):
+    """分页拉取：StartIndex 递增、TotalRecordCount/短页终止、统计跨页累计。"""
+    from urllib.parse import parse_qs, urlparse
+
+    from mdcx.config.manager import manager
+    from mdcx.tools import emby_actor_manager
+
+    PAGE_LIMIT = 500
+    TOTAL = 600
+    captured_urls: list[str] = []
+
+    def _make_items(start: int, count: int) -> list[dict]:
+        return [
+            {
+                "Name": f"影片{start + i}",
+                "Type": "Movie",
+                "People": [{"Name": "田中", "Type": "Actor"}],
+            }
+            for i in range(count)
+        ]
+
+    class _FakeClient:
+        async def get_json(self, url, headers=None, use_proxy=True, **kwargs):
+            captured_urls.append(url)
+            query = parse_qs(urlparse(url).query)
+            start = int(query["StartIndex"][0])
+            limit = int(query["Limit"][0])
+            items = _make_items(start, min(limit, TOTAL - start))
+            return {"Items": items, "TotalRecordCount": TOTAL}, ""
+
+    monkeypatch.setattr(manager.config, "server_type", "jellyfin")
+    monkeypatch.setattr(manager.config, "emby_url", "http://127.0.0.1:8096")
+    monkeypatch.setattr(manager.config, "api_key", "token")
+    _fake_acquire(monkeypatch, _FakeClient())
+
+    counts, titles, names = await emby_actor_manager.fetch_person_item_stats(parent_ids=["lib-1"])
+
+    assert counts == {"田中": TOTAL}
+    assert names == {"田中"}
+    assert len(titles["田中"]) == TOTAL
+    assert len(captured_urls) == 2, "600 条按 500/页应拉 2 页"
+    starts = [int(parse_qs(urlparse(u).query)["StartIndex"][0]) for u in captured_urls]
+    assert starts == [0, PAGE_LIMIT]
+
+
+@pytest.mark.asyncio
+async def test_fetch_person_item_stats_slim_query_params(monkeypatch: pytest.MonkeyPatch):
+    """缩减响应体积的三个参数必须带上（议题 #32 真机验证有效）。"""
+    from urllib.parse import parse_qs, urlparse
+
+    from mdcx.config.manager import manager
+    from mdcx.tools import emby_actor_manager
+
+    captured_urls: list[str] = []
+
+    class _FakeClient:
+        async def get_json(self, url, headers=None, use_proxy=True, **kwargs):
+            captured_urls.append(url)
+            return {"Items": [], "TotalRecordCount": 0}, ""
+
+    monkeypatch.setattr(manager.config, "server_type", "jellyfin")
+    monkeypatch.setattr(manager.config, "emby_url", "http://127.0.0.1:8096")
+    monkeypatch.setattr(manager.config, "api_key", "token")
+    _fake_acquire(monkeypatch, _FakeClient())
+
+    await emby_actor_manager.fetch_person_item_stats(parent_ids=["lib-1"])
+
+    query = parse_qs(urlparse(captured_urls[0]).query)
+    assert query["IncludeItemTypes"] == ["Movie,Episode"]
+    assert query["EnableImages"] == ["false"]
+    assert query["EnableUserData"] == ["false"]
+
+
+@pytest.mark.asyncio
+async def test_fetch_person_item_stats_failed_lib_skipped(monkeypatch: pytest.MonkeyPatch):
+    """单库请求失败（如超时）只跳过该库，其余库照常统计。"""
+
+    from mdcx.config.manager import manager
+    from mdcx.tools import emby_actor_manager
+
+    class _FakeClient:
+        async def get_json(self, url, headers=None, use_proxy=True, **kwargs):
+            if "lib-bad" in url:
+                return None, "连接超时"
+            return {
+                "Items": [{"Name": "影片1", "Type": "Movie", "People": [{"Name": "小林", "Type": "Actor"}]}],
+                "TotalRecordCount": 1,
+            }, ""
+
+    monkeypatch.setattr(manager.config, "server_type", "jellyfin")
+    monkeypatch.setattr(manager.config, "emby_url", "http://127.0.0.1:8096")
+    monkeypatch.setattr(manager.config, "api_key", "token")
+    _fake_acquire(monkeypatch, _FakeClient())
+
+    counts, titles, names = await emby_actor_manager.fetch_person_item_stats(parent_ids=["lib-bad", "lib-good"])
+
+    assert counts == {"小林": 1}
+    assert names == {"小林"}
+
+
+@pytest.mark.asyncio
+async def test_fetch_person_item_stats_emby_uses_emby_prefix(monkeypatch: pytest.MonkeyPatch):
+    """Emby 分支保持 /emby 前缀路径。"""
+    from urllib.parse import urlparse
+
+    from mdcx.config.manager import manager
+    from mdcx.tools import emby_actor_manager
+
+    captured_urls: list[str] = []
+
+    class _FakeClient:
+        async def get_json(self, url, headers=None, use_proxy=True, **kwargs):
+            captured_urls.append(url)
+            return {"Items": [], "TotalRecordCount": 0}, ""
+
+    monkeypatch.setattr(manager.config, "server_type", "emby")
+    monkeypatch.setattr(manager.config, "emby_url", "http://127.0.0.1:8096")
+    monkeypatch.setattr(manager.config, "api_key", "token")
+    _fake_acquire(monkeypatch, _FakeClient())
+
+    await emby_actor_manager.fetch_person_item_stats(parent_ids=["lib-1"])
+
+    assert urlparse(captured_urls[0]).path == "/emby/Items"

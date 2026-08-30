@@ -29,6 +29,8 @@
 
 - **Jellyfin 12 演员列表/图片刮取修复（议题 #32 追加反馈，真机实证）**：41fb16d 的鉴权头修复后，Jellyfin 12（原 10.12）的 `/Persons` **列表**端点仍对带 `fields`/`userId` 的查询返回 401/超时（报告人浏览器直接访问亦 401，早于鉴权修复即存在）；报告人按 API 将列表改走 `/Items` + `includeItemTypes=Person` 后真机验证：演员信息与图片刮取全部成功且 Jellyfin 内生效（fork 767939287 的 c9a0e11/fb1f3c3 两提交）。吸收该修复：`emby_actor_image._get_emby_actor_list` 与 `emby_actor_manager.get_emby_actor_list` 的 Jellyfin 分支 `/Persons`→`/Items`+`includeItemTypes=Person`；`/Persons/{name}` 单演员详情查询在真机验证可用，保持不动。测试同步断言新端点并新增 manager 侧端点测试。演员管理器仅识别 66 个的问题报告人已标记不强求，另列跟进
 
+- **演员管理器大媒体库统计超时只认到单库（议题 #32 再反馈，报告人真机验证）**：`fetch_person_item_stats` 每媒体库一次性 `Limit=100000` 全量拉取影片 People，报告人 >1W 演员的服务器上单次响应体过大导致服务端组装超时，日志显示同库连续 3 次连接超时后放弃——两个媒体库只统计到成功库的 66 个演员（此前「仅识别 66 个」跟进项的根因即此）。吸收报告人 commit c412939a 的真机验证方案：改为 `StartIndex` 分页拉取（每页 500 条），并加 `IncludeItemTypes=Movie,Episode`（只扫影片/剧集）与 `EnableImages=false&EnableUserData=false` 缩减响应体积；单库失败仍只跳过该库不阻断其余库，Emby 分支保持 `/emby` 前缀。测试 5 项锁定（禁 Limit=100000 / 分页递增与 TotalRecordCount 短页终止 / 缩减参数 / 失败跳过 / Emby 前缀）。同批反馈的「补全头像 POST /Images 500」为服务端内部错误（本地请求格式已核对符合 API 规范），报告人正在清理库内 UTF 乱码损坏 item，待清理后复测、若复现需服务端日志定位
+
 - **Jellyfin 12（原 10.12）连接失败修复（议题 #32）**：Jellyfin 10.11 后端重写起 auth middleware 要求完整 MediaBrowser 设备标识，仅携带 Token 的请求被拒。`emby_shared._build_jellyfin_headers` 补全 `Client/Device/DeviceId/Version` 字段（向下兼容 10.8+，17 个调用点统一受益）；演员管理器连接测试 Jellyfin 分支去掉 URL 上的 `?api_key=` 明文密钥，统一走 Authorization 头
 
 - **official 无码官网 studio 字段污染**：1pondo/10musume/pacopacomama JSON 的 UCNAME 键实为分类标签数组，原取值链误作厂牌导致 studio 产出脏值且三站标签全空；改为 Maker/Studio 取值 + 站点兜底，UCNAME 归入 tags 来源
