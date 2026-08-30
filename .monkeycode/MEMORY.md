@@ -23,7 +23,8 @@
 - Instructions:
   - `gh` 自带 token 已失效（`monkeycode-ai[bot]` invalid）。正确姿势：从 git credential helper 取 token 传 `GH_TOKEN` 走 `gh api` —— `TOKEN=$(printf "protocol=https\nhost=github.com\n\n" | git credential fill | sed -n 's/^password=//p')`，再 `GH_TOKEN="$TOKEN" gh api repos/<owner>/<repo>/issues/<n>`。`gh api user` 会 403（integration 无该权限）但仓库议题读写正常，不要据此判定 token 不可用。凭据值禁止回显到聊天或落盘。
   - 读议题正文/评论优先 `gh api`。退化到抓 GitHub 网页 HTML 时，评论正文要从内联 JSON 的 `"body"` 字段提取（`comment-body markdown-body` 类名已不存在）；未认证直连 `api.github.com` 会撞 IP 级 rate limit。
-  - 回帖用 `gh api ... -F body=@文件` 传 Markdown 文件，避免命令行转义问题。
+  - 回帖用 `gh api ... -F body=@文件` 传 Markdown 文件（**注意：必须用 `-F`**，不是 `-f`；`-f` 是 raw-field 会原样发送，`@/tmp/xxx.md` 会作为字面值发送而不是读文件内容——真机踩过，议题里出现 `@/tmp/...` 字面值而非正文，see #56 两次）。
+  - **BUG 规避传统**：发送回帖后检查 `gh api --jq '.body' | head -1` 验证首行有内容不为 `@/...` 路径，才水准可信。
   - 关闭议题的判断标准：修复完整且用户明确要求才 `-f state=closed -f state_reason=completed`。根因未完全查清时保留 open，回帖如实写明"已修的部分解释了什么、解释不了什么"，并给出需报告人补充的具体信息（日志文件、进程内存数值、复现操作序列、特征文件是否存在）与已排除的假设清单，避免对方往错方向猜。不硬套一个原因去凑完整叙事。
   - **CI 失败排查**：`gh api repos/<owner>/<repo>/actions/runs?per_page=N` 列运行 → `runs/{id}/jobs` 用 jq `select(.conclusion=="failure")` 定位失败 job → `actions/jobs/{job_id}/logs` 拉全量日志后 grep `\.py:[0-9]+: error`（直接在线 grep 常拿空，先落盘再 grep 稳）。注意失败的 run 有重跑后同 head_sha 会新旧两条记录，看最新一条。
 
@@ -109,4 +110,5 @@
   - DMM 图床占位图坑：pics.dmm.co.jp 对无效 cid 返回 200 + ~2.7KB 甚至 142B 垃圾体，单凭 check_url 的 200 会通过；真实封面再小也 ≥10KB。已在 `base/web.py::_validate_dmm_image_url` 加 <4096B 拒收。
   - tenhow.net 图床：图片按 ASIN 命名 `images/{ASIN}.jpg`（大图）+ icon_/s_ 前缀小图；条目 DOM 内 ASIN 图与 DMM cid 绑定，经 13 个冲突 ASIN 对 libredmm 实测 13/13 正确。**双向价值**：正向按 ASIN 免代理直接取图（T0 优先，404 再回退 Amazon）；反向凡页面条目里的图文件名都是可入库 ASIN，全站爬一遍即一次 ASIN 增量发现。2026-08-28 重爬全站收敛 **1903 页 / 36441 ASIN**（无冲突），结果在 `/tmp/opencode/tenhow_index_full.json`、页面缓存 `/tmp/opencode/tenhow_pages/`；旧索引 8126 条严重不全（旧脚本每批 50 页无新链接即整体退出，只抓 250/1903 页）已作废。另有 ~5388 条目只有 ASIN 无 cid，未来可用封面图像比对反查番号补库。
   - cid→番号清洗规则（与仓库 `_parse_number`/DMM 官方约定对齐）：cid 形态 `^(\d*)([a-z]+)(\d+)([a-z])?$` = 可选厂商数字前缀 + 系列字母 + 数字（content_id 5 位补零）+ 可选变体字母。番号 = `系列字母大写 + f"{int(数字):03d}"`（去前导零但至少 3 位：24ped00030→PED-030、13gvg00564→GVG-564、onsg00064→ONSG-064，**绝不**缩成 PED-30，旧库 tenhow 行此类错误写法待修）；末尾变体字母（b/c/f/r 等）视为同番号变体归并；去重比对一律用 (系列字母, int(数字)) 做 key 以兼容去零/补零两种存量写法；不匹配该形态的 cid 进「待人工」sheet 不猜番号。
-  - 批量导入外部数据到 xlsx 前必须走 `save_asin_to_excel` 这类含去重逻辑的入口函数；直接 `ws.append` 会绕过同番号去重产生成批重复行（教训：tenhow 8094 行导入产生 699 完全重复行）。错配行处置规则：不删、不丢番号，移到「待修正」sheet 附原因保留待补，主表只留裁决通过的。
+   - 批量导入外部数据到 xlsx 前必须走 `save_asin_to_excel` 这类含去重逻辑的入口函数；直接 `ws.append` 会绕过同番号去重产生成批重复行（教训：tenhow 8094 行导入产生 699 完全重复行）。错配行处置规则：不删、不丢番号，移到「待修正」sheet 附原因保留待补，主表只留裁决通过的。
+   - **HTTP 4xx 错误定位顺序**（议题 #56 教训）：先看【客户端实际发了什么】（headers/body/URL 构造完整？、条件分支是否被误判覆盖），再想服务端权限/角色/版本。同一函数内 `if _is_jellyfin_server(): 加鉴权 else: None` 的条件分支看似无害，对 Emby 就是"否"把鉴权头置 None → POST 全量 401——这类"条件头构造"在同函数多个调用点改一处漏一处的错误常见（`_is_jellyfin_server` 当时同名双调用点，一处修了另一处留）。**写回帖前先核对所有调用点的硬编码分支**，不要在未读完整数据路径的情况下把责任推给用户的服务端配置。
