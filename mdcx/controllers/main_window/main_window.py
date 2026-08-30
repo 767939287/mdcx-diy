@@ -553,14 +553,19 @@ class MyMAinWindow(QMainWindow):
         # ============ page_setting: tabWidget + 内部12个 scrollArea ============
         # tabWidget 设计参考几何(20,10,800,682) → scrollArea(0,0,796,658)
         # 保持 tabWidget 固定 X/Y=20,10，宽高跟随主窗口
-        # scrollArea 宽高 = (tabWidget宽-4,  tabWidget高-24) （tab高度栏约占24px)
         tab_w = max(avail_w - 40, 200)
         tab_h = max(avail_h - 20, 150)
-        ui.tabWidget.setGeometry(20, 10, tab_w, tab_h)
         scroll_w = max(tab_w - 4, 396)
-        scroll_h = max(tab_h - 24, 326)  # 确保 tab + scroll 至少有最小高度
+        scroll_h = max(tab_h - 24, 326)  # tab栏约占24px + 4px 边框
+        ui.tabWidget.setGeometry(20, 10, tab_w, tab_h)
+
+        # Qt 绝对定位布局中：先让所有 tab 的 tab_page 自身 resize 到正确尺寸，
+        # 这样 scrollArea 才会感知到变化；然后对每个 scrollArea 显式设置几何。
+        # 否则 scrollArea 保留设计器固定尺寸（如 796x658），不跟随变化。
         for index in range(ui.tabWidget.count()):
             tab_page = ui.tabWidget.widget(index)
+            # 关键：tab_page 必须先获得新尺寸，scrollArea 才能跟随同步
+            tab_page.resize(tab_w, tab_h)
             scroll_area = tab_page.findChild(CustomScrollArea)
             if scroll_area is not None and scroll_area.parentWidget() == tab_page:
                 scroll_area.setGeometry(0, 0, scroll_w, scroll_h)
