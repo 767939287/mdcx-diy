@@ -13,6 +13,7 @@
   - **标签顺序保存后失效**：NFO 库管理保存路径会被 `prioritize_nfo_tags` 重排优先标签；给 `write_nfo` 新加 `preserve_tag_order` 参数，NFO 库管理保存/批量路径传入 `True` 保留用户原始顺序
   - **批量路径防御**：`_batch_modify` 的 `write_nfo` 调用补 `skip_merge=True + preserve_tag_order=True`，与单条保存路径一致
 - **议题 #62 窗口最大化后页面内容不跟随缩放**：主窗口 resizeEvent 只同步 navigation/content/progressBar 三件套， Qt Designer 生成的绝对定位 scrollArea/tabWidget/textBrowser 不会被触发 resize，导致设置页/工具页/网络页/日志页/关于页中组件保持固定 796x658；新增 `_sync_page_layouts()` 方法， resizeEvent 内按长边(宽)量化脚本计算受遮区域，调用每个组件 setGeometry 统一拉伸（保留组件 X/Y 设计偏移，宽高按比例缩放），固定主窗口 1040x760 换算系数。新增测试 `test_ui_resize_sync.py` 4 项，同步覆盖方法存在/resizeEvent 调用检查/几何缩放逻辑/默认尺寸防御
+- **议题 #56 图片上传 HTTP 500 Base64 编码问题**：Emby/Jellyfin 的 `Items/{id}/Images/{Primary,Backdrop}` 服务端（在日志中明确 `System.FormatException: FromBase64Transform`)期望 Base64 编码字符串而非原始 JPEG/PNG 二进制——原 `_upload_actor_photo` 直接把图片二进制字节送 POST 导致服务端解码失败（500）。将上传 body 改为 `base64.b64encode(content).decode('ascii')`，原 Content-Type（image/jpeg/png 等）保持不动。更新两项旧预期（二进制体）到 base64，新增 `test_emby_photo_base64.py` 3 项测试锁定（body 是 str + base64 可解 + Content-Type 保留）。同样原理应用于 `emby_actor_manager.upload_actor_image/backdrop` 共用 `_upload_actor_photo`（同一函数一次修复全局生效）
 
 ### 文档
 

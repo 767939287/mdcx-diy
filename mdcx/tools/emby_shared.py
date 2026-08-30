@@ -5,6 +5,7 @@
 
 from __future__ import annotations
 
+import base64
 import traceback
 from pathlib import Path
 from urllib.parse import quote, urlencode
@@ -103,10 +104,16 @@ async def _upload_actor_photo(url: str, pic_path: Path) -> tuple[bool, str]:
     try:
         async with aiofiles.open(pic_path, "rb") as f:
             content = await f.read()
+        # Emby/Jellyfin 的 Images/Primary、Images/Backdrop 等服务端会
+        # 读取 body 为 Base64 格式，传原始二进制会导致服务端 Base64 解码失败 (500)。
+        # 必须 Base64 编码后发送。
+        b64_content = base64.b64encode(content).decode("ascii")
         header = {"Content-Type": _image_content_type(pic_path)}
         header = _build_jellyfin_headers(header)
         async with manager.acquire_computed() as computed:
-            r, err = await computed.async_client.post_content(url=url, data=content, headers=header, use_proxy=False)
+            r, err = await computed.async_client.post_content(
+                url=url, data=b64_content, headers=header, use_proxy=False
+            )
         return r is not None, err
     except Exception as e:
         signal.show_log_text(traceback.format_exc())
