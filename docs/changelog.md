@@ -12,6 +12,7 @@
   - **简介读不出来**：`get_nfo_data` 读简介只查 `<plot>`/`<outline>` 元素，当数据只存在 `<originalplot>` 时无法读取；增加 fallback：当 plot/outline 均空时尝试从 `<originalplot>` 读取
   - **标签顺序保存后失效**：NFO 库管理保存路径会被 `prioritize_nfo_tags` 重排优先标签；给 `write_nfo` 新加 `preserve_tag_order` 参数，NFO 库管理保存/批量路径传入 `True` 保留用户原始顺序
   - **批量路径防御**：`_batch_modify` 的 `write_nfo` 调用补 `skip_merge=True + preserve_tag_order=True`，与单条保存路径一致
+- **议题 #62 窗口最大化后页面内容不跟随缩放**：主窗口 resizeEvent 只同步 navigation/content/progressBar 三件套， Qt Designer 生成的绝对定位 scrollArea/tabWidget/textBrowser 不会被触发 resize，导致设置页/工具页/网络页/日志页/关于页中组件保持固定 796x658；新增 `_sync_page_layouts()` 方法， resizeEvent 内按长边(宽)量化脚本计算受遮区域，调用每个组件 setGeometry 统一拉伸（保留组件 X/Y 设计偏移，宽高按比例缩放），固定主窗口 1040x760 换算系数。新增测试 `test_ui_resize_sync.py` 4 项，同步覆盖方法存在/resizeEvent 调用检查/几何缩放逻辑/默认尺寸防御
 
 ### 文档
 

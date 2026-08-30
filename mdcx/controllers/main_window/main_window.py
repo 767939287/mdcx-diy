@@ -81,6 +81,7 @@ from mdcx.utils.file import (
     resolve_success_record_source_sync,
 )
 from mdcx.utils.path import safe_rmtree
+from mdcx.views.CustomClass import CustomScrollArea
 from mdcx.views.MDCx import Ui_MDCx
 from mdcx.views.similar_window import SimilarDialog
 
@@ -515,6 +516,14 @@ class MyMAinWindow(QMainWindow):
             self.resize(1030, 700)  # 首次显示时应用默认窗口大小
         super().showEvent(a0)
 
+    # 用于计算窗口各子页面初始设计尺寸，被 resizeEvent 用于按比例缩放
+    _BASE_W = 1040
+    _BASE_H = 760
+
+    # 窗口缩放时，需要用子页面内容的实际高度来自定义 MDCx 中央区域的高度
+    _CONTENT_TOP_OFFSET = 6
+    _CONTENT_BOTTOM_MARGIN = 2
+
     def resizeEvent(self, a0):
         # 全局 UI 为绝对定位布局（上游遗留），centralwidget 无布局管理器，
         # 窗口缩放时手动同步导航栏/内容区/顶部进度条几何，否则最大化后内容区固定 820x692
@@ -526,6 +535,67 @@ class MyMAinWindow(QMainWindow):
         ui.widget_setting.setGeometry(0, 0, 210, height)
         ui.stackedWidget.setGeometry(210, 6, max(width - 210 - 2, 400), max(height - 8, 300))
         ui.progressBar_scrape.setGeometry(209, -1, max(width - 211, 100), 7)
+        self._sync_page_layouts()  # 同步动态页面的内部尺寸
+
+    def _sync_page_layouts(self) -> None:
+        """让所有页面的内部组件跟随主窗口尺寸缩放。
+
+        窗口右侧 stackedWidget resizeEvent 同步，但子页面（page_setting里的tabWidget、
+        page_tool的自定义区域、page_net的textBrowser），仅需位置在绝对坐标系下按比例还原。
+        方法：基于主窗口追加 (210,6) → 用处当前发扬的尺寸作为基准，对元素调用一次 setGeometry。
+        每个组件保留最初设计偏移 (X, Y)，仅需对宽 高 按比例缩放。
+        """
+        ui = self.Ui
+        # stackedWidget 可用宽高（扣除侧栏和上下间距）
+        avail_w = max(self.width() - 210 - 2, 400)
+        avail_h = max(self.height() - self._CONTENT_TOP_OFFSET - self._CONTENT_BOTTOM_MARGIN, 300)
+
+        # ============ page_setting: tabWidget + 内部12个 scrollArea ============
+        # tabWidget 设计参考几何(20,10,800,682) → scrollArea(0,0,796,658)
+        # 保持 tabWidget 固定 X/Y=20,10，宽高跟随主窗口
+        # scrollArea 宽高 = (tabWidget宽-4,  tabWidget高-24) （tab高度栏约占24px)
+        tab_w = max(avail_w - 40, 200)
+        tab_h = max(avail_h - 20, 150)
+        ui.tabWidget.setGeometry(20, 10, tab_w, tab_h)
+        scroll_w = max(tab_w - 4, 396)
+        scroll_h = max(tab_h - 24, 326)  # 确保 tab + scroll 至少有最小高度
+        for index in range(ui.tabWidget.count()):
+            tab_page = ui.tabWidget.widget(index)
+            scroll_area = tab_page.findChild(CustomScrollArea)
+            if scroll_area is not None and scroll_area.parentWidget() == tab_page:
+                scroll_area.setGeometry(0, 0, scroll_w, scroll_h)
+
+        # ============ page_tool: scrollArea_10 ============
+        tool_area = ui.page_tool
+        scroll_10 = tool_area.findChild(CustomScrollArea)
+        if scroll_10 is not None and scroll_10.parentWidget() == tool_area:
+            scroll_10.setGeometry(20, 0, max(tool_area.width() - 20 - 20, 400), max(tool_area.height() - 0, 300))
+
+        # ============ page_net: textBrowser_net_main ============
+        net_area = ui.page_net
+        net_browser = ui.textBrowser_net_main
+        if net_browser.parentWidget() == net_area:
+            net_browser.setGeometry(30, 0, max(net_area.width() - 30 - 2, 400), max(net_area.height() - 0, 300))
+
+        # ============ page_about: textBrowser_about ============
+        about_browser = ui.textBrowser_about
+        if about_browser.parentWidget() == ui.page_about:
+            about_browser.setGeometry(
+                30, 0, max(ui.page_about.width() - 30 - 2, 300), max(ui.page_about.height() - 0, 300)
+            )
+
+        # ============ page_log: textBrowser_log_main (上) / textBrowser_log_main_2 (下) / log_main_3(失败列表) ============
+        log_page = ui.page_log
+        log_w = max(log_page.width() - 28 - 2, 300)
+        log_h_total = log_page.height()
+        # 上下两段按原比例 (421:271 ≈ 3:2) 分高； 上栏占 3/5， 下栏占 2/5 并留 1px 间隙
+        upper_h = max(int(log_h_total * 0.61), 100)
+        lower_h = max(log_h_total - upper_h - 1, 100)
+        upper_w = max(log_w, 300)
+        ui.textBrowser_log_main.setGeometry(28, 0, upper_w, upper_h)
+        ui.textBrowser_log_main_2.setGeometry(28, upper_h + 1, upper_w, lower_h)
+        # 覆盖性日志视图 (失败列表) 铺满整个日志页
+        ui.textBrowser_log_main_3.setGeometry(0, 0, max(log_page.width() - 2, 300), max(log_page.height() - 2, 300))
 
     # 当隐藏边框时，最小化后，点击任务栏时，需要监听事件，在恢复窗口时隐藏边框
     def changeEvent(self, a0):
