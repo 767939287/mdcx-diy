@@ -67,6 +67,8 @@ class LogBuffer:
         全部后代、to_thread 线程写入都归入这一组；其他兄弟组的 get() 不再拼入。
         """
         root = LogBuffer._get_task_id()
+        if root is None:  # 理论不可达（_get_task_id 线程回退恒非 None），mypy 收窄
+            root = 0
         LogBuffer._ROOT.set(root)
         return root
 
