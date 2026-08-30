@@ -15,7 +15,7 @@ import pytest
 
 def test_sync_page_layouts_method_exists():
     """main_window.MyMAinWindow 必须有 _sync_page_layouts 方法。"""
-    with open("mdcx/controllers/main_window/main_window.py") as f:
+    with open("mdcx/controllers/main_window/main_window.py", encoding="utf-8") as f:
         code = f.read()
     tree = ast.parse(code)
     for node in ast.walk(tree):
@@ -28,7 +28,7 @@ def test_sync_page_layouts_method_exists():
 
 def test_resize_event_calls_sync_page_layouts():
     """resizeEvent 必须调用 _sync_page_layouts()。"""
-    with open("mdcx/controllers/main_window/main_window.py") as f:
+    with open("mdcx/controllers/main_window/main_window.py", encoding="utf-8") as f:
         code = f.read()
     # 验证 resizeEvent 里包含 _sync_page_layouts 调用
     assert "_sync_page_layouts()" in code, "resizeEvent 中没有调用 _sync_page_layouts()"
@@ -36,7 +36,7 @@ def test_resize_event_calls_sync_page_layouts():
 
 def test_regression_resize_sync_theme():
     """回归验证：scrollArea 跟随 tabWidget 缩放的 passing 逻辑。"""
-    with open("mdcx/controllers/main_window/main_window.py") as f:
+    with open("mdcx/controllers/main_window/main_window.py", encoding="utf-8") as f:
         code = f.read()
     # 关键证据点：sync 函数中遍历 tabWidget 的所有 tab 并缩放 scrollArea
     assert "ui.tabWidget.count()" in code
@@ -53,7 +53,7 @@ def test_regression_resize_sync_theme():
 
 def test_no_regression_default_window_size():
     """检查后改动的 resize 处理逻辑不在默认窗口尺寸 1040x760 下崩溃。"""
-    with open("mdcx/controllers/main_window/main_window.py") as f:
+    with open("mdcx/controllers/main_window/main_window.py", encoding="utf-8") as f:
         code = f.read()
     # _BASE_W / _BASE_H 常量存在
     assert "_BASE_W = 1040" in code
