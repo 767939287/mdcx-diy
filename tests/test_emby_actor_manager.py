@@ -586,3 +586,32 @@ async def test_fetch_person_item_stats_emby_uses_emby_prefix(monkeypatch: pytest
     await emby_actor_manager.fetch_person_item_stats(parent_ids=["lib-1"])
 
     assert urlparse(captured_urls[0]).path == "/emby/Items"
+
+
+@pytest.mark.asyncio
+async def test_update_person_info_sends_json_content_type(monkeypatch: pytest.MonkeyPatch):
+    """议题 #56:Emby 4.9 对 POST /Items/{id} 缺 Content-Type: application/json 直接判 400。"""
+    from mdcx.config.manager import manager
+    from mdcx.tools import emby_actor_manager
+
+    captured: dict = {}
+
+    class _FakeClient:
+        async def post_content(self, url, *, data=None, headers=None, use_proxy=True, **kwargs):
+            captured["url"] = url
+            captured["data"] = data
+            captured["headers"] = headers or {}
+            return b"", ""
+
+    monkeypatch.setattr(manager.config, "server_type", "emby")
+    monkeypatch.setattr(manager.config, "emby_url", "http://127.0.0.1:8096")
+    monkeypatch.setattr(manager.config, "api_key", "token")
+    _fake_acquire(monkeypatch, _FakeClient())
+
+    actor = ActorInfo(name="测试", actor_id="id1", server_id="srv1")
+    ok, msg = await emby_actor_manager.update_person_info(actor)
+
+    assert ok is True, msg
+    assert str(captured["headers"].get("Content-Type", "")).lower() == "application/json", (
+        f"headers 里缺 Content-Type: application/json（实际: {captured['headers']!r}）"
+    )

@@ -517,7 +517,8 @@ async def update_person_info(actor: ActorInfo) -> tuple[bool, str]:
         payload["ProductionYear"] = actor.new_production_year
     if actor.new_premiere_date:
         payload["PremiereDate"] = actor.new_premiere_date
-    headers = _build_jellyfin_headers()
+    # 议题 #56: Emby 4.9 对 POST /Items/{id} 无 Content-Type 的 JSON body 判 400
+    headers = _build_jellyfin_headers({"Content-Type": "application/json"})
     async with manager.acquire_computed() as computed:
         body, err = await computed.async_client.post_content(
             url=update_url, data=json.dumps(payload), headers=headers, use_proxy=False
