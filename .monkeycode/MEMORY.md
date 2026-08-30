@@ -64,6 +64,8 @@
   - Onefile 无控制台异常用 faulthandler + crash/ 日志定位；GUI 日志走 signal_qt.show_log_text。
   - 删代码前检查赋值点、读取点、装饰器注册、延迟 import、动态工厂，删后重扫死 import 与零引用。
 
+  - **议题 #62/#66 Qt 绝对定位 UI 缩放经验**（2026-08-30 实践）：`setGeometry()` 只改组件位置/尺寸，但**不触发子组件 resizeEvent**——须用 `widget.resize(w, h)` 让 Qt 消息传播 resize。tab container (QTabWidget/QStackedWidget) 的子页（page）resize 后，内部 scrollArea 仍保持设计器固定几何且不同步；修复时先 resize 容器自身再同步子组件（scrollArea），避免 setGeometry 不传递缩放的情况。offscreen 验证方法：构造 MyMAinWindow，调 resize(1920, 1080) 再 processEvents，检查每个 tab 的 CustomScrollArea 是否跟随变化；测试脚本里读源码验证记得 `open(..., encoding="utf-8")`（Windows 默认 charmap 会炸）。
+  - **QStackedWidget resizeEvent 同步技巧**：stackedWidget 是嵌套 QTabWidget 的顶级容器，resize 时主动遍历所有 page 手动同步每个 page 内的 scrollArea/tabWidget 几何；这种工作无 layout 容器时， resize 子组件的尺寸需要通过 resize/setGeometry 处理，避免遍历 all children。子级 % 改动后，子级的 fixed-position scrollArea 会得到 resize（resizeEvent）不回传——必须由父级调用未活动页面 resize、scrollArea 等 child 一样 resize。
 ## 站点与网络
 
 - Date: 2026-08-27

@@ -15,30 +15,7 @@
 - **议题 #62 窗口最大化后页面内容不跟随缩放**：主窗口 resizeEvent 只同步 navigation/content/progressBar 三件套， Qt Designer 生成的绝对定位 scrollArea/tabWidget/textBrowser 不会被触发 resize，导致设置页/工具页/网络页/日志页/关于页中组件保持固定 796x658；新增 `_sync_page_layouts()` 方法， resizeEvent 内按长边(宽)量化脚本计算受遮区域，调用每个组件 setGeometry 统一拉伸（保留组件 X/Y 设计偏移，宽高按比例缩放），固定主窗口 1040x760 换算系数。新增测试 `test_ui_resize_sync.py` 4 项，同步覆盖方法存在/resizeEvent 调用检查/几何缩放逻辑/默认尺寸防御
 - **议题 #66 窗口最大化后非当前标签页 scrollArea 不跟随缩放**：`_sync_page_layouts` 中 `tab_page.setGeometry` → scrollArea 链路上 `setGeometry` 不触发子组件 resize，隐藏 tab 的 scrollArea 永远停留在设计时 796x658。改为 tab_page.resize + scroll_area.resize + setGeometry 三段式，让 resizeEvent → QScrollArea→ viewport 全部完成。新增 offscreen 测试模拟「最大化 → 切换 tab → 当前 tab scrollArea 跟随」。修复前非当前 tab 的 scrollArea 不随窗口大小变化，修复后 12 个设置 tab 全部跟随
 - **议题 #56 图片上传 HTTP 500 Base64 编码问题**：Emby/Jellyfin 的 `Items/{id}/Images/{Primary,Backdrop}` 服务端（在日志中明确 `System.FormatException: FromBase64Transform`)期望 Base64 编码字符串而非原始 JPEG/PNG 二进制——原 `_upload_actor_photo` 直接把图片二进制字节送 POST 导致服务端解码失败（500）。将上传 body 改为 `base64.b64encode(content).decode('ascii')`，原 Content-Type（image/jpeg/png 等）保持不动。更新两项旧预期（二进制体）到 base64，新增 `test_emby_photo_base64.py` 3 项测试锁定（body 是 str + base64 可解 + Content-Type 保留）。同样原理应用于 `emby_actor_manager.upload_actor_image/backdrop` 共用 `_upload_actor_photo`（同一函数一次修复全局生效）
-
-### 文档
-
-- **README Telegram 群地址更新**：徽章链接 `t.me/mdcx_chat` → `https://t.me/+OVnB6Cw8gkxlYzM1`；`mdcx/views/MDCx.ui` 使用说明补群地址
-
-## v2.0.7 (2026-08-25)
-
-### 文档
-
-- **文档与 UI 文案全面对齐代码**：注册爬虫数统一为 35（README/DEVELOPMENT/FEATURES/main_window 弹窗/UI 使用说明）；models.py 注释分组修正（AVMOO、TheJavDB-API 标注为「仅能有码」，枚举顺序与配置默认不变）；DMM 高清封面来源清单补 JavLibrary（共十站）；水印功能描述按图标徽标+角落轮转实际行为重写；MGStage pb_e 兜底图尺寸 840~980 修正为实测 840 宽；命名变量表删 tag/ext/cd/codec 四项、补齐 24 个真实变量；「强制重刮」表述改为「重新刮削/输入网址重新刮削」并说明绕过断点续刮；多集识别默认后缀与「允许识别分集」开关说明对齐字段检测实际行为；删除不存在的「每域名令牌桶限流（默认 8 req/s）」描述；指纹池 6→7 种；代理默认列表补齐 aventertainments.com/javfree.me 等 33 个域名；设置页 12 Tab 名称与功能分组对照表补入 CONFIGURATION；演员数据库 9 列清单修正为日文原名/中文名/繁体名/别名/链接/tmdbid/tmdb url/出生日期/简介（与代码 DB_HEADERS 一致）；USER_GUIDE 扫描/开始流程改写、设置入口改左侧导航、Tab 名修正；INSTALL 删除 Docker 占位节、修正 release 产物名为 MDCx-...-windows-x86_64.exe / macos-aarch64.dmg；DEVELOPMENT 爬虫统计 types→model_types.py、主窗口行数 3400→9600、Windows CI runner 说明 windows-latest vs release windows-2025、pyright 说明未入 CI 门禁；QUICKSTART 扫描/开始流程与 Tab 名修正
-
-- **设置页「跳过前置 Poster 大小校验」说明文案修正**：原「不因当前 Poster >=400KB 跳过 Amazon」改为「不因当前 Poster 已达标跳过 Amazon（DMM >=700px / >=400KB / 不小于右裁剪）」，对齐前置校验实际含三条分支（DMM 宽≥700 快路、YOUMA 裁剪面积比较、字节≥400KB）
-
-### 功能
-
-- **新增三个爬虫**：
-  - **javfree**：javfree.me 收录有码/无码/FC2（素人），按条目分类判定（mosaic=有码，avi/demosaic=无码；提供去码版的番号会同时挂多重分类，判定取最深路径）；搜索直接命中带横杠番号，FC2 转 `FC2-PPV-数字` 形态；封面取 HLIC 大图，数字后缀剧照作 extrafanart；站点有 IP 级 429 限流，需放慢请求。默认加入有码+FC2 网站源，默认走代理
-  - **aventertainments**：aventertainments.com 无码站，同时收录 DVD 与 PPV（按番号形态自动走路径）；PPV 分隔符区分厂牌（横杠 082226-001 仅 carib，下划线 082226_001 返回 1pondo+carib）；仅收录 caribbeancom/1pondo 两厂牌，覆盖窄，默认排无码源末位、默认走代理
-  - **madou_club（麻豆社）**：madou.club 收录麻豆系国产番号，搜索须无横杠关键词；封面从搜索页缩略图去尺寸后缀升级原图；CF 对桌面指纹拦截强，接入 Safari iOS 专属指纹池
-- **精简 15 个冗余/失效爬虫**：失效站 cnmdb/hdouban/mdtv/love6/kin8/giga/cableav/hscangku + 7mmtv/fc2club/fc2hub（新上 CF JS 挑战需外部 Bypass 服务，维护成本高于价值）；数据重复站 jav321/fantastica + dahlia/faleno（被 DMM 系与综合站覆盖）。dahlia/faleno 模块保留为 official 的 DLDSS/FNS/JIMMY 厂牌子爬虫（不再独立暴露）；thejavdb_api 转为默认启用加入有码源；注册爬虫 48 → 33，旧配置中的已删站点自动跳过迁移
-- **无码官网五站接入默认代理列表**：caribbeancom/heyzo/1pondo/pacopacomama/10musume 及 mywife 实测需代理访问，加入默认「走代理网站」域名列表
-
-### 修复
-
+- **CI Windows charmap 修复（工程质量）**：测试脚本读源文件未指定 encoding，Windows runner 默认 GBK 解码中文源码崩溃；`test_ui_resize_sync.py`/`test_emby_photo_base64.py`/`test_jellyfin_actor_api.py` 等 4 处 open 调用补 `encoding="utf-8"`，全 CI 恢复绿
 - **失败列表跨影片错误污染与日志缓冲无界残留（LogBuffer 任务树归因）**：`LogBuffer.get()` 原拼接【全局所有】任务的 buffer（c089eaf 为聚合 `create_task` 子协程诊断日志而引入），但并发刮削的兄弟影片任务（每片一个 `process_one_file`，task_id 互不相干）也被无差别拼入——实测毫不相干任务的 `error().get()` 混入别的影片的失败原因，随 `Flags.failed_list` 与 SQLite 断点缓存持久化，用户在失败列表看到多条影片混杂的错误无法定位；且 `clear_task()` 只清当前 task_id，兄弟与子任务的 buffer 全部残留，`all_buffers` 随刮削量无界增长。修复：引入 contextvar 任务树归因——写入统一按 root 落键（`create_task` 经 context 拷贝自动继承、`to_thread` 线程内 contextvar 经 `ctx.run` 可见，子协程与线程写入归因到发起者）；`get()` 只聚合本组（c089eaf 聚合子任务日志的意图保留）；`clear_task()` 按 root 整树回收；`process_one_file` 入口 `new_root()` 切断兄弟间继承。四性质由 `tests/test_log_buffer_tree.py` 锁定（兄弟隔离 / 子任务聚合 / to_thread 可读 / 整树回收 + 裸线程边界与单任务兼容），root 经 contextvar 作用域隔离不跨任务泄漏（实测验证）
 
 - **五项实测复现的数据丢失/性能缺陷修复（全库代码审查）**：全部先写复现脚本确认（修复前红/修复后绿），审查报告中其余宣称项（裁剪死锁、连接池归还泄漏、Range 失效、CF 缓存、total_size 返回、is_proxy_host 子串误判、PIL 崩溃等 14 项）经逐项实测验证为不成立或已修，未改动。① **同路径移动删源（C1）**：更新模式扫描已整理目录时，算出的目标路径与源相同，软/硬链接分支"先删目标再建链接"会把源影片删掉并创建指向自己的死链接且返回成功——`move_movie` 两个链接分支入口加同路径守卫，实测复现源文件从完好变为 `Too many levels of symbolic links`；② **同名静默覆盖（C2）**：`move_file_async` 直接 `shutil.move`，目标已存在时无声覆盖（实测受害者内容直接消失）——默认语义改为目标存在且非同一文件时先重命名旧目标为 `{stem}_conflict_{ts}{ext}` 保留并记警告，另加 `overwrite=True` 参数供「临时文件落位」调用点（水印 `.[MARK].jpg`、裁剪 `.[CUT].jpg`、下载 `_temp` 等 12 处）显式覆盖，避免水印流程每次重刮留 `_conflict` 垃圾文件（审查中实测发现并修正）；③ **流式响应关闭退化成全量下载（C3）**：`_close_response` 原用 `aclose()`，curl_cffi 流式模式下它只 await 接收任务、把剩余响应体全部拉完才返回（实测提前放弃 4MB 响应仍阻塞 3.5 秒拉满全量，图片尺寸探测因此每张多下整图）；改用同步 `close()` 立即中止（实测同场景 0.00s 返回、服务端只发已消费部分，同 session 后续请求复用正常；curl_cffi 0.16 在中止流后关 session 有库内 TypeError，与真实链路一致地由 `_close_sessions` 的 suppress 吸收）；④ **NFO 评分恒为 0.0（C5）**：`BaseCrawlerResult.empty()` 把 `score` 初始化为 `"0.0"`（truthy），字段优先级合并的 `not getattr(reduced, field)` 判定恒 False，爬虫返回的真实评分全部被丢弃（实测站点返回 8.5 被跳过）、Emby/Jellyfin 全库评分空——`score` 初始化改空串；⑤ **并发建目录竞态（H13）**：13 处 `if not exists: makedirs()` 的 check-then-act 中间有 await 让点，并发写同一目录必抛 `FileExistsError`（实测 12 并发每轮 2-3 失败，extrafanart 批量下载即此场景）——统一 `makedirs(..., exist_ok=True)` 并加全库哨兵测试禁止裸 makedirs 再出现。新增回归测试 12 项（数据丢失守卫 4 + 流中止 3 + 评分合并 3 + 目录竞态 2），全量 1455 项通过
@@ -55,7 +32,7 @@
 
 - **Emby 补全演员信息 401（议题 #56 第二图根因）**：`emby_actor_info._process_actor_async:176` 用 `_is_jellyfin_server()` 决定是否加鉴权头——Emby 时返回 False → `headers=None` → POST `/Items/{id}` **完全不携带任何鉴权信息**，服务端拒绝（401）。这与之前 `_is_jellyfin_server 恒为 False` 是同一函数的漏改调用点。改为无条件 `_build_jellyfin_headers()`（Emby/Jellyfin 统一带鉴权），测试锁定 Emby 分支 POST headers 必含 Authorization
 
-- **Emby Person 头像/背景上传 500（议题 #56，待诊断）**：`_upload_actor_photo` 已带完整鉴权头与 Content-Type（Emby/Jellyfin 都生效），与上述 401 不同源；500 是服务端内部错误，大概率是 Emby 4.9 下 Person 类型不支持图片上传（Person 图存元数据层）或 Backdrop 不被支持——需服务端日志确认，发版后请报告人贴 Emby 控制台日志对应时间点异常堆栈
+- **Emby Person 头像/背景上传 500（议题 #56）**：`_upload_actor_photo` 已带完整鉴权头与 Content-Type（Emby/Jellyfin 都生效），与上述 401 不同源——**根因已由 08-30 修复条目确认（服务端期望 Base64 编码 body，见上方对应条目）**，本行保留作为历史排查记录
 
 
 - **Jellyfin 12（原 10.12）连接失败修复（议题 #32）**：Jellyfin 10.11 后端重写起 auth middleware 要求完整 MediaBrowser 设备标识，仅携带 Token 的请求被拒。`emby_shared._build_jellyfin_headers` 补全 `Client/Device/DeviceId/Version` 字段（向下兼容 10.8+，17 个调用点统一受益）；演员管理器连接测试 Jellyfin 分支去掉 URL 上的 `?api_key=` 明文密钥，统一走 Authorization 头
@@ -67,6 +44,15 @@
 - **DMM 高清直链学习闭环修复**：主爬虫同时接受 pics.dmm 图源证据写入前缀学习表，静态前缀表外的新站内前缀系列不再永久缺失高清图
 - **UI 修复**：网络设置代理说明对齐 Cookie 获取方法排版；NFO 库管理"批量保存"提示最小高度提高避免 Windows 下文字截底；补足左侧导航容器高度恢复"使用说明"按钮；使用说明内容全面更新对齐当前版本
 - **检测网络页小白友好化**：结果按状态着色（✅绿/⚠️橙/❌红）；新增「打开网络设置」按钮一键跳转设置页，三按钮补 tooltip；复制结果自动附带版本/系统概要诊断头且代理地址脱敏；表头与启动横幅代理地址改为 `hos***:port` 脱敏（修复忘剥 scheme 导致 host 泄露的脱敏 bug）；「代理不可用（见顶部提示）」指向修正为「见下方汇总区」；JavDB 封禁文案明确"节点出口 IP"避免误以为本机被封；401/403/429 合并文案拆分为三条带具体动作的引导；"没有固定入口"SKIP 与"测试番号未收录"WARNING 文案补充"属正常/可忽略"说明降噪；外部 CF 服务未配置时补占位项（与 CF Bypass 行为拉齐）
+
+### 功能
+
+- **新增三个爬虫**：
+  - **javfree**：javfree.me 收录有码/无码/FC2（素人），按条目分类判定（mosaic=有码，avi/demosaic=无码；提供去码版的番号会同时挂多重分类，判定取最深路径）；搜索直接命中带横杠番号，FC2 转 `FC2-PPV-数字` 形态；封面取 HLIC 大图，数字后缀剧照作 extrafanart；站点有 IP 级 429 限流，需放慢请求。默认加入有码+FC2 网站源，默认走代理
+  - **aventertainments**：aventertainments.com 无码站，同时收录 DVD 与 PPV（按番号形态自动走路径）；PPV 分隔符区分厂牌（横杠 082226-001 仅 carib，下划线 082226_001 返回 1pondo+carib）；仅收录 caribbeancom/1pondo 两厂牌，覆盖窄，默认排无码源末位、默认走代理
+  - **madou_club（麻豆社）**：madou.club 收录麻豆系国产番号，搜索须无横杠关键词；封面从搜索页缩略图去尺寸后缀升级原图；CF 对桌面指纹拦截强，接入 Safari iOS 专属指纹池
+- **精简 15 个冗余/失效爬虫**：失效站 cnmdb/hdouban/mdtv/love6/kin8/giga/cableav/hscangku + 7mmtv/fc2club/fc2hub（新上 CF JS 挑战需外部 Bypass 服务，维护成本高于价值）；数据重复站 jav321/fantastica + dahlia/faleno（被 DMM 系与综合站覆盖）。dahlia/faleno 模块保留为 official 的 DLDSS/FNS/JIMMY 厂牌子爬虫（不再独立暴露）；thejavdb_api 转为默认启用加入有码源；注册爬虫 48 → 33，旧配置中的已删站点自动跳过迁移
+- **无码官网五站接入默认代理列表**：caribbeancom/heyzo/1pondo/pacopacomama/10musume 及 mywife 实测需代理访问，加入默认「走代理网站」域名列表
 
 ### 优化
 
@@ -89,9 +75,13 @@
 - **r18dev 解析兼容**：parsel `Selector.get()` 对纯 JSON 文本直接返回 dict，JSON API 爬虫解析入参兼容 str/dict/Selector 三态
 - **命名规则说明补充**：明确勾选「成功后不移动文件」时同样不会创建视频目录
 
-### 工程质量
+### 文档
 
-- **CI/打包工作流修复**：统一 2.0.7 版本元数据；CI 按变更分级验证（纯文档只跑 `git diff --check`，代码变更继续完整质量检查与 Windows 离线测试），固定 job 名称兼容分支保护；PyInstaller 资源与 Windows DLL 收集参数改用平台路径分隔符；CI 加超时并改用 windows-latest 运行器（修复 windows-2025 排队卡死）；setup-uv v6 → v7
+- **README Telegram 群地址更新**：徽章链接 `t.me/mdcx_chat` → `https://t.me/+OVnB6Cw8gkxlYzM1`；`mdcx/views/MDCx.ui` 使用说明补群地址
+
+- **文档与 UI 文案全面对齐代码**：注册爬虫数统一为 35（README/DEVELOPMENT/FEATURES/main_window 弹窗/UI 使用说明）；models.py 注释分组修正（AVMOO、TheJavDB-API 标注为「仅能有码」，枚举顺序与配置默认不变）；DMM 高清封面来源清单补 JavLibrary（共十站）；水印功能描述按图标徽标+角落轮转实际行为重写；MGStage pb_e 兜底图尺寸 840~980 修正为实测 840 宽；命名变量表删 tag/ext/cd/codec 四项、补齐 24 个真实变量；「强制重刮」表述改为「重新刮削/输入网址重新刮削」并说明绕过断点续刮；多集识别默认后缀与「允许识别分集」开关说明对齐字段检测实际行为；删除不存在的「每域名令牌桶限流（默认 8 req/s）」描述；指纹池 6→7 种；代理默认列表补齐 aventertainments.com/javfree.me 等 33 个域名；设置页 12 Tab 名称与功能分组对照表补入 CONFIGURATION；演员数据库 9 列清单修正为日文原名/中文名/繁体名/别名/链接/tmdbid/tmdb url/出生日期/简介（与代码 DB_HEADERS 一致）；USER_GUIDE 扫描/开始流程改写、设置入口改左侧导航、Tab 名修正；INSTALL 删除 Docker 占位节、修正 release 产物名为 MDCx-...-windows-x86_64.exe / macos-aarch64.dmg；DEVELOPMENT 爬虫统计 types→model_types.py、主窗口行数 3400→9600、Windows CI runner 说明 windows-latest vs release windows-2025、pyright 说明未入 CI 门禁；QUICKSTART 扫描/开始流程与 Tab 名修正
+
+- **设置页「跳过前置 Poster 大小校验」说明文案修正**：原「不因当前 Poster >=400KB 跳过 Amazon」改为「不因当前 Poster 已达标跳过 Amazon（DMM >=700px / >=400KB / 不小于右裁剪）」，对齐前置校验实际含三条分支（DMM 宽≥700 快路、YOUMA 裁剪面积比较、字节≥400KB）
 
 ## v2.0.6 (2026-08-23)
 

@@ -319,7 +319,7 @@ async def _probe_crawler_capability(
         except NotImplementedError:
             search_urls = None
         if not search_urls:
-            # 重写 _run 的爬虫（aio 系列/fc2/cnmdb 等）不走标准搜索流程，
+            # 重写 _run 的爬虫（aio 系列/fc2 等）不走标准搜索流程，
             # 统一回退真实刮削路径探测。
             return await _probe_crawler_by_run(crawler, input_data)
         if isinstance(search_urls, str):
@@ -352,7 +352,7 @@ async def _probe_crawler_capability(
             detail_urls = await crawler._parse_search_page(ctx, selector, search_url)
             if detail_urls:
                 return NetworkCheckStatus.OK, "连接正常，刮削正常"
-            # mdtv 等重写 _search（POST 搜索）的爬虫 GET 探测拿不到结果，
+            # 重写 _search（POST 搜索）的爬虫 GET 探测拿不到结果，
             # 回退真实刮削路径再确认一次。
             return await _probe_crawler_by_run(crawler, input_data)
     except NotImplementedError:

@@ -884,8 +884,6 @@ class AsyncWebClient:
                 )
             elif "javbus" in url:
                 site_headers.update({"Referer": "https://www.javbus.com/"})
-            elif "giga" in url and "cookie_set.php" not in url:
-                site_headers.update({"Referer": "https://www.giga-web.jp/top.html"})
 
         fingerprint_headers = (
             build_fingerprint_headers(url or "", fingerprint=fingerprint, purpose=purpose)

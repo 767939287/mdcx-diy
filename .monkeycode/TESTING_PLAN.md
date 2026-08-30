@@ -1,6 +1,6 @@
 # 爬虫与网络能力本机测试计划
 
-> 目的：在本机（Windows/真实网络/住宅 IP）验证 47 个爬虫有效性、代理需求、外置 CF 服务过 CF 能力，并覆盖所有**云端 devbox 做不了**的功能项。
+> 目的：在本机（Windows/真实网络/住宅 IP）验证当前注册爬虫有效性、代理需求、外置 CF 服务过 CF 能力，并覆盖所有**云端 devbox 做不了**的功能项。
 > 背景：devbox 出口受限（探测 FAIL 多为环境网络限制非真实失效）、无 Docker、无 GUI、无住宅 IP，以下项只能本机验证。
 > 用法：按清单逐项执行，结果填入表格，完成后可把表格发回。
 
@@ -73,7 +73,7 @@ uv sync --locked          # 装依赖（需 Python >= 3.13）
 | missav | SSNI-804 | |
 | missav_api | SSNI-804 | |
 | javday | SSNI-804 | |
-| 7mmtv | SSNI-804 | |
+| javfree | SSNI-804 | |
 | airav_cc | SSNI-804 | |
 | avsex | SSNI-804 | |
 | iqqtv | SSNI-804 | |
@@ -93,7 +93,6 @@ uv sync --locked          # 装依赖（需 Python >= 3.13）
 | dmm_api | SSNI-804 | |
 | avmoo | SSNI-804 | |
 | javlibrary | SSNI-804 | |
-| jav321 | SSNI-804 | |
 | avbase | SSNI-804 | |
 | freejavbt | SSNI-804 | |
 | lulubar | SSNI-804 | |
@@ -103,28 +102,22 @@ uv sync --locked          # 装依赖（需 Python >= 3.13）
 | 站点 | 测试番号 | 结果 |
 |---|---|---|
 | avsox | 081826_100 | |
-| kin8 | （找一个无码番号） | |
+| aventertainments | 081826_100 或 082226-001 | |
 
 ### 2.5 FC2 站
 | 站点 | 测试番号 | 结果 |
 |---|---|---|
 | fc2 | FC2-PPV-1014367 | |
-| fc2club | FC2-PPV-1014367 | |
-| fc2hub | FC2-PPV-1014367 | |
 | fc2ppvdb | FC2-PPV-1014367 | |
-| love6 | FC2-PPV-1014367 | |
 
 ### 2.6 官网系（仅覆盖本厂）
 | 站点 | 测试番号 | 结果 |
 |---|---|---|
-| faleno | （FALENO 系番号） | |
-| giga | （GIGA 系番号） | |
-| dahlia | （DAHLIA 系番号） | |
-| fantastica | （FANTASTICA 系番号） | |
+| faleno | （FALENO 系番号，经 official 厂牌子爬虫） | |
+| dahlia | （DAHLIA 系番号，经 official 厂牌子爬虫） | |
 | prestige | （PRESTIGE 系番号） | |
 | mgstage | （MGSTAGE 系番号） | |
 | xcity | （XCITY 系番号） | |
-| cableav | （CABLEAV 系番号） | |
 | getchu | （GETCHU 系番号） | |
 | getchu_dmm | （GETCHU 系番号） | |
 | mywife | （MYWIFE 系番号） | |
@@ -134,11 +127,8 @@ uv sync --locked          # 装依赖（需 Python >= 3.13）
 |---|---|---|
 | theporndb | （欧美番号） | |
 | avheat | Men.26.08.17 | |
-| hdouban | （国产番号） | |
-| cnmdb | （国产番号） | |
 | madouqu | （国产番号） | |
-| mdtv | （国产番号） | |
-| hscangku | （国产番号） | |
+| madou_club | （麻豆系国产番号） | |
 
 ---
 
@@ -213,12 +203,12 @@ GUI 设置 → 网络 → 外部 CF 服务填 `http://127.0.0.1:8191`，后端�
 |---|---|---|
 | 综合站 | /12 | |
 | 免 CF 通道 | /3 | |
-| 有码信息站 | /9 | |
+| 有码信息站 | /8 | |
 | 无码 | /2 | |
-| FC2 | /5 | |
-| 官网系 | /11 | |
-| 欧美/国产 | /7 | |
-| **爬虫合计** | **/49** | |
+| FC2 | /2 | |
+| 官网系 | /8 | |
+| 欧美/国产 | /4 | |
+| **爬虫合计** | **/39** | |
 
 | 本机专项 | 通过数 / 总数 | 问题项 |
 |---|---|---|

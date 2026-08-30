@@ -30,9 +30,13 @@ jobs:
         id: check
         run: |
           LATEST=$(curl -sL https://api.github.com/repos/germondai/trawl/releases/latest | grep '"tag_name"' | sed -E 's/.*"([^"]+)".*/\1/')
-          # 本仓库最新已发布的 trawl 便携版版本（从 trawl-* release tag 提取）
-          CURRENT=$(curl -sL "https://api.github.com/repos/${{ github.repository }}/releases?per_page=5" \
-            | grep -oE '"tag_name": *"trawl-v?[0-9.]+"' | head -1 | sed -E 's/.*"(trawl-v?[0-9.]+)".*/\1/' | sed -E 's/^trawl-v?//')
+          # 本仓库最新已发布的 trawl 便携版版本。
+          # 注意：不能用 releases API 前 N 页反查 trawl tag——主产品数字 tag 发布频繁，
+          # 前 5 条很快全是 MDCx release，会导致 CURRENT 恒 unknown、更新检测永久停摆。
+          # 改用 git tag 全量过滤 trawl-*，取版本序最大者。
+          CURRENT=$(git ls-remote --tags "https://github.com/${{ github.repository }}" 'trawl-*' \
+            | awk -F/ '{print $NF}' | grep -E '^trawl-v?[0-9.]+$' | sort -V | tail -1 \
+            | sed -E 's/^trawl-v?//')
           CURRENT=${CURRENT:-"unknown"}
           
           echo "latest=$LATEST" >> $GITHUB_OUTPUT

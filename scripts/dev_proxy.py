@@ -225,7 +225,7 @@ def main() -> None:
         "--regions",
         default="",
         help='按地区过滤节点（正则，匹配节点名），如 --regions "jp|日本" 只用日本节点；'
-        "日本厂商站（faleno/giga/mywife 等）有 IP 地理限制时使用。"
+        "日本厂商站（faleno/mgstage/mywife 等）有 IP 地理限制时使用。"
         "过滤实例建议换端口与全节点实例并存",
     )
     p_start.set_defaults(func=cmd_start)
