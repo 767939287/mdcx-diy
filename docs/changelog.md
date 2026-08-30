@@ -31,7 +31,12 @@
 
 - **演员管理器大媒体库统计超时只认到单库（议题 #32 再反馈，报告人真机验证）**：`fetch_person_item_stats` 每媒体库一次性 `Limit=100000` 全量拉取影片 People，报告人 >1W 演员的服务器上单次响应体过大导致服务端组装超时，日志显示同库连续 3 次连接超时后放弃——两个媒体库只统计到成功库的 66 个演员（此前「仅识别 66 个」跟进项的根因即此）。吸收报告人 commit c412939a 的真机验证方案：改为 `StartIndex` 分页拉取（每页 500 条），并加 `IncludeItemTypes=Movie,Episode`（只扫影片/剧集）与 `EnableImages=false&EnableUserData=false` 缩减响应体积；单库失败仍只跳过该库不阻断其余库，Emby 分支保持 `/emby` 前缀。测试 5 项锁定（禁 Limit=100000 / 分页递增与 TotalRecordCount 短页终止 / 缩减参数 / 失败跳过 / Emby 前缀）。同批反馈的「补全头像 POST /Images 500」为服务端内部错误（本地请求格式已核对符合 API 规范），报告人正在清理库内 UTF 乱码损坏 item，待清理后复测、若复现需服务端日志定位
 
-- **Emby 演员信息更新全量 400（议题 #56，Emby 4.9.5.0 真机）**：`update_person_info` POST `/Items/{id}` 的 body 是手工 `json.dumps(payload)` 字符串但 headers 只走 `_build_jellyfin_headers()`（只加 Authorization），**缺 `Content-Type: application/json`**——Emby 4.9 无法解析未声明类型 body 直接 400，全 1273 个待更新演员全部失败（87 页截图：POST ×× HTTP 400 ×连续）。补上显式 `"Content-Type": "application/json"` 头（同 `_upload_actor_photo` 的二进制图片 POST 范式），测试锁定 headers 断言。同一报告里的 image upload 500 需服务端日志定位、image upload 401 补全路径 500/401 系 Emby/Jellyfin 服务端处理 Person 图片与 Items 写入的角色中途——发版后请报告人给 Emby 控制台日志对应时间点异常堆栈
+- **Emby 演员管理器「同步」信息更新 400（议题 #56，Emby 4.9.5.0 真机）**：`emby_actor_manager.update_person_info` POST `/Items/{id}` 的 body 是手工 `json.dumps(payload)` 字符串但 headers 只走 `_build_jellyfin_headers()`（只加 Authorization），**缺 `Content-Type: application/json`**——Emby 4.9 无法解析未声明类型 body 直接 400，全 1273 个待更新演员全部失败。补上显式 `"Content-Type": "application/json"` 头（同 `_upload_actor_photo` 的二进制图片 POST 范式），测试锁定 headers 断言
+
+- **Emby 补全演员信息 401（议题 #56 第二图根因）**：`emby_actor_info._process_actor_async:176` 用 `_is_jellyfin_server()` 决定是否加鉴权头——Emby 时返回 False → `headers=None` → POST `/Items/{id}` **完全不携带任何鉴权信息**，服务端拒绝（401）。这与之前 `_is_jellyfin_server 恒为 False` 是同一函数的漏改调用点。改为无条件 `_build_jellyfin_headers()`（Emby/Jellyfin 统一带鉴权），测试锁定 Emby 分支 POST headers 必含 Authorization
+
+- **Emby Person 头像/背景上传 500（议题 #56，待诊断）**：`_upload_actor_photo` 已带完整鉴权头与 Content-Type（Emby/Jellyfin 都生效），与上述 401 不同源；500 是服务端内部错误，大概率是 Emby 4.9 下 Person 类型不支持图片上传（Person 图存元数据层）或 Backdrop 不被支持——需服务端日志确认，发版后请报告人贴 Emby 控制台日志对应时间点异常堆栈
+
 
 - **Jellyfin 12（原 10.12）连接失败修复（议题 #32）**：Jellyfin 10.11 后端重写起 auth middleware 要求完整 MediaBrowser 设备标识，仅携带 Token 的请求被拒。`emby_shared._build_jellyfin_headers` 补全 `Client/Device/DeviceId/Version` 字段（向下兼容 10.8+，17 个调用点统一受益）；演员管理器连接测试 Jellyfin 分支去掉 URL 上的 `?api_key=` 明文密钥，统一走 Authorization 头
 

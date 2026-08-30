@@ -31,7 +31,7 @@ from .emby_actor_image import (
     update_emby_actor_photo,
 )
 from .emby_actor_manager import fill_actor_info_from_sources
-from .emby_shared import _build_jellyfin_headers, _generate_server_url, _is_jellyfin_server
+from .emby_shared import _build_jellyfin_headers, _generate_server_url
 from .minnano_crawler import load_cache
 
 
@@ -173,7 +173,8 @@ async def _process_actor_async(actor: dict, emby_on: list[EmbyAction]) -> tuple[
         # summary
         summary = "\n    " + "\n".join(logs) if logs else ""
         if minnano_found or db_exist or wiki_found or local_applied:
-            headers = _build_jellyfin_headers() if _is_jellyfin_server() else None
+            # 议题 #56(图2): Emby/Jellyfin 都需要鉴权头, 否则 POST /Items/{id} 故 server 401
+            headers = _build_jellyfin_headers()
             async with manager.acquire_computed() as computed:
                 post_res, error = await computed.async_client.post_text(
                     update_url, json_data=actor_info.dump(), headers=headers, use_proxy=False

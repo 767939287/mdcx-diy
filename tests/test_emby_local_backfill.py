@@ -57,15 +57,12 @@ def _mock_env(monkeypatch, local_data, post_ok=True):
         async def __aexit__(self, *a):
             return False
 
-    def fake_is_jellyfin():
-        return False
-
     def fake_headers():
         return {}
 
     monkeypatch.setattr(emby_actor_info, "_get_actor_detail", fake_get_actor_detail)
     monkeypatch.setattr(emby_actor_info, "_generate_server_url", fake_generate_server_url)
-    monkeypatch.setattr(emby_actor_info, "_is_jellyfin_server", fake_is_jellyfin)
+    # 议题 #56: emby_actor_info 改为无条件 _build_jellyfin_headers(), 不再有 _is_jellyfin_server 分支
     monkeypatch.setattr(emby_actor_info, "_build_jellyfin_headers", fake_headers)
     monkeypatch.setattr(emby_actor_manager, "search_wiki", fake_search_wiki)
     monkeypatch.setattr(emby_actor_manager, "get_detail", fake_get_detail)

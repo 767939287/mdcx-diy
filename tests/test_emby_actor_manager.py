@@ -615,3 +615,46 @@ async def test_update_person_info_sends_json_content_type(monkeypatch: pytest.Mo
     assert str(captured["headers"].get("Content-Type", "")).lower() == "application/json", (
         f"headers 里缺 Content-Type: application/json（实际: {captured['headers']!r}）"
     )
+
+
+@pytest.mark.asyncio
+async def test_emby_actor_info_update_sends_auth_header_for_emby(monkeypatch: pytest.MonkeyPatch):
+    """议题 #56(图2): Emby 下 emby_actor_info POST /Items/{id} 缺失鉴权头导致 401。
+
+    emby_actor_info.py:176 误判 `_is_jellyfin_server()` 为"Emby 不加鉴权头",
+    对 Emby 走 headers=None 分支,POST 无任何鉴权 → 401。
+    """
+    from mdcx.config.manager import manager
+    from mdcx.tools import emby_actor_info
+
+    captured: dict = {}
+
+    class _FakeClient:
+        async def get_json(self, url, headers=None, use_proxy=True, **kwargs):
+            return {"Items": [], "Overview": ""}, ""
+
+        async def post_text(self, url, *, json_data=None, headers=None, use_proxy=True, **kwargs):
+            captured["url"] = url
+            captured["json_data"] = json_data
+            captured["headers"] = headers
+            return "", ""
+
+    monkeypatch.setattr(manager.config, "server_type", "emby")
+    monkeypatch.setattr(manager.config, "emby_url", "http://127.0.0.1:8096")
+    monkeypatch.setattr(manager.config, "api_key", "token")
+    monkeypatch.setattr(manager.config, "user_id", "u1")
+    _fake_acquire(monkeypatch, _FakeClient())
+
+    async def fake_fill(info, **kwargs):
+        info.new_overview = "x"
+        return {"wiki": 1, "db": 0, "minnano": 0, "local_applied": 0}, ["wiki 命中"]
+
+    monkeypatch.setattr(emby_actor_info, "fill_actor_info_from_sources", fake_fill)
+    monkeypatch.setattr(emby_actor_info, "_is_stop_requested", lambda: False)
+
+    actor = {"Name": "A", "Id": "4626", "ServerId": "s1"}
+    await emby_actor_info._process_actor_async(actor, [])
+
+    assert captured.get("headers") is not None, "POST 必须携带 headers(不能为 None)"
+    assert captured["headers"].get("Authorization"), "headers 里必须含 Authorization"
+    assert "api_key" not in captured["url"]
