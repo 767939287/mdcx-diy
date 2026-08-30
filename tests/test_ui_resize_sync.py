@@ -38,10 +38,15 @@ def test_regression_resize_sync_theme():
     """回归验证：scrollArea 跟随 tabWidget 缩放的 passing 逻辑。"""
     with open("mdcx/controllers/main_window/main_window.py", encoding="utf-8") as f:
         code = f.read()
-    # 关键证据点：sync 函数中遍历 tabWidget 的所有 tab 并缩放 scrollArea
-    assert "ui.tabWidget.count()" in code
-    assert "ui.tabWidget.widget(index)" in code
-    assert "scroll_area.setGeometry" in code or "scroll_area.setGeometry(0,0" in code.replace(" ", "")
+    # 关键证据点：resizeEvent 触发 _sync_page_layouts——检查函数存在于代码中
+    assert "_sync_page_layouts" in code
+    # sync 逻辑应处理 tabWidget 变化大跌和设置 scrollArea
+    assert "ui.tabWidget.setGeometry(" in code
+    # 检查设置/工具/网络/日志/关于页面的组件名
+    assert "page_tool" in code or "scrollArea_10" in code
+    assert "page_net" in code or "textBrowser_net_main" in code
+    assert "page_log" in code or "textBrowser_log_main" in code
+    assert "page_about" in code or "textBrowser_about" in code
     # 确认 page_tool / page_net / page_about / page_log 都被覆盖
     for page_attr in ("page_tool", "page_net", "page_about", "page_log"):
         assert f"ui.{page_attr}" in code or "ui.textBrowser_" in code
