@@ -250,22 +250,35 @@ def reset_routes_for_testing() -> None:
 
 
 def _route_cids_for(series: str, num: int) -> list[str]:
-    """按静态路由规则生成候选 cid（prefix×pads 全枚举，含变体后缀）。
+    """按静态路由规则生成候选 cid（prefix×pads 全枚举）。
 
     规则键为番号系列大写（归纳口径），生产 _parse_number 返回小写，这里统一大写查表。
+    v2 种子规则带 mode：first（未进生产静态表的系列，候选置首位）/ append
+    （静态表已精确覆盖的系列，候选追加在静态表候选之后作兜底——老片 3 位
+    补零形态静态表给不出，如 GVG-564 真实 cid 是 mono 的 13gvg564）。
     """
+    entry = _routes_rules.get(series.upper())
+    if not isinstance(entry, dict):
+        return []
     cids: list[str] = []
-    for combo in _routes_rules.get(series.upper(), []):
+    for combo in entry.get("combos", []):
         prefix = str(combo.get("p", ""))
         cid_series = str(combo.get("s", ""))
-        variant = str(combo.get("v", ""))
         if not cid_series:
             continue
         for pad in combo.get("pads", []):
             if not isinstance(pad, int) or pad <= 0:
                 continue
-            cids.append(f"{prefix}{cid_series}{num:0{pad}d}{variant}")
+            cids.append(f"{prefix}{cid_series}{num:0{pad}d}")
     return cids
+
+
+def _route_mode(series: str) -> str:
+    """路由模式：first=候选置首（系列未被静态表覆盖），append=追加兜底。"""
+    entry = _routes_rules.get(series.upper())
+    if not isinstance(entry, dict):
+        return "first"
+    return str(entry.get("mode", "first"))
 
 
 def _whitelist_entry(number: str) -> dict[str, str] | None:
@@ -297,16 +310,17 @@ def generate_cid_candidates(number: str) -> list[str]:
             return [cid]
     _load_routes()
     for series, num, padded in _parse_number(number):
-        # 静态路由种子（全站归纳，含 3/5/6 位补零与变体）：最优先
-        for cid in _route_cids_for(series, num):
-            if cid not in seen:
-                seen.add(cid)
-                candidates.append(cid)
         learned_verified, learned_provisional = _learned_prefixes_for(series)
         static_prefixes = _prefixes_for(series, num)
-        prefix_order = list(dict.fromkeys([*learned_verified, *static_prefixes, *learned_provisional]))
+        route_cids = _route_cids_for(series, num)
+        if _route_mode(series) == "first" and route_cids:
+            # 未进静态表的系列：路由候选一步直达（静态表盲枚举变直达）
+            prefix_order = [*route_cids, *learned_verified, *static_prefixes, *learned_provisional]
+        else:
+            # 静态表已覆盖系列：静态表候选保序在前，路由候选（老片 3 位等形态）追加兜底
+            prefix_order = [*learned_verified, *static_prefixes, *route_cids, *learned_provisional]
         for prefix in prefix_order:
-            cid = f"{prefix}{series}{padded}"
+            cid = prefix if route_cids and prefix in route_cids else f"{prefix}{series}{padded}"
             if cid not in seen:
                 seen.add(cid)
                 candidates.append(cid)
@@ -336,14 +350,24 @@ def generate_image_candidates(number: str) -> list[tuple[str, str]]:
         candidates.append(("portrait", f"{_DMM_CDN_BASE}/{cid}/{cid}ps.jpg"))
         candidates.append(("landscape", f"{_DMM_CDN_BASE}/{cid}/{cid}pl.jpg"))
     # mono 路径补充：静态路由标记了 mono path 的系列，追加低清图床候选
-    # （规则直构的 cid 若已在 digital 高清候选中会因 URL 不同自然保留）
+    # （老片真实图在 pics.dmm.co.jp，awsimgsrc 高清 CDN 仅覆盖 digital）
     for series, num, _padded in _parse_number(number):
-        for combo in _routes_rules.get(series.upper(), []):
+        entry = _routes_rules.get(series.upper())
+        if not isinstance(entry, dict):
+            continue
+        for combo in entry.get("combos", []):
             paths = combo.get("paths") or []
             mono_path = next((p for p in paths if str(p).startswith("mono")), None)
             if mono_path is None:
                 continue
-            for cid in _route_cids_for(series, num):
+            prefix = str(combo.get("p", ""))
+            cid_series = str(combo.get("s", ""))
+            if not cid_series:
+                continue
+            for pad in combo.get("pads", []):
+                if not isinstance(pad, int) or pad <= 0:
+                    continue
+                cid = f"{prefix}{cid_series}{num:0{pad}d}"
                 base = f"{_DMM_PICS_BASE}/{mono_path}/{cid}/{cid}"
                 candidates.append(("portrait", f"{base}ps.jpg"))
                 candidates.append(("landscape", f"{base}pl.jpg"))

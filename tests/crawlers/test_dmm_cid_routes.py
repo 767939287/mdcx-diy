@@ -33,24 +33,37 @@ def _real_routes(monkeypatch):
 
 def test_seed_file_shape():
     data = json.loads(SEED_PATH.read_text(encoding="utf-8"))
-    assert data["version"] == 1
-    assert isinstance(data["rules"], dict) and len(data["rules"]) > 6000
-    assert isinstance(data["whitelist"], dict) and len(data["whitelist"]) > 10000  # 规则条目结构
-    letters, combos = next(iter(data["rules"].items()))
+    assert data["version"] == 2
+    assert isinstance(data["rules"], dict) and len(data["rules"]) > 9000
+    assert isinstance(data["whitelist"], dict) and len(data["whitelist"]) > 10000
+    # v2 规则条目结构: mode + combos
+    letters, entry = next(iter(data["rules"].items()))
     assert isinstance(letters, str) and letters.isupper()
-    combo = combos[0]
+    assert entry["mode"] in ("first", "append")
+    combo = entry["combos"][0]
     assert {"p", "s", "pads", "paths"} <= set(combo.keys())
     assert all(isinstance(p, int) and p > 0 for p in combo["pads"])
     assert all(str(p).startswith(("digital", "mono")) for p in combo["paths"])
 
 
-def test_seed_high_frequency_series_excluded():
-    """高频主流系列必须不在规则/白名单中（同名 mono 老厂牌数据会污染候选顺序）。"""
+def test_seed_high_frequency_series_use_append_mode():
+    """高频主流系列必须以 append 模式保留（mono 老片段兜底），且不进白名单。"""
     data = json.loads(SEED_PATH.read_text(encoding="utf-8"))
     for series in ("SSIS", "IPX", "SONE", "MIDV", "CAWD", "ABF", "SW", "WANZ"):
-        assert series not in data["rules"], f"{series} 不应留在规则中"
+        assert series in data["rules"], f"{series} 应保留(v2 append 模式)"
+        assert data["rules"][series]["mode"] == "append"
     for number in ("IPX-399", "SONE-006", "ABF-171"):
         assert number not in data["whitelist"], f"{number} 不应留在白名单中"
+
+
+def test_append_mode_legacy_three_digit_fallback():
+    """append 模式兜底：GVG 老片真实 cid 是 mono 3 位 13gvg564，静态表只给 5 位。"""
+    cids = dmm_direct.generate_cid_candidates("GVG-564")
+    assert cids[0] == "13gvg00564"  # 静态表保序首位
+    assert "13gvg564" in cids  # 路由 append 兜底出老片 3 位形态
+    # 老片 mono 候选应有 pics.dmm.co.jp 低清图床 URL
+    urls = [url for _, url in dmm_direct.generate_image_candidates("GVG-564")]
+    assert any(url.startswith("https://pics.dmm.co.jp/mono/movie/adult/13gvg564/") for url in urls)
 
 
 def test_route_hit_step_reach():
