@@ -215,6 +215,10 @@ class AvsexCrawler(BaseCrawler[AvsexContext]):
         actor = get_actor(detail_page)
         tag = get_tag(detail_page)
         external_id = re.sub(r"http[s]?://[^/]+", ctx.site_url, detail_url)
+        # DMM 高清直链升级（横版+竖版，无码番号内部跳过）
+        from mdcx.crawlers.dmm_direct import upgrade_dmm_cover
+
+        thumb, poster = await upgrade_dmm_cover(ctx, number, get_cover(detail_page), ctx.poster_url)
         return CrawlerData(
             number=number,
             title=title,
@@ -232,8 +236,8 @@ class AvsexCrawler(BaseCrawler[AvsexContext]):
             directors=[],
             studio=studio,
             publisher="",
-            thumb=get_cover(detail_page),
-            poster=ctx.poster_url,
+            thumb=thumb,
+            poster=poster,
             extrafanart=get_extrafanart(detail_page),
             trailer="",
             image_download=False,

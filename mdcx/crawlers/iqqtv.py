@@ -294,6 +294,10 @@ class IqqtvCrawler(BaseCrawler):
         mosaic = getMosaic(tag)
         studio = getStudio(html_info)
         tag = tag.replace("无码片", "").replace("無碼片", "").replace("無修正", "")
+        # DMM 高清直链升级（横版+竖版，无码番号内部跳过）
+        from mdcx.crawlers.dmm_direct import upgrade_dmm_cover
+
+        cover_url, upgraded_poster = await upgrade_dmm_cover(ctx, web_number, cover_url, "")
         return CrawlerData(
             number=web_number,
             title=title,
@@ -311,7 +315,7 @@ class IqqtvCrawler(BaseCrawler):
             studio=studio,
             publisher=studio,
             thumb=cover_url,
-            poster="",
+            poster=upgraded_poster,
             extrafanart=get_extrafanart(html_info),
             trailer="",
             image_download=image_download,

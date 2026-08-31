@@ -121,6 +121,13 @@ class TheJavdbApiCrawler(DmmCrawler):
             ctx.debug(f"API 返回空内容: {response=}")
             raise CrawlerException("API 返回空内容")
 
+        # DMM 高清直链升级（横版+竖版，无码番号内部跳过）
+        from mdcx.crawlers.dmm_direct import upgrade_dmm_cover
+
+        data.thumb, data.poster = await upgrade_dmm_cover(
+            ctx, str(data.number or ""), str(data.thumb or ""), str(data.poster or "")
+        )
+
         if data.external_id:
             ctx.debug_info.detail_urls = [str(data.external_id)]
 

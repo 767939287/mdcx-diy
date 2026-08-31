@@ -133,6 +133,10 @@ class XcityCrawler(BaseCrawler[XcityContext]):
         front_image = (program.get("frontPackageImage") or "").replace("/medium/", "/large/")
         back_image = (program.get("backPackageImage") or "").replace("/medium/", "/large/")
 
+        # DMM 高清直链升级（横版+竖版，无码番号内部跳过）
+        from mdcx.crawlers.dmm_direct import upgrade_dmm_cover
+
+        back_image, front_image = await upgrade_dmm_cover(ctx, ctx.input.number, back_image, front_image)
         return CrawlerData(
             number=ctx.input.number,
             title=title,

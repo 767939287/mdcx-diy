@@ -233,6 +233,13 @@ class JavfreeCrawler(BaseCrawler[JavfreeContext]):
         mosaic = classify_mosaic(ctx.category_path)
 
         number = web_number or (ctx.number_candidates[0] if ctx.number_candidates else "")
+        # DMM 高清直链升级（横版+竖版，无码番号内部跳过）
+        from mdcx.crawlers.dmm_direct import upgrade_dmm_cover
+
+        if number:
+            thumb, upgraded_poster = await upgrade_dmm_cover(ctx, number, thumb, "")
+        else:
+            upgraded_poster = ""
         return CrawlerData(
             number=number,
             title=title,
@@ -251,7 +258,7 @@ class JavfreeCrawler(BaseCrawler[JavfreeContext]):
             studio=fields.get("メーカー", ""),
             publisher=fields.get("レーベル", "") or fields.get("メーカー", ""),
             thumb=thumb,
-            poster=thumb or ctx.search_cover_url,
+            poster=upgraded_poster or thumb or ctx.search_cover_url,
             image_download=False,
             mosaic=mosaic,
             external_id=detail_url,

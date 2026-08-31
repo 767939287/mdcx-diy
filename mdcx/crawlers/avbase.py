@@ -102,6 +102,11 @@ class AvbaseCrawler(BaseCrawler):
         extrafanart, extrafanart_product = self._collect_extrafanart(products, product)
         trailer = self._to_absolute_url(product.get("trailer_url") or "")
 
+        # DMM 高清直链升级（横版+竖版，无码番号内部跳过）
+        from mdcx.crawlers.dmm_direct import upgrade_dmm_cover
+
+        thumb, poster = await upgrade_dmm_cover(ctx, number, thumb, poster)
+
         if products:
             picked_product_id = str(product.get("product_id") or "")
             picked_source = str(product.get("source") or "")

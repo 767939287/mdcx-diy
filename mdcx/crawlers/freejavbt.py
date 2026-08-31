@@ -383,6 +383,12 @@ class FreejavbtCrawler(BaseCrawler):
         release = get_release(html_detail)
         tag = get_tag(html_detail)
         director = get_director(html_detail)
+        # DMM 高清直链升级（横版+竖版，无码番号内部跳过）
+        from mdcx.crawlers.dmm_direct import is_uncensored_number, upgrade_dmm_cover
+
+        upgrade_thumb, upgrade_poster = get_cover(html_detail), ""
+        if not is_uncensored_number(number):
+            upgrade_thumb, upgrade_poster = await upgrade_dmm_cover(ctx, number, upgrade_thumb, upgrade_poster)
         data = CrawlerData(
             number=number,
             title=title,
@@ -400,8 +406,8 @@ class FreejavbtCrawler(BaseCrawler):
             directors=split_csv(director),
             studio=get_studio(html_detail),
             publisher=get_publisher(html_detail),
-            thumb=get_cover(html_detail),
-            poster="",
+            thumb=upgrade_thumb,
+            poster=upgrade_poster,
             extrafanart=get_extrafanart(html_detail),
             trailer=await get_trailer(html_detail),
             image_download=False,

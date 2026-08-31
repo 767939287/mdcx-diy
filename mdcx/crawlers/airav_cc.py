@@ -202,6 +202,12 @@ class AiravCcCrawler(BaseCrawler):
         for each in title_rep:
             title = title.replace(each, "").strip()
 
+        # DMM 高清直链升级（横版+竖版，无码番号内部跳过）
+        from mdcx.crawlers.dmm_direct import upgrade_dmm_cover
+
+        cover_url, small_cover_url = await upgrade_dmm_cover(
+            ctx, number, cover_url, cover_url.replace("big_pic", "small_pic")
+        )
         data = CrawlerData(
             number=number,
             title=title,
@@ -219,7 +225,7 @@ class AiravCcCrawler(BaseCrawler):
             studio=studio,
             publisher="",
             thumb=cover_url,
-            poster=cover_url.replace("big_pic", "small_pic"),
+            poster=small_cover_url,
             extrafanart=[],
             trailer="",
             image_download=image_download,

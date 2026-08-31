@@ -195,6 +195,10 @@ class JavdayCrawler(BaseCrawler[JavdayContext]):
             ctx.file_path_text,
         )
         actors = [item.strip() for item in actor.split(",") if item.strip()]
+        # DMM 高清直链升级（横版+竖版，无码番号内部跳过）
+        from mdcx.crawlers.dmm_direct import upgrade_dmm_cover
+
+        cover_url, poster_url = await upgrade_dmm_cover(ctx, number, cover_url, "")
         return CrawlerData(
             number=number,
             title=title,
@@ -210,7 +214,7 @@ class JavdayCrawler(BaseCrawler[JavdayContext]):
             studio=studio,
             publisher=studio,
             thumb=cover_url,
-            poster="",
+            poster=poster_url,
             extrafanart=[],
             trailer="",
             image_download=False,

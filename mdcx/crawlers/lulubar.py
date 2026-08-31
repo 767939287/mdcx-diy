@@ -150,6 +150,10 @@ class LulubarCrawler(BaseCrawler[LulubarContext]):
         actors = [item.strip() for item in actor.split(",") if item.strip()]
         tag = get_tag(detail_page)
         release = get_release(detail_page)
+        # DMM 高清直链升级（横版+竖版，无码番号内部跳过）
+        from mdcx.crawlers.dmm_direct import upgrade_dmm_cover
+
+        thumb, upgraded_poster = await upgrade_dmm_cover(ctx, number, get_cover(detail_page), "")
         return CrawlerData(
             number=number,
             title=title,
@@ -162,8 +166,8 @@ class LulubarCrawler(BaseCrawler[LulubarContext]):
             release=release,
             year=get_year(release),
             studio=get_studio(detail_page),
-            thumb=get_cover(detail_page),
-            poster=ctx.search_poster,
+            thumb=thumb,
+            poster=upgraded_poster or ctx.search_poster,
             extrafanart=get_extrafanart(detail_page),
             trailer="",
             image_download=False,

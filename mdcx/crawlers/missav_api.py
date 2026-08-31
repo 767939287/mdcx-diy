@@ -185,6 +185,12 @@ class MissavApiCrawler(BaseCrawler):
             raise CrawlerException(f"Recombee 未找到匹配: {number}")
 
         data = self._build_data(item, number)
+        # DMM 高清直链升级（横版+竖版，无码番号内部跳过）
+        from mdcx.crawlers.dmm_direct import upgrade_dmm_cover
+
+        data.thumb, data.poster = await upgrade_dmm_cover(
+            ctx, str(data.number or ""), str(data.thumb or ""), str(data.poster or "")
+        )
         data.source = self.site().value
         result = data.to_result()
         return await self.post_process(ctx, result)
