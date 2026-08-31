@@ -26,7 +26,7 @@ MDCx 支持的功能全景。只想快速上手的话，先看 [QUICKSTART.md](Q
 | thejavdb_api | api.thejavdb.net | TheJavDB API 数据源（免 CF，仅能有码） |
 | javdb | javdb.com | JavDB 综合信息站（综合：有码+无码） |
 | javdb_api | JavDB 镜像站 | 镜像站 HTML 直连，带简繁转换和异体字修正（综合：有码+无码） |
-| javdb_app | JavDB 移动端 API | APK 逆向签名直连（综合：有码+无码） |
+| javdb_app | JavDB 移动端 API | APK 逆向签名直连（综合：有码+无码；封面/海报/剧照走 App CDN 无水印原图，签名失效自动诊断，详见 docs/JAVDB_APP_SIGNATURE.md） |
 | javbus | javbus.com | 有码/无码分类搜索（综合：有码+无码） |
 | javlibrary | javlibrary.com | 老牌信息站（仅能有码） |
 | missav | missav.ai | 综合搜索（综合：有码+无码） |
@@ -71,7 +71,8 @@ MDCx 支持的功能全景。只想快速上手的话，先看 [QUICKSTART.md](Q
 ### DMM 官方高清直链
 
 - 封面/海报统一走 DMM 官方 awsimgsrc CDN 高清直链（竖版 `ps` 通常 1032×1469，部分系列为 745×1081 等中尺寸档；横版 `pl` 通常 2184×1469），由 `mdcx/crawlers/dmm_direct.py` 的番号→DMM cid 前缀映射生成，内置静态前缀表覆盖约 110 个主流系列（含 `h_xxx`/数字特殊前缀与跨厂商附加前缀），并叠加学习表自动扩充未收录系列的前缀。升级时校验分辨率宽≥700 过滤 147×200 缩略图占位图，避免把海报覆盖成低清缩略图。
-- **LibreDMM / R18.dev / JavBus / JavDB / JavDB API / JavDB App / DMM / DMM API / JavLibrary / avbase** 十个爬虫在刮削时直接把返回的低清封面/海报升级为 DMM 高清（R18.dev 的 `jacket_full_url` 是 pics.dmm.co.jp 低清且部分系列 cid 未补零，JavBus 是自家 CDN 低清镜像，JavDB 三站是 javdb 图床缩略图 `c0.jdbstatic.com` 哈希路径非高清，DMM/avbase 用域名替换 + dmm_direct 前缀表候选），无码番号自动跳过。
+- **LibreDMM / R18.dev / JavBus / JavDB / JavDB API / JavDB App / DMM / DMM API / JavLibrary / avbase** 十个爬虫在刮削时直接把返回的低清封面/海报升级为 DMM 高清（R18.dev 的 `jacket_full_url` 是 pics.dmm.co.jp 低清且部分系列 cid 未补零，JavBus 是自家 CDN 低清镜像，DMM/avbase 用域名替换 + dmm_direct 前缀表候选），无码番号自动跳过。
+- **JavDB 系图源无水印升级**：JavDB / JavDB API / JavDB App 三站产出/落回的 javdb 图床图片，下载时自动改走 JavDB App 专用 CDN `tp.spfcas.com` 无水印原图（加密流下载层透明解密），替代带 javdb 水印的网页版 CDN；App CDN 路径中段由 javdb_app 响应自动学习，失效时自动回退网页版。DMM 升级链覆盖不到的番号（无码/FC2/老片等）落回 javdb 图源时受益。
 - 开启「Poster 选优」（poster_auto_best）时，候选池自动注入 DMM 竖版高清候选，按尺寸自动胜过低清原图，其他爬虫也能受益。
 - DMM 图下载失败按「设置→网络→重试」次数（默认 3 次）自动重试，应对 awsimgsrc 偶发的连接抖动。
 
