@@ -114,9 +114,9 @@ def test_invalid_number_returns_empty():
     assert dmm_direct.generate_cid_candidates("12345") == []
 
 
-def test_routes_load_failure_degrades_silently(monkeypatch):
+def test_routes_load_failure_degrades_silently(monkeypatch, tmp_path):
     """种子损坏时静默降级为空表，不影响既有候选链。"""
-    bad = Path("/tmp/opencode/bad_routes.json")
+    bad = tmp_path / "bad_routes.json"
     bad.write_text("{not json", encoding="utf-8")
     monkeypatch.setattr(dmm_direct, "_routes_seed_path", lambda: bad)
     dmm_direct.reset_routes_for_testing()
