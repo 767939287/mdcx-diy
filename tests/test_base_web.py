@@ -233,10 +233,11 @@ async def test_download_extrafanart_task_uses_jdbstatic_headers(monkeypatch: pyt
     )
 
     assert result is True
-    assert headers_seen
-    assert headers_seen[0] is not None
-    assert headers_seen[0]["Referer"] == "https://javdb.com/"
-    assert "User-Agent" in headers_seen[0]
+    # spfcas 无水印变体失败（fake 内容非 JPEG）后回退网页版原图，该请求需带 jdbstatic headers
+    jdbstatic_headers = [h for h in headers_seen if h is not None]
+    assert jdbstatic_headers
+    assert jdbstatic_headers[0]["Referer"] == "https://javdb.com/"
+    assert "User-Agent" in jdbstatic_headers[0]
 
 
 @pytest.mark.asyncio
@@ -288,3 +289,242 @@ async def test_extrafanart_download_does_not_gate_batch_on_first_image_failure(
 
     assert result is False
     assert calls == ["https://example.test/fanart1.jpg", "https://example.test/fanart2.jpg"]
+
+
+# ============================================================
+# JavDB App CDN（tp.spfcas.com）加密流解密
+# 加密格式：首字节为随机 XOR key，其余字节与 key 异或；明文应为 JPEG（FF D8 起始）
+# ============================================================
+
+
+def test_is_spfcas_image_url_matches_by_domain():
+    """按域名判定 App CDN；路径中段（如 rhe951l4q）可能变更，不参与判定"""
+    assert base_web.is_spfcas_image_url("https://tp.spfcas.com/rhe951l4q/covers/z4/z4Z5rW.jpg")
+    assert base_web.is_spfcas_image_url("https://tp.spfcas.com/otherssegment/covers/x.jpg")
+    assert base_web.is_spfcas_image_url("//tp.spfcas.com/rhe951l4q/small_covers/z4/z4Z5rW.jpg")
+    assert not base_web.is_spfcas_image_url("https://c0.jdbstatic.com/covers/xw/XWPga.jpg")
+    assert not base_web.is_spfcas_image_url("https://tp.spfcas.com/rhe951l4q/index.html")
+    assert not base_web.is_spfcas_image_url("")
+    assert not base_web.is_spfcas_image_url("https://tp.spfcas.com")  # 无路径非图片
+
+
+def test_decrypt_spfcas_image_roundtrip_and_validation():
+    """解密回明文；非 JPEG 明文/空输入返回 None"""
+    plain = b"\xff\xd8\xe0" + b"\x10JFIF" + b"\x00" * 32
+    key = 0x5A
+    enc = bytes([key]) + bytes(b ^ key for b in plain)
+    assert base_web.decrypt_spfcas_image(enc) == plain
+
+    bad_plain = b"\x89PNG" + b"data"
+    enc_bad = bytes([key]) + bytes(b ^ key for b in bad_plain)
+    assert base_web.decrypt_spfcas_image(enc_bad) is None
+
+    assert base_web.decrypt_spfcas_image(b"") is None
+    assert base_web.decrypt_spfcas_image(b"\x5a") is None
+
+
+def test_decode_spfcas_image_content_passthrough_non_spfcas():
+    """非 App CDN URL 内容原样透传，不做解密"""
+    content = b"\x89PNG-raw-bytes"
+    assert base_web.decode_spfcas_image_content("https://c0.jdbstatic.com/covers/xw/XWPga.jpg", content) == content
+    assert base_web.decode_spfcas_image_content("https://pics.dmm.co.jp/digital/video/x.jpg", content) == content
+
+
+@pytest.mark.asyncio
+async def test_download_file_with_filepath_decrypts_spfcas_stream(monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
+    """download_file_with_filepath 对 App CDN 加密流应解密后落盘"""
+    plain = b"\xff\xd8" + b"\x00" * 64
+    enc = bytes([0x33]) + bytes(b ^ 0x33 for b in plain)
+
+    async def fake_get_content(url: str, **kwargs):
+        return enc, ""
+
+    monkeypatch.setattr(manager.computed.async_client, "get_content", fake_get_content)
+
+    target = tmp_path / "cover.jpg"
+    assert await base_web.download_file_with_filepath(
+        "https://tp.spfcas.com/rhe951l4q/covers/z4/z4Z5rW.jpg", target, tmp_path
+    )
+    assert target.read_bytes() == plain
+
+
+@pytest.mark.asyncio
+async def test_download_file_with_filepath_rejects_bad_spfcas_payload(monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
+    """App CDN 内容解密失败（非 JPEG 明文）应判下载失败且不写盘"""
+
+    async def fake_get_content(url: str, **kwargs):
+        return b"\x33notjpegdata", ""
+
+    monkeypatch.setattr(manager.computed.async_client, "get_content", fake_get_content)
+
+    target = tmp_path / "cover.jpg"
+    assert not await base_web.download_file_with_filepath(
+        "https://tp.spfcas.com/rhe951l4q/covers/z4/z4Z5rW.jpg", target, tmp_path
+    )
+    assert not target.exists()
+
+
+@pytest.mark.asyncio
+async def test_download_content_with_filepath_decrypts_spfcas(monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
+    """download_content_with_filepath 对 App CDN 加密流应解密后落盘"""
+    plain = b"\xff\xd8" + b"\x01" * 32
+    enc = bytes([0x77]) + bytes(b ^ 0x77 for b in plain)
+
+    async def fake_get_content(url: str, **kwargs):
+        return enc, ""
+
+    monkeypatch.setattr(manager.computed.async_client, "get_content", fake_get_content)
+
+    target = tmp_path / "fanart.jpg"
+    assert await base_web.download_content_with_filepath(
+        "https://tp.spfcas.com/rhe951l4q/samples/z4/z4Z5rW_1.jpg", target, tmp_path
+    )
+    assert target.read_bytes() == plain
+
+
+# ============================================================
+# 网页版 CDN → App CDN 无水印 URL 变换（javdb 系爬虫图源升级）
+# ============================================================
+
+
+def test_jdbstatic_to_spfcas_mapping():
+    """网页版 URL 变换为 App CDN URL：covers/samples 保持、thumbs→small_covers、插入当前中段"""
+    assert (
+        base_web.jdbstatic_to_spfcas("https://c0.jdbstatic.com/covers/z4/z4Z5rW.jpg")
+        == f"https://tp.spfcas.com/{base_web._spfcas_segment()}/covers/z4/z4Z5rW.jpg"
+    )
+    assert (
+        base_web.jdbstatic_to_spfcas("https://c0.jdbstatic.com/thumbs/xz/XzkY4.jpg")
+        == f"https://tp.spfcas.com/{base_web._spfcas_segment()}/small_covers/xz/XzkY4.jpg"
+    )
+    assert (
+        base_web.jdbstatic_to_spfcas("https://c0.jdbstatic.com/samples/z4/1.jpg")
+        == f"https://tp.spfcas.com/{base_web._spfcas_segment()}/samples/z4/1.jpg"
+    )
+    # 协议相对地址
+    assert base_web.jdbstatic_to_spfcas("//c0.jdbstatic.com/covers/z4/z4Z5rW.jpg").startswith("https://tp.spfcas.com/")
+    # 形态不符返回空串
+    assert base_web.jdbstatic_to_spfcas("https://pics.dmm.co.jp/digital/video/x.jpg") == ""
+    assert base_web.jdbstatic_to_spfcas("") == ""
+    assert base_web.jdbstatic_to_spfcas("https://c0.jdbstatic.com/page.html") == ""
+
+
+def test_spfcas_to_jdbstatic_roundtrip():
+    """App CDN URL 逆向变换回网页版 URL（供尺寸探测回退），与正向变换互逆"""
+    jdbstatic = "https://c0.jdbstatic.com/thumbs/xz/XzkY4.jpg"
+    spfcas = base_web.jdbstatic_to_spfcas(jdbstatic)
+    assert base_web.spfcas_to_jdbstatic(spfcas) == jdbstatic
+
+    jdbstatic_cover = "https://c0.jdbstatic.com/covers/z4/z4Z5rW.jpg"
+    assert base_web.spfcas_to_jdbstatic(base_web.jdbstatic_to_spfcas(jdbstatic_cover)) == jdbstatic_cover
+
+    # 形态不符返回空串
+    assert base_web.spfcas_to_jdbstatic("https://c0.jdbstatic.com/covers/z4/z4Z5rW.jpg") == ""
+    assert base_web.spfcas_to_jdbstatic("") == ""
+
+
+def test_learn_spfcas_image_segment_updates_mapping():
+    """从 App CDN URL 学习当前中段后，变换应使用新段；非法 URL 不改变已有学习值"""
+    original_segment = base_web._spfcas_segment()
+    try:
+        assert base_web.learn_spfcas_image_segment("https://tp.spfcas.com/newseg9/covers/z4/z4Z5rW.jpg") == "newseg9"
+        assert base_web._spfcas_segment() == "newseg9"
+        assert base_web.jdbstatic_to_spfcas("https://c0.jdbstatic.com/covers/z4/z4Z5rW.jpg") == (
+            "https://tp.spfcas.com/newseg9/covers/z4/z4Z5rW.jpg"
+        )
+
+        # 非法 URL 不更新
+        assert base_web.learn_spfcas_image_segment("https://tp.spfcas.com/newseg9/page.html") == ""
+        assert base_web.learn_spfcas_image_segment("https://c0.jdbstatic.com/covers/z4/z4Z5rW.jpg") == ""
+        assert base_web.learn_spfcas_image_segment("") == ""
+        assert base_web._spfcas_segment() == "newseg9"
+    finally:
+        base_web.reset_spfcas_segment_for_test(original_segment)
+
+
+def test_prepend_spfcas_candidates_keeps_original_as_fallback():
+    """thumb 候选变换：jdbstatic 候选前置 spfcas 变体并保留原图保底；其他来源原样"""
+    covers = [
+        ("javdb", "https://c0.jdbstatic.com/covers/z4/z4Z5rW.jpg"),
+        ("dmm", "https://pics.dmm.co.jp/digital/video/x/xps.jpg"),
+        ("javdb", ""),
+    ]
+    result = core_web._prepend_spfcas_candidates(covers)
+
+    assert result[0] == ("javdb", f"https://tp.spfcas.com/{base_web._spfcas_segment()}/covers/z4/z4Z5rW.jpg")
+    assert result[1] == ("javdb", "https://c0.jdbstatic.com/covers/z4/z4Z5rW.jpg")
+    assert result[2] == ("dmm", "https://pics.dmm.co.jp/digital/video/x/xps.jpg")
+    assert result[3] == ("javdb", "")
+
+
+@pytest.mark.asyncio
+async def test_download_extrafanart_task_uses_spfcas_variant_first(monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
+    """剧照下载：spfcas 变体命中时解密落盘，且不再请求网页版原图"""
+    plain = b"\xff\xd8" + b"\x02" * 16
+    enc = bytes([0x11]) + bytes(b ^ 0x11 for b in plain)
+    requested: list[str] = []
+
+    async def fake_get_content(url: str, **kwargs):
+        requested.append(url)
+        return enc, ""
+
+    async def fake_check_pic_async(path: Path):
+        return (800, 600)
+
+    monkeypatch.setattr(manager.computed.async_client, "get_content", fake_get_content)
+    monkeypatch.setattr(base_web, "check_pic_async", fake_check_pic_async)
+
+    result = await base_web.download_extrafanart_task(
+        ("https://c0.jdbstatic.com/samples/z4/1.jpg", tmp_path / "fanart1.jpg", tmp_path, "fanart1.jpg")
+    )
+
+    assert result is True
+    assert len(requested) == 1
+    assert requested[0].startswith("https://tp.spfcas.com/")
+    assert (tmp_path / "fanart1.jpg").read_bytes() == plain
+
+
+@pytest.mark.asyncio
+async def test_download_extrafanart_task_falls_back_to_original(monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
+    """剧照下载：spfcas 变体失败（如中段过期 404）时回退网页版原图"""
+    requested: list[str] = []
+
+    async def fake_get_content(url: str, **kwargs):
+        requested.append(url)
+        if "tp.spfcas.com" in url:
+            return None, "HTTP 404"
+        return b"\xff\xd8fallback-jpeg", ""
+
+    async def fake_check_pic_async(path: Path):
+        return (800, 600)
+
+    monkeypatch.setattr(manager.computed.async_client, "get_content", fake_get_content)
+    monkeypatch.setattr(base_web, "check_pic_async", fake_check_pic_async)
+
+    result = await base_web.download_extrafanart_task(
+        ("https://c0.jdbstatic.com/samples/z4/1.jpg", tmp_path / "fanart1.jpg", tmp_path, "fanart1.jpg")
+    )
+
+    assert result is True
+    assert requested[0].startswith("https://tp.spfcas.com/")
+    assert requested[1] == "https://c0.jdbstatic.com/samples/z4/1.jpg"
+    assert (tmp_path / "fanart1.jpg").read_bytes() == b"\xff\xd8fallback-jpeg"
+
+
+@pytest.mark.asyncio
+async def test_build_poster_candidates_size_probe_falls_back_to_jdbstatic(monkeypatch: pytest.MonkeyPatch):
+    """auto_best 选优：spfcas 变体尺寸探测失败时用逆向网页版 URL 探测尺寸"""
+    from mdcx.core import web as core_web_mod
+
+    async def fake_get_imgsize(url: str) -> tuple[int, int]:
+        if "tp.spfcas.com" in url:
+            return (0, 0)  # 加密流无法解析尺寸
+        return (800, 1200)  # 网页版同图可探测
+
+    monkeypatch.setattr(core_web_mod, "get_imgsize", fake_get_imgsize)
+
+    candidates = [core_web_mod.PosterCandidate("javdb", "https://tp.spfcas.com/rhe951l4q/covers/z4/z4Z5rW.jpg", True)]
+    sized = await core_web_mod._sized_poster_candidates(candidates, media_context=None)
+
+    assert len(sized) == 1
+    assert sized[0].size == (800, 1200)

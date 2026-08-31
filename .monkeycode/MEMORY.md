@@ -118,4 +118,15 @@
   - tenhow.net 图床：图片按 ASIN 命名 `images/{ASIN}.jpg`（大图）+ icon_/s_ 前缀小图；条目 DOM 内 ASIN 图与 DMM cid 绑定，经 13 个冲突 ASIN 对 libredmm 实测 13/13 正确。**双向价值**：正向按 ASIN 免代理直接取图（T0 优先，404 再回退 Amazon）；反向凡页面条目里的图文件名都是可入库 ASIN，全站爬一遍即一次 ASIN 增量发现。2026-08-28 重爬全站收敛 **1903 页 / 36441 ASIN**（无冲突），结果在 `/tmp/opencode/tenhow_index_full.json`、页面缓存 `/tmp/opencode/tenhow_pages/`；旧索引 8126 条严重不全（旧脚本每批 50 页无新链接即整体退出，只抓 250/1903 页）已作废。另有 ~5388 条目只有 ASIN 无 cid，未来可用封面图像比对反查番号补库。
   - cid→番号清洗规则（与仓库 `_parse_number`/DMM 官方约定对齐）：cid 形态 `^(\d*)([a-z]+)(\d+)([a-z])?$` = 可选厂商数字前缀 + 系列字母 + 数字（content_id 5 位补零）+ 可选变体字母。番号 = `系列字母大写 + f"{int(数字):03d}"`（去前导零但至少 3 位：24ped00030→PED-030、13gvg00564→GVG-564、onsg00064→ONSG-064，**绝不**缩成 PED-30，旧库 tenhow 行此类错误写法待修）；末尾变体字母（b/c/f/r 等）视为同番号变体归并；去重比对一律用 (系列字母, int(数字)) 做 key 以兼容去零/补零两种存量写法；不匹配该形态的 cid 进「待人工」sheet 不猜番号。
    - 批量导入外部数据到 xlsx 前必须走 `save_asin_to_excel` 这类含去重逻辑的入口函数；直接 `ws.append` 会绕过同番号去重产生成批重复行（教训：tenhow 8094 行导入产生 699 完全重复行）。错配行处置规则：不删、不丢番号，移到「待修正」sheet 附原因保留待补，主表只留裁决通过的。
-   - **HTTP 4xx 错误定位顺序**（议题 #56 教训）：先看【客户端实际发了什么】（headers/body/URL 构造完整？、条件分支是否被误判覆盖），再想服务端权限/角色/版本。同一函数内 `if _is_jellyfin_server(): 加鉴权 else: None` 的条件分支看似无害，对 Emby 就是"否"把鉴权头置 None → POST 全量 401——这类"条件头构造"在同函数多个调用点改一处漏一处的错误常见（`_is_jellyfin_server` 当时同名双调用点，一处修了另一处留）。**写回帖前先核对所有调用点的硬编码分支**，不要在未读完整数据路径的情况下把责任推给用户的服务端配置。
+  - **HTTP 4xx 错误定位顺序**（议题 #56 教训）：先看【客户端实际发了什么】（headers/body/URL 构造完整？、条件分支是否被误判覆盖），再想服务端权限/角色/版本。同一函数内 `if _is_jellyfin_server(): 加鉴权 else: None` 的条件分支看似无害，对 Emby 就是"否"把鉴权头置 None → POST 全量 401——这类"条件头构造"在同函数多个调用点改一处漏一处的错误常见（`_is_jellyfin_server` 当时同名双调用点，一处修了另一处留）。**写回帖前先核对所有调用点的硬编码分支**，不要在未读完整数据路径的情况下把责任推给用户的服务端配置。
+
+## javdb 系爬虫与图源
+
+- Date: 2026-08-31
+- Category: 排错调试
+- Instructions:
+  - **thejavdb_api 爬虫与 javdb 无关**（2026-08-31 用户澄清），勿归入 javdb 系处理。
+  - javdb 系三个源：javdb（网页）、javdb_api（镜像站）、javdb_app（App API，免 CF，签名+搜索/详情/演员别名）。**App API 域知识来自用户私有逆向仓库，增量更新时用户会上传 README 附件到工作区**；完整机制沉淀在 `docs/JAVDB_APP_SIGNATURE.md`（签名、错误 action 体系、图片 CDN 解密）。
+  - **图源无水印体系（2026-08-31 完成移植）**：`tp.spfcas.com` 是 App 专用无水印 CDN（单字节 XOR 加密流，首字节 key），`c0.jdbstatic.com` 是带 javdb 水印的网页版。解密与 URL 变换集中在 `base/web.py`（`decode_spfcas_image_content` 按域名判定解密、`jdbstatic_to_spfcas`/`spfcas_to_jdbstatic` 双向变换），下载层三路径（_fetch_image / download_file_with_filepath / download_content_with_filepath）自动生效，爬虫产出 spfcas URL 即得无水印图；网页爬虫的 jdbstatic URL 由下载层前置变体自动升级，失败回退原图。App API 路径中段会变，`learn_spfcas_image_segment` 由 javdb_app 每次响应学习自愈。**加密流尺寸探测返回 (0,0) 属预期**（auto_best 选优用逆向 URL 探测回退），勿当作"图失效"处理。
+  - javdb_app 排障锚点：签名失效征兆 = 三 API 主机同时 400/401/403 或响应体含 ParameterInvalid/InvalidSignature（fail-fast 诊断已内建）；签名常量可用环境变量 `MDCX_JAVDB_APP_SIG_PREFIX` / `MDCX_JAVDB_APP_SIG_SUFFIX` / `MDCX_JAVDB_APP_VERSION_NUMBER` 免改码覆盖；搜索 `limit` 上限 50、`type=movie` 过滤噪声，排序默认 relevance 不稳定（分页场景须 `movie_sort_by=release`）。
+  - **外部 API 错误码做匹配 marker 必须取响应原文字面值**（2026-08-31 真 bug：action 值是 `InvalidSignature` 无空格，写成 "invalid signature" 带空格永远匹配不上）——对接任何 API 的错误识别先拿真实响应样本核对字面形态。

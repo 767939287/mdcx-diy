@@ -24,6 +24,9 @@ from ..base.web import (
     get_imgsize,
     get_url_content_length,
     is_dmm_image_url,
+    is_spfcas_image_url,
+    jdbstatic_to_spfcas,
+    spfcas_to_jdbstatic,
 )
 from ..config.enums import DownloadableFile, FixedScrapingType, HDPicSource, KeepableFile
 from ..config.manager import manager
@@ -836,6 +839,7 @@ async def thumb_download(
         while (cover_from, cover_url) in cover_list:
             cover_list.remove((cover_from, cover_url))
         cover_list.insert(0, (cover_from, cover_url))
+        cover_list = _prepend_spfcas_candidates(cover_list)
 
         thumb_final_path_temp = thumb_final_path
         if await aiofiles.os.path.exists(thumb_final_path):
@@ -991,6 +995,55 @@ async def _build_dmm_poster_candidates(result) -> list[PosterCandidate]:
     return []
 
 
+def _expand_poster_candidates_with_spfcas(candidates: list[PosterCandidate]) -> list[PosterCandidate]:
+    """为网页版 CDN poster 候选前置 App CDN 无水印变体；变体失败时下载层自然回退原候选。"""
+    expanded: list[PosterCandidate] = []
+    seen_normalized: set[str] = set()
+    for candidate in candidates:
+        variant_url = jdbstatic_to_spfcas(candidate.url)
+        if variant_url and MediaResourceContext.normalize_url(variant_url) not in seen_normalized:
+            seen_normalized.add(MediaResourceContext.normalize_url(variant_url))
+            expanded.append(PosterCandidate(candidate.source, variant_url, candidate.image_download))
+        if MediaResourceContext.normalize_url(candidate.url) not in seen_normalized:
+            seen_normalized.add(MediaResourceContext.normalize_url(candidate.url))
+            expanded.append(candidate)
+    return expanded
+
+
+async def _sized_poster_candidates(
+    candidates: list[PosterCandidate],
+    media_context: MediaResourceContext | None,
+) -> list[PosterCandidate]:
+    """探测候选尺寸；App CDN 加密流探测失败时用逆向网页版 URL 探测（同图同分辨率）。"""
+    sized_candidates = []
+    for candidate in candidates:
+        size = await _get_image_size(candidate.url, media_context)
+        if not _is_known_image_size(size) and is_spfcas_image_url(candidate.url):
+            fallback_url = spfcas_to_jdbstatic(candidate.url)
+            if fallback_url:
+                size = await _get_image_size(fallback_url, media_context)
+        sized_candidates.append(
+            PosterCandidate(
+                candidate.source,
+                candidate.url,
+                candidate.image_download,
+                size,
+            )
+        )
+    return sized_candidates
+
+
+def _prepend_spfcas_candidates(covers: list[tuple[str, str]]) -> list[tuple[str, str]]:
+    """为 thumb 候选里的网页版 CDN URL 前置 App CDN 无水印变体，原 URL 保留作降级保底。"""
+    result: list[tuple[str, str]] = []
+    for source, url in covers:
+        variant_url = jdbstatic_to_spfcas(url)
+        if variant_url:
+            result.append((source, variant_url))
+        result.append((source, url))
+    return result
+
+
 async def _build_poster_candidates(
     result: CrawlersResult,
     *,
@@ -1017,18 +1070,9 @@ async def _build_poster_candidates(
         for candidate in candidates
         if _can_direct_download_poster_candidate(result, candidate, poster_auto_best)
     ]
+    candidates = _expand_poster_candidates_with_spfcas(candidates)
     if poster_auto_best:
-        sized_candidates = []
-        for candidate in candidates:
-            sized_candidates.append(
-                PosterCandidate(
-                    candidate.source,
-                    candidate.url,
-                    candidate.image_download,
-                    await _get_image_size(candidate.url, media_context),
-                )
-            )
-        candidates = sized_candidates
+        candidates = await _sized_poster_candidates(candidates, media_context)
     return candidates
 
 

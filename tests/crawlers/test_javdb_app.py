@@ -5,25 +5,41 @@ from mdcx.crawlers.javdb_app import JavdbAppCrawler
 from mdcx.models.model_types import CrawlerInput
 
 
-def test_normalize_image_url_rewrites_legacy_host():
+def test_normalize_image_url_keeps_watermark_free_app_cdn():
+    """spfcas 是 App 专用无水印 CDN（加密流由下载层解密），原样保留；老 cmastd 域名归一到 spfcas"""
     crawler = JavdbAppCrawler(client=None)
 
-    assert (
-        crawler._normalize_image_url("https://tp.cmastd.com/rhe951l4q/covers/demo.jpg")
-        == "https://c0.jdbstatic.com/covers/demo.jpg"
+    # spfcas App CDN 原样保留（不再重写为带水印的网页版 jdbstatic）
+    assert crawler._normalize_image_url("https://tp.spfcas.com/rhe951l4q/covers/demo.jpg") == (
+        "https://tp.spfcas.com/rhe951l4q/covers/demo.jpg"
     )
-    assert (
-        crawler._normalize_image_url("https://tp.cmastd.com/rhe951l4q/small_covers/demo.jpg")
-        == "https://c0.jdbstatic.com/thumbs/demo.jpg"
+    assert crawler._normalize_image_url("https://tp.spfcas.com/rhe951l4q/small_covers/xz/XzkY4.jpg") == (
+        "https://tp.spfcas.com/rhe951l4q/small_covers/xz/XzkY4.jpg"
     )
-    assert (
-        crawler._normalize_image_url("https://tp.spfcas.com/rhe951l4q/covers/demo.jpg")
-        == "https://c0.jdbstatic.com/covers/demo.jpg"
+    # 老 cmastd 域名归一到当前 App CDN，路径保持
+    assert crawler._normalize_image_url("https://tp.cmastd.com/rhe951l4q/covers/demo.jpg") == (
+        "https://tp.spfcas.com/rhe951l4q/covers/demo.jpg"
     )
-    assert (
-        crawler._normalize_image_url("https://tp.spfcas.com/rhe951l4q/thumbs/xz/XzkY4.jpg")
-        == "https://c0.jdbstatic.com/thumbs/xz/XzkY4.jpg"
+    assert crawler._normalize_image_url("https://tp.cmastd.com/rhe951l4q/small_covers/demo.jpg") == (
+        "https://tp.spfcas.com/rhe951l4q/small_covers/demo.jpg"
     )
+    # 协议相对地址补 https
+    assert crawler._normalize_image_url("//tp.spfcas.com/rhe951l4q/covers/demo.jpg") == (
+        "https://tp.spfcas.com/rhe951l4q/covers/demo.jpg"
+    )
+
+
+def test_normalize_image_url_learns_spfcas_segment():
+    """javdb_app 每次处理图片 URL 时学习 App CDN 当前路径中段，供网页版 URL 变换自愈"""
+    import mdcx.base.web as base_web
+
+    original_segment = base_web._spfcas_segment()
+    try:
+        crawler = JavdbAppCrawler(client=None)
+        crawler._normalize_image_url("https://tp.spfcas.com/learned9/covers/z4/z4Z5rW.jpg")
+        assert base_web._spfcas_segment() == "learned9"
+    finally:
+        base_web.reset_spfcas_segment_for_test(original_segment)
 
 
 @pytest.mark.asyncio
@@ -88,9 +104,9 @@ async def test_run_maps_cover_to_thumb_and_thumb_to_poster():
     assert response.data.number == "URE-018"
     assert response.data.title == "Title"
     assert response.data.originaltitle == "Origin Title"
-    assert response.data.thumb == "https://c0.jdbstatic.com/covers/cover-wide.jpg"
-    assert response.data.poster == "https://c0.jdbstatic.com/thumbs/poster-tall.jpg"
-    assert response.data.extrafanart == ["https://c0.jdbstatic.com/samples/1.jpg"]
+    assert response.data.thumb == "https://tp.spfcas.com/rhe951l4q/covers/cover-wide.jpg"
+    assert response.data.poster == "https://tp.spfcas.com/rhe951l4q/small_covers/poster-tall.jpg"
+    assert response.data.extrafanart == ["https://tp.spfcas.com/rhe951l4q/samples/1.jpg"]
     assert response.data.trailer == "https://video.example.com/trailer.mp4"
     assert response.data.release == "2024-01-02"
     assert response.data.year == "2024"
@@ -114,6 +130,27 @@ async def test_run_bf_does_not_match_abf():
     response = await crawler.run(input_data)
 
     assert response.data is None
+
+
+@pytest.mark.asyncio
+async def test_search_request_carries_type_and_limit():
+    """搜索请求应带 type=movie 与 limit=50（服务器上限），提高首页精确命中"""
+    urls_seen: list[str] = []
+
+    class FakeClient:
+        async def get_json(self, url: str, **kwargs):
+            urls_seen.append(url)
+            return ({"data": {"movies": []}}, "")
+
+    crawler = JavdbAppCrawler(client=FakeClient())
+    input_data = CrawlerInput.empty()
+    input_data.number = "URE-018"
+
+    response = await crawler.run(input_data)
+
+    assert response.data is None  # 空结果，预期搜索失败
+    assert urls_seen, "应至少发起一次搜索请求"
+    assert any("type=movie" in url and "limit=50" in url for url in urls_seen)
 
 
 @pytest.mark.asyncio
@@ -575,3 +612,129 @@ def test_split_aliases_skips_combo_names():
     assert "朝比奈菜々子・水原麗子" not in aliases  # 组合名被过滤
     assert "単体女優" in aliases  # 普通别名保留
     assert "アンジェラ・ホワイト" in aliases  # 外国人名保留
+
+
+# ============================================================
+# 签名失效诊断（jdsignature 轮换时的 fail-fast 提示）
+# ============================================================
+
+
+def _make_all_hosts_signature_error_client(http_error: str | None = None, payload: dict | None = None):
+    """构造所有主机都返回签名类失败的 FakeClient（HTTP 错误串或 200 错误体二选一）"""
+
+    class FakeClient:
+        async def get_json(self, url: str, **kwargs):
+            if payload is not None:
+                return (payload, "")
+            return (None, http_error)
+
+    return FakeClient()
+
+
+@pytest.mark.asyncio
+async def test_signature_diagnosis_on_http_401_all_hosts():
+    """三主机均返回 HTTP 401 时应给出签名轮换诊断，而非笼统的搜索失败"""
+    crawler = JavdbAppCrawler(client=_make_all_hosts_signature_error_client(http_error="HTTP 401"))
+    input_data = CrawlerInput.empty()
+    input_data.number = "URE-018"
+
+    response = await crawler.run(input_data)
+
+    error = response.debug_info.error
+    assert error is not None
+    message = str(error)
+    assert "签名" in message
+    assert "MDCX_JAVDB_APP_SIG_PREFIX" in message  # 提示可用的覆盖手段
+
+
+@pytest.mark.asyncio
+async def test_signature_diagnosis_on_parameter_invalid_payload():
+    """200 + ParameterInvalid 错误体也应识别为签名类失败（并阻断错误体流入解析）"""
+    crawler = JavdbAppCrawler(client=_make_all_hosts_signature_error_client(payload={"error": "ParameterInvalid"}))
+    input_data = CrawlerInput.empty()
+    input_data.number = "URE-018"
+
+    response = await crawler.run(input_data)
+
+    error = response.debug_info.error
+    assert error is not None
+    message = str(error)
+    assert "签名" in message
+
+
+@pytest.mark.asyncio
+async def test_signature_diagnosis_on_invalid_signature_action_and_http_400():
+    """InvalidSignature action（无空格）与 HTTP 400 均应识别为签名类失败"""
+    payload_client = _make_all_hosts_signature_error_client(
+        payload={"success": 0, "action": "InvalidSignature", "message": "签名错误"}
+    )
+    crawler = JavdbAppCrawler(client=payload_client)
+    input_data = CrawlerInput.empty()
+    input_data.number = "URE-018"
+
+    response = await crawler.run(input_data)
+    assert response.debug_info.error is not None
+    assert "签名" in str(response.debug_info.error)
+
+    http_client = _make_all_hosts_signature_error_client(http_error="HTTP 400")
+    crawler = JavdbAppCrawler(client=http_client)
+
+    response = await crawler.run(input_data)
+    assert response.debug_info.error is not None
+    assert "签名" in str(response.debug_info.error)
+
+
+@pytest.mark.asyncio
+async def test_network_failure_keeps_generic_error():
+    """非签名类失败（如 HTTP 500/超时）维持原有行为：不误报签名问题"""
+    crawler = JavdbAppCrawler(client=_make_all_hosts_signature_error_client(http_error="HTTP 500"))
+    input_data = CrawlerInput.empty()
+    input_data.number = "URE-018"
+
+    response = await crawler.run(input_data)
+
+    error = response.debug_info.error
+    assert error is not None
+    message = str(error)
+    assert "签名" not in message
+    assert "搜索" in message
+
+
+def test_signature_env_overrides():
+    """环境变量可覆盖签名常量与 App 版本号；空值回落默认"""
+    import hashlib
+
+    from mdcx.crawlers import javdb_app
+
+    default_version = javdb_app._build_api_params()["app_version_number"]
+    assert default_version == javdb_app._APP_VERSION_NUMBER
+
+    with pytest.MonkeyPatch.context() as mp:
+        mp.setenv("MDCX_JAVDB_APP_VERSION_NUMBER", "9.9.9")
+        mp.setenv("MDCX_JAVDB_APP_SIG_PREFIX", "abc123")
+        mp.setenv("MDCX_JAVDB_APP_SIG_SUFFIX", "testsuffix")
+
+        params = javdb_app._build_api_params()
+        assert params["app_version_number"] == "9.9.9"
+
+        sig = javdb_app.make_signature()
+        ts, suffix, digest = sig.split(".")
+        assert suffix == "testsuffix"
+        assert digest == hashlib.md5(f"{ts}abc123".encode()).hexdigest()
+
+    # 环境变量清空后回落默认
+    assert javdb_app._build_api_params()["app_version_number"] == javdb_app._APP_VERSION_NUMBER
+    sig = javdb_app.make_signature()
+    ts, suffix, digest = sig.split(".")
+    assert suffix == javdb_app._SIG_SUFFIX
+    assert digest == hashlib.md5(f"{ts}{javdb_app._SIG_PREFIX}".encode()).hexdigest()
+
+
+def test_signature_env_overrides_ignore_blank_values():
+    """空白环境变量值视为未设置，回落默认"""
+    from mdcx.crawlers import javdb_app
+
+    with pytest.MonkeyPatch.context() as mp:
+        mp.setenv("MDCX_JAVDB_APP_SIG_SUFFIX", "   ")
+        sig = javdb_app.make_signature()
+        assert sig.split(".")[1] == javdb_app._SIG_SUFFIX

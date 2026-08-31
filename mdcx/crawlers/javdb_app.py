@@ -1,6 +1,8 @@
 import asyncio
 import hashlib
+import json
 import logging
+import os
 import random
 import re
 import time
@@ -12,6 +14,7 @@ from typing import override
 from pydantic import BaseModel, ConfigDict
 from zhconv import convert as zhconv_convert
 
+from ..base.web import learn_spfcas_image_segment
 from ..config.manager import manager
 from ..config.models import Website
 from ..models.model_types import CrawlerResult
@@ -31,12 +34,9 @@ _SIG_SUFFIX = "lpw6vgqzsp"
 
 _API_BASE = "https://apidd.czssdgz.com"
 _API_FALLBACKS = ["https://apidd.spthgb.com", "https://jdforrepam.com"]
-_IMAGE_PREFIX_OLD = "https://tp.cmastd.com/rhe951l4q/"
-_IMAGE_PREFIX_CURRENT = "https://tp.spfcas.com/rhe951l4q/"
-_IMAGE_PREFIX_NEW = "https://c0.jdbstatic.com/"
-_IMAGE_PREFIX_OLD_LIST = (_IMAGE_PREFIX_OLD, _IMAGE_PREFIX_CURRENT)
-_SMALL_COVERS_SEGMENT = "/small_covers/"
-_THUMBS_SEGMENT = "/thumbs/"
+# App CDN（spfcas）返回加密流，下载层统一解密后为无水印原图（见 base/web.py decode_spfcas_image_content）
+_IMAGE_HOST_LEGACY = "https://tp.cmastd.com/"
+_IMAGE_HOST_APP = "https://tp.spfcas.com/"
 
 _PLATFORM = "android"
 _APP_CHANNEL = "official"
@@ -49,11 +49,38 @@ _DEVICE_NAME = "Pixel"
 # 每个 JavDB App 实例对应一个稳定的 device_uuid，模拟真实设备标识
 _DEVICE_UUID = str(uuid.uuid5(uuid.NAMESPACE_DNS, "mdcx-javdb-app"))
 
+# 签名常量环境变量覆盖：JavDB App 更新轮换签名常量时免改代码
+_ENV_SIG_PREFIX = "MDCX_JAVDB_APP_SIG_PREFIX"
+_ENV_SIG_SUFFIX = "MDCX_JAVDB_APP_SIG_SUFFIX"
+_ENV_APP_VERSION_NUMBER = "MDCX_JAVDB_APP_VERSION_NUMBER"
+
+# 服务器对签名/参数校验失败的响应特征（200 错误体或 HTTP 状态码）
+# 错误 action 值见统一响应包裹：InvalidSignature(HTTP 400) / ParameterInvalid / ResourceNotFound
+_SIGNATURE_ERROR_MARKERS = ("parameterinvalid", "invalidsignature", "unauthorized")
+_SIGNATURE_HTTP_STATUSES = ("HTTP 400", "HTTP 401", "HTTP 403")
+
+
+def _env_override(name: str, default: str) -> str:
+    value = os.environ.get(name, "").strip()
+    return value or default
+
+
+def _signature_prefix() -> str:
+    return _env_override(_ENV_SIG_PREFIX, _SIG_PREFIX)
+
+
+def _signature_suffix() -> str:
+    return _env_override(_ENV_SIG_SUFFIX, _SIG_SUFFIX)
+
+
+def _app_version_number() -> str:
+    return _env_override(_ENV_APP_VERSION_NUMBER, _APP_VERSION_NUMBER)
+
 
 def make_signature() -> str:
     ts = int(time.time())
-    md5_hash = hashlib.md5(f"{ts}{_SIG_PREFIX}".encode()).hexdigest()
-    return f"{ts}.{_SIG_SUFFIX}.{md5_hash}"
+    md5_hash = hashlib.md5(f"{ts}{_signature_prefix()}".encode()).hexdigest()
+    return f"{ts}.{_signature_suffix()}.{md5_hash}"
 
 
 def _build_api_params() -> dict:
@@ -61,7 +88,7 @@ def _build_api_params() -> dict:
         "platform": _PLATFORM,
         "app_channel": _APP_CHANNEL,
         "app_version": _APP_VERSION,
-        "app_version_number": _APP_VERSION_NUMBER,
+        "app_version_number": _app_version_number(),
         "system_version": _SYSTEM_VERSION,
         "device_model": _DEVICE_MODEL,
         "device_name": _DEVICE_NAME,
@@ -76,6 +103,18 @@ def _get_api_url(host: str, path: str, params: dict | None = None) -> str:
     if params:
         query.update(params)
     return f"{host}{path}?{urlencode(query)}"
+
+
+def _is_signature_http_error(error: str) -> bool:
+    return any(status in error for status in _SIGNATURE_HTTP_STATUSES)
+
+
+def _is_signature_error_payload(payload) -> bool:
+    try:
+        text = json.dumps(payload, ensure_ascii=False).lower()
+    except Exception:
+        text = str(payload).lower()
+    return any(marker in text for marker in _SIGNATURE_ERROR_MARKERS)
 
 
 class MovieSummary(BaseModel):
@@ -154,11 +193,12 @@ class JavdbAppCrawler(BaseCrawler):
     @classmethod
     def _normalize_image_url(cls, url: str) -> str:
         normalized = cls._ensure_https(url)
-        if _SMALL_COVERS_SEGMENT in normalized:
-            normalized = normalized.replace(_SMALL_COVERS_SEGMENT, _THUMBS_SEGMENT, 1)
-        for old_prefix in _IMAGE_PREFIX_OLD_LIST:
-            if normalized.startswith(old_prefix):
-                return normalized.replace(old_prefix, _IMAGE_PREFIX_NEW, 1)
+        # 老 App CDN 域名归一到当前 App CDN（路径保持原样，spfcas 自用 small_covers 路径体系）
+        if normalized.startswith(_IMAGE_HOST_LEGACY):
+            normalized = _IMAGE_HOST_APP + normalized[len(_IMAGE_HOST_LEGACY) :]
+        if normalized.startswith(_IMAGE_HOST_APP):
+            # App CDN 响应持续携带当前路径中段，学习后供网页版 URL 无水印变换自愈
+            learn_spfcas_image_segment(normalized)
         return normalized
 
     @staticmethod
@@ -220,16 +260,34 @@ class JavdbAppCrawler(BaseCrawler):
             self._last_request_at = time.monotonic()
 
         last_error = None
+        signature_failures: list[str] = []
         for host in hosts:
             url = _get_api_url(host, path, params)
             try:
                 resp, error = await self.async_client.get_json(url, headers=headers)
-                if resp is not None:
-                    return resp
-                last_error = error
             except Exception as e:
                 last_error = str(e)
                 continue
+
+            if resp is not None:
+                if _is_signature_error_payload(resp):
+                    signature_failures.append(f"{host}: 响应含签名/参数校验错误")
+                    continue
+                return resp
+
+            if error:
+                if _is_signature_http_error(error):
+                    signature_failures.append(f"{host}: {error}")
+                last_error = error
+
+        if signature_failures:
+            detail = "; ".join(signature_failures)
+            self._log(f"签名校验失败: {detail}")
+            raise CrawlerException(
+                f"jdsignature 签名校验失败（{detail}）。签名常量可能已随 JavDB App 更新轮换，"
+                f"请升级 mdcx，或设置环境变量 {_ENV_SIG_PREFIX} / {_ENV_SIG_SUFFIX} / "
+                f"{_ENV_APP_VERSION_NUMBER} 覆盖签名参数后重试"
+            )
 
         self._log(f"API 请求失败: {last_error}")
         return None
@@ -244,7 +302,10 @@ class JavdbAppCrawler(BaseCrawler):
         movie_id = None
         last_error = ""
         for candidate in self._search_candidates(number):
-            search_resp = await self._request_api("/api/v2/search", {"q": candidate, "page": "1"})
+            # type=movie 过滤非影片噪声；limit=50 为服务器上限，提高首页精确命中率
+            search_resp = await self._request_api(
+                "/api/v2/search", {"q": candidate, "page": "1", "type": "movie", "limit": "50"}
+            )
             if not search_resp:
                 last_error = f"{candidate}: 搜索请求失败"
                 continue

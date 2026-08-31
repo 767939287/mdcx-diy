@@ -19,6 +19,7 @@ from ..base.web import (
     _parse_content_length,
     _should_retry_link_error,
     build_jdbstatic_headers,
+    decode_spfcas_image_content,
     is_dmm_image_url,
     is_jdbstatic_image_url,
     log_jdbstatic_request_headers,
@@ -128,6 +129,11 @@ class MediaResourceContext:
 
         if content is None:
             LogBuffer.log().write(f"\n 🟡 图片过大或读取失败: {true_url}")
+            return None
+
+        content = decode_spfcas_image_content(request_url, content)
+        if content is None:
+            LogBuffer.log().write(f"\n 🟡 App CDN 图片解密失败: {true_url}")
             return None
 
         image = FetchedImage(true_url, content, await self._read_size(content))

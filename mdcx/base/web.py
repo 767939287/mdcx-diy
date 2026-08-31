@@ -138,6 +138,114 @@ def is_jdbstatic_image_url(url: str) -> bool:
     return path.endswith((".jpg", ".jpeg", ".png", ".webp", ".gif", ".bmp", ".avif"))
 
 
+# JavDB App 专用图片 CDN：返回单字节 XOR 加密流，解密后为无水印原图
+# 判定按域名而非完整路径——路径中段（如 rhe951l4q）可能随服务端调整变更
+_SPFCAS_IMAGE_HOST = "tp.spfcas.com"
+
+
+def is_spfcas_image_url(url: str) -> bool:
+    normalized = normalize_media_url(url)
+    if normalized.startswith("//"):
+        normalized = "https:" + normalized
+    try:
+        split_result = urlsplit(normalized)
+    except Exception:
+        return False
+
+    if split_result.netloc.lower() != _SPFCAS_IMAGE_HOST:
+        return False
+    return split_result.path.lower().endswith((".jpg", ".jpeg", ".png", ".webp", ".gif", ".bmp", ".avif"))
+
+
+def decrypt_spfcas_image(data: bytes) -> bytes | None:
+    """解密 App CDN 加密流：首字节为 XOR key，其余字节与 key 异或；明文应为 JPEG（FF D8 起始）。
+
+    格式不符（含空输入）返回 None，由调用方判下载失败。
+    """
+    if not data or len(data) < 2:
+        return None
+    key = data[0]
+    table = bytes(i ^ key for i in range(256))
+    plain = data[1:].translate(table)
+    return plain if plain.startswith(b"\xff\xd8") else None
+
+
+def decode_spfcas_image_content(url: str, content: bytes) -> bytes | None:
+    """按 URL 判定解密 App CDN 加密流；非 App CDN 内容原样透传。返回 None 表示解密失败。"""
+    if not is_spfcas_image_url(url):
+        return content
+    return decrypt_spfcas_image(content)
+
+
+# 当前 App CDN 路径中段（可能随服务端调整变更），javdb_app 响应持续学习自愈
+_JDBSTATIC_PRIMARY_HOST = "c0.jdbstatic.com"
+_spfcas_segment_value = "rhe951l4q"
+
+
+def _spfcas_segment() -> str:
+    return _spfcas_segment_value
+
+
+def reset_spfcas_segment_for_test(value: str) -> None:
+    global _spfcas_segment_value
+    _spfcas_segment_value = value
+
+
+def learn_spfcas_image_segment(url: str) -> str:
+    """从 App CDN 图片 URL 学习当前路径中段，供网页版 URL 变换使用；无效 URL 返回空串。"""
+    global _spfcas_segment_value
+    try:
+        path = urlsplit(normalize_media_url(url)).path
+    except Exception:
+        return ""
+    parts = [p for p in path.split("/") if p]
+    if len(parts) >= 2 and parts[0] and parts[1] in ("covers", "small_covers", "samples"):
+        _spfcas_segment_value = parts[0]
+        return parts[0]
+    return ""
+
+
+def jdbstatic_to_spfcas(url: str) -> str:
+    """网页版 CDN（带水印）URL 变换为 App CDN（无水印）URL；形态不符返回空串。
+
+    covers/samples 路径保持，thumbs 映射为 small_covers，插入当前学习到的路径中段。
+    """
+    normalized = normalize_media_url(url)
+    if normalized.startswith("//"):
+        normalized = "https:" + normalized
+    try:
+        split_result = urlsplit(normalized)
+    except Exception:
+        return ""
+    if not split_result.netloc.lower().endswith(_JDBSTATIC_HOST_SUFFIXES):
+        return ""
+    parts = [p for p in split_result.path.split("/") if p]
+    if not parts:
+        return ""
+    if parts[0] == "thumbs":
+        parts[0] = "small_covers"
+    if parts[0] not in ("covers", "small_covers", "samples"):
+        return ""
+    return f"https://{_SPFCAS_IMAGE_HOST}/{_spfcas_segment()}/{'/'.join(parts)}"
+
+
+def spfcas_to_jdbstatic(url: str) -> str:
+    """App CDN URL 逆向变换回网页版 CDN URL（供尺寸探测回退）；形态不符返回空串。"""
+    try:
+        split_result = urlsplit(normalize_media_url(url))
+    except Exception:
+        return ""
+    if split_result.netloc.lower() != _SPFCAS_IMAGE_HOST:
+        return ""
+    parts = [p for p in split_result.path.split("/") if p]
+    if len(parts) < 2 or parts[1] not in ("covers", "small_covers", "samples"):
+        return ""
+    body = parts[1:]
+    if body[0] == "small_covers":
+        body[0] = "thumbs"
+    return f"https://{_JDBSTATIC_PRIMARY_HOST}/{'/'.join(body)}"
+
+
 def build_jdbstatic_headers(url: str) -> dict[str, str]:
     fingerprint = select_fingerprint("javdb.com", purpose="asset")
     headers = build_fingerprint_headers(url, fingerprint=fingerprint, purpose="asset")
@@ -986,6 +1094,24 @@ async def download_file_with_filepath(url: str, file_path: Path, folder_new_path
     # exist_ok 直接吸收并发竞态（多协程同时建同一目录时 check-then-act 必然 FileExistsError）
     await aiofiles.os.makedirs(folder_new_path, exist_ok=True)
     try:
+        if is_spfcas_image_url(url):
+            # App CDN 返回加密流，无法流式直写：取回字节解密后再落盘
+            async with manager.acquire_computed() as computed:
+                content, error = await computed.async_client.get_content(url)
+            if not content:
+                LogBuffer.log().write(f"\n 🥺 Download failed! {url} {error}")
+                return False
+            if len(content) > _IMAGE_DOWNLOAD_MAX_BYTES:
+                LogBuffer.log().write(f"\n 🥺 Download failed! 图片超过大小上限: {url}")
+                return False
+            decrypted = decode_spfcas_image_content(url, content)
+            if decrypted is None:
+                LogBuffer.log().write(f"\n 🥺 Download failed! App CDN 图片解密失败: {url}")
+                return False
+            async with aiofiles.open(file_path, "wb") as f:
+                await f.write(decrypted)
+            return True
+
         async with manager.acquire_computed() as computed:
             if await computed.async_client.download(url, file_path, max_bytes=_IMAGE_DOWNLOAD_MAX_BYTES):
                 return True
@@ -1013,6 +1139,11 @@ async def download_content_with_filepath(url: str, file_path: Path, folder_new_p
             return False
         if len(content) > _IMAGE_DOWNLOAD_MAX_BYTES:
             LogBuffer.log().write(f"\n 🥺 Download failed! 图片超过大小上限: {url}")
+            return False
+
+        content = decode_spfcas_image_content(url, content)
+        if content is None:
+            LogBuffer.log().write(f"\n 🥺 Download failed! App CDN 图片解密失败: {url}")
             return False
 
         is_webp = file_path.suffix.lower() == ".jpg" and ".webp" in url.lower()
@@ -1094,9 +1225,17 @@ async def download_extrafanart_task(task: tuple[str, Path, Path, str]) -> bool:
             normalized_url, extrafanart_file_path, extrafanart_folder_path
         )
     else:
-        downloaded = await download_content_with_filepath(
-            extrafanart_url, extrafanart_file_path, extrafanart_folder_path
-        )
+        # 优先 App CDN 无水印变体（下载层透明解密），失败（含中段过期 404）回退网页版原图
+        downloaded = False
+        spfcas_url = jdbstatic_to_spfcas(extrafanart_url)
+        if spfcas_url:
+            downloaded = await download_content_with_filepath(
+                spfcas_url, extrafanart_file_path, extrafanart_folder_path
+            )
+        if not downloaded:
+            downloaded = await download_content_with_filepath(
+                extrafanart_url, extrafanart_file_path, extrafanart_folder_path
+            )
 
     if downloaded:
         if await check_pic_async(extrafanart_file_path):
