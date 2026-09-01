@@ -11,10 +11,12 @@
   - 改动前说明内容与原因；用户明确要求提交/推送后才执行，绝不擅自操作。直接在当前分支操作。
   - 每次代码改动后跑 `uv run quick-check`；提交前跑 `uv run check --skip-hook-install` 并确认退出码。仅改 `docs/*.md` 或本文件时只需 `git diff --check`。**全绿判定必须"退出码 + 显式 grep 错误行"双确认**：`grep -E "\.py:[0-9]+: error|Found [0-9]+ error"` 无输出才算过——H2 提交时 mypy 错误行被 `tail` 截断、退出码 grep 又漏检，误判全绿推上去 CI 连挂三次（2026-08-30 教训）。`scripts/` 下的脚本同样在 check 范围内（ruff format/check），写完临时脚本入库前必须先格式化。
   - 提交前必看 `git status` 全部未跟踪文件：程序运行时残留与脚本中间产物（如 `_failed.json`、`amazon_asin_manual_review_*.xlsx`）不得 `git add -A` 入库，应先 `.gitignore` 排除再单独清理（2026-08-27 误提交后补救的教训）。
+  - **模块级带值注解的版本差异**（2026-09-01 CI 事故）：`x: T | None = None` 形态的模块级注解在 Python 3.13 **立即求值**，3.14 才默认延迟（PEP 649）——本地 3.14 全绿掩盖 CI 3.13 的 NameError，collect 阶段拉挂 10 个测试文件。模块级单例声明一律用无注解赋值 + 注释说明类型；函数签名注解本就是字符串/def 时按需处理不受影响。"本地全绿≠CI 通过"教训链的新维度：**版本语义差异**（此前是 mypy 输出被 tail 截断）。
   - 不装 pre-commit；提交前更新 `docs/changelog.md` 当前版本条目并合并同类。**版本号归属用户**：不得擅自新开版本号段落（如 v2.0.8），条目一律追加进当前进行中的版本小节（2026-08-28 用户指正）。
   - 站点/爬虫/配置改动须同步检查：UI 文案（启动文字 main_window.py、.ui）、README、`docs/*.md`、爬虫总数（`crawler_names()` 长度）、**`config/migrations.py` 旧值清洗**。删站点漏写迁移的后果是旧配置 pydantic 校验整体失败 → 配置被写入 `_failed.json` 且界面回写被跳过，用户表现为"保存不生效"（2026-08 删 15 站漏迁移，一个月后才由议题 #55 带出）。
   - 文档/UI 中写死数字或清单前必须先 grep 代码核实，禁止凭记忆。高频漂移锚点（2026-08 核查实证）：默认网站源顺序（`config/models.py` ↔ `resources/config/default_config.json`，`test_config_conversion.py::test_config_default_site_priorities_follow_current_frontend_defaults` 锁定，改注释勿动枚举）、代理域名列表（`Config.proxy_sites`）、命名变量表（`core/naming/fields.py::FIELD_DESCRIPTIONS`）、设置 Tab 名（tabWidget.setTabText）、水印行为（`MarkType` 徽标+角落轮转，无文字水印）、字段优先级数（`manual.py::REDUCED_FIELDS`）、演员库列（`resources.py::DB_HEADERS`）、指纹池（`network_fingerprint.py`，默认 7/Amazon 6，无令牌桶限流）、主窗口行数（`wc -l controllers/main_window/*.py`）。
   - **长时间运行任务的标准做法**（2026-08-28 用户强调）：① 一律用 `background_terminal_create` 建后台终端执行，不许用普通 bash；② 必须实现断点续传（checkpoint state 持久化到磁盘，重启后从断点续跑）；③ 分批处理，批间落盘；④ 用外层 wrapper 每 50 分钟自动重启进程（规避云环境超时杀进程）；⑤ 执行期间监测进度，定期主动汇报，用户询问时能立即给出。**判进度看 state/批次产物文件，别看后台终端日志**——wrapper 外挂 `tail` 管道时子进程 stdout 全缓冲，日志可能长时间 0 字节造成"卡死"假象（libredmm 抓取实测：state 与 batch 正常推进而终端日志空）；进度落盘文件（progress json）按小间隔写，供随时汇报。
+  - **功能移除类需求先调研证据再答**（2026-09-01，Emby 管理器/NFO 库管理案例）：用户转述"好多用户说没必要"要求移除功能时，先查三件事——活跃度证据（近期是否还有该功能的 bug 修复/议题）、底层共享模块是否被主流程依赖（emby_shared/emby_actor_info 被 scraper 主刮削链引用，删壳子删不干净）、移除成本（UI 整页+槽函数+重生成）。本次调研结论"不建议删"被用户接受；转述的用户声音与实际使用证据矛盾时以代码证据为准。
 
 ## GitHub 议题处理
 
@@ -39,6 +41,7 @@
   - 结构约束类修复（要求某调用必须在/不在某条件分支内）用 AST 哨兵测试锁定位置，行为测试覆盖不到。写完必须拿**修复前的代码片段**反向喂哨兵确认能判定失败，否则哨兵可能恒真（先例：`tests/test_actor_mapping_decoupled.py`、`tests/test_issue55_memory_leak.py`）。
   - conftest 用 dummy 模块替换了 `mdcx.config.manager`、`mdcx.config.resources`、`mdcx.signals`，测试内无法 import 这些模块的真实类；需要检查其源码结构时直接读文件做 AST 解析。**写独立验证脚本时须在 import mdcx 前手工注入同样的 dummy**（`types.ModuleType` + `manager`/`resources`/`signal` 属性），否则 ImportError。
   - 用 subagent 做大范围根因排查时，要求它输出"已排除的假设清单 + 每条排除理由"，比只给可疑点更有价值——可直接写进议题回帖，也能防止自己重复走同一条死路。**subagent 标注"已验证"的结论同样不可直接采信**（2026-08-29 实证：22 项宣称 11 项编造/夸大——引用了不存在的方法 `_return_session`、死锁模型把两个独立线程池当成一个、描述了不存在的 API 签名）。自己修复前必须用独立复现脚本重现每一条，"半数编造"的审查报告曾导致整批修复被撤销重做（4fc9546→6a47ec2）。
+  - **外部探测/爬取任务的错误监控必须先分类错误构成再设告警阈值**（2026-09-01 DMM 覆盖实测事故）：404 在爬虫场景是"未收录"业务常态、占失败主部属预期值——把它计入错误率后 84% "异常"引发误判链（降并发、误回滚 1150 行有效数据、三轮冷却折腾）。真实限流信号只有 403/429/连接异常。新探测任务上线先跑小样本看错误构成分布，区分"预期内未命中"与"异常失败"再定熔断口径。另：单 host 批量探测的速率天花板是站点侧吞吐（awsimgsrc ~17 req/s 拐点即 6000 行/小时），提速靠减少请求数（达标即停/跳缩略图）而非加并发——加并发触发的是站点保护。
   - 大范围多文件改动后撤回用 `git revert --no-commit <多个提交>` 合并成单个撤销提交，历史可追溯且不强推。
 
 ## 并发与网络库行为（实测实证）

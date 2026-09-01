@@ -4,6 +4,7 @@ Amazon ASIN 数据库保存功能
 """
 
 import asyncio
+import threading
 from datetime import datetime
 from pathlib import Path
 from typing import TypedDict
@@ -20,6 +21,87 @@ class AsinRecord(TypedDict, total=False):
     title: str  # 商品标题
     poster_url: str  # 封面图片 URL
     search_keyword: str  # 搜索关键词
+
+
+# ============================================================
+# 查询索引缓存：避免每次查询都全量解析 4 万行 xlsx
+# 首次查询建索引（number/asin 双索引），此后命中内存；
+# 文件 mtime 变化（写入/合并）后自动失效重建
+# ============================================================
+
+_asin_index_lock = threading.Lock()
+_asin_index_cache: dict[Path, dict] = {}
+
+
+def invalidate_asin_cache(excel_path: Path | None = None) -> None:
+    """失效查询索引缓存（写入/合并 ASIN 库后调用）；无参清空全部。"""
+    with _asin_index_lock:
+        if excel_path is None:
+            _asin_index_cache.clear()
+        else:
+            _asin_index_cache.pop(Path(excel_path), None)
+
+
+def _get_asin_index(excel_path: Path) -> dict | None:
+    """取查询索引；文件变化或未建时重建，文件缺失/解析失败返回 None。"""
+    import openpyxl
+
+    path = Path(excel_path)
+    try:
+        mtime = path.stat().st_mtime_ns
+    except OSError:
+        with _asin_index_lock:
+            _asin_index_cache.pop(path, None)
+        return None
+
+    with _asin_index_lock:
+        cached = _asin_index_cache.get(path)
+        if cached is not None and cached["mtime"] == mtime:
+            return cached
+
+    # 锁外解析（openpyxl 慢），解析完成后再入缓存并复核 mtime
+    number_index: dict[str, list[AsinRecord]] = {}
+    asin_index: dict[str, list[AsinRecord]] = {}
+    try:
+        wb = openpyxl.load_workbook(path, read_only=True, data_only=True)
+        try:
+            ws = wb.active
+            for row_idx, row in enumerate(ws.iter_rows(values_only=True), start=1):
+                if row_idx == 1 or len(row) < 6:
+                    continue
+                record = AsinRecord(
+                    number=str(row[0] or ""),
+                    asin=str(row[1] or ""),
+                    product_url=str(row[2] or ""),
+                    title=str(row[3] or ""),
+                    poster_url=str(row[4] or ""),
+                    search_keyword=str(row[5] or ""),
+                )
+                if record["number"]:
+                    number_index.setdefault(record["number"].upper(), []).append(record)
+                if record["asin"]:
+                    asin_index.setdefault(record["asin"].upper(), []).append(record)
+        finally:
+            wb.close()
+    except Exception as e:
+        from ..models.log_buffer import LogBuffer
+
+        LogBuffer.log().write(f"  ⚠️ [ASIN 数据库] 读取失败：{e}")
+        return None
+
+    try:
+        mtime_after = path.stat().st_mtime_ns
+    except OSError:
+        return None
+
+    index = {"mtime": mtime_after, "number": number_index, "asin": asin_index}
+    with _asin_index_lock:
+        # 复核期间文件又被改动则放弃本次结果（下次查询重建）
+        if mtime_after == mtime:
+            _asin_index_cache[path] = index
+        else:
+            _asin_index_cache.pop(path, None)
+    return index
 
 
 def _get_default_excel_path() -> Path:
@@ -435,7 +517,7 @@ async def query_asin_database(
         results = await query_asin_database(asin="B0000001")
     """
     try:
-        import openpyxl
+        import openpyxl  # noqa: F401  # 缓存路径同样依赖 openpyxl，提前探测给出明确提示
     except ImportError:
         from ..models.log_buffer import LogBuffer
 
@@ -445,43 +527,16 @@ async def query_asin_database(
     if excel_path is None:
         excel_path = _get_default_excel_path()
 
-    if not excel_path.exists():
+    excel_path = Path(excel_path)
+    index = _get_asin_index(excel_path)
+    if index is None:
         return []
 
-    results: list[AsinRecord] = []
-
-    try:
-        wb = openpyxl.load_workbook(excel_path, read_only=True, data_only=True)
-        ws = wb.active
-
-        for row_idx, row in enumerate(ws.iter_rows(values_only=True), start=1):
-            if row_idx == 1:
-                continue
-
-            if len(row) < 6:
-                continue
-
-            record = AsinRecord(
-                number=str(row[0] or ""),
-                asin=str(row[1] or ""),
-                product_url=str(row[2] or ""),
-                title=str(row[3] or ""),
-                poster_url=str(row[4] or ""),
-                search_keyword=str(row[5] or ""),
-            )
-
-            if number and str(record.get("number", "")).upper() == number.upper():
-                results.append(record)
-            elif asin and str(record.get("asin", "")).upper() == asin.upper():
-                results.append(record)
-
-        wb.close()
-    except Exception as e:
-        from ..models.log_buffer import LogBuffer
-
-        LogBuffer.log().write(f"  ⚠️ [ASIN 数据库] 读取失败：{e}")
-
-    return results
+    if number:
+        return list(index["number"].get(number.upper(), []))
+    if asin:
+        return list(index["asin"].get(asin.upper(), []))
+    return []
 
 
 async def export_asin_statistics(

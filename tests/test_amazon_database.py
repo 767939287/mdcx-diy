@@ -301,6 +301,8 @@ async def test_query_asin_database_logs_read_failure(monkeypatch, _tmp_asin_db):
         raise RuntimeError("boom")
 
     monkeypatch.setattr(openpyxl, "load_workbook", _raise_runtime_error)
+    # 失效缓存强制走重建路径（缓存命中时不读文件属预期优化行为）
+    amazon_database.invalidate_asin_cache(_tmp_asin_db)
     LogBuffer.log().clear()
 
     results = await amazon_database.query_asin_database(number="ABC-123", excel_path=_tmp_asin_db)
