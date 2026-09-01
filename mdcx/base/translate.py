@@ -206,8 +206,8 @@ async def _llm_translate(text: str, prompt_template: str, target_language: str =
     return result
 
 
-_llm_translate_cache: LLMTranslateCache | None = None
-_llm_translate_cache_fingerprint: tuple | None = None
+_llm_translate_cache = None  # LLMTranslateCache | None（3.13 兼容：注解不求值）
+_llm_translate_cache_fingerprint = None
 
 
 def _reset_llm_translate_cache_for_test() -> None:
