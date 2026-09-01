@@ -49,6 +49,7 @@ def test_config_update_ignores_legacy_youdao_translator():
 async def test_llm_translate_uses_separate_prompts(monkeypatch: pytest.MonkeyPatch):
     from mdcx.base import translate as base_translate
 
+    base_translate._reset_llm_translate_cache_for_test()
     cfg = base_translate.manager.config.translate_config
     monkeypatch.setattr(cfg, "llm_prompt_title", "TITLE::{content}::{lang}")
     monkeypatch.setattr(cfg, "llm_prompt_outline", "OUTLINE::{content}::{lang}")
@@ -69,6 +70,7 @@ async def test_llm_translate_uses_separate_prompts(monkeypatch: pytest.MonkeyPat
 async def test_llm_translate_normalizes_literal_linebreaks(monkeypatch: pytest.MonkeyPatch):
     from mdcx.base import translate as base_translate
 
+    base_translate._reset_llm_translate_cache_for_test()
     cfg = base_translate.manager.config.translate_config
     monkeypatch.setattr(cfg, "llm_prompt_title", "TITLE::{content}")
     monkeypatch.setattr(cfg, "llm_prompt_outline", "OUTLINE::{content}")
@@ -91,6 +93,7 @@ async def test_llm_translate_normalizes_literal_linebreaks(monkeypatch: pytest.M
 async def test_llm_translate_normalizes_br_tags(monkeypatch: pytest.MonkeyPatch):
     from mdcx.base import translate as base_translate
 
+    base_translate._reset_llm_translate_cache_for_test()
     cfg = base_translate.manager.config.translate_config
     monkeypatch.setattr(cfg, "llm_prompt_title", "TITLE::{content}")
     monkeypatch.setattr(cfg, "llm_prompt_outline", "OUTLINE::{content}")

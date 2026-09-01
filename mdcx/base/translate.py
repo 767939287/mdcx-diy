@@ -5,7 +5,7 @@ import random
 import re
 import time
 from dataclasses import dataclass
-from typing import Literal, cast
+from typing import TYPE_CHECKING, Literal, cast
 from urllib.parse import quote
 
 from ..config.enums import Language
@@ -13,6 +13,9 @@ from ..config.manager import manager
 from ..config.models import Translator
 from ..signals import signal
 from ..utils.language import is_probably_english_for_translation
+
+if TYPE_CHECKING:
+    from ..core.llm_translate_cache import LLMTranslateCache
 
 
 @dataclass(slots=True)
@@ -168,7 +171,7 @@ def _normalize_translated_linebreaks(text: str) -> str:
 
 
 async def _llm_translate(text: str, prompt_template: str, target_language: str = "简体中文") -> str | None:
-    """调用 LLM 翻译文本"""
+    """调用 LLM 翻译文本（带同批次缓存：相同文本复用译文，并发请求合并）"""
     if not text:
         return ""
     translate_config = manager.config.translate_config
@@ -177,19 +180,57 @@ async def _llm_translate(text: str, prompt_template: str, target_language: str =
         from ..llm import get_disable_thinking_extra_body
 
         extra_body = get_disable_thinking_extra_body(str(translate_config.llm_url))
-    async with manager.acquire_computed() as computed:
-        translated = await computed.llm_client.ask(
-            model=translate_config.llm_model,
-            system_prompt="You are a professional translator.",
-            user_prompt=prompt_template.replace("{content}", text).replace("{lang}", target_language),
-            temperature=translate_config.llm_temperature,
-            max_try=translate_config.llm_max_try,
-            log_fn=signal.add_log,
-            extra_body=extra_body,
-        )
-    if translated is None:
+
+    cache = _get_llm_translate_cache()
+    key = cache.make_key(prompt_template, target_language, text)
+
+    async def _do_translate() -> str | None:
+        async with manager.acquire_computed() as computed:
+            translated = await computed.llm_client.ask(
+                model=translate_config.llm_model,
+                system_prompt="You are a professional translator.",
+                user_prompt=prompt_template.replace("{content}", text).replace("{lang}", target_language),
+                temperature=translate_config.llm_temperature,
+                max_try=translate_config.llm_max_try,
+                log_fn=signal.add_log,
+                extra_body=extra_body,
+            )
+        if translated is None:
+            return None
+        return _normalize_translated_linebreaks(translated)
+
+    cached_hit = cache.get_or_translate(key, _do_translate)
+    result = await cached_hit
+    if result is None:
         return None
-    return _normalize_translated_linebreaks(translated)
+    return result
+
+
+_llm_translate_cache: LLMTranslateCache | None = None
+_llm_translate_cache_fingerprint: tuple | None = None
+
+
+def _reset_llm_translate_cache_for_test() -> None:
+    """测试隔离钩子：清空 LLM 翻译缓存单例（生产代码不应调用）"""
+    global _llm_translate_cache
+    _llm_translate_cache = None
+
+
+def _get_llm_translate_cache() -> "LLMTranslateCache":
+    """LLM 翻译缓存单例（进程内同批次/重刮场景复用）。
+
+    缓存绑定配置指纹（model/url/关闭思考开关）：切换模型或服务商后自动失效重建，
+    避免命中旧配置产出的译文。
+    """
+    global _llm_translate_cache, _llm_translate_cache_fingerprint
+    from ..core.llm_translate_cache import LLMTranslateCache
+
+    config = manager.config.translate_config
+    fingerprint = (str(config.llm_model), str(config.llm_url), bool(config.llm_disable_thinking))
+    if _llm_translate_cache is None or _llm_translate_cache_fingerprint != fingerprint:
+        _llm_translate_cache = LLMTranslateCache()
+        _llm_translate_cache_fingerprint = fingerprint
+    return _llm_translate_cache
 
 
 async def llm_translate(title: str, outline: str, target_language: str = "简体中文"):
