@@ -1,0 +1,44 @@
+name: Build Linux Executable
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.13
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          activate-environment: true
+
+      - name: Install dependencies
+        shell: bash
+        run: |
+          if ! uv sync --locked --all-extras --dev 2>/dev/null; then
+            echo "Lock file out of date, running uv lock..."
+            uv lock
+            uv sync --all-extras --dev
+          fi
+
+      - name: Build Linux Executable
+        env:
+          PYTHONIOENCODING: utf-8
+        shell: bash
+        run: |
+          version=$(uv run python -c "from mdcx.consts import LOCAL_VERSION; print(LOCAL_VERSION)")
+          uv run scripts/build.py --version "${version//[[:space:]]/}" --debug
+
+      - name: Upload Binary artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: MDCx-Linux-Executable
+          path: dist/MDCx
