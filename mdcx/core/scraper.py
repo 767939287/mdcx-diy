@@ -266,6 +266,11 @@ class Scraper:
         task_count = len(movie_list)
         Flags.total_count = task_count
 
+        # 进度速率估算（纯呈现层：滑动窗口速率 → 预计剩余时间）
+        from .scrape_progress import ScrapeRateEstimator
+
+        self._rate_estimator = ScrapeRateEstimator(task_count)
+
         if task_count:
             Flags.count_claw = await Flags.increment("count_claw")
             if manager.config.main_mode == 4:
@@ -316,6 +321,11 @@ class Scraper:
         )
         signal.show_log_text("================================================================================")
         if Flags.failed_list:
+            from .fail_reason_stats import format_failed_summary
+
+            summary = format_failed_summary([(str(p), str(r)) for p, r in Flags.failed_list])
+            if summary:
+                signal.show_log_text(summary)
             signal.show_log_text("    *** Failed results ****")
             for i in range(len(Flags.failed_list)):
                 fail_path, fail_reson = Flags.failed_list[i]
@@ -600,7 +610,14 @@ class Scraper:
             if Flags.scrape_started == count_all:
                 signal.show_log_text(f" 🕷 剩余正在刮削的线程：{remain_count}")
             signal.label_result.emit(f" 刮削中：{remain_count} 成功：{Flags.succ_count} 失败：{Flags.fail_count}")
-            signal.show_scrape_info(f"🔎 已刮削 {count}/{count_all}")
+            from .scrape_progress import append_eta
+
+            estimator = getattr(self, "_rate_estimator", None)
+            if estimator is not None:
+                estimator.record_done()
+                signal.show_scrape_info(append_eta(f"🔎 已刮削 {count}/{count_all}", estimator))
+            else:
+                signal.show_scrape_info(f"🔎 已刮削 {count}/{count_all}")
         except Exception as e:
             self._check_stop(show_name)
             signal.show_traceback_log(traceback.format_exc())
