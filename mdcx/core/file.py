@@ -32,6 +32,19 @@ from .mosaic import normalize_mosaic
 from .naming import FIELD_DESCRIPTIONS, NameRenderOptions, NamingTarget, render_name
 
 
+def _is_invalid_name_error(error: BaseException) -> bool:
+    """判断是否为 Windows 非法文件名错误（WinError 123）。
+
+    映射云盘（115/夸克等）对单个文件夹名的长度或字符限制比本地 NTFS 严，目录名超限时
+    系统会返回 ERROR_INVALID_NAME(123)。旧逻辑把这类失败笼统报成"权限不足"，误导用户
+    去查权限，实际应提示目标盘对文件夹名的限制（议题 #96）。
+    """
+    if getattr(error, "winerror", None) == 123:
+        return True
+    text = str(error)
+    return "WinError 123" in text or "文件名、目录名或卷标语法不正确" in text
+
+
 def _has_umr_suffix_marker(file_name: str, movie_number: str) -> bool:
     normalized_name = remove_escape_string(file_name, "-").upper()
     normalized_number = movie_number.upper()
@@ -88,7 +101,12 @@ async def creat_folder(
         except Exception as e:
             if not await aiofiles.os.path.exists(folder_new_path):
                 LogBuffer.log().write(f"\n 🔴 创建目录失败! \n    {e!s}")
-                if len(str(folder_new_path)) > 250:
+                if _is_invalid_name_error(e):
+                    # 网盘/映射盘对单个文件夹名的长度或字符限制比本地 NTFS 严，超限被
+                    # 系统映射成 WinError 123；不能再报"权限不足"（议题 #96）。
+                    LogBuffer.log().write("目标盘可能限制文件夹名的长度或字符！")
+                    LogBuffer.error().write("创建文件夹失败！目标盘可能限制文件夹名的长度或字符！")
+                elif len(str(folder_new_path)) > 250:
                     LogBuffer.log().write("可能是目录名过长！")
                     LogBuffer.error().write("创建文件夹失败！可能是目录名过长！")
                 else:

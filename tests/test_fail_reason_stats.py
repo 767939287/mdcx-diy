@@ -18,6 +18,8 @@ def test_classify_covers_common_failure_texts():
     assert classify_fail_reason("Cloudflare 挑战页") == "被拦截"
     assert classify_fail_reason("HTTP 403") == "被拦截"
     assert classify_fail_reason("详情响应解析失败") == "解析失败"
+    assert classify_fail_reason("创建文件夹失败！目标盘可能限制文件夹名的长度或字符！") == "目录名无效或过长"
+    assert classify_fail_reason("创建文件夹失败！可能是目录名过长！") == "目录名无效或过长"
     assert classify_fail_reason("完全没见过的错误形态") == "其他错误"
     assert classify_fail_reason("") == "其他错误"
 
@@ -62,4 +64,5 @@ def test_hint_matches_each_head_category():
     assert "线程" in format_failed_summary([("a", "HTTP 429")]).splitlines()[1]
     assert "网站" in format_failed_summary([("a", "站点未收录")]).splitlines()[1]
     assert "番号" in format_failed_summary([("a", "获取番号失败")]).splitlines()[1]
+    assert "目录名最大长度" in format_failed_summary([("a", "目标盘可能限制文件夹名的长度或字符")]).splitlines()[1]
     assert "重试" in format_failed_summary([("a", "完全未知的错误")]).splitlines()[1]
