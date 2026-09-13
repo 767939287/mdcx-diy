@@ -784,7 +784,9 @@ class Scraper:
         try:
             return await self._process_one_file_with_context(file_info, file_mode, media_context)
         finally:
-            media_context.close()
+            # aclose 而非同步 close：cancel 共享图片任务后必须等其 finally
+            # 跑完响应收尾，否则协程退出时报 "Task was destroyed but it is pending!"（议题 #98）
+            await media_context.aclose()
 
     async def _process_one_file_with_context(
         self,

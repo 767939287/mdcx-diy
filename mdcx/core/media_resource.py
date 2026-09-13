@@ -67,6 +67,7 @@ class MediaResourceContext:
         self._validated_image_urls: dict[str, str | None] = {}
 
     def close(self) -> None:
+        """同步清理。异步收尾请用 aclose()——close() 无法等待共享图片任务终结。"""
         self._images.clear()
         for task in self._image_fetch_tasks.values():
             if not task.done():
@@ -75,6 +76,22 @@ class MediaResourceContext:
         self._image_sizes.clear()
         self._content_lengths.clear()
         self._validated_image_urls.clear()
+
+    async def aclose(self) -> None:
+        """异步清理：cancel 全部共享图片任务并等待其真正终结（议题 #98）。
+
+        fetch_image 用 asyncio.shield 共享任务，只 cancel 不 await 的话，
+        任务在 finally 里的响应收尾（_close_response）还没跑完协程就退出，
+        会产生 "Task was destroyed but it is pending!"。返回时保证本上下文
+        派生的图片任务全部终结，异常就地消费不外抛。
+        """
+        tasks = list(self._image_fetch_tasks.values())
+        for task in tasks:
+            if not task.done():
+                task.cancel()
+        if tasks:
+            await asyncio.gather(*tasks, return_exceptions=True)
+        self.close()
 
     @staticmethod
     def normalize_url(url: str) -> str:
