@@ -126,18 +126,18 @@ class MediaResourceContext:
             response, error = await client.request("GET", request_url, stream=True, headers=headers)
             if response is None:
                 if error:
-                    LogBuffer.log().write(f"\n 🟡 图片读取失败: {error}")
+                    LogBuffer.web().write(f"\n 🟡 图片读取失败: {error}")
                 return None
 
             true_url = normalize_media_url(str(response.url), strip_dmm_probe_params=added_probe)
             try:
                 if self._is_invalid_image_url(normalized_url, true_url):
-                    LogBuffer.log().write(f"\n 💡 图片已失效: {true_url}")
+                    LogBuffer.web().write(f"\n 💡 图片已失效: {true_url}")
                     return None
 
                 declared_size = _parse_content_length(_get_header(response.headers, "Content-Length"))
                 if declared_size is not None and declared_size > _IMAGE_DOWNLOAD_MAX_BYTES:
-                    LogBuffer.log().write(f"\n 🟡 图片过大，已跳过: {true_url} ({declared_size} bytes)")
+                    LogBuffer.web().write(f"\n 🟡 图片过大，已跳过: {true_url} ({declared_size} bytes)")
                     return None
 
                 content = await self._read_stream_content(response)
@@ -145,12 +145,12 @@ class MediaResourceContext:
                 await client._close_response(response)
 
         if content is None:
-            LogBuffer.log().write(f"\n 🟡 图片过大或读取失败: {true_url}")
+            LogBuffer.web().write(f"\n 🟡 图片过大或读取失败: {true_url}")
             return None
 
         content = decode_spfcas_image_content(request_url, content)
         if content is None:
-            LogBuffer.log().write(f"\n 🟡 App CDN 图片解密失败: {true_url}")
+            LogBuffer.web().write(f"\n 🟡 App CDN 图片解密失败: {true_url}")
             return None
 
         image = FetchedImage(true_url, content, await self._read_size(content))
@@ -214,13 +214,13 @@ class MediaResourceContext:
             response, error = await client.request("GET", request_url, stream=True, headers=headers)
             if response is None:
                 if error:
-                    LogBuffer.log().write(f"\n 🟡 图片尺寸探测失败: {error}")
+                    LogBuffer.web().write(f"\n 🟡 图片尺寸探测失败: {error}")
                 return 0, 0
 
             true_url = normalize_media_url(str(response.url), strip_dmm_probe_params=added_probe)
             try:
                 if self._is_invalid_image_url(normalized_url, true_url):
-                    LogBuffer.log().write(f"\n 💡 图片已失效: {true_url}")
+                    LogBuffer.web().write(f"\n 💡 图片已失效: {true_url}")
                     self._image_sizes[cache_key] = (0, 0)
                     return 0, 0
                 if not added_probe and (

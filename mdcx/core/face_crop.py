@@ -69,7 +69,7 @@ def _download_face_model(model_path: Path) -> bool:
             with tmp_path.open("wb") as fp:
                 fp.write(response.read())
         tmp_path.replace(model_path)
-        LogBuffer.log().write("\n 🖼 人脸识别模型已自动缓存")
+        LogBuffer.web().write("\n 🖼 人脸识别模型已自动缓存")
         return True
     except (OSError, URLError, ValueError):
         if tmp_path.exists():
@@ -90,7 +90,7 @@ def _log_face(message: str, log_fn=None) -> None:
     if log_fn is not None:
         log_fn(message)
     else:
-        LogBuffer.log().write(message)
+        LogBuffer.web().write(message)
 
 
 def _load_yunet_model() -> Path | None:
@@ -102,7 +102,7 @@ def _load_yunet_model() -> Path | None:
             model_path.unlink()
         except OSError:
             pass
-        LogBuffer.log().write("\n 🖼 人脸裁剪: 检测到 LFS 占位模型，准备重新下载")
+        LogBuffer.web().write("\n 🖼 人脸裁剪: 检测到 LFS 占位模型，准备重新下载")
     if _download_face_model(model_path):
         return model_path
     return None

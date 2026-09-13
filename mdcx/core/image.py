@@ -134,7 +134,7 @@ def cut_thumb_to_poster(
     log_fn=None,
 ):
     start_time = time.time()
-    log = log_fn or LogBuffer.log().write
+    log = log_fn or LogBuffer.web().write
     if os.path.exists(poster_path):
         delete_file_sync(poster_path)
 

@@ -331,9 +331,9 @@ def _tmdb_debug_enabled() -> bool:
 def _tmdb_log_line(message: str) -> None:
     """Write one TMDB log entry as a separate line."""
     if message.startswith("\n"):
-        LogBuffer.log().write(message)
+        LogBuffer.web().write(message)
     else:
-        LogBuffer.log().write(f"\n{message}")
+        LogBuffer.web().write(f"\n{message}")
 
 
 # ============= HTTP 适配器 =============
@@ -644,7 +644,7 @@ def _format_db_worksheet(ws) -> None:
                     tmdb_cell.style = "Hyperlink"
                     tmdb_cell.hyperlink = tmdb_val
     except Exception as e:
-        LogBuffer.log().write(f"  ⚠️ [演员数据库] 工作表格式化失败: {e}")
+        LogBuffer.web().write(f"  ⚠️ [演员数据库] 工作表格式化失败: {e}")
 
 
 def _norm_name_set(names: list[str]) -> set[str]:
@@ -724,9 +724,9 @@ async def load_actor_db() -> dict[str, dict]:
     try:
         return read_actor_db_xlsx(db_path)
     except ImportError:
-        LogBuffer.log().write("  ⚠️ [演员数据库] 缺少 openpyxl，无法读取 actor_database.xlsx")
+        LogBuffer.web().write("  ⚠️ [演员数据库] 缺少 openpyxl，无法读取 actor_database.xlsx")
     except Exception as e:
-        LogBuffer.log().write(f"  ⚠️ [演员数据库] 读取失败: {e}")
+        LogBuffer.web().write(f"  ⚠️ [演员数据库] 读取失败: {e}")
     return {}
 
 
@@ -936,7 +936,7 @@ async def migrate_xml_to_xlsx() -> bool:
                                     old_tmdb_cache[name] = int(tid)
                         wb.close()
                     except Exception:
-                        LogBuffer.log().write("  ⚠️ [演员数据库] 旧版 tmdbid xlsx 读取失败，跳过迁移")
+                        LogBuffer.web().write("  ⚠️ [演员数据库] 旧版 tmdbid xlsx 读取失败，跳过迁移")
 
                 import openpyxl
 
@@ -977,9 +977,9 @@ async def migrate_xml_to_xlsx() -> bool:
                 wb.save(db_path)
                 wb.close()
                 migrated = True
-                LogBuffer.log().write(f"  ℹ️ [演员数据库] 已从 XML 迁移 {len(actor_objects)} 条记录")
+                LogBuffer.web().write(f"  ℹ️ [演员数据库] 已从 XML 迁移 {len(actor_objects)} 条记录")
     except Exception as e:
-        LogBuffer.log().write(f"  ⚠️ [演员数据库] 迁移失败: {e}")
+        LogBuffer.web().write(f"  ⚠️ [演员数据库] 迁移失败: {e}")
 
     return migrated
 
@@ -1054,7 +1054,7 @@ async def _fetch_actor_tmdb_ids_locked(actors: list[str], client: Any) -> dict[s
     except ImportError:
         import traceback
 
-        LogBuffer.log().write(f"[tmdb_actor] openpyxl 导入失败: {traceback.format_exc()}")
+        LogBuffer.web().write(f"[tmdb_actor] openpyxl 导入失败: {traceback.format_exc()}")
 
     for actor in actors:
         if not actor or not actor.strip():
@@ -1401,7 +1401,7 @@ async def _fetch_person_translations(pid: int, base_url: str, api_key: str, clie
     except Exception:
         import traceback
 
-        LogBuffer.log().write(f"[tmdb_actor] 更新翻译失败: {traceback.format_exc()}")
+        LogBuffer.web().write(f"[tmdb_actor] 更新翻译失败: {traceback.format_exc()}")
 
     return result
 
@@ -1518,7 +1518,7 @@ async def fetch_libredmm_link(actor_name: str) -> str:
     except Exception:
         import traceback
 
-        LogBuffer.log().write(f"[tmdb_actor] LibreDMM 查询失败: {traceback.format_exc()}")
+        LogBuffer.web().write(f"[tmdb_actor] LibreDMM 查询失败: {traceback.format_exc()}")
         return ""
     finally:
         await _libredmm_rate_limiter.finish(status_code)
@@ -1586,7 +1586,7 @@ async def migrate_info_xml_to_xlsx() -> bool:
         try:
             import openpyxl
         except ImportError:
-            LogBuffer.log().write("  ⚠️ [信息映射表] 缺少 openpyxl 库，无法迁移")
+            LogBuffer.web().write("  ⚠️ [信息映射表] 缺少 openpyxl 库，无法迁移")
             return False
 
         wb = openpyxl.Workbook()
@@ -1622,8 +1622,8 @@ async def migrate_info_xml_to_xlsx() -> bool:
 
         wb.save(db_path)
         wb.close()
-        LogBuffer.log().write(f"  ℹ️ [信息映射表] 已从 XML 迁移 {len(info_objects)} 条记录")
+        LogBuffer.web().write(f"  ℹ️ [信息映射表] 已从 XML 迁移 {len(info_objects)} 条记录")
         return True
     except Exception as e:
-        LogBuffer.log().write(f"  ⚠️ [信息映射表] 迁移失败: {e}")
+        LogBuffer.web().write(f"  ⚠️ [信息映射表] 迁移失败: {e}")
         return False

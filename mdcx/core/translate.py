@@ -310,7 +310,7 @@ async def translate_title_outline(json_data: CrawlersResult, cd_part: str, movie
         start_time = time.time()
         translate_by_list = manager.config.translate_config.translate_by.copy()
         if not translate_by_list:
-            LogBuffer.log().write("\n 🟡 Translation skipped: 未配置任何翻译引擎")
+            LogBuffer.web().write("\n 🟡 Translation skipped: 未配置任何翻译引擎")
         else:
             random.shuffle(translate_by_list)
             skipped_engines = []
@@ -341,7 +341,7 @@ async def translate_title_outline(json_data: CrawlersResult, cd_part: str, movie
                 break
             else:
                 if all(get_translator_skip_reason(e) for e in translate_by_list):
-                    LogBuffer.log().write(
+                    LogBuffer.web().write(
                         f"\n 🟡 Translation skipped: {', '.join(skipped_engines)}({get_used_time(start_time)}s)"
                     )
                 else:

@@ -657,16 +657,9 @@ class Scraper:
             scrape_info_begin = f"{count:d}/{count_all:d} ({progress_percentage}) round({Flags.count_claw}) {split_path(file_path)[1]}    新的刮削线程"
             scrape_info_begin = "\n\n\n" + "=" * 40 + "\n" + scrape_info_begin
             scrape_info_after = f"\n 🕷 {get_current_time()} {count}/{count_all} {split_path(file_path)[1]} 刮削完成！用时 {used_time} 秒！"
-            if manager.config.show_web_log:
-                signal.show_log_text(scrape_info_begin + LogBuffer.log().get() + scrape_info_after)
-            else:
-                fail_reason = LogBuffer.error().get(only_self=True)
-                if fail_reason:
-                    signal.show_log_text(
-                        scrape_info_begin + f"\n 🔴 [Failed] Reason: {fail_reason}" + scrape_info_after
-                    )
-                else:
-                    signal.show_log_text(scrape_info_begin + scrape_info_after)
+            # 三个调试开关（show_web_log / show_from_log / show_data_log）
+            # 互相独立，拼装逻辑见 compose_scrape_log_output（议题 #98）
+            signal.show_log_text(compose_scrape_log_output(scrape_info_begin, scrape_info_after))
             remain_count = max(0, Flags.scrape_started - count)  # 避免瞬时负数显示"刮削中：-1"
             if Flags.scrape_started == count_all:
                 signal.show_log_text(f" 🕷 剩余正在刮削的线程：{remain_count}")
@@ -1400,6 +1393,21 @@ def _flush_actor_db_wb(wb, db_path):
         resources.reload_actor_db()
     except Exception as e:
         LogBuffer.log().write(f" ❌ [演员数据库] 落盘失败: {e}")
+
+
+def compose_scrape_log_output(scrape_info_begin: str, scrape_info_after: str) -> str:
+    """按调试开关独立拼装单文件刮削日志（议题 #98）。
+
+    - log 通道（关键节点行 + 受 show_from_log/show_data_log 控制的字段
+      来源/字段内容块，写入端已按各自开关落好）恒定输出；
+    - web 通道（爬虫请求/图片下载/TMDB 查询等过程明细）只在
+      show_web_log 开启时拼装——由此三个开关互相独立，关掉过程明细
+      不再连带吞掉字段来源/字段内容。
+    """
+    text = scrape_info_begin + LogBuffer.log().get(only_self=True)
+    if manager.config.show_web_log:
+        text += LogBuffer.web().get(only_self=True)
+    return text + scrape_info_after
 
 
 def start_new_scrape(file_mode: FileMode, movie_list: list[Path] | None = None) -> None:

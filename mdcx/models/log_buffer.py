@@ -133,6 +133,17 @@ class LogBuffer:
         return LogBuffer._get_buffer("log")
 
     @staticmethod
+    def web() -> "LogBuffer":
+        """爬虫/网络/图片等过程明细通道（议题 #98）。
+
+        与 log 通道的关键区别：log 通道是影片处理的关键节点行（file/number/
+        Data done/Folder done 等结果标记），读取端恒定输出；web 通道是刮削
+        过程明细（图片下载、TMDB 查询、翻译过程等），读取端仅当
+        show_web_log 开启时拼装——由此三个调试开关互相独立。
+        """
+        return LogBuffer._get_buffer("web")
+
+    @staticmethod
     @deprecated("仅用于向后兼容")
     def info() -> "LogBuffer":
         return LogBuffer._get_buffer("info")

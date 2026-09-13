@@ -261,7 +261,7 @@ def log_jdbstatic_request_headers(url: str, headers: dict[str, str] | None) -> N
     if not is_jdbstatic_image_url(url):
         return
     safe_headers = headers or {}
-    LogBuffer.log().write(
+    LogBuffer.web().write(
         "\n 🔎 JDBStatic请求头: "
         f"url={url} "
         f"accept={safe_headers.get('Accept', '')} "
@@ -1184,7 +1184,7 @@ async def download_dmm_extrafanart_with_filepath(url: str, file_path: Path, fold
 
     normalized_url = normalize_media_url(url)
     if _is_invalid_image_redirect_url(normalized_url):
-        LogBuffer.log().write(f"\n 💡 DMM image invalid! {url}")
+        LogBuffer.web().write(f"\n 💡 DMM image invalid! {url}")
         return False
 
     try:
@@ -1196,7 +1196,7 @@ async def download_dmm_extrafanart_with_filepath(url: str, file_path: Path, fold
 
         true_url = normalize_media_url(str(response.url))
         if _is_invalid_image_redirect_url(true_url):
-            LogBuffer.log().write(f"\n 💡 DMM image invalid! {true_url}")
+            LogBuffer.web().write(f"\n 💡 DMM image invalid! {true_url}")
             return False
 
         if not response.content:
@@ -1250,5 +1250,5 @@ async def download_extrafanart_task(task: tuple[str, Path, Path, str]) -> bool:
         if await check_pic_async(extrafanart_file_path):
             return True
     else:
-        LogBuffer.log().write(f"\n 💡 {extrafanart_name} download failed! ( {extrafanart_url} )")
+        LogBuffer.web().write(f"\n 💡 {extrafanart_name} download failed! ( {extrafanart_url} )")
     return False

@@ -114,7 +114,7 @@ def _get_asin_index(excel_path: Path) -> dict | None:
     except Exception as e:
         from ..models.log_buffer import LogBuffer
 
-        LogBuffer.log().write(f"  ⚠️ [ASIN 数据库] 读取失败：{e}")
+        LogBuffer.web().write(f"  ⚠️ [ASIN 数据库] 读取失败：{e}")
         return None
 
     try:
@@ -207,7 +207,7 @@ def merge_asin_db_from_backup(backup_path: Path, local_path: Path) -> None:
         if not importlib.util.find_spec("openpyxl"):
             raise ImportError("openpyxl not found")
     except ImportError:
-        LogBuffer.log().write("  ⚠️ [ASIN 数据库] 缺少 openpyxl，无法合并 amazon_asin_database.xlsx")
+        LogBuffer.web().write("  ⚠️ [ASIN 数据库] 缺少 openpyxl，无法合并 amazon_asin_database.xlsx")
         return
 
     if not backup_path.exists() or not local_path.exists():
@@ -225,7 +225,7 @@ def merge_asin_db_from_backup(backup_path: Path, local_path: Path) -> None:
         with _asin_db_write_lock:
             _merge_asin_db_locked(backup_path, local_path, marker_path, backup_hash, LogBuffer)
     except Exception as e:
-        LogBuffer.log().write(f"  ⚠️ [ASIN 数据库] 出厂库合并失败: {e}")
+        LogBuffer.web().write(f"  ⚠️ [ASIN 数据库] 出厂库合并失败: {e}")
 
 
 def _merge_asin_db_locked(
@@ -281,9 +281,9 @@ def _merge_asin_db_locked(
         write_file_atomic(marker_path, backup_hash, "utf-8")
         invalidate_asin_cache(local_path)
         if added or replaced:
-            LogBuffer.log().write(f"  ℹ️ [ASIN 数据库] 出厂库合并: 新增 {added} 条, 覆盖 {replaced} 个字段")
+            LogBuffer.web().write(f"  ℹ️ [ASIN 数据库] 出厂库合并: 新增 {added} 条, 覆盖 {replaced} 个字段")
     except Exception as e:
-        LogBuffer.log().write(f"  ⚠️ [ASIN 数据库] 出厂库合并失败: {e}")
+        LogBuffer.web().write(f"  ⚠️ [ASIN 数据库] 出厂库合并失败: {e}")
 
 
 def _save_asin_to_excel_sync(
@@ -313,7 +313,7 @@ def _save_asin_to_excel_locked(
     except ImportError:
         from ..models.log_buffer import LogBuffer
 
-        LogBuffer.log().write("  ⚠️ [ASIN 数据库] 缺少 openpyxl，无法保存 amazon_asin_database.xlsx")
+        LogBuffer.web().write("  ⚠️ [ASIN 数据库] 缺少 openpyxl，无法保存 amazon_asin_database.xlsx")
         raise ImportError("请安装 openpyxl 库：pip install openpyxl") from None
 
     excel_path.parent.mkdir(parents=True, exist_ok=True)
@@ -398,7 +398,7 @@ async def save_asin_to_excel(
     try:
         import openpyxl  # noqa: F401  # 线程内还要用，提前做可用性检查给出可读错误
     except ImportError:
-        LogBuffer.log().write("  ⚠️ [ASIN 数据库] 缺少 openpyxl，无法保存 amazon_asin_database.xlsx")
+        LogBuffer.web().write("  ⚠️ [ASIN 数据库] 缺少 openpyxl，无法保存 amazon_asin_database.xlsx")
         raise ImportError("请安装 openpyxl 库：pip install openpyxl") from None
 
     if excel_path is None:
@@ -486,7 +486,7 @@ def _format_asin_worksheet(ws) -> None:
     except Exception as e:
         from ..models.log_buffer import LogBuffer
 
-        LogBuffer.log().write(f"  ⚠️ [ASIN 数据库] 工作表格式化失败：{e}")
+        LogBuffer.web().write(f"  ⚠️ [ASIN 数据库] 工作表格式化失败：{e}")
 
 
 async def save_single_asin_record(
@@ -708,7 +708,7 @@ async def query_asin_database(
     except ImportError:
         from ..models.log_buffer import LogBuffer
 
-        LogBuffer.log().write("  ⚠️ [ASIN 数据库] 缺少 openpyxl，无法读取 amazon_asin_database.xlsx")
+        LogBuffer.web().write("  ⚠️ [ASIN 数据库] 缺少 openpyxl，无法读取 amazon_asin_database.xlsx")
         return []
 
     if excel_path is None:
