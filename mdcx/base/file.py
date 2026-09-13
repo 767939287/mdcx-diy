@@ -1,4 +1,5 @@
 import asyncio
+import contextlib
 import os
 import re
 import shutil
@@ -243,13 +244,46 @@ def save_remain_list() -> None:
     threading.Thread(target=_save_remain_list_sync, args=(remain_snapshot,), daemon=True).start()
 
 
+def save_remain_list_now() -> None:
+    """立即把当前剩余任务落盘（停止刮削 / 刮削协程退出时调用，议题 #98）。
+
+    不看 dirty 标志——调用方要的就是"此刻"的最新快照。仍走后台线程 +
+    同一把锁，避免与定时保存并发写坏文件；锁被占时说明已有一轮保存在途，
+    下一轮定时保存会兜底。
+    """
+    if Switch.REMAIN_TASK not in manager.config.switch_on:
+        return
+    if not _remain_save_lock.acquire(blocking=False):
+        return
+    remain_snapshot = list(Flags.remain_list)
+    threading.Thread(target=_save_remain_list_sync, args=(remain_snapshot,), daemon=True).start()
+
+
+def _build_remain_tmp_path(remain_path: Path) -> Path:
+    return remain_path.with_name(f"{remain_path.name}.{os.getpid()}.{uuid4().hex}.tmp")
+
+
 def _save_remain_list_sync(paths: list[Path]) -> None:
+    """原子写 remain.txt（tmp + os.replace，读取端只见完整版本，议题 #98）。
+
+    落盘后按快照比对清 dirty：保存期间 remain_list 又变化（旧线程的快照
+    已过期）时保持 can_save_remain=True，交由下一轮定时保存收尾——
+    旧实现无条件清标志，会吞掉新变化的落盘机会。
+    """
+    remain_path = resources.u("remain.txt")
+    tmp_path = _build_remain_tmp_path(remain_path)
     try:
-        with open(resources.u("remain.txt"), "w", encoding="utf-8", errors="ignore") as f:
+        with open(tmp_path, "w", encoding="utf-8", errors="ignore") as f:
             f.writelines(_path_lines_for_write(paths, "剩余任务列表"))
-        Flags.can_save_remain = False
+            f.flush()
+            os.fsync(f.fileno())
+        os.replace(tmp_path, remain_path)
+        if list(Flags.remain_list) == paths:
+            Flags.can_save_remain = False
     except Exception as e:
         signal.show_log_text(f"save remain list error: {e!s}\n {traceback.format_exc()}")
+        with contextlib.suppress(OSError):
+            os.remove(tmp_path)
     finally:
         _remain_save_lock.release()
 

@@ -33,6 +33,7 @@ from mdcx.base.file import (
     movie_lists,
     newtdisk_creat_symlink,
     save_remain_list,
+    save_remain_list_now,
     save_success_list,
 )
 from mdcx.base.image import add_del_extrafanart_copy
@@ -1232,6 +1233,9 @@ class MyMAinWindow(QMainWindow):
             Flags.stop_requested = True
             signal_qt.stop = True
             executor.run(save_success_list())
+            # 停止时立即持久化最新剩余任务，不能只依赖 1.5s 定时器
+            # （停止后定时器保存到的可能是竞态旧快照，续刮会丢任务，议题 #98）
+            save_remain_list_now()
             Flags.rest_time_convert_ = Flags.rest_time_convert
             Flags.rest_time_convert = 0
             self.Ui.pushButton_start_cap.setText(" ■ 停止中 ")

@@ -18,6 +18,7 @@ from ..base.file import (
     move_torrent,
     newtdisk_creat_symlink,
     pic_some_deal,
+    save_remain_list_now,
     save_success_list,
 )
 from ..base.image import extrafanart_copy2, extrafanart_extras_copy
@@ -188,6 +189,9 @@ class Scraper:
             if self._state_cache is not None:
                 self._state_cache.close()
                 self._state_cache = None
+            # 协程真正退出前兜底落盘一次最新剩余任务：停止/取消过程中最后
+            # 完成/取消的任务变化不被 1.5s 定时器竞态吞掉（议题 #98）
+            save_remain_list_now()
 
     async def _run(self, file_mode: FileMode, movie_list: list[Path] | None) -> None:
         reset_flags_preserving_single_file_inputs()
@@ -231,6 +235,11 @@ class Scraper:
         movie_paths = path_settings.movie_paths
 
         # 获取待刮削文件列表的相关信息
+        # full_library_scan：本次是否全量扫描媒体库。调用方传入任务列表
+        # （续刮 remain 子集 / Again / 单文件 / 工具页）时为 False——子集不能
+        # 拿去做全库 scrape_state 清理，否则不在子集里的合法记录会被误判
+        # "源文件已不存在"而清光（议题 #98 2.4）。
+        full_library_scan = not movie_list
         if not movie_list:
             signal.show_log_text("\n ⏰ Start time: " + time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
             movie_list = []
@@ -256,7 +265,10 @@ class Scraper:
         if cache.is_usable() and manager.config.main_mode != 4:
             try:
                 existing = set(movie_list)
-                cache.cleanup_missing(existing)
+                # 只有全量扫描拿到的才是完整媒体库集合，才有资格做全库清理；
+                # 续刮/单文件/工具传入的显式子集跳过（议题 #98 2.4）
+                if full_library_scan:
+                    cache.cleanup_missing(existing)
                 force = file_mode != FileMode.Default  # Again/单文件等模式视为强制重新刮削
                 if force:
                     skipped = 0
@@ -1466,7 +1478,9 @@ def get_remain_list() -> bool:
         if reply == QMessageBox.StandardButton.No:
             return True
     signal.show_log_text(f"🍯 🍯 🍯 NOTE: 继续刮削未完成任务！！！ 剩余未刮削文件数量（{len(Flags.remain_list)})")
-    start_new_scrape(FileMode.Default, Flags.remain_list)
+    # 传快照而非共享可变列表：新 Scraper 的 Flags.reset() 与后续任务删除
+    # 操作不再与启动参数共享同一 list 对象（议题 #98 2.5）
+    start_new_scrape(FileMode.Default, list(Flags.remain_list))
     return True
 
 
