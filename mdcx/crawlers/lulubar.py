@@ -95,7 +95,7 @@ def get_real_url(html, number):
         href = each.get("href")
         title = each.xpath("img/@alt")
         poster = each.xpath("img/@src")
-        if title and title[0].startswith(number.lower()) and href:
+        if title and title[0].upper().startswith(number.upper()) and href:
             poster = f"https://lulubar.co{poster[0]}" if poster else ""
             return (
                 "https://lulubar.co" + href,
@@ -111,6 +111,7 @@ class LulubarContext(Context):
 
 class LulubarCrawler(BaseCrawler[LulubarContext]):
     description = "Lulubar 综合（仅能有码）"
+    probe_number = "IPZZ-547"
 
     @classmethod
     @override
