@@ -115,3 +115,42 @@ async def test_failed_site_dedup_still_names_every_site(monkeypatch: pytest.Monk
     assert result.field_log.count("(已失败") == 2
     assert "javbus" in result.field_log and "avbase" in result.field_log
     assert "后续字段将跳过" in result.field_log
+
+
+async def test_failed_site_mark_includes_cause(monkeypatch: pytest.MonkeyPatch):
+    """议题 #101：失败标记必须区分失败类因——「请求超时/被拦截/解析失败/请求异常」。
+
+    用户把「avbase/thejavdb_api/javdb_app 已失败，后续字段将跳过该站」误解为
+    逻辑 bug，实际是这些站在其网络下请求级失败。标注原因后一眼可分辨。
+    """
+    monkeypatch.setattr(
+        ManualConfig,
+        "REDUCED_FIELDS",
+        (
+            CrawlerResultFields.TITLE,
+            CrawlerResultFields.OUTLINE,
+        ),
+    )
+
+    provider = _FakeCrawlerProvider(
+        {
+            Website.JAVDB: (None, TimeoutError("read timed out")),
+            Website.JAVBUS: (None, RuntimeError("cloudflare 403 blocked")),
+            Website.AVBASE: _build_result(Website.AVBASE, "成功标题"),
+        }
+    )
+
+    class _TimeoutConfig(_MixedFieldConfig):
+        def get_field_config(self, field: CrawlerResultFields) -> FieldConfig:
+            return FieldConfig(site_prority=[Website.AVBASE, Website.JAVDB, Website.JAVBUS])
+
+    scraper = FileScraper(_TimeoutConfig(), provider)
+    task_input = CrawlerInput.empty()
+    task_input.number = "TEST-101"
+
+    result = await scraper._call_crawlers(task_input, {Website.AVBASE, Website.JAVDB, Website.JAVBUS})
+    assert result is not None
+    assert result.field_log.count("(已失败") == 2
+    # 两个失败的类因明确标注
+    assert "原因: 请求超时" in result.field_log
+    assert "原因: 被站点拦截" in result.field_log

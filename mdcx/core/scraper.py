@@ -91,6 +91,20 @@ class StopScrape(Exception): ...
 class UnexpectedScrapeCancellation(Exception): ...
 
 
+def append_unique_paths(target: list[Path], extras: list[Path]) -> list[Path]:
+    """把 extras 里不在 target 中的路径追加进 target，返回本次新增的部分。
+
+    断点续刮恢复失败文件时用：list_pending 返回的失败文件本次扫描已包含
+    （failed 状态不会被 should_skip 过滤），直接 extend 会让同一文件入队
+    两次——用户实测失败 11 个、再次刮削变 22 个（议题 #100-①）。
+    """
+    existing = set(target)
+    added = [p for p in extras if p not in existing]
+    if added:
+        target.extend(added)
+    return added
+
+
 def reset_flags_preserving_single_file_inputs() -> None:
     """执行 Flags.reset() 但保留单文件模式输入。
 
@@ -298,12 +312,17 @@ class Scraper:
                         signal.show_log_text(f" ⏭ 断点续刮：跳过 {skipped} 个已刮削且未变化的文件")
                     if exhausted:
                         signal.show_log_text(
-                            f" ⏭ 断点续刮：跳过 {exhausted} 个连续失败超过 {MAX_RETRY_COUNT} 次的文件（强制重刮可重试）"
+                            f" ⏭ 断点续刮：跳过 {exhausted} 个连续失败超过 {MAX_RETRY_COUNT} 次的文件"
+                            f"（如需强行重刮：软件日志页点「失败」展开失败列表，然后点「一键重新刮削当前失败文件」）"
                         )
                 pending = cache.list_pending(existing)
                 if pending:
-                    movie_list.extend(pending)
-                    signal.show_log_text(f" 🔄 恢复 {len(pending)} 个上次失败的文件重新刮削")
+                    # 去重：未超限的失败文件本次扫描已包含（failed 状态不会被 should_skip
+                    # 过滤），直接追加会造成同一文件入队两次——用户实测失败 11 个、
+                    # 再次刮削变 22 个（议题 #100-①）。
+                    new_pending = append_unique_paths(movie_list, pending)
+                    if new_pending:
+                        signal.show_log_text(f" 🔄 恢复 {len(new_pending)} 个上次失败的文件重新刮削")
             except Exception as e:
                 signal.show_log_text(f" ⚠ 刮削状态缓存读取失败，按全量处理: {e}")
 

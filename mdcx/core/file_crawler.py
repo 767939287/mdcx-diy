@@ -463,7 +463,18 @@ class FileScraper:
                     # 不再请求已失败的网站；失败信息站点级去重（见 failed_notified 说明）
                     if site not in failed_notified:
                         failed_notified.add(site)
-                        reduced.field_log += f"\n    🔴 {site:<15} (已失败, 后续字段将跳过该站)"
+                        # 议题 #101：标注失败类因，让用户分辨"站点连不上/被拦截"与"逻辑问题"
+                        reason_text = ""
+                        if (fr := failure_reasons.get(site)) is not None:
+                            reason_map = {
+                                FailureReason.TIMEOUT: "请求超时",
+                                FailureReason.BLOCKED: "被站点拦截",
+                                FailureReason.NOT_FOUND: "未收录该番号",
+                                FailureReason.PARSE_ERROR: "响应解析失败",
+                                FailureReason.UNKNOWN: "请求异常",
+                            }
+                            reason_text = f"，原因: {reason_map.get(fr[0], '请求异常')}"
+                        reduced.field_log += f"\n    🔴 {site:<15} (已失败{reason_text}, 后续字段将跳过该站)"
                     continue
                 else:
                     # 如果网站数据尚未请求，则进行请求

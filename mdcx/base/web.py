@@ -272,6 +272,16 @@ def log_jdbstatic_request_headers(url: str, headers: dict[str, str] | None) -> N
     )
 
 
+def _host_tag(url: str) -> str:
+    """从 URL 提取「[host]」标记，给图片校验类日志附上来源站点。
+
+    议题 #100-③：「图片已被网站删除」只给 URL 不标站点，用户面对未知图源时
+    无从定位是哪个数据站的图。日志里统一追加方括号 host。
+    """
+    host = urlsplit(str(url)).netloc
+    return f"[{host}]" if host else ""
+
+
 def _should_retry_link_error(error: str) -> bool:
     normalized = str(error or "").lower()
     if not normalized:
@@ -346,7 +356,7 @@ async def _validate_dmm_image_url(url: str, length: bool = False, real_url: bool
                     return None
 
                 if _is_invalid_image_redirect_url(true_url):
-                    signal.add_log(f"🔴 检测链接失败: 图片已被网站删除 {true_url}")
+                    signal.add_log(f"🔴 检测链接失败: 图片已被网站删除 {_host_tag(true_url)} {true_url}")
                     return None
 
                 if content_length := _parse_content_length(response.headers.get("Content-Length")):
@@ -509,7 +519,7 @@ async def check_url(url: str, length: bool = False, real_url: bool = False):
                 bad_url_keys = ["now_printing", "nowprinting", "noimage", "nopic", "media_violation"]
                 for each_key in bad_url_keys:
                     if each_key in true_url:
-                        signal.add_log(f"🔴 检测链接失败: 图片已被网站删除 {url}")
+                        signal.add_log(f"🔴 检测链接失败: 图片已被网站删除 {_host_tag(true_url)} {url}")
                         return None
 
                 # 获取文件大小

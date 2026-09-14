@@ -116,6 +116,42 @@ def test_list_pending_filters_existing(cache: ScrapeStateCache, tmp_path: Path):
     assert pending == [p1]
 
 
+def test_pending_recovery_does_not_duplicate_scanned_files(cache: ScrapeStateCache, tmp_path: Path):
+    """议题 #100-①：失败文件同时被「本次扫描命中」和「断点缓存恢复」命中时不得双计入队。
+
+    实测：失败 11 个 → 再次刮削变 22。scraper 先扫描到 failed 文件（fail_count
+    未超限不会被 should_skip 过滤），再把 list_pending 的结果 extend 进来，同一
+    文件入队两次。合并必须去重。
+    """
+    from mdcx.core.scraper import append_unique_paths
+
+    p1 = tmp_path / "fail1.mp4"
+    p2 = tmp_path / "fail2.mp4"
+    p3 = tmp_path / "new.mp4"
+    for p in (p1, p2, p3):
+        p.write_bytes(b"x")
+    cache.set_failed(p1, mtime=1.0, error="e")
+    cache.set_failed(p2, mtime=1.0, error="e")
+
+    scanned = [p1, p2, p3]  # 本次扫描已包含失败文件
+    pending = cache.list_pending(existing={p1, p2, p3})
+    assert len(pending) == 2
+
+    added = append_unique_paths(scanned, pending)
+    assert added == []  # 重复的全部丢弃
+    assert len(scanned) == 3  # 总数不变（修复前这里会变 5）
+
+    # 缓存里有但扫描没扫到的（例如移动位置后的失败文件）应当恢复入队
+    p4 = tmp_path / "moved.mp4"
+    p4.write_bytes(b"x")
+    cache.set_failed(p4, mtime=1.0, error="e")
+    pending2 = cache.list_pending(existing={p4})
+    added2 = append_unique_paths(scanned, pending2)
+    assert added2 == [p4]
+    assert len(scanned) == 4
+
+
+
 def test_cleanup_missing(cache: ScrapeStateCache, tmp_path: Path):
     p1 = tmp_path / "a.mp4"
     p2 = tmp_path / "b.mp4"
