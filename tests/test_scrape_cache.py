@@ -151,7 +151,6 @@ def test_pending_recovery_does_not_duplicate_scanned_files(cache: ScrapeStateCac
     assert len(scanned) == 4
 
 
-
 def test_cleanup_missing(cache: ScrapeStateCache, tmp_path: Path):
     p1 = tmp_path / "a.mp4"
     p2 = tmp_path / "b.mp4"
