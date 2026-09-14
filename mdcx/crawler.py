@@ -1,4 +1,5 @@
 import asyncio
+import contextlib
 from collections.abc import Callable
 from typing import TYPE_CHECKING, Any, Never, Protocol
 
@@ -47,7 +48,14 @@ class CrawlerProvider:
         if self._closed:
             return
         self._closed = True
-        for instance in self.instances.values():
-            await instance.close()
-        self.instances.clear()
-        await self.client.release()
+        try:
+            for instance in self.instances.values():
+                # 逐实例收尾：单个实例的清理异常不得阻断其余实例与租约归还
+                with contextlib.suppress(Exception):
+                    await instance.close()
+            self.instances.clear()
+        finally:
+            # client.release() 必须恒执行：漏掉即租永不归零，
+            # close_when_idle 等满 300s 强制关闭（议题 #98 残留租约）
+            with contextlib.suppress(Exception):
+                await self.client.release()

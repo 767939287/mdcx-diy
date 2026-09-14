@@ -846,50 +846,64 @@ class AsyncWebClient:
     async def _close_response(self, response: Response | None) -> None:
         """立即关闭响应，并确保 curl_cffi 内部流任务收尾完成。
 
-        curl_cffi 流式模式下 ``aclose()`` 只 await 内部接收任务，会把剩余
-        响应体全部拉完才返回（实测：提前放弃 4MB 响应仍阻塞 3.5s 拉满全量，
-        图片尺寸探测因此退化成整图下载）；同步 ``close()`` 会设置
-        curl 的 quit_now 立即中断传输（实测同场景 0.00s 返回）。
-        ``_attach_stream_release`` 包装后的 close() 同样会触发租约释放，
-        连接池配平不受影响。
+        curl_cffi 流式模式下 ``aclose()`` 会 await 内部接收任务，若不先中止传输
+        就会把剩余响应体全部拉完（实测：提前放弃 4MB 响应仍阻塞 3.5s 拉满全量，
+        图片尺寸探测因此退化成整图下载）。
 
-        但 close() 只是发出 abort，curl_cffi 内部的
-        ``AsyncSession._request_once.<locals>.perform()`` 任务（挂在
-        ``response.astream_task`` 上）此刻可能尚未结束。若调用方随后结束
-        协程/会话，会触发 "Task was destroyed but it is pending!"（议题 #98）。
-        因此 close() 中止传输后，给内部任务一个短暂的退场宽限，超时则
-        cancel + gather 消费异常，保证返回时内部任务已终结。
+        同步 ``close()`` 虽然会立即中止传输，但它内部执行 ``curl_easy_cleanup``
+        并把 ``curl._curl`` 置空，而该 handle 此刻仍登记在 curl_cffi 的内部 multi
+        映射中；随后 ``astream_task`` 的 done 回调（``cleanup`` → ``release_curl``
+        → ``remove_handle``）或 ``session.close()`` 都会拿 ``None`` 去
+        ``curl_multi_remove_handle``，抛
+        ``TypeError: initializer for ctype 'void *' must be a cdata pointer``
+        （议题 #98 追加反馈）。
+
+        正确顺序是先置 ``quit_now`` 让 libcurl 主动 abort，再 ``await aclose()``：
+        abort 生效后毫秒级返回、不拉剩余响应体，且由 curl_cffi 自身的 cleanup 把
+        handle 归还连接池（库内 ``stream()`` 也是用 ``aclose()`` 收尾）。超时则
+        cancel 内部任务并消费异常，保证返回时任务已终结。
         """
         if response is None:
             return
+        quit_now = getattr(response, "quit_now", None)
+        aclose_fn = getattr(response, "aclose", None)
+        if quit_now is not None and callable(aclose_fn):
+            with contextlib.suppress(Exception):
+                quit_now.set()
+            await self._await_stream_close(response, aclose_fn)
+            return
+        # 非流式响应（无 quit_now）：无内部流任务与 handle 竞态，同步 close 即可；
+        # 仅有 aclose 的替身响应则退回 await aclose()
         close_fn = getattr(response, "close", None)
         if callable(close_fn):
             with contextlib.suppress(Exception):
                 close_fn()
-            await self._join_stream_task(response)
             return
-        aclose_fn = getattr(response, "aclose", None)
         if callable(aclose_fn):
             with contextlib.suppress(Exception):
                 await aclose_fn()
 
-    async def _join_stream_task(self, response: Response) -> None:
-        """等待 curl_cffi 内部流任务终结（abort 后的收尾，不等传输完成）。
-
-        宽限期内任务正常结束（abort 生效后通常毫秒级）就静默返回；超时才
-        cancel——cancel 一个已 abort 的传输任务不影响服务端已收到的中断，
-        不存在把探测退化成整图下载的风险（那是 aclose 拉满响应体的行为）。
-        """
-        stream_task = getattr(response, "astream_task", None)
-        if stream_task is None or stream_task.done():
-            return
+    async def _await_stream_close(self, response: Response, aclose_fn: Callable[..., Any]) -> None:
+        """等待 ``aclose()``（已置 quit_now，abort 后毫秒级返回），超时取消内部任务。"""
         try:
-            await asyncio.wait_for(asyncio.shield(stream_task), timeout=_STREAM_TASK_JOIN_TIMEOUT)
+            await asyncio.wait_for(aclose_fn(), timeout=_STREAM_TASK_JOIN_TIMEOUT)
         except TimeoutError:
-            stream_task.cancel()
-            await asyncio.gather(stream_task, return_exceptions=True)
+            await self._abort_stream_task(response)
         except BaseException:
-            # 任务自身抛出（CurlError/CancelledError 等）：已终结，消费即可
+            # aclose 自身抛出（CurlError/CancelledError 等）：确保内部任务已消费
+            await self._drain_stream_task(response)
+
+    async def _abort_stream_task(self, response: Response) -> None:
+        """cancel 未及时退场的内部流任务并消费其结果。"""
+        stream_task = getattr(response, "astream_task", None)
+        if stream_task is not None and not stream_task.done():
+            stream_task.cancel()
+        await self._drain_stream_task(response)
+
+    async def _drain_stream_task(self, response: Response) -> None:
+        """消费 ``astream_task`` 的结果，避免 "Task was destroyed but it is pending!"。"""
+        stream_task = getattr(response, "astream_task", None)
+        if stream_task is not None and not stream_task.done():
             await asyncio.gather(stream_task, return_exceptions=True)
 
     def _log(self, message: str) -> None:

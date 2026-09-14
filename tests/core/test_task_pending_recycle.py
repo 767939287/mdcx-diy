@@ -1,12 +1,13 @@
 """议题 #98 回归：curl_cffi 流式响应与共享图片任务的收尾。
 
 两类 "Task was destroyed but it is pending!" 根因的锁定测试：
-1. ``AsyncWebClient._close_response`` 在 close() 中止传输后，必须等
-   ``response.astream_task``（curl_cffi 内部 perform() 任务）终结才返回；
+1. ``AsyncWebClient._close_response`` 置 ``quit_now`` 让传输 abort 后，必须
+   ``await aclose()`` 等 ``response.astream_task``（curl_cffi 内部 perform()
+   任务）终结才返回；
 2. ``MediaResourceContext.aclose()`` cancel 共享图片任务后必须 await 收尾，
    返回时无未终结任务。
 
-同时锁定既有性能约束（close 立即中止、不拉满响应体）不回退——
+同时锁定既有性能约束（abort 立即生效、不拉满响应体）不回退——
 详见 test_stream_close_aborts.py。
 """
 
@@ -25,23 +26,23 @@ class _FakeStreamTaskResponse:
 
     def __init__(self, *, exit_delay: float = 0.0):
         self._exit_delay = exit_delay
-        self.close_called = False
-        self.cancelled = False
+        self.quit_now = asyncio.Event()
+        self.aclose_called = False
 
         async def _perform() -> None:
             await asyncio.sleep(exit_delay)
 
         self.astream_task = asyncio.get_running_loop().create_task(_perform())
 
-    def close(self) -> None:
-        # 记录同步 close 被调用；不触碰 astream_task（与 curl_cffi 行为一致：
-        # close 只发出 abort，内部任务是否已退场由我们负责等待）
-        self.close_called = True
+    async def aclose(self) -> None:
+        # curl_cffi 的 aclose 只 await 内部任务；abort 是否已生效由 quit_now 决定
+        self.aclose_called = True
+        await self.astream_task
 
 
 @pytest.mark.asyncio
 async def test_close_response_waits_for_pending_astream_task():
-    """内部任务毫秒级退场时：_close_response 静默等它结束，不 cancel。"""
+    """内部任务毫秒级退场时：_close_response 置 quit_now 后等它结束，不 cancel。"""
     resp = _FakeStreamTaskResponse(exit_delay=0.05)
     client = AsyncWebClient(timeout=5)
     try:
@@ -51,7 +52,8 @@ async def test_close_response_waits_for_pending_astream_task():
     finally:
         await client.close()
 
-    assert resp.close_called, "未走同步 close() 中止路径"
+    assert resp.quit_now.is_set(), "未先置 quit_now 让传输 abort"
+    assert resp.aclose_called, "未走 aclose() 收尾路径"
     assert resp.astream_task.done(), "返回时内部流任务未终结"
     assert not resp.astream_task.cancelled(), "任务本可正常退场，不应被 cancel"
     assert elapsed < 1.0, f"_close_response 阻塞 {elapsed:.2f}s，未立即中止"
@@ -69,7 +71,7 @@ async def test_close_response_cancels_stuck_astream_task():
     finally:
         await client.close()
 
-    assert resp.close_called
+    assert resp.quit_now.is_set()
     assert resp.astream_task.done(), "卡死任务被 cancel 后仍未终结"
     assert resp.astream_task.cancelled(), "卡死任务未被 cancel"
     # 宽限 + cancel 收尾都应在锁定的"立即中止"阈值内完成

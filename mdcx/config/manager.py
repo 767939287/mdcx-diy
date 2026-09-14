@@ -1,3 +1,4 @@
+import asyncio
 import concurrent.futures
 import contextlib
 import json
@@ -352,7 +353,11 @@ class ComputedLease:
         computed = self._computed
         if computed is not None:
             self._computed = None
-            await computed.release()
+            # shield：await gather(双客户端 release) 的第一个挂起点被取消打断时，
+            # 两个 release 均不执行 → 网络/LLM 双残留租约 1 → close_when_idle
+            # 等满 300s 强制关闭（议题 #98 残留租约；同步 __exit__ 走
+            # submit_critical 的 #55 先例在异步侧的对应缺口）
+            await asyncio.shield(computed.release())
 
 
 manager = ConfigManager()

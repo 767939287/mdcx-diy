@@ -199,7 +199,10 @@ class Scraper:
         try:
             await self._run(file_mode, movie_list)
         finally:
-            await self.crawler_provider.close()
+            # shield：本协程被「停止」取消时，取消恰好落在 close 执行中会打断
+            # client.release() → 租约永不归零（议题 #98 残留租约）；
+            # provider.close 内部已有 try/finally 保证 release 恒执行
+            await asyncio.shield(self.crawler_provider.close())
             if self._state_cache is not None:
                 self._state_cache.close()
                 self._state_cache = None
