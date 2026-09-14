@@ -292,6 +292,9 @@ async def write_file_atomic_async(p: str | Path, content: str, encoding: str = "
     - 先关闭 mkstemp 返回的 fd 再 os.replace：Windows 上打开着的句柄会阻止替换
     - 失败时清理临时文件、原文件字节不变、原始异常原样上抛；
       捕获 BaseException（KeyboardInterrupt/SystemExit 也要清临时文件）
+    - 写后校验目标真实存在：映射云盘（115/夸克 RaiDrive）存在 os.replace 返回成功
+      但目标实际未落的静默丢失（用户实测：刮削日志「Nfo done!」盘上却无 nfo），
+      校验失败时退回直接写入再校验，仍失败则抛错——绝不允许假报成功
     """
     p = Path(p)
     fd, tmp_name = tempfile.mkstemp(dir=p.parent, suffix=".tmp")
@@ -301,6 +304,13 @@ async def write_file_atomic_async(p: str | Path, content: str, encoding: str = "
         async with aiofiles.open(tmp, "w", encoding=encoding) as f:
             await f.write(content)
         await asyncio.to_thread(os.replace, str(tmp), str(p))
+        if not await aiofiles.os.path.exists(p):
+            # 云盘驱动静默吞写：退回直接写（牺牲原子性，换取"要么真落盘要么报错"）
+            signal.add_log(f" ⚠️ 原子写入疑似被目标盘静默丢弃，退回直写: {p}")
+            async with aiofiles.open(p, "w", encoding=encoding) as f:
+                await f.write(content)
+            if not await aiofiles.os.path.exists(p):
+                raise OSError(f"写入后目标文件不存在（目标盘疑似限制写入）: {p}")
     except BaseException:
         try:
             await asyncio.to_thread(tmp.unlink, missing_ok=True)
@@ -319,6 +329,12 @@ def write_file_atomic(p: str | Path, content: str, encoding: str = "UTF-8") -> N
         with open(tmp, "w", encoding=encoding) as f:
             f.write(content)
         os.replace(tmp, p)
+        if not p.exists():
+            signal.add_log(f" ⚠️ 原子写入疑似被目标盘静默丢弃，退回直写: {p}")
+            with open(p, "w", encoding=encoding) as f:
+                f.write(content)
+            if not p.exists():
+                raise OSError(f"写入后目标文件不存在（目标盘疑似限制写入）: {p}")
     except BaseException:
         try:
             tmp.unlink(missing_ok=True)
