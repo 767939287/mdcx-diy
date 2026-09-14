@@ -29,7 +29,7 @@
 - Date: 2026-09-03（持续更新）
 - Category: 环境配置
 - Instructions:
-   - devbox 本地跑测试的完整姿势：**环境重置后**才需要建环境（uv 已在 PATH 且 .venv 已存在时直接 `uv run`）——先 `pip3 install --break-system-packages uv` 再 `uv sync --frozen`；PyQt6 测试前装系统库（清单照抄 ci.yaml 的 apt 列表，缺 libGL 会 ImportError），且必须 `QT_QPA_PLATFORM=offscreen` 运行（不设则 `QApplication()` 创建即 qFatal abort，栈里看不到原因）。**devbox 镜像包索引是空的：apt 装系统库前先 `apt-get update`**。
+   - devbox 本地跑测试的完整姿势：**环境重置后**才需要建环境（uv 已在 PATH 且 .venv 已存在时直接 `uv run`）——先 `pip3 install --break-system-packages uv` 再 `uv sync --frozen`（**2026-09-14 实证**：环境重置后 venv 不存在且 `uv` 不在 PATH，首次 sync 要拉 pyqt6-qt6 82MB/opencv 64MB/av 38MB 等大包、耗时约 20 分钟；`background_terminal_create` 的 timeout 不能设 600000——10 分钟超时会中途 kill 掉同步，必须 timeout 0 或留足余量）；PyQt6 测试前装系统库（清单照抄 ci.yaml 的 apt 列表，缺 libGL 会 ImportError），且必须 `QT_QPA_PLATFORM=offscreen` 运行（不设则 `QApplication()` 创建即 qFatal abort，栈里看不到原因）。**devbox 镜像包索引是空的：apt 装系统库前先 `apt-get update`**。
    - **background_terminal 用 sh（dash）解释器**，脚本含 `[[ ]]` 会报 `[[: not found` 且循环空转——后台脚本一律用 POSIX 语法（`case`/`grep`）或 `bash -c "..."` 包装。后台终端内 `git credential fill` 拿不到凭据（401），token 获取一律在前台 bash 完成。
 
 - Date: 2026-08-29
