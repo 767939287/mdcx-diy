@@ -222,15 +222,15 @@ def _select_best_poster_candidate(
 ) -> PosterCandidate | None:
     known_candidates = [each for each in candidates if _is_known_image_size(each.size)]
     if not known_candidates:
-        LogBuffer.web().write("\n 🖼 Poster选优: 无可比较的 Poster 尺寸，保持原策略")
-        return candidates[0] if candidates else None
+        LogBuffer.web().write("\n 🖼 Poster选优: 无可比较的 Poster 尺寸，退回 thumb 右裁剪")
+        return None
 
-    if _is_known_image_size(crop_size):
-        portrait_candidates = [each for each in known_candidates if each.size[1] >= each.size[0]]
-        if not portrait_candidates:
-            LogBuffer.web().write("\n 🖼 Poster选优: 直下候选均为横图，改用 thumb 右裁剪")
-            return None
-        known_candidates = portrait_candidates
+    # 选优承诺不输出横版最终 Poster；竖版过滤无条件执行，避免 crop_size 未知时横版候选漏出直下
+    portrait_candidates = [each for each in known_candidates if each.size[1] >= each.size[0]]
+    if not portrait_candidates:
+        LogBuffer.web().write("\n 🖼 Poster选优: 直下候选均为横图，改用 thumb 右裁剪")
+        return None
+    known_candidates = portrait_candidates
 
     best = max(known_candidates, key=lambda item: _image_area(item.size))
     if _is_known_image_size(crop_size):
@@ -1266,6 +1266,45 @@ async def _allow_youma_direct_poster_without_auto_best(
         LogBuffer.web().write("\n 🖼 Poster策略: 当前 Poster 不弱于 thumb 右裁剪，允许直下")
 
 
+async def _maybe_right_crop_youma_poster(
+    result: CrawlersResult,
+    other: OtherInfo,
+    poster_final_path: Path,
+) -> None:
+    """有码直下的横版 poster 本地右裁剪成竖版，与选优选中横图后退回右裁的行为对齐。"""
+    if result.scraping_type != FixedScrapingType.YOUMA or _is_vr_result(result):
+        return
+    poster_size = await to_thread(_get_local_image_size, poster_final_path)
+    if not _is_known_image_size(poster_size) or poster_size[1] >= poster_size[0]:
+        return
+    source_path = other.fanart_path or other.thumb_path
+    if source_path is None:
+        return
+    source_img = await to_thread(_load_rgb_image_from_path, source_path)
+    if source_img is None:
+        return
+    cropped = _cut_thumb_right_image(source_img)
+    cropped_size = cropped.size
+    target = poster_final_path.with_suffix(".[CUT].jpg")
+    try:
+        cropped.save(target, format="JPEG", quality=90)
+    finally:
+        cropped.close()
+        source_img.close()
+    await move_file_async(target, poster_final_path, overwrite=True)
+    LogBuffer.web().write(f"\n 🖼 Poster裁剪: 直下横版{poster_size}，本地右裁剪为{cropped_size}")
+
+
+async def _get_crop_source_size(fanart_path: Path | None, thumb_path: Path | None) -> tuple[int, int]:
+    """fanart 与 poster 并发下载，fanart 可能尚未落盘；逐个校验实际存在且可读，取第一个能算出裁剪尺寸的源。"""
+    for pic_path in (fanart_path, thumb_path):
+        if pic_path and await aiofiles.os.path.exists(pic_path):
+            crop_size = _get_thumb_right_crop_size(await to_thread(_get_local_image_size, pic_path))
+            if _is_known_image_size(crop_size):
+                return crop_size
+    return 0, 0
+
+
 async def poster_download(
     result: CrawlersResult,
     other: OtherInfo,
@@ -1364,7 +1403,7 @@ async def poster_download(
         media_context=media_context,
     )
     if poster_auto_best and not _is_vr_result(result):
-        crop_size = await _get_thumb_right_crop_size_from_path(fanart_path or thumb_path)
+        crop_size = await _get_crop_source_size(fanart_path, thumb_path)
         failed_urls: set[str] = set()
         while poster_candidates:
             available_candidates = [
@@ -1404,6 +1443,8 @@ async def poster_download(
                 poster_final_path_temp=poster_final_path_temp,
                 media_context=media_context,
             ):
+                if result.scraping_type == FixedScrapingType.YOUMA:
+                    await _maybe_right_crop_youma_poster(result, other, poster_final_path)
                 return True
 
     # 全部候选下载失败，尝试 MGStage 官方图源直构兜底（素人番号竖版海报）
@@ -1428,6 +1469,8 @@ async def poster_download(
                     other.poster_marked = False
                     LogBuffer.log().write(f"\n 🍀 Poster done! (mgstage_fallback)({get_used_time(start_time)}s) ")
                     other.poster_path = poster_final_path
+                    if result.scraping_type == FixedScrapingType.YOUMA:
+                        await _maybe_right_crop_youma_poster(result, other, poster_final_path)
                     return True
                 LogBuffer.log().write("\n 🟠 MGStage 兜底海报下载后校验失败，继续降级处理 ")
             else:
