@@ -37,6 +37,7 @@ jobs:
 
           items+=('{"build": "macos", "os": "macos-latest", "arch": "aarch64"}')
           items+=('{"build": "windows", "os": "windows-2025", "arch": "x86_64"}')
+          items+=('{"build": "linux", "os": "ubuntu-latest", "arch": "x86_64"}')
 
           # 合并items到json数组
           matrix="matrix=["
@@ -99,15 +100,19 @@ jobs:
         with:
           activate-environment: true
 
-      - name: Set up python env
-        # 如果 uv.lock 不存在或过期，先更新 lock 文件
+      - name: Install Linux system dependencies
+        if: ${{ matrix.build == 'linux' }}
+        run: >
+          sudo apt-get update -y && sudo apt-get install -y
+          libglib2.0-0 libegl1 libgl1 libfontconfig1
+          libqt6core6 libqt6gui6 libqt6widgets6 libqt6network6 libqt6xml6
+          libdbus-1-3 libxkbcommon0 libopengl0
+          libxcb-cursor0 libxcb-xinerama0 libxcb-icccm4 libxcb-image0
+          libxcb-keysyms1 libxcb-randr0 libxcb-render-util0 libxcb-shape0
+
+      - name: Install locked dependencies
         shell: bash
-        run: |
-          if ! uv sync --locked --all-extras --dev 2>/dev/null; then
-            echo "Lock file out of date, running uv lock..."
-            uv lock
-            uv sync --all-extras --dev
-          fi
+        run: uv sync --locked --all-extras --dev
 
       - name: Build macOS app - macOS
         if: ${{ matrix.build == 'macos' }}
@@ -117,6 +122,12 @@ jobs:
 
       - name: Build Windows app - Windows
         if: ${{ matrix.build == 'windows' }}
+        env:
+          PYTHONIOENCODING: utf-8
+        run: uv run scripts/build.py --version "${{ steps.release-tag.outputs.tag }}" --debug
+
+      - name: Build Linux app - Linux
+        if: ${{ matrix.build == 'linux' }}
         env:
           PYTHONIOENCODING: utf-8
         run: uv run scripts/build.py --version "${{ steps.release-tag.outputs.tag }}" --debug
@@ -169,6 +180,13 @@ jobs:
         with:
           name: mdcx-windows-${{ matrix.arch }}
           path: dist/MDCx.exe
+
+      - name: Upload Linux artifact
+        uses: actions/upload-artifact@v4
+        if: ${{ matrix.build == 'linux' }}
+        with:
+          name: mdcx-linux-${{ matrix.arch }}
+          path: dist/MDCx
 
   publish-release:
     needs: build-app
@@ -253,6 +271,17 @@ jobs:
           release_name: ${{ steps.metadata.outputs.name }}
           asset_name: MDCx-${{ steps.metadata.outputs.tag }}-windows-x86_64-${{ github.sha }}.exe
           file: dist/MDCx.exe
+          prerelease: ${{ steps.metadata.outputs.prerelease }}
+          body: ${{ steps.changelog.outputs.CHANGELOG }}
+          tag: ${{ steps.metadata.outputs.tag }}
+
+      - name: Create Release - Linux
+        uses: svenstaro/upload-release-action@v2
+        with:
+          overwrite: true
+          release_name: ${{ steps.metadata.outputs.name }}
+          asset_name: MDCx-${{ steps.metadata.outputs.tag }}-linux-x86_64-${{ github.sha }}
+          file: dist/MDCx
           prerelease: ${{ steps.metadata.outputs.prerelease }}
           body: ${{ steps.changelog.outputs.CHANGELOG }}
           tag: ${{ steps.metadata.outputs.tag }}

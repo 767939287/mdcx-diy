@@ -65,14 +65,9 @@ jobs:
         if: steps.changes.outputs.code_changed == 'true'
         uses: astral-sh/setup-uv@v7
 
-      - name: Install dependencies
+      - name: Install locked dependencies
         if: steps.changes.outputs.code_changed == 'true'
-        run: |
-          if ! uv sync --locked --dev 2>/dev/null; then
-            echo "Lock file out of date, running uv lock..."
-            uv lock
-            uv sync --dev
-          fi
+        run: uv sync --locked --dev
 
       - name: Run ruff format
         if: steps.changes.outputs.code_changed == 'true'

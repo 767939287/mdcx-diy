@@ -51,3 +51,15 @@ def test_build_py_run_command_returns_stdout_text():
     mgr = BuildManager(app_name="t", app_version="1", create_dmg=False, debug=False)
     out = mgr._run_command([sys.executable, "-c", "print('中文✅')"], error_msg="boom")
     assert "中文" in out and "✅" in out
+
+
+def test_linux_build_omits_macos_only_icon(monkeypatch):
+    """Linux 的 PyInstaller 不应接收 macOS 专用的 .icns 图标参数。"""
+    from scripts.build import BuildManager
+
+    mgr = BuildManager(app_name="t", app_version="1", create_dmg=False, debug=False)
+    monkeypatch.setattr(mgr, "is_windows", False)
+    monkeypatch.setattr(mgr, "is_mac", False)
+    monkeypatch.setattr(mgr, "is_linux", True)
+
+    assert mgr._app_icon_path() is None

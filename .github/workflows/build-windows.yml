@@ -20,14 +20,9 @@ jobs:
         with:
           activate-environment: true
 
-      - name: Install dependencies
+      - name: Install locked dependencies
         shell: bash
-        run: |
-          if ! uv sync --locked --all-extras --dev 2>/dev/null; then
-            echo "Lock file out of date, running uv lock..."
-            uv lock
-            uv sync --all-extras --dev
-          fi
+        run: uv sync --locked --all-extras --dev
 
       - name: Build Windows EXE
         env:
