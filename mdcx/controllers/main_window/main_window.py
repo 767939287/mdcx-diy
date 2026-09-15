@@ -498,9 +498,15 @@ class MyMAinWindow(QMainWindow):
         if a1.type() == QEvent.Type.MouseButtonRelease:  # 松开鼠标，检查是否在前台
             self.recover_windowflags()
         if a1.type() == QEvent.Type.ApplicationActivate and not self.isVisible():
-            self._user_initiated_close = True
-            self.show()
-            self._user_initiated_close = False
+            # 议题 #102：Emby 演员管理器/其他工具操作时应用激活事件会把隐藏/最小化
+            # 的主窗无条件 show() 拉出前台。最小化时维持状态不动，交给用户手动还原；
+            # 非最小化的隐藏态（hide）仍保留原逻辑 show()。
+            if self.isMinimized():
+                pass
+            else:
+                self._user_initiated_close = True
+                self.show()
+                self._user_initiated_close = False
         if a0.objectName() == "label_poster" or a0.objectName() == "label_thumb":
             if a1.type() == QEvent.Type.MouseButtonPress:
                 a1 = cast("QMouseEvent", a1)
@@ -548,8 +554,10 @@ class MyMAinWindow(QMainWindow):
         # 与浮标数字图标原本固定设计 y 坐标，窗口拉高后滞留在上半区——贴 widget_setting
         # 底部随窗口同步下移。label_show_version 设计 (0,489,210,201)：底部对齐的文本框
         # 需保持底边与 widget_setting 底边贴齐；label_local_number 设计 (0,680,21,21)。
-        ui.label_show_version.move(0, max(height - 201, 489))
-        ui.label_local_number.move(0, max(height - 21, 680))
+        # 议题 #102：贴底预留 40px，避免状态区紧贴窗底"太靠下"，视觉上往上移一行。
+        _STATUS_BOTTOM_PAD = 40
+        ui.label_show_version.move(0, max(height - 201 - _STATUS_BOTTOM_PAD, 489))
+        ui.label_local_number.move(0, max(height - 21 - _STATUS_BOTTOM_PAD, 680))
         ui.stackedWidget.setGeometry(210, 6, max(width - 210 - 2, 400), max(height - 8, 300))
         ui.progressBar_scrape.setGeometry(209, -1, max(width - 211, 100), 7)
         self._sync_page_layouts()  # 同步动态页面的内部尺寸
@@ -598,6 +606,16 @@ class MyMAinWindow(QMainWindow):
         ui.pushButton_tree_clear.move(max(main_w - 20 - 40, 300), 110)
         # 选择目录按钮跟随开始按钮左移，保持 14px 视觉间距（设计 666 与 680 之间）
         ui.pushButton_select_media_folder.move(max(ui.pushButton_start_cap.x() - 101 - 14, 20), 13)
+
+        # 议题 #102：封面区（poster/thumb 图片框 + 尺寸文字）横向等比放大。
+        # 设计基准宽 820：宽高与 x 一起按 scale 等比缩放（y 不变，纵向位置保留），
+        # setScaledContents(True) 已保证图片填充不变形。幂等：基于设计基准 × scale，
+        # 不依赖当前值，resize 反复触发不累积漂移。
+        cover_scale = main_w / 820
+        ui.label_poster.setGeometry(int(80 * cover_scale), 160, int(156 * cover_scale), int(220 * cover_scale))
+        ui.label_thumb.setGeometry(int(252 * cover_scale), 160, int(328 * cover_scale), int(220 * cover_scale))
+        ui.label_poster_size.setGeometry(int(80 * cover_scale), 380, int(411 * cover_scale), int(40 * cover_scale))
+        ui.label_thumb_size.setGeometry(int(222 * cover_scale), 380, int(201 * cover_scale), int(40 * cover_scale))
 
         # 信息区宽幅标签拉伸（设计右缘 570，右侧留白区）：简介/标签/行分隔线
         # 右界锚定结果树左缘 - 30（设计 600-30），避免与右列视觉重叠。

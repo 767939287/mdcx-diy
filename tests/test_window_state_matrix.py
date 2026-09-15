@@ -758,18 +758,126 @@ def test_setting_content_clears_config_bar_when_scrolled(win, app):
 
 
 def test_left_status_badges_follow_window_bottom(win, app):
-    """议题 #86：左侧状态区（MDCx 版本/检查更新块与数字浮标）必须随窗口底边同步。
+    """议题 #86/#102：左侧状态区随窗口底边同步，并预留 40px 底距（#102 用户反馈贴底太靠下）。
 
     回归背景：label_show_version/label_local_number 固定在设计 y 坐标，
     窗口最大化后留在上半区，与侧栏贴底的「正常模式」字段分离，
     视觉上像状态条移位（用户图 3 红框标注「不正常应该下移」）。
-    窗口 1920x1170 时 label_show_version 应移至 y≈969（1170-201），
-    label_local_number 移至 y≈1149（1170-21）。
+    窗口 1920x1170 时 label_show_version 应移至 y≈929（1170-201-40），
+    label_local_number 移至 y≈1109（1170-21-40）。
     """
     _goto(win, app, "page_main")
     win.resize(1920, 1170)
     win.show()
     app.processEvents()
 
-    assert win.Ui.label_show_version.y() == 969, f"label_show_version 未贴底: y={win.Ui.label_show_version.y()}"
-    assert win.Ui.label_local_number.y() == 1149, f"label_local_number 未贴底: y={win.Ui.label_local_number.y()}"
+    assert win.Ui.label_show_version.y() == 929, (
+        f"label_show_version 未贴底预留 40px: y={win.Ui.label_show_version.y()}"
+    )
+    assert win.Ui.label_local_number.y() == 1109, (
+        f"label_local_number 未贴底预留 40px: y={win.Ui.label_local_number.y()}"
+    )
+
+
+# ============ 议题 #102：四项 UI 交互模拟验证 ============
+
+
+def test_minimized_main_not_popped_on_app_activate(win, app):
+    """议题 #102-①：主窗最小化后，应用激活事件（Emby 演员管理器任意操作/切任务
+    让 app 重新激活）不得把主窗弹出前台。
+
+    回归背景：eventFilter 的 ApplicationActivate 分支对隐藏/最小化主窗无条件
+    show()，点 Emby 对话框即触发、主窗被拉出（用户截图「任何操作都弹主窗」）。
+    修法：最小化时维持状态不动；仅非最小化的隐藏态保留 show()。
+
+    模拟方式：eventFilter 挂载在 textBrowser_log_main 的 viewport 上
+    （init.py:224-225），用 QApplication.sendEvent 向该 viewport 投递
+    ApplicationActivate 事件，驱动真实守卫路径。
+    """
+    from PyQt6.QtCore import QEvent
+
+    win.show()
+    app.processEvents()
+
+    # 最小化主窗（模拟用户最小化后去操作 Emby 管理器）
+    win.showMinimized()
+    app.processEvents()
+    assert win.isMinimized(), "前置失败：主窗未最小化"
+
+    viewport = win.Ui.textBrowser_log_main.viewport()
+    activate = QEvent(QEvent.Type.ApplicationActivate)
+    app.sendEvent(viewport, activate)
+    app.processEvents()
+
+    # 守卫生效：最小化状态维持，未被 showNormal/弹出。
+    # 注：Qt 语义下 isVisible() 在最小化态恒为 True（含 minimized），不能据此判"被弹出"；
+    # 正确判据是 isMinimized() 仍为 True（show() 会把它转成非最小化的可见态并弹出）。
+    assert win.isMinimized(), "最小化主窗被 ApplicationActivate 弹出（状态脱离 minimized）"
+
+
+def test_hidden_non_minimized_main_still_shown_on_app_activate(win, app):
+    """议题 #102-① 反面：非最小化的隐藏态（HIDE_CLOSE 的 hide）保留原 show() 行为，
+    应用激活时主窗应被恢复显示，避免误伤托盘隐藏场景。"""
+    from PyQt6.QtCore import QEvent
+
+    win.show()
+    app.processEvents()
+    win.hide()
+    app.processEvents()
+    assert not win.isVisible() and not win.isMinimized(), "前置失败：主窗应为非最小化隐藏态"
+
+    viewport = win.Ui.textBrowser_log_main.viewport()
+    app.sendEvent(viewport, QEvent(QEvent.Type.ApplicationActivate))
+    app.processEvents()
+
+    assert win.isVisible(), "非最小化隐藏主窗未被 ApplicationActivate 恢复显示"
+
+
+def test_main_page_cover_scales_proportionally_when_maximized(win, app):
+    """议题 #102-②：主界面封面区（poster/thumb 图片框 + 尺寸文字）最大化后
+    按设计基准宽 820 横向等比放大，宽高与 x 同 scale、y 不变（纵向位置保留）。
+
+    回归背景：绝对定位布局未把封面区纳入横向同步，最大化后 4 个 label 停留
+    设计 220px 高、停在页面顶部不随窗口放大（用户标注「图片区域及图片等比放大」）。
+    """
+    _goto(win, app, "page_main")
+    win.resize(1920, 1080)
+    win.show()
+    app.processEvents()
+
+    ui = win.Ui
+    # stackedWidget 可用宽 = width - 210 - 2 = 1708；scale = 1708/820
+    stacked_w = ui.stackedWidget.width()
+    scale = stacked_w / 820
+    assert stacked_w == 1708, f"前置：最大化 stackedWidget 宽 {stacked_w} ≠ 1708"
+
+    assert ui.label_poster.width() == int(156 * scale), f"封面框宽未按 scale 放大: {ui.label_poster.width()}"
+    assert ui.label_poster.height() == int(220 * scale), f"封面框高未按 scale 放大: {ui.label_poster.height()}"
+    assert ui.label_poster.x() == int(80 * scale), f"封面框 x 未按 scale 平移: {ui.label_poster.x()}"
+    assert ui.label_poster.y() == 160, f"封面框 y 应保留设计 160: {ui.label_poster.y()}"
+
+    assert ui.label_thumb.width() == int(328 * scale), f"缩略框宽未按 scale 放大: {ui.label_thumb.width()}"
+    assert ui.label_thumb.height() == int(220 * scale), f"缩略框高未按 scale 放大: {ui.label_thumb.height()}"
+    assert ui.label_thumb.x() == int(252 * scale), f"缩略框 x 未按 scale 平移: {ui.label_thumb.x()}"
+
+    assert ui.label_poster_size.width() == int(411 * scale), f"封面尺寸文字宽未按 scale: {ui.label_poster_size.width()}"
+    assert ui.label_thumb_size.width() == int(201 * scale), f"缩略尺寸文字宽未按 scale: {ui.label_thumb_size.width()}"
+
+
+def test_nfo_lib_info_page_no_right_blank_when_maximized(win, app):
+    """议题 #102-④：信息管理页（NFO 库）最大化后表单区右侧无残留空白。
+
+    回归背景：该现象在 v2.0.9 用户截图中标注「这不正常」，实为议题 #78 描述的
+    「右侧残留 ~194px 空白」+ #82 还原锁死——v2.1.0 已由 _sync_page_layouts
+    逐页重排 + CustomScrollArea min 宽回落覆盖。本测试锁定当前代码无回归：
+    表单内容宽必须跟随视口（右侧不留 194px 空白）。
+    """
+    _goto(win, app, "page_nfo_library")
+    win.resize(1920, 1080)
+    win.show()
+    app.processEvents()
+
+    form_scroll = win.Ui.scrollArea_nfo_lib_form
+    form_content = win.Ui.scrollAreaWidgetContents_nfo_lib
+    right_gap = form_scroll.viewport().width() - form_content.width()
+    assert right_gap <= 20, f"信息管理页右侧仍残留空白 {right_gap}px（应 ≤20）"
