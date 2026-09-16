@@ -55,9 +55,25 @@ class NetworkCheckResult:
 
 # 连通性检测通过后，用该番号实际探测爬虫搜索能力，避免"能连≠能刮"误导用户
 SCRAPE_PROBE_NUMBER = "SSNI-647"
-# 真实刮削探测走完整 run() 流程，慢站/走代理/CF bypass 站响应偏慢，8s 易误报"探测超时"，
-# 调大到 15s 让慢站有足够时间收敛，避免把"能刮但慢"误判成"刮不动"
-SCRAPE_PROBE_TIMEOUT = 15.0
+# 真实刮削探测走完整 run() 流程，慢站/走代理/CF bypass 站响应偏慢，8s 偏紧（议题 #109）、
+# 15s 对慢网用户仍不够（议题 #115）。首轮全量检测取 30s，兼顾覆盖与整轮耗时
+# （探测按分组串行、组内并发 10，首轮最坏耗时即该阈值）。
+SCRAPE_PROBE_TIMEOUT = 30.0
+# 点「重试失败项」时的递进超时：第 1 次重试 45s、第 2 次及以后 60s。
+# 重试只重测上次失败/警告的少数项，等待成本可控，给偶发慢站更大收敛窗口。
+SCRAPE_PROBE_RETRY_TIMEOUTS = (45.0, 60.0)
+
+
+def scrape_probe_timeout(retry_index: int = 0) -> float:
+    """按重试轮次返回刮削探测超时。
+
+    retry_index=0 为首轮全量检测，取 ``SCRAPE_PROBE_TIMEOUT``；
+    1 为第 1 次「重试失败项」，取 45s；2 及以后取 60s（封顶）。
+    """
+    if retry_index <= 0:
+        return SCRAPE_PROBE_TIMEOUT
+    index = min(retry_index - 1, len(SCRAPE_PROBE_RETRY_TIMEOUTS) - 1)
+    return SCRAPE_PROBE_RETRY_TIMEOUTS[index]
 
 
 ProgressCallback = Callable[[str], None]
@@ -282,10 +298,12 @@ def _compute_used_proxy(spec: NetworkCheckSpec) -> bool:
 async def _probe_crawler_by_run(
     crawler: Any,
     input_data: Any,
+    probe_timeout: float | None = None,
 ) -> tuple[NetworkCheckStatus | None, str]:
     """对重写 `_run` 的 API 类爬虫，用真实刮削路径探测能力."""
+    timeout = probe_timeout if probe_timeout is not None else SCRAPE_PROBE_TIMEOUT
     try:
-        response = await asyncio.wait_for(crawler.run(input_data), timeout=SCRAPE_PROBE_TIMEOUT)
+        response = await asyncio.wait_for(crawler.run(input_data), timeout=timeout)
     except TimeoutError:
         return NetworkCheckStatus.WARNING, "站点可达但刮削探测超时"
     except Exception as exc:
@@ -306,11 +324,14 @@ async def _probe_crawler_by_run(
 async def _probe_crawler_capability(
     client: Any,
     spec: NetworkCheckSpec,
+    probe_timeout: float | None = None,
 ) -> tuple[NetworkCheckStatus | None, str]:
     """连通性检测通过后，用真实爬虫搜索路径探测刮削能力.
 
     返回 (None, "") 表示该站点无需/无法探测；否则返回探测状态与说明。
+    probe_timeout: 刮削探测超时；None 时取首轮默认值 ``SCRAPE_PROBE_TIMEOUT``。
     """
+    timeout = probe_timeout if probe_timeout is not None else SCRAPE_PROBE_TIMEOUT
     site = spec.site
     if site is None:
         return None, ""
@@ -355,7 +376,7 @@ async def _probe_crawler_capability(
         if not search_urls:
             # 重写 _run 的爬虫（aio 系列/fc2 等）不走标准搜索流程，
             # 统一回退真实刮削路径探测。
-            return await _probe_crawler_by_run(crawler, input_data)
+            return await _probe_crawler_by_run(crawler, input_data, timeout)
         if isinstance(search_urls, str):
             search_urls = [search_urls]
 
@@ -369,7 +390,7 @@ async def _probe_crawler_capability(
                 headers=headers,
                 cookies=cookies,
                 use_proxy=spec.use_proxy,
-                timeout=SCRAPE_PROBE_TIMEOUT,
+                timeout=timeout,
                 retry_count=1,
             )
             if response is None:
@@ -388,7 +409,7 @@ async def _probe_crawler_capability(
                 return NetworkCheckStatus.OK, "连接正常，刮削正常"
             # 重写 _search（POST 搜索）的爬虫 GET 探测拿不到结果，
             # 回退真实刮削路径再确认一次。
-            return await _probe_crawler_by_run(crawler, input_data)
+            return await _probe_crawler_by_run(crawler, input_data, timeout)
     except NotImplementedError:
         return NetworkCheckStatus.WARNING, "站点可达但无法自动探测刮削，可用设置页指定网址实测"
     except CrawlerException as exc:
@@ -833,6 +854,7 @@ async def run_network_check_item(
     *,
     cancel_event: threading.Event | None = None,
     client: "AsyncWebClient | Any | None" = None,
+    probe_timeout: float | None = None,
 ) -> NetworkCheckResult:
     if cancel_event and cancel_event.is_set():
         return NetworkCheckResult(spec=spec, status=NetworkCheckStatus.CANCELLED, message="已取消")
@@ -955,7 +977,7 @@ async def run_network_check_item(
             # （实测 xcity.jp 无 /api/search），探测会按主站 URL 模式产生误报。
             and not spec.name.endswith("·镜像")
         ):
-            probe_status, probe_message = await _probe_crawler_capability(request_client, spec)
+            probe_status, probe_message = await _probe_crawler_capability(request_client, spec, probe_timeout)
             if probe_status is not None:
                 status, message = probe_status, probe_message
 
@@ -1034,11 +1056,13 @@ async def run_network_check(
     client: "AsyncWebClient | Any | None" = None,
     emit_header: bool = True,
     specs: list[NetworkCheckSpec] | None = None,
+    probe_timeout: float | None = None,
 ) -> list[NetworkCheckResult]:
     """执行网络检测。
 
     specs: 指定检测子集（用于"重试失败项"只重测失败/警告项）；None 表示全量构建检测项。
     on_item_done: 每完成一项回调 (done, total) 结构化进度（"基础环境"组不参与计数）；供 UI 显示百分比。
+    probe_timeout: 刮削探测超时；None 时取首轮默认值。重试失败项时由调用方按轮次传入递增值。
     """
     progress = progress or (lambda line: None)
     if emit_header:
@@ -1053,7 +1077,9 @@ async def run_network_check(
 
     async def run_one(spec: NetworkCheckSpec) -> NetworkCheckResult:
         async with semaphore:
-            return await run_network_check_item(spec, cancel_event=cancel_event, client=client)
+            return await run_network_check_item(
+                spec, cancel_event=cancel_event, client=client, probe_timeout=probe_timeout
+            )
 
     start_time = time.perf_counter()
     proxy_down = False

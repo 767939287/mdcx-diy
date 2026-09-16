@@ -344,10 +344,10 @@ async def test_run_network_check_survives_task_level_exception(monkeypatch: pyte
 
     real_item = nc_module.run_network_check_item
 
-    async def flaky_item(spec, *, cancel_event=None, client=None):
+    async def flaky_item(spec, *, cancel_event=None, client=None, probe_timeout=None):
         if spec.name == "boom":
             raise TimeoutError  # 空消息异常，复刻用户场景的形态
-        return await real_item(spec, cancel_event=cancel_event, client=client)
+        return await real_item(spec, cancel_event=cancel_event, client=client, probe_timeout=probe_timeout)
 
     monkeypatch.setattr("mdcx.core.network_check.run_network_check_item", flaky_item)
     lines: list[str] = []
@@ -383,10 +383,10 @@ async def test_run_network_check_cancelled_task_does_not_stop(monkeypatch: pytes
 
     real_item = nc.run_network_check_item
 
-    async def flaky_item(spec, *, cancel_event=None, client=None):
+    async def flaky_item(spec, *, cancel_event=None, client=None, probe_timeout=None):
         if spec.name == "cancelled":
             raise asyncio.CancelledError
-        return await real_item(spec, cancel_event=cancel_event, client=client)
+        return await real_item(spec, cancel_event=cancel_event, client=client, probe_timeout=probe_timeout)
 
     monkeypatch.setattr("mdcx.core.network_check.run_network_check_item", flaky_item)
     lines: list[str] = []
@@ -708,6 +708,66 @@ class ProbeFakeClient:
         response = SimpleNamespace(status_code=200, text=self.text, url=url, headers={})
         response.encoding = "utf-8"
         return response, ""
+
+
+def test_scrape_probe_timeout_ladder():
+    """议题 #115：首轮 30s，重试递进 45s → 60s（封顶）。"""
+    assert nc.SCRAPE_PROBE_TIMEOUT == 30.0
+    assert nc.scrape_probe_timeout(0) == 30.0
+    assert nc.scrape_probe_timeout(-1) == 30.0
+    assert nc.scrape_probe_timeout(1) == 45.0
+    assert nc.scrape_probe_timeout(2) == 60.0
+    assert nc.scrape_probe_timeout(3) == 60.0
+
+
+@pytest.mark.anyio
+async def test_probe_crawler_capability_passes_probe_timeout_to_search_request(monkeypatch: pytest.MonkeyPatch):
+    """重试失败项时传入的递进超时必须落到搜索页请求上。"""
+    monkeypatch.setattr("mdcx.crawlers.get_crawler", lambda site: ProbeCrawler)
+    client = ProbeFakeClient()
+    spec = NetworkCheckSpec(name="avbase", group="刮削站点", url="https://www.avbase.net", site=Website.AVBASE)
+
+    await _probe_crawler_capability(client, spec, probe_timeout=45.0)
+
+    assert client.calls
+    assert client.calls[0]["timeout"] == 45.0
+
+
+@pytest.mark.anyio
+async def test_probe_crawler_capability_defaults_to_first_round_timeout(monkeypatch: pytest.MonkeyPatch):
+    """未指定 probe_timeout 时用首轮 30s。"""
+    monkeypatch.setattr("mdcx.crawlers.get_crawler", lambda site: ProbeCrawler)
+    client = ProbeFakeClient()
+    spec = NetworkCheckSpec(name="avbase", group="刮削站点", url="https://www.avbase.net", site=Website.AVBASE)
+
+    await _probe_crawler_capability(client, spec)
+
+    assert client.calls[0]["timeout"] == nc.SCRAPE_PROBE_TIMEOUT == 30.0
+
+
+@pytest.mark.anyio
+async def test_probe_crawler_by_run_uses_passed_timeout(monkeypatch: pytest.MonkeyPatch):
+    """重写 _run 的爬虫探测必须使用调用方传入的超时值。"""
+    captured: dict = {}
+
+    async def fake_wait_for(awaitable, timeout=None):
+        captured["timeout"] = timeout
+        awaitable.close()
+        raise TimeoutError
+
+    monkeypatch.setattr(nc.asyncio, "wait_for", fake_wait_for)
+
+    class RunOnlyCrawler(ProbeCrawler):
+        async def _generate_search_url(self, ctx):
+            return None
+
+    status, message = await nc._probe_crawler_by_run(
+        RunOnlyCrawler(ProbeFakeClient()), SimpleNamespace(number="X-1"), 60.0
+    )
+
+    assert captured["timeout"] == 60.0
+    assert status == NetworkCheckStatus.WARNING
+    assert "超时" in message
 
 
 @pytest.mark.anyio
