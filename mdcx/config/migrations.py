@@ -216,6 +216,76 @@ def migrate_config_data(data: dict[str, Any]) -> list[str]:
     # 存量用户配置静默修正（seesaawiki 中不含 seesawiki 子串，replace 不会误伤已正确值）
     if isinstance(ps := data.get("proxy_sites"), str) and "seesawiki" in ps:
         data["proxy_sites"] = ps.replace("seesawiki.jp", "seesaawiki.jp")
+    # 议题 #114：白名单直连模式迁移——旧 proxy_sites（代理黑名单）转为 direct_sites（直连白名单）。
+    # 策略：过滤掉已知 AV 站域，仅保留 google.com / github.com 等非 AV 站点。
+    # 旧 proxy_sites 为空或无内容时，direct_sites 保持空（默认全部走代理）。
+    if "direct_sites" not in data:
+        old_ps = (data.get("proxy_sites") or "").strip()
+        if old_ps:
+            _AV_SUFFIXES = {
+                ".co.jp",
+                ".com",
+                ".net",
+                ".org",
+                ".tv",
+                ".shop",
+                ".live",
+                ".ai",
+                ".ws",
+            }
+            _AV_PATTERNS = [
+                "amazon",
+                "media-amazon",
+                "xcity",
+                "minnano-av",
+                "avbase",
+                "javbus",
+                "javdb",
+                "javlibrary",
+                "r18",
+                "mgstage",
+                "prestige-av",
+                "seesaawiki",
+                "avsox",
+                "avmoo",
+                "avheat",
+                "caribbeancom",
+                "heyzo",
+                "1pondo",
+                "pacopacomama",
+                "10musume",
+                "mywife",
+                "missav",
+                "aventertainments",
+                "javfree",
+                "7mmtv",
+                "7tv022",
+                "lulubar",
+                "dmm",
+                "iqqtv",
+                "madouqu",
+                "madou",
+                "avsex",
+                "javday",
+                "freejavbt",
+                "getchu",
+                "fc2",
+                "libredmm",
+                "tenhow",
+                "tmdb",
+                "wikidata",
+                "anidb",
+            ]
+            old_list = [s.strip() for s in old_ps.split(",") if s.strip()]
+            direct: list[str] = []
+            for site in old_list:
+                low = site.lower()
+                skip = any(p in low for p in _AV_PATTERNS)
+                if not skip:
+                    direct.append(site)
+            data["direct_sites"] = ",".join(direct) if direct else ""
+        else:
+            data["direct_sites"] = ""
     if isinstance(r := data.get("cf_bypass_url"), str):
         r = r.strip().rstrip("/")
         if r and all(schema not in r for schema in ["http://", "https://"]):

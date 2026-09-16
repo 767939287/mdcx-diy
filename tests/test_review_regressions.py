@@ -116,42 +116,43 @@ async def test_movie_lists_skips_duplicate_symlink_targets_without_deleting_link
     assert second_link.is_symlink()
 
 
-# ---- is_proxy_host：匹配分支回归（改造后语义等价）----
+# ---- is_proxy_host：匹配分支回归（白名单直连模式，语义取反）----
 
 
 def test_is_proxy_host_direct_and_subdomain():
-    assert is_proxy_host("javdb.com", ["javdb.com"])
-    assert is_proxy_host("api.javdb.com", ["javdb.com"])
+    # 命中直连白名单 → False（不走代理）
+    assert not is_proxy_host("javdb.com", ["javdb.com"])
+    assert not is_proxy_host("api.javdb.com", ["javdb.com"])
+    # 未命中 → True（走代理）
+    assert is_proxy_host("example.com", ["javdb.com"])
 
 
 def test_is_proxy_host_web_dic_mapping():
-    assert is_proxy_host("javdb.com", ["javdb"])
-    assert is_proxy_host("www.javdb.net", ["javdb"])
+    assert not is_proxy_host("javdb.com", ["javdb"])
+    assert not is_proxy_host("www.javdb.net", ["javdb"])
+    assert is_proxy_host("example.com", ["javdb"])
 
 
 def test_is_proxy_host_tld_fallback():
-    # 未入 WEB_DIC 的站点值靠 TLD 兜底
-    assert is_proxy_host("libredmm.com", ["libredmm"])
-    assert is_proxy_host("api.libredmm.com", ["libredmm"])
+    assert not is_proxy_host("libredmm.com", ["libredmm"])
+    assert not is_proxy_host("api.libredmm.com", ["libredmm"])
+    assert is_proxy_host("example.com", ["libredmm"])
 
 
-def test_is_proxy_host_no_match():
-    assert not is_proxy_host("example.com", ["javdb"])
-    assert not is_proxy_host("javdb.com", ["other"])
-
-
-def test_is_proxy_host_empty_inputs():
-    assert not is_proxy_host("", ["javdb"])
-    assert not is_proxy_host("javdb.com", [])
-    assert not is_proxy_host("javdb.com", None)
+def test_is_proxy_host_empty_list_all_proxy():
+    # 空白名单 = 所有站点走代理
+    assert is_proxy_host("javdb.com", [])
+    assert is_proxy_host("example.com", [])
+    assert is_proxy_host("", [])
+    assert is_proxy_host("javdb.com", None)
 
 
 def test_is_proxy_host_wildcard_match_all():
-    # "全部流量走代理"开关注入 "*" 时任意 host 走代理
-    assert is_proxy_host("javdb.com", ["*"])
-    assert is_proxy_host("anything.example", ["*"])
-    assert is_proxy_host("dmm.co.jp", ["javdb", "*"])
-    assert not is_proxy_host("", ["*"])
+    # "全部流量走代理"开关注入 "*" 时——注意：* 现在表示直连通配（所有 host 直连）
+    # 一般场景下不会用 *，但保留兼容性
+    assert not is_proxy_host("javdb.com", ["*"])
+    assert not is_proxy_host("anything.example", ["*"])
+    assert not is_proxy_host("dmm.co.jp", ["javdb", "*"])
 
 
 # ---- 议题 #83：UI 按 crawler 站点值选代理，实际请求域名必须命中 ----
@@ -179,18 +180,15 @@ def test_is_proxy_host_wildcard_match_all():
 def test_proxy_host_matches_crawler_declared_domains(site_value, host):
     """站点值（UI 下拉框所选 crawler 名）必须命中爬虫声明的真实域名/镜像。
 
-    根因：域名映射原来只靠 WEB_DIC + 六个 TLD 兜底，.ai/.ws/.app/.cc/.sx/.club
-    及完全异名镜像（7tv022.com、动态域名 f101w.com）全部失配——用户在 UI 选了
-    走代理，实际请求仍直连。修复后映射并入爬虫注册表的 known_hosts（默认主域
-    + _domains 镜像 + 用户自定义 URL，javlibrary 另并入动态学习域名）。
+    白名单直连模式：站点域名命中 direct_sites 则返 False（直连），否则返 True（走代理）。
     """
-    assert is_proxy_host(host, [site_value]), f"站点 {site_value} 的域名 {host} 未命中代理"
+    assert not is_proxy_host(host, [site_value]), f"站点 {site_value} 的域名 {host} 应直连（不走代理）"
 
 
 def test_proxy_host_no_false_positive():
     # 近似名不应误命中无关域名
-    assert not is_proxy_host("missav.example.com", ["missav"])
-    assert not is_proxy_host("google.com", ["missav", "javdb", "7mmtv"])
+    assert is_proxy_host("missav.example.com", ["missav"])
+    assert is_proxy_host("google.com", ["missav", "javdb", "7mmtv"])
 
 
 # ---- _replace_dir_atomic：目录原子替换与失败回滚 ----

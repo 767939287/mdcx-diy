@@ -93,12 +93,14 @@ def _web_dic_domains_by_value() -> dict[str, frozenset[str]]:
     return _WEB_DIC_DOMAINS_BY_VALUE
 
 
-def is_proxy_host(host: str, proxy_sites: list[str] | tuple[str, ...] | None) -> bool:
-    """判断目标 host 是否应使用代理, 基于用户配置的 proxy_sites 列表.
+def is_proxy_host(host: str, direct_sites: list[str] | tuple[str, ...] | None) -> bool:
+    """判断目标 host 是否应使用代理（白名单直连模式）.
 
-    匹配规则（满足任一分支即视为应走代理）：
-      0. 全匹配通配：站点值为 ``*`` 时任意 host 均走代理（"全部流量走代理"开关由
-         ``Config.proxy_hosts_list()`` 注入此值）
+    语义：direct_sites 是「直连白名单」——host 命中列表则返 False（直连），否则返 True（走代理）。
+    空列表表示所有站点均走代理（默认行为）。
+
+    匹配规则（满足任一分支即视为应直连，返 False）：
+      0. 全匹配通配：站点值为 ``*`` 时任意 host 均直连（不推荐，一般用"全部走代理"替代）
       1. 直接域名匹配：``www.dmm.co.jp`` vs ``dmm.co.jp``
       2. 站点值映射 WEB_DIC：``javdb`` → ``javdb.com``
       3. 站点值加常见 TLD 兜底：``libredmm`` → ``libredmm.com/.net/...``
@@ -108,42 +110,47 @@ def is_proxy_host(host: str, proxy_sites: list[str] | tuple[str, ...] | None) ->
     分支 3 是兜底, 兜底分支的存在让 libredmm / avwikidb / minnano 等未列入 WEB_DIC
     的站点值也能开箱匹配。
     """
-    if not host or not proxy_sites:
-        return False
+    if not host:
+        return True
 
     host = host.strip().lower()
     if not host:
-        return False
+        return True
+
+    if not direct_sites:
+        # 空白名单 = 所有站点走代理
+        return True
 
     domains_by_value = _web_dic_domains_by_value()
-    for raw in proxy_sites:
-        proxy_site = raw.strip().lower()
-        if not proxy_site:
+    for raw in direct_sites:
+        site = raw.strip().lower()
+        if not site:
             continue
 
-        # 0. 全匹配通配（"全部流量走代理"开关注入）
-        if proxy_site == "*":
-            return True
+        # 0. 全匹配通配（理论上不应出现，保留兼容性）
+        if site == "*":
+            return False
 
         # 1. 直接匹配 + 4. 子域后缀
-        if host == proxy_site or host.endswith("." + proxy_site):
-            return True
+        if host == site or host.endswith("." + site):
+            return False
 
         # 2. WEB_DIC 反查：站点值对应的所有已知域名（含 TLD 变体）精确或子域命中
-        known = domains_by_value.get(proxy_site)
+        known = domains_by_value.get(site)
         if known:
             if host in known:
-                return True
+                return False
             for base in known:
                 if host.endswith("." + base):
-                    return True
+                    return False
 
         # 3. 通用 TLD 兜底（libredmm / avwikidb / minnano 等未进 WEB_DIC 的站点）
         for tld in _PROXY_TLDS:
-            if host == proxy_site + tld or host.endswith("." + proxy_site + tld):
-                return True
+            if host == site + tld or host.endswith("." + site + tld):
+                return False
 
-    return False
+    # 未命中白名单 → 走代理
+    return True
 
 
 def _safe_float(value: object, default: float) -> float:

@@ -252,7 +252,7 @@ def _compute_used_proxy(spec: NetworkCheckSpec) -> bool:
     """计算该检测项实际是否走代理.
 
     与 AsyncWebClient.request 的真实路由判定保持一致：
-    走代理需同时满足 全局代理启用、spec 允许代理、host 命中 proxy_sites。
+    走代理需同时满足 全局代理启用、spec 允许代理、host 未命中 direct_sites（白名单直连模式）。
     """
     if not spec.use_proxy or not spec.url:
         return False
@@ -597,7 +597,7 @@ async def _build_site_specs() -> list[NetworkCheckSpec]:
         url = _join_url(base_url, path)
         headers: dict[str, str] = {}
         cookies: dict[str, str] = {}
-        # 代理路由统一交给全局 proxy_sites 配置决策；强制直连会让被墙环境下
+        # 代理路由统一交给全局 direct_sites 配置决策；强制直连会让被墙环境下
         # 检测与真实刮削路径脱节（如 javlibrary 自定义 URL + CF Bypass 场景）。
         use_proxy = True
         if site == Website.JAVDB and manager.config.javdb:

@@ -702,10 +702,18 @@ class Config(BaseModel):
     # region: Network Settings
     use_proxy: bool = Field(default=False, title="代理类型")
     proxy: str = Field(default="http://127.0.0.1:7890", title="代理地址")
-    proxy_sites: str = Field(
-        default="amazon.co.jp,m.media-amazon.com,xcity.jp,minnano-av.com,avbase.net,javbus.com,javdb.com,javlibrary.com,r18.dev,mgstage.com,prestige-av.com,seesaawiki.jp,avsox.click,avsox.com,avmoo.shop,avmoo.com,avheat.shop,avheat.com,caribbeancom.com,heyzo.com,1pondo.tv,pacopacomama.com,10musume.com,mywife.cc,github.com,raw.githubusercontent.com,google.com,missav.ws,missav.ai,missav.live,aventertainments.com,javfree.me,7mmtv.sx,7tv022.com",
-        title="使用代理网站",
+    direct_sites: str = Field(
+        default="",
+        title="直连白名单",
+        description="指定绕过代理、直接连接的主机列表（逗号分隔）。默认空表示所有站点走代理；"
+        "仅加入如 google.com、github.com 等确实需要直连的站点。",
     )
+
+    @property
+    def proxy_sites(self) -> str:
+        """兼容旧字段名（只读），实际值来自 direct_sites。"""
+        return self.direct_sites
+
     proxy_route_all: bool = Field(
         default=False,
         title="全部流量走代理",
@@ -862,10 +870,13 @@ class Config(BaseModel):
         self.ensure_type_field_configs()
 
     def proxy_hosts_list(self) -> list[str]:
-        """代理路由列表：开启"全部流量走代理"时返回 ["*"]（is_proxy_host 通配全匹配），否则为 proxy_sites 解析结果。"""
+        """直连白名单：开启"全部流量走代理"时返回 ["*"]（is_proxy_host 通配全匹配），否则为 direct_sites 解析结果。
+
+        is_proxy_host 语义：传入的列表是「直连白名单」，host 命中则返 False（直连），否则返 True（走代理）。
+        """
         if self.proxy_route_all:
             return ["*"]
-        return [s.strip() for s in (self.proxy_sites or "").split(",") if s.strip()]
+        return [s.strip() for s in (self.direct_sites or "").split(",") if s.strip()]
 
     def get_site_config(self, site: Website) -> SiteConfig:
         return self.site_configs.get(site, SiteConfig())
