@@ -38,6 +38,7 @@ class Computed:
             cf_bypass_trusted_hosts=config.cf_bypass_trusted_hosts,
             verify_ssl=config.verify_ssl,
             proxy_sites=config.proxy_hosts_list(),
+            direct_sites=[s.strip() for s in (config.direct_sites or "").split(",") if s.strip()],
             log_fn=signal.add_log,
         )
 

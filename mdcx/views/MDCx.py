@@ -10467,6 +10467,38 @@ class Ui_MDCx(object):
         self.checkBox_proxy_route_all.setObjectName("checkBox_proxy_route_all")
         self.horizontalLayout_no_proxy.addWidget(self.checkBox_proxy_route_all)
         self.gridLayout_9.addLayout(self.horizontalLayout_no_proxy, 2, 1, 1, 1)
+        self.label_direct_sites = QtWidgets.QLabel(parent=self.gridLayoutWidget_9)
+        sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Policy.Fixed, QtWidgets.QSizePolicy.Policy.Fixed)
+        sizePolicy.setHorizontalStretch(0)
+        sizePolicy.setVerticalStretch(0)
+        sizePolicy.setHeightForWidth(self.label_direct_sites.sizePolicy().hasHeightForWidth())
+        self.label_direct_sites.setSizePolicy(sizePolicy)
+        self.label_direct_sites.setMinimumSize(QtCore.QSize(130, 0))
+        self.label_direct_sites.setLayoutDirection(QtCore.Qt.LayoutDirection.RightToLeft)
+        self.label_direct_sites.setAlignment(
+            QtCore.Qt.AlignmentFlag.AlignRight
+            | QtCore.Qt.AlignmentFlag.AlignTrailing
+            | QtCore.Qt.AlignmentFlag.AlignVCenter
+        )
+        self.label_direct_sites.setObjectName("label_direct_sites")
+        self.gridLayout_9.addWidget(self.label_direct_sites, 3, 0, 1, 1)
+        self.lineEdit_direct_sites = QtWidgets.QLineEdit(parent=self.gridLayoutWidget_9)
+        sizePolicy = QtWidgets.QSizePolicy(
+            QtWidgets.QSizePolicy.Policy.MinimumExpanding, QtWidgets.QSizePolicy.Policy.Fixed
+        )
+        sizePolicy.setHorizontalStretch(0)
+        sizePolicy.setVerticalStretch(0)
+        sizePolicy.setHeightForWidth(self.lineEdit_direct_sites.sizePolicy().hasHeightForWidth())
+        self.lineEdit_direct_sites.setSizePolicy(sizePolicy)
+        self.lineEdit_direct_sites.setMinimumSize(QtCore.QSize(200, 30))
+        self.lineEdit_direct_sites.setStyleSheet(
+            ' font: "Courier New";\n'
+            "                                border: 1px solid rgba(0,0,0, 50);\n"
+            "                                border-radius: 15px;\n"
+            ""
+        )
+        self.lineEdit_direct_sites.setObjectName("lineEdit_direct_sites")
+        self.gridLayout_9.addWidget(self.lineEdit_direct_sites, 3, 1, 1, 1)
         self.label_cf_bypass = QtWidgets.QLabel(parent=self.gridLayoutWidget_9)
         sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Policy.Fixed, QtWidgets.QSizePolicy.Policy.Fixed)
         sizePolicy.setHorizontalStretch(0)
@@ -10481,7 +10513,7 @@ class Ui_MDCx(object):
             | QtCore.Qt.AlignmentFlag.AlignVCenter
         )
         self.label_cf_bypass.setObjectName("label_cf_bypass")
-        self.gridLayout_9.addWidget(self.label_cf_bypass, 3, 0, 1, 1)
+        self.gridLayout_9.addWidget(self.label_cf_bypass, 4, 0, 1, 1)
         self.lineEdit_cf_bypass_url = QtWidgets.QLineEdit(parent=self.gridLayoutWidget_9)
         sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Policy.Minimum, QtWidgets.QSizePolicy.Policy.Fixed)
         sizePolicy.setHorizontalStretch(0)
@@ -10496,7 +10528,7 @@ class Ui_MDCx(object):
             ""
         )
         self.lineEdit_cf_bypass_url.setObjectName("lineEdit_cf_bypass_url")
-        self.gridLayout_9.addWidget(self.lineEdit_cf_bypass_url, 3, 1, 1, 1)
+        self.gridLayout_9.addWidget(self.lineEdit_cf_bypass_url, 4, 1, 1, 1)
         self.label_cf_bypass_proxy = QtWidgets.QLabel(parent=self.gridLayoutWidget_9)
         sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Policy.Fixed, QtWidgets.QSizePolicy.Policy.Fixed)
         sizePolicy.setHorizontalStretch(0)
@@ -10511,7 +10543,7 @@ class Ui_MDCx(object):
             | QtCore.Qt.AlignmentFlag.AlignVCenter
         )
         self.label_cf_bypass_proxy.setObjectName("label_cf_bypass_proxy")
-        self.gridLayout_9.addWidget(self.label_cf_bypass_proxy, 5, 0, 1, 1)
+        self.gridLayout_9.addWidget(self.label_cf_bypass_proxy, 6, 0, 1, 1)
         self.lineEdit_cf_bypass_proxy = QtWidgets.QLineEdit(parent=self.gridLayoutWidget_9)
         sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Policy.Minimum, QtWidgets.QSizePolicy.Policy.Fixed)
         sizePolicy.setHorizontalStretch(0)
@@ -10526,7 +10558,7 @@ class Ui_MDCx(object):
             ""
         )
         self.lineEdit_cf_bypass_proxy.setObjectName("lineEdit_cf_bypass_proxy")
-        self.gridLayout_9.addWidget(self.lineEdit_cf_bypass_proxy, 5, 1, 1, 1)
+        self.gridLayout_9.addWidget(self.lineEdit_cf_bypass_proxy, 6, 1, 1, 1)
         self.label_cf_bypass_trawl = QtWidgets.QLabel(parent=self.gridLayoutWidget_9)
         sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Policy.Fixed, QtWidgets.QSizePolicy.Policy.Fixed)
         sizePolicy.setHorizontalStretch(0)
@@ -10541,7 +10573,7 @@ class Ui_MDCx(object):
             | QtCore.Qt.AlignmentFlag.AlignVCenter
         )
         self.label_cf_bypass_trawl.setObjectName("label_cf_bypass_trawl")
-        self.gridLayout_9.addWidget(self.label_cf_bypass_trawl, 4, 0, 1, 1)
+        self.gridLayout_9.addWidget(self.label_cf_bypass_trawl, 5, 0, 1, 1)
         self.horizontalLayout_trawl = QtWidgets.QHBoxLayout()
         self.horizontalLayout_trawl.setObjectName("horizontalLayout_trawl")
         self.lineEdit_cf_bypass_trawl_url = QtWidgets.QLineEdit(parent=self.gridLayoutWidget_9)
@@ -10570,7 +10602,7 @@ class Ui_MDCx(object):
         self.comboBox_cf_bypass_backend.addItem("")
         self.comboBox_cf_bypass_backend.addItem("")
         self.horizontalLayout_trawl.addWidget(self.comboBox_cf_bypass_backend)
-        self.gridLayout_9.addLayout(self.horizontalLayout_trawl, 4, 1, 1, 1)
+        self.gridLayout_9.addLayout(self.horizontalLayout_trawl, 5, 1, 1, 1)
         self.label_cf_bypass_trusted_hosts = QtWidgets.QLabel(parent=self.gridLayoutWidget_9)
         sizePolicy = QtWidgets.QSizePolicy(QtWidgets.QSizePolicy.Policy.Fixed, QtWidgets.QSizePolicy.Policy.Fixed)
         sizePolicy.setHorizontalStretch(0)
@@ -13923,6 +13955,8 @@ class Ui_MDCx(object):
             )
         )
         self.checkBox_proxy_route_all.setText(_translate("MDCx", "全部走代理"))
+        self.label_direct_sites.setText(_translate("MDCx", "直连白名单："))
+        self.lineEdit_direct_sites.setPlaceholderText(_translate("MDCx", "逗号分隔，如 google.com,github.com"))
         self.label_cf_bypass.setText(_translate("MDCx", "CF Bypass："))
         self.lineEdit_cf_bypass_url.setPlaceholderText(
             _translate("MDCx", "留空则由外部 CF 服务自动启动（高级：手动指定 cf_bypasser 协议服务地址）")

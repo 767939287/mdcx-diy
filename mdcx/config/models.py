@@ -706,6 +706,11 @@ class Config(BaseModel):
         default="amazon.co.jp,m.media-amazon.com,xcity.jp,minnano-av.com,avbase.net,javbus.com,javdb.com,javlibrary.com,r18.dev,mgstage.com,prestige-av.com,seesaawiki.jp,avsox.click,avsox.com,avmoo.shop,avmoo.com,avheat.shop,avheat.com,caribbeancom.com,heyzo.com,1pondo.tv,pacopacomama.com,10musume.com,mywife.cc,github.com,raw.githubusercontent.com,google.com,missav.ws,missav.ai,missav.live,aventertainments.com,javfree.me,7mmtv.sx,7tv022.com",
         title="使用代理网站",
     )
+    direct_sites: str = Field(
+        default="",
+        title="直连白名单",
+        description="指定绕过代理、直接连接的主机列表（逗号分隔）。优先级高于「使用代理网站」列表——命中直连白名单的站点不走代理，其余按上方列表决定。默认空表示所有站点走代理。",
+    )
     proxy_route_all: bool = Field(
         default=False,
         title="全部流量走代理",

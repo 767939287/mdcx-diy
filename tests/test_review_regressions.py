@@ -154,6 +154,19 @@ def test_is_proxy_host_wildcard_match_all():
     assert not is_proxy_host("", ["*"])
 
 
+def test_is_proxy_host_direct_sites_priority():
+    """直连白名单优先：host 在 direct_sites 中时不走代理，即使也在 proxy_sites 中。"""
+    # 命中直连白名单 → False（不走代理）
+    assert not is_proxy_host("google.com", ["google.com"], ["google.com"])
+    # 未命中直连白名单但命中代理黑名单 → True（走代理）
+    assert is_proxy_host("javdb.com", ["google.com", "javdb.com"], ["google.com"])
+    # 两个列表都为空 → False（不走代理）
+    assert not is_proxy_host("example.com", [], [])
+    # 只有 proxy_sites 无 direct_sites → 原有逻辑不变
+    assert is_proxy_host("javdb.com", ["javdb.com"], None)
+    assert not is_proxy_host("example.com", ["javdb.com"], None)
+
+
 # ---- 议题 #83：UI 按 crawler 站点值选代理，实际请求域名必须命中 ----
 
 

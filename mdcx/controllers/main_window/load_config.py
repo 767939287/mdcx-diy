@@ -927,6 +927,9 @@ def load_config(self: "MyMAinWindow"):
         self.Ui.checkBox_verify_ssl.setChecked(manager.config.verify_ssl)
         # 使用代理的网站
         self.Ui.lineEdit_no_proxy_sites.setText(manager.config.proxy_sites)
+        # 直连白名单
+        if hasattr(self.Ui, "lineEdit_direct_sites") and self.Ui.lineEdit_direct_sites is not None:
+            self.Ui.lineEdit_direct_sites.setText(manager.config.direct_sites)
         self.Ui.checkBox_proxy_route_all.setChecked(manager.config.proxy_route_all)
         # 超时时间
         self.Ui.horizontalSlider_timeout.setValue(int(manager.config.timeout))

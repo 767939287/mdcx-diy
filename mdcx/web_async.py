@@ -93,26 +93,54 @@ def _web_dic_domains_by_value() -> dict[str, frozenset[str]]:
     return _WEB_DIC_DOMAINS_BY_VALUE
 
 
-def is_proxy_host(host: str, proxy_sites: list[str] | tuple[str, ...] | None) -> bool:
-    """判断目标 host 是否应使用代理, 基于用户配置的 proxy_sites 列表.
+def is_proxy_host(
+    host: str,
+    proxy_sites: list[str] | tuple[str, ...] | None,
+    direct_sites: list[str] | tuple[str, ...] | None = None,
+) -> bool:
+    """判断目标 host 是否应使用代理.
 
-    匹配规则（满足任一分支即视为应走代理）：
-      0. 全匹配通配：站点值为 ``*`` 时任意 host 均走代理（"全部流量走代理"开关由
-         ``Config.proxy_hosts_list()`` 注入此值）
-      1. 直接域名匹配：``www.dmm.co.jp`` vs ``dmm.co.jp``
-      2. 站点值映射 WEB_DIC：``javdb`` → ``javdb.com``
-      3. 站点值加常见 TLD 兜底：``libredmm`` → ``libredmm.com/.net/...``
-      4. 子域后缀：``api.libredmm.com`` vs ``libredmm.com``
+    优先级规则：
+      1. 直连白名单优先：host 命中 ``direct_sites`` 时返 False（不走代理）
+      2. 全匹配通配：站点值为 ``*`` 时任意 host 均走代理（"全部流量走代理"开关由
+          ``Config.proxy_hosts_list()`` 注入此值）
+      3. 直接域名匹配：``www.dmm.co.jp`` vs ``dmm.co.jp``
+      4. 站点值映射 WEB_DIC：``javdb`` → ``javdb.com``
+      5. 站点值加常见 TLD 兜底：``libredmm`` → ``libredmm.com/.net/...``
+      6. 子域后缀：``api.libredmm.com`` vs ``libredmm.com``
 
-    ManualConfig.WEB_DIC 只列了部分主流爬虫站点的域名映射, 分支 2 用它精确命中,
-    分支 3 是兜底, 兜底分支的存在让 libredmm / avwikidb / minnano 等未列入 WEB_DIC
+    ManualConfig.WEB_DIC 只列了部分主流爬虫站点的域名映射, 分支 4 用它精确命中,
+    分支 5 是兜底, 兜底分支的存在让 libredmm / avwikidb / minnano 等未列入 WEB_DIC
     的站点值也能开箱匹配。
     """
-    if not host or not proxy_sites:
+    if not host:
         return False
 
     host = host.strip().lower()
     if not host:
+        return False
+
+    # 1. 直连白名单优先：命中则不走代理
+    if direct_sites:
+        domains_by_value = _web_dic_domains_by_value()
+        for raw in direct_sites:
+            site = raw.strip().lower()
+            if not site:
+                continue
+            if host == site or host.endswith("." + site):
+                return False
+            known = domains_by_value.get(site)
+            if known:
+                if host in known:
+                    return False
+                for base in known:
+                    if host.endswith("." + base):
+                        return False
+            for tld in _PROXY_TLDS:
+                if host == site + tld or host.endswith("." + site + tld):
+                    return False
+
+    if not proxy_sites:
         return False
 
     domains_by_value = _web_dic_domains_by_value()
@@ -121,15 +149,15 @@ def is_proxy_host(host: str, proxy_sites: list[str] | tuple[str, ...] | None) ->
         if not proxy_site:
             continue
 
-        # 0. 全匹配通配（"全部流量走代理"开关注入）
+        # 2. 全匹配通配（"全部流量走代理"开关注入）
         if proxy_site == "*":
             return True
 
-        # 1. 直接匹配 + 4. 子域后缀
+        # 3. 直接匹配 + 6. 子域后缀
         if host == proxy_site or host.endswith("." + proxy_site):
             return True
 
-        # 2. WEB_DIC 反查：站点值对应的所有已知域名（含 TLD 变体）精确或子域命中
+        # 4. WEB_DIC 反查：站点值对应的所有已知域名（含 TLD 变体）精确或子域命中
         known = domains_by_value.get(proxy_site)
         if known:
             if host in known:
@@ -138,7 +166,7 @@ def is_proxy_host(host: str, proxy_sites: list[str] | tuple[str, ...] | None) ->
                 if host.endswith("." + base):
                     return True
 
-        # 3. 通用 TLD 兜底（libredmm / avwikidb / minnano 等未进 WEB_DIC 的站点）
+        # 5. 通用 TLD 兜底（libredmm / avwikidb / minnano 等未进 WEB_DIC 的站点）
         for tld in _PROXY_TLDS:
             if host == proxy_site + tld or host.endswith("." + proxy_site + tld):
                 return True
@@ -444,6 +472,7 @@ class AsyncWebClient:
         cf_bypass_trusted_hosts: str = "",
         verify_ssl: bool = True,
         proxy_sites: list[str] | None = None,
+        direct_sites: list[str] | None = None,
         log_fn: Callable[[str], None] | None = None,
         limiters: AsyncWebLimiters | None = None,
     ):
@@ -451,6 +480,7 @@ class AsyncWebClient:
         self.proxy = proxy
         self.timeout = timeout
         self.proxy_sites = [s.strip() for s in (proxy_sites or []) if s.strip()]
+        self.direct_sites = [s.strip() for s in (direct_sites or []) if s.strip()]
         self.max_clients = 100
         self.verify_ssl = verify_ssl
         self._session_kwargs: dict[str, int | bool | float] = {
@@ -598,12 +628,12 @@ class AsyncWebClient:
         )
 
     def _is_proxy_host(self, host: str) -> bool:
-        """检查目标 host 是否应使用代理, 基于当前 client 的 proxy_sites 配置.
+        """检查目标 host 是否应使用代理, 基于当前 client 的 proxy_sites + direct_sites 配置.
 
         语义与模块级 is_proxy_host 一致; 此方法保留为客户端持有自身 proxy_sites
-        的便捷入口, 供类的内部调用。
+        和 direct_sites，避免每次调用都传入两套列表。
         """
-        return is_proxy_host(host, self.proxy_sites)
+        return is_proxy_host(host, self.proxy_sites, self.direct_sites)
 
     def retain(self) -> None:
         """声明一个长生命周期使用方正在持有客户端，避免配置重载时提前关闭连接池。"""

@@ -252,7 +252,7 @@ def _compute_used_proxy(spec: NetworkCheckSpec) -> bool:
     """计算该检测项实际是否走代理.
 
     与 AsyncWebClient.request 的真实路由判定保持一致：
-    走代理需同时满足 全局代理启用、spec 允许代理、host 命中 proxy_sites。
+    走代理需同时满足 全局代理启用、spec 允许代理、host 未命中 direct_sites（直连白名单优先）且 host 命中 proxy_sites。
     """
     if not spec.use_proxy or not spec.url:
         return False
@@ -270,7 +270,11 @@ def _compute_used_proxy(spec: NetworkCheckSpec) -> bool:
     try:
         from mdcx.web_async import is_proxy_host
 
-        return is_proxy_host(host, manager.config.proxy_hosts_list())
+        return is_proxy_host(
+            host,
+            manager.config.proxy_hosts_list(),
+            [s.strip() for s in (manager.config.direct_sites or "").split(",") if s.strip()],
+        )
     except Exception:
         return False
 
