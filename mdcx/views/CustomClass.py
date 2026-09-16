@@ -68,6 +68,18 @@ class CustomScrollArea(QScrollArea):
     # 顶层容器判定为"宽幅"的右缘阈值比例：设计右缘 ≥ 内容设计宽的 85%。
     _WIDE_CHILD_RIGHT_RATIO = 0.85
 
+    def set_content_bottom_margin(self, margin: int) -> None:
+        """按实例覆盖内容底部余量（议题 #117）。
+
+        默认 72px 是为 page_setting 底部配置浮框带（侵入视口 63px）留的避让空间；
+        信息管理表单页没有任何浮框遮挡，同样的余量白白吃掉一行多高度，把
+        「保存当前 NFO」按钮挤出视口、凭空多出垂直滚动条。
+        """
+        self._content_bottom_margin = margin
+
+    def content_bottom_margin(self) -> int:
+        return getattr(self, "_content_bottom_margin", self._CONTENT_BOTTOM_MARGIN)
+
     def sync_content_min_height(self) -> None:
         content = self.widget()
         if content is None:
@@ -82,10 +94,15 @@ class CustomScrollArea(QScrollArea):
             size_hint = content_layout.sizeHint()
             if size_hint.height() <= 0:
                 return
-            min_width = size_hint.width()
+            # 议题 #117：宽度下限取布局硬最小值，不用 sizeHint 首选宽。视口窄于首选宽
+            # 时（垂直滚动条一占位就少 14px），sizeHint 宽会把内容顶死在首选宽不缩，
+            # 内容右缘被视口裁掉——输入框右侧圆角消失在滚动条底下（用户截图）。
+            # sizeHint 宽只是"首选"，字段本身横向 Expanding，可安全压到布局最小宽。
+            hard_min_width = content_layout.minimumSize().width()
+            min_width = hard_min_width if hard_min_width > 0 else size_hint.width()
             # layout 驱动内容同样补底部余量：sizeHint 是紧凑排布高度，
             # 不加余量时滚动到底最后一行贴视口底、被浮框带盖住 63px
-            min_height = size_hint.height() + self._CONTENT_BOTTOM_MARGIN
+            min_height = size_hint.height() + self.content_bottom_margin()
         else:
             children_rect = content.childrenRect()
             if children_rect.height() <= 0:
@@ -98,7 +115,7 @@ class CustomScrollArea(QScrollArea):
             design_w = getattr(content, "_wide_children_design_width", 0)
             measured_w = children_rect.right() + 1
             min_width = min(measured_w, design_w) if design_w > 0 else measured_w
-            min_height = children_rect.bottom() + self._CONTENT_BOTTOM_MARGIN
+            min_height = children_rect.bottom() + self.content_bottom_margin()
         if content.minimumWidth() != min_width or content.minimumHeight() != min_height:
             content.setMinimumWidth(min_width)
             content.setMinimumHeight(min_height)

@@ -593,6 +593,64 @@ def test_nfo_lib_layout_probe(win, app):
     )
 
 
+def test_nfo_lib_form_compact_and_no_clip_when_small(win, app):
+    """议题 #117：小窗时输入框右缘不被裁、无垂直滚动条、保存按钮免滚动可见。
+
+    用户截图（1032x737，Windows）：表单列内容宽顶在 QFormLayout 首选宽 301，
+    垂直滚动条一出现就占掉 14px 视口宽 → 内容右缘被裁 9px，输入框左侧圆角正常、
+    右侧被裁成平口；同时「保存当前 NFO」在视口外，必须下拉才见。
+    修复三点：
+    1. layout 驱动内容的宽度下限改用布局硬最小值——视口窄于首选宽时内容跟随视口；
+    2. 该页内容底部余量收紧为 8px（默认 72 是给设置页底部浮框带避让用的，
+       信息管理页没有浮框，白占一行多高度凭空顶出滚动条）；
+    3. 视口仍放不下整表时，按缺口压缩简介/标签两个多行框（60 → 最低 40）。
+    """
+    form_scroll = win.Ui.scrollArea_nfo_lib_form
+    form_content = win.Ui.scrollAreaWidgetContents_nfo_lib
+    outline = win.Ui.plainTextEdit_nfo_lib_outline
+    tag = win.Ui.plainTextEdit_nfo_lib_tag
+    save_btn = win.Ui.pushButton_nfo_lib_save
+
+    def probe():
+        app.processEvents()
+        viewport = form_scroll.viewport()
+        return {
+            "clip": form_content.width() - viewport.width(),
+            "scroll": form_scroll.verticalScrollBar().maximum(),
+            "outline_h": outline.height(),
+            "tag_h": tag.height(),
+            "save_hidden": save_btn.y() + save_btn.height() > viewport.height(),
+        }
+
+    # 常规小窗：整表放得下 → 保持设计高度 60（最大化布局不变），无滚动条
+    win.resize(1032, 737)
+    win.show()
+    _goto(win, app, "page_nfo_library")
+    at_small = probe()
+    assert at_small["clip"] <= 0, f"输入框右缘被视口裁剪: {at_small['clip']}px"
+    assert at_small["scroll"] == 0, f"小窗仍出现垂直滚动条: range={at_small['scroll']}"
+    assert not at_small["save_hidden"], "保存按钮被推出视口"
+    assert at_small["outline_h"] == 60 and at_small["tag_h"] == 60, "放得下时简介/标签应保持设计高"
+
+    # 更矮的窗口：压缩简介/标签换取免滚动可见，且不得出现横向裁剪
+    win.resize(1032, 560)
+    at_tiny = probe()
+    assert at_tiny["clip"] <= 0, f"压缩后输入框右缘被裁剪: {at_tiny['clip']}px"
+    assert at_tiny["scroll"] == 0, f"压缩后仍有垂直滚动条: range={at_tiny['scroll']}"
+    assert not at_tiny["save_hidden"], "压缩后保存按钮仍被推出视口"
+    assert at_tiny["outline_h"] < 60, f"视口放不下时简介未压缩: {at_tiny['outline_h']}"
+    assert at_tiny["outline_h"] >= 40, f"压缩低于可读下限: {at_tiny['outline_h']}"
+    assert at_tiny["outline_h"] == at_tiny["tag_h"], "简介/标签压缩幅度应一致"
+
+    # 回到放大尺寸：必须自动恢复设计高（幂等，不依赖当前值）
+    win.resize(1920, 1080)
+    at_max = probe()
+    assert at_max["outline_h"] == 60 and at_max["tag_h"] == 60, (
+        f"最大化后简介/标签未恢复设计高: {at_max['outline_h']}/{at_max['tag_h']}"
+    )
+    assert at_max["clip"] <= 0, f"最大化后输入框右缘被裁剪: {at_max['clip']}px"
+
+
 def test_scrollareas_restore_compact_after_maximize(win, app):
     """议题 #82：最大化→还原后，各页 scrollArea 内容几何必须回落紧凑基线。
 

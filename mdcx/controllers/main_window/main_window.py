@@ -548,6 +548,50 @@ class MyMAinWindow(QMainWindow):
     _CONTENT_TOP_OFFSET = 6
     _CONTENT_BOTTOM_MARGIN = 2
 
+    # 议题 #117：信息管理页「简介/标签」多行框的设计高度（.ui 中 min=max=60）。
+    # 视口放不下整表时按缺口压缩这两个框，压缩下限 40（再矮就没法看内容，
+    # 宁可保留滚动条）。
+    _NFO_LIB_FIELD_FULL_H = 60
+    _NFO_LIB_FIELD_MIN_H = 40
+
+    def _sync_nfo_lib_form_fields(self) -> None:
+        """小窗时压缩信息管理页「简介/标签」高度，让保存按钮免滚动可见（议题 #117）。
+
+        现象：窗口缩到默认尺寸以下时，15 行表单 + 底部余量总高超出滚动视口，
+        出现垂直滚动条，「保存当前 NFO」被推到视口外，用户以为按钮丢了。
+        做法：按视口可用高动态定这两个多行框的高——全高放得下就保持设计高
+        （最大化时布局完全不变），放不下就按缺口在两个框之间等分压缩，
+        最低压到 _NFO_LIB_FIELD_MIN_H。
+        """
+        ui = self.Ui
+        scroll = ui.scrollArea_nfo_lib_form
+        content = ui.scrollAreaWidgetContents_nfo_lib
+        layout = content.layout()
+        viewport_h = scroll.viewport().height()
+        if layout is None or viewport_h <= 0:
+            return
+        boxes = (ui.plainTextEdit_nfo_lib_outline, ui.plainTextEdit_nfo_lib_tag)
+        full = self._NFO_LIB_FIELD_FULL_H
+        floor = self._NFO_LIB_FIELD_MIN_H
+
+        def apply_box_height(height: int) -> int:
+            """把两个多行框钉到 height，返回整表紧凑排布所需高（含底部余量）。"""
+            for box in boxes:
+                box.setMinimumHeight(height)
+                box.setMaximumHeight(height)
+            layout.invalidate()
+            layout.activate()
+            content.updateGeometry()
+            return layout.sizeHint().height() + scroll.content_bottom_margin()
+
+        deficit = apply_box_height(full) - viewport_h
+        if deficit > 0:
+            # 缺口在两个框之间均摊（向上取整保证压够），并守住可读下限
+            shrink = min(-(-deficit // len(boxes)), full - floor)
+            if shrink > 0:
+                apply_box_height(full - shrink)
+        scroll.sync_content_min_height()
+
     def resizeEvent(self, a0):
         # 全局 UI 为绝对定位布局（上游遗留），centralwidget 无布局管理器，
         # 窗口缩放时手动同步导航栏/内容区/顶部进度条几何，否则最大化后内容区固定 820x692
@@ -741,6 +785,9 @@ class MyMAinWindow(QMainWindow):
         ui.pushButton_view_failed_list.move(max(log_page.width() - 257, 20), 13)
         ui.pushButton_show_hide_logs.move(0, max(log_page.height() - 42, 13))
         ui.pushButton_save_failed_list.move(0, max(log_page.height() - 42, 13))
+
+        # ============ page_nfo_library: 简介/标签高度自适应（议题 #117）============
+        self._sync_nfo_lib_form_fields()
 
     # 当隐藏边框时，最小化后，点击任务栏时，需要监听事件，在恢复窗口时隐藏边框
     def changeEvent(self, a0):

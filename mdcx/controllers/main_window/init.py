@@ -231,6 +231,10 @@ def Init_Ui(self: "MyMAinWindow"):
     self.Ui.widget_nfo.resize(791, 681)
     self.Ui.widget_nfo.hide()
     setup_site_priority_ui(self)
+    # 议题 #117：信息管理表单页底部没有配置浮框遮挡，收紧内容底部余量（默认 72px
+    # 是给设置页浮框带留的），否则小窗时多余留白把「保存当前 NFO」挤出视口、
+    # 凭空多出一条垂直滚动条，滚动条还会盖住输入框右侧圆角。
+    self.Ui.scrollArea_nfo_lib_form.set_content_bottom_margin(8)
     # stackedWidget 中未显示的页面不会触发 resize/show 事件，统一初始化
     # 自定义滚动区内容最小高度，保证首次切换到任一页面垂直滚动即可用
     from mdcx.views.CustomClass import CustomScrollArea
