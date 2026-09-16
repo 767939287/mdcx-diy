@@ -246,16 +246,12 @@ def test_get_text_with_rotate_switches_domain():
     assert crawler._rotator.domains == ["https://www.7mmtv.sx", "https://7tv022.com"]
 
 
-def test_proxy_default_empty_direct_sites():
-    """白名单直连模式：默认 direct_sites 为空，意味着所有站点默认走代理。"""
+def test_proxy_default_contains_7mmtv_domains():
     from mdcx.config.models import Config
-    from mdcx.web_async import is_proxy_host
 
     sites = Config().proxy_hosts_list()
-    assert sites == [], "默认 direct_sites 应为空"
-    # 空白名单 = 全部走代理
-    assert is_proxy_host("7mmtv.sx", sites)
-    assert is_proxy_host("7tv022.com", sites)
+    assert "7mmtv.sx" in sites
+    assert "7tv022.com" in sites
 
 
 @pytest.mark.asyncio

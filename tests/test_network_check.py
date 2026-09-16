@@ -79,10 +79,9 @@ class FakeConfig:
     javbus = ""
     theporndb_api_token = ""
     proxy_sites = ""
-    direct_sites = ""
 
     def proxy_hosts_list(self):
-        return [s.strip() for s in (self.direct_sites or "").split(",") if s.strip()]
+        return [s.strip() for s in (self.proxy_sites or "").split(",") if s.strip()]
 
     def get_site_url(self, site, default=""):
         return default
@@ -889,11 +888,11 @@ def test_compute_used_proxy_false_when_proxy_disabled():
     assert _compute_used_proxy(spec) is False
 
 
-def test_compute_used_proxy_true_when_host_not_in_direct_sites(monkeypatch: pytest.MonkeyPatch):
+def test_compute_used_proxy_true_when_host_in_proxy_sites(monkeypatch: pytest.MonkeyPatch):
     class ProxyConfig(FakeConfig):
         use_proxy = True
         proxy = "http://127.0.0.1:7890"
-        direct_sites = ""
+        proxy_sites = "libredmm.com,javdb.com"
 
     class ProxyManager:
         config = ProxyConfig()
@@ -905,18 +904,18 @@ def test_compute_used_proxy_true_when_host_not_in_direct_sites(monkeypatch: pyte
     assert _compute_used_proxy(spec) is True
 
 
-def test_compute_used_proxy_false_when_host_in_direct_sites(monkeypatch: pytest.MonkeyPatch):
+def test_compute_used_proxy_false_when_host_not_in_proxy_sites(monkeypatch: pytest.MonkeyPatch):
     class ProxyConfig(FakeConfig):
         use_proxy = True
         proxy = "http://127.0.0.1:7890"
-        direct_sites = "google.com"
+        proxy_sites = "javdb.com"
 
     class ProxyManager:
         config = ProxyConfig()
         computed = None
 
     monkeypatch.setattr("mdcx.core.network_check._manager", lambda: ProxyManager())
-    spec = NetworkCheckSpec(name="site", group="刮削站点", url="https://google.com", use_proxy=True)
+    spec = NetworkCheckSpec(name="site", group="刮削站点", url="https://libredmm.com", use_proxy=True)
 
     assert _compute_used_proxy(spec) is False
 
@@ -925,7 +924,7 @@ def test_compute_used_proxy_false_when_spec_forbids_proxy(monkeypatch: pytest.Mo
     class ProxyConfig(FakeConfig):
         use_proxy = True
         proxy = "http://127.0.0.1:7890"
-        direct_sites = ""
+        proxy_sites = "libredmm.com"
 
     class ProxyManager:
         config = ProxyConfig()

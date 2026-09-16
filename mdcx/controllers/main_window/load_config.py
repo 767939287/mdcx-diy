@@ -925,8 +925,8 @@ def load_config(self: "MyMAinWindow"):
         self.Ui.lineEdit_cf_bypass_trusted_hosts.setText(manager.config.cf_bypass_trusted_hosts)
         # HTTPS 证书校验
         self.Ui.checkBox_verify_ssl.setChecked(manager.config.verify_ssl)
-        # 直连白名单
-        self.Ui.lineEdit_no_proxy_sites.setText(manager.config.direct_sites)
+        # 使用代理的网站
+        self.Ui.lineEdit_no_proxy_sites.setText(manager.config.proxy_sites)
         self.Ui.checkBox_proxy_route_all.setChecked(manager.config.proxy_route_all)
         # 超时时间
         self.Ui.horizontalSlider_timeout.setValue(int(manager.config.timeout))
