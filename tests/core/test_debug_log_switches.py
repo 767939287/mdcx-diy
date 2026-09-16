@@ -1,11 +1,13 @@
 """议题 #98-1 回归：调试日志三开关互相独立。
 
 开关语义（设置 → 调试模式）：
-- show_web_log：控制爬虫/图片/TMDB 等「过程明细」（LogBuffer.web 通道）
-- show_from_log：控制「字段来源」块（show_result 写入 log 通道）
+- show_web_log：控制爬虫/图片/TMDB 等「过程明细」（LogBuffer.web 通道），
+  逐字段来源排障块（📒 字段来源）也归该通道（#98-3）
+- show_from_log：「显示字段来源信息」——开时输出保持 [website] 站点摘要精简形态，
+  不再触发逐字段展开（逐字段排障需开 show_web_log）
 - show_data_log：控制「字段内容」块（show_movie_info 写入 log 通道）
 
-核心回归：关掉 show_web_log 不再连带吞掉字段来源/字段内容（旧实现读取端
+核心回归：关掉 show_web_log 不再连带吞掉字段内容（旧实现读取端
 只有 show_web_log 一个闸门，关闭时整段丢弃）。
 """
 
@@ -95,12 +97,14 @@ def test_three_debug_switches_are_independent(monkeypatch, web_log, from_log, da
         assert "Poster选优" in text
     else:
         assert "Poster选优" not in text
-    # 字段来源块只受 show_from_log 控制，与 show_web_log 无关
-    if from_log:
+    # 逐字段来源排障块归过程明细通道：只受 show_web_log 控制（议题 #98-3），
+    # show_from_log 不再触发逐字段展开，开启时输出保持 [website] 站点摘要精简形态
+    if web_log:
         assert "字段来源" in text
         assert "↳ xxx" in text
     else:
         assert "字段来源" not in text
+        assert "↳ xxx" not in text
     # 字段内容块只受 show_data_log 控制
     if data_log:
         assert "number" in text and "SSIS-001" in text
@@ -109,8 +113,8 @@ def test_three_debug_switches_are_independent(monkeypatch, web_log, from_log, da
         assert "测试标题" not in text
 
 
-def test_show_web_log_off_keeps_field_blocks(monkeypatch):
-    """用户报告的原始场景：三开关全开时关掉过程明细，字段块仍在。"""
+def test_show_web_log_off_keeps_field_content_block(monkeypatch):
+    """关过程明细时字段内容块仍输出；逐字段排障块归过程明细通道，随之隐藏（#98-3）。"""
     from mdcx.config.manager import manager
 
     monkeypatch.setattr(manager.config, "show_web_log", False)
@@ -132,9 +136,12 @@ def test_show_web_log_off_keeps_field_blocks(monkeypatch):
 
     text = compose_scrape_log_output("BEGIN", "END")
     assert "[file] /lib/SSIS-002.mp4" in text
-    assert "字段来源" in text
+    # 字段内容块（show_data_log）恒出
     assert "outline" in text
     assert "测试简介" in text
+    # 逐字段排障块归过程明细通道：关 show_web_log 时不输出（#98-3）
+    assert "字段来源" not in text
+    assert "📌 outline" not in text
     # 过程明细被隐藏
     assert "图片读取失败" not in text
 

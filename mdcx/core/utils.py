@@ -280,6 +280,8 @@ def add_definition_tag(res: BaseCrawlerResult, definition, codec):
 
 def show_result(res: CrawlersResult, start_time: float):
     LogBuffer.log().write(res.site_log)
-    if manager.config.show_from_log and res.field_log:  # 字段来源信息
-        LogBuffer.log().write("\n\n 📒 字段来源\n\n" + res.field_log.strip(" ").strip("\n"))
+    # 议题 #98-3：逐字段来源排障块归过程明细通道（show_web_log 控制）；
+    # show_from_log 本身不再触发逐字段展开，开启时输出保持 [website] 站点摘要精简形态
+    if manager.config.show_web_log and res.field_log:
+        LogBuffer.web().write("\n\n 📒 字段来源\n\n" + res.field_log.strip(" ").strip("\n"))
     LogBuffer.log().write(f"\n 🍀 Data done!({get_used_time(start_time)}s)")

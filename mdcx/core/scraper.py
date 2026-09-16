@@ -1420,11 +1420,10 @@ def _flush_actor_db_wb(wb, db_path):
 def compose_scrape_log_output(scrape_info_begin: str, scrape_info_after: str) -> str:
     """按调试开关独立拼装单文件刮削日志（议题 #98）。
 
-    - log 通道（关键节点行 + 受 show_from_log/show_data_log 控制的字段
-      来源/字段内容块，写入端已按各自开关落好）恒定输出；
-    - web 通道（爬虫请求/图片下载/TMDB 查询等过程明细）只在
-      show_web_log 开启时拼装——由此三个开关互相独立，关掉过程明细
-      不再连带吞掉字段来源/字段内容。
+    - log 通道（关键节点行 + 受 show_data_log 控制的字段内容块）恒定输出；
+    - web 通道（爬虫请求/图片下载/TMDB 查询等过程明细 + 逐字段来源排障块
+      （#98-3：show_from_log 不再触发逐字段展开，逐字段排障归过程明细通道））
+      只在 show_web_log 开启时拼装——由此三个开关互相独立。
     """
     text = scrape_info_begin + LogBuffer.log().get(only_self=True)
     if manager.config.show_web_log:
