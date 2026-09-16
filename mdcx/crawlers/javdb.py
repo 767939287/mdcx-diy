@@ -10,7 +10,7 @@ from parsel import Selector
 from ..config.manager import manager
 from ..config.models import Website
 from ..models.model_types import CrawlerResult
-from ..number import match_number
+from ..number import match_number, number_search_variants
 from .base import BaseCrawler, CrawlerData, CrawlerException, DetailPageParser, extract_all_texts, extract_text
 
 
@@ -152,7 +152,7 @@ class JavdbCrawler(BaseCrawler):
     @classmethod
     def _search_candidates(cls, number: str) -> list[str]:
         cleaned = number.strip()
-        candidates = [cleaned]
+        candidates = list(number_search_variants(cleaned))
         key = cls._number_key(cleaned)
         if key.startswith("FC2"):
             digits = re.sub(r"\D", "", key[3:])

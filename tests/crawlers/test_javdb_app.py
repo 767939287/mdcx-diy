@@ -753,3 +753,9 @@ def test_signature_env_overrides_ignore_blank_values():
         mp.setenv("MDCX_JAVDB_APP_SIG_SUFFIX", "   ")
         sig = javdb_app.make_signature()
         assert sig.split(".")[1] == javdb_app._SIG_SUFFIX
+
+
+def test_search_candidates_adds_base_for_dmm_z_suffix():
+    # 议题 #106：DMM `z` 尾缀番号在 javdb 收录为基础番号，搜索候选应附带
+    assert JavdbAppCrawler._search_candidates("IBW-786Z") == ["IBW-786Z", "IBW-786"]
+    assert JavdbAppCrawler._search_candidates("BF-030") == ["BF-030"]

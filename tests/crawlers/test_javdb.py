@@ -52,3 +52,9 @@ async def test_parse_search_page_abf_still_matches():
     result = await crawler._parse_search_page(ctx, html, "http://test/search")
     assert result is not None
     assert any("ghi789" in url for url in result)
+
+
+def test_search_candidates_adds_base_for_dmm_z_suffix():
+    # 议题 #106：DMM `z` 尾缀番号在 javdb 收录为基础番号，搜索候选应附带
+    assert JavdbCrawler._search_candidates("IBW-786Z") == ["IBW-786Z", "IBW-786"]
+    assert JavdbCrawler._search_candidates("BF-030") == ["BF-030"]

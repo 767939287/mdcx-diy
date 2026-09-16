@@ -18,7 +18,7 @@ from ..base.web import learn_spfcas_image_segment
 from ..config.manager import manager
 from ..config.models import Website
 from ..models.model_types import CrawlerResult
-from ..number import match_number
+from ..number import match_number, number_search_variants
 from .base import BaseCrawler, Context, CrawlerData, CrawlerException
 
 logger = logging.getLogger(__name__)
@@ -234,7 +234,7 @@ class JavdbAppCrawler(BaseCrawler):
     @classmethod
     def _search_candidates(cls, number: str) -> list[str]:
         cleaned = number.strip()
-        candidates = [cleaned]
+        candidates = list(number_search_variants(cleaned))
         key = cls._number_key(cleaned)
         if key.startswith("FC2"):
             digits = re.sub(r"\D", "", key[3:])

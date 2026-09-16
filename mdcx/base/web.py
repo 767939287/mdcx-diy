@@ -91,7 +91,7 @@ def _build_dmm_probe_url(url: str) -> tuple[str, bool]:
     if not normalized:
         return "", False
 
-    if "awsimgsrc.dmm.co.jp" not in normalized:
+    if "awsimgsrc.dmm.co.jp" not in normalized.lower():
         return normalized, False
 
     split_result = urlsplit(normalized)
@@ -318,9 +318,11 @@ def _parse_content_length(value: Any) -> int | None:
     return length if length > 0 else None
 
 
-# DMM 图床对无效/下架对象可能返回 200 + 极小字节（实测 142B 垃圾响应、约 2.7KB 占位图），
-# 真实封面即使最小尺寸也在 10KB 以上，低于该阈值一律视为占位图
-_DMM_PLACEHOLDER_MAX_BYTES = 4096
+# DMM 图床对无效/下架对象可能返回 200 + 极小字节（实测 142B 垃圾响应）。
+# 真正的占位图会跳转到 now_printing，由 _is_invalid_image_redirect_url 按 URL 识别；
+# 这里的字节下限只兜住无跳转的垃圾响应。探测用的 120x90 缩略图下占位图约 1.5KB，
+# 而真实剧照实测最小 2.8KB（IBW-786 系列 2.8–4.5KB），阈值取两者之间避免误杀真图。
+_DMM_PLACEHOLDER_MAX_BYTES = 2048
 
 
 def _is_dmm_placeholder_size(size: int | None) -> bool:

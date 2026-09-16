@@ -13,6 +13,7 @@ from mdcx.number import (
     match_number,
     movie_number_lookup_values,
     normalize_movie_number,
+    number_search_variants,
     remove_disturb,
 )
 
@@ -338,10 +339,30 @@ async def test_get_file_info_does_not_extract_short_number_for_non_suren_prefixe
         ("BF002无码", "BF002", True),
         ("ABF002无码", "BF002", False),
         ("  IPX-535  Title", "IPX-535", True),
+        # 议题 #106：DMM `z` 尾缀番号应命中站点收录的基础番号
+        ("IBW-786 松本いちか", "IBW-786Z", True),
+        ("IBW-786Z 松本いちか", "IBW-786Z", True),
+        ("IBW-7860", "IBW-786Z", False),
+        ("IBW-786", "IBW-786", True),
     ],
 )
 def test_match_number(text: str, number: str, expected: bool):
     assert match_number(text, number) is expected
+
+
+@pytest.mark.parametrize(
+    ("number", "expected"),
+    [
+        ("IBW-786Z", ["IBW-786Z", "IBW-786"]),
+        ("IBW-786z", ["IBW-786z", "IBW-786"]),
+        ("IBW-786", ["IBW-786"]),
+        ("BF-002", ["BF-002"]),
+        ("", []),
+        ("  IBW-786Z  ", ["IBW-786Z", "IBW-786"]),
+    ],
+)
+def test_number_search_variants(number: str, expected: list[str]):
+    assert number_search_variants(number) == expected
 
 
 # ============================================================

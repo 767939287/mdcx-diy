@@ -125,6 +125,38 @@ async def test_check_url_uses_config_retry_for_dmm_images(monkeypatch: pytest.Mo
 
 
 @pytest.mark.asyncio
+async def test_check_url_accepts_small_real_dmm_sample_image(monkeypatch: pytest.MonkeyPatch):
+    # 议题 #106：120x90 探测缩略图下真实剧照最小约 2.8KB（IBW-786 系列 2.8-4.5KB），
+    # 不能用封面体积标准（10KB+）当占位图阈值，否则整批剧照被误杀
+    async def fake_request(method: str, url: str, **kwargs):
+        return (
+            _FakeResponse(
+                "https://pics.dmm.co.jp/digital/video/504ibw00786z/504ibw00786z-8.jpg",
+                headers={"Content-Length": "2868"},
+            ),
+            "",
+        )
+
+    monkeypatch.setattr(manager.computed.async_client, "request", fake_request)
+
+    result = await base_web.check_url("https://pics.dmm.co.jp/digital/video/504ibw00786z/504ibw00786z-8.jpg")
+
+    assert result == "https://pics.dmm.co.jp/digital/video/504ibw00786z/504ibw00786z-8.jpg"
+
+
+@pytest.mark.asyncio
+async def test_check_url_rejects_tiny_dmm_junk_response(monkeypatch: pytest.MonkeyPatch):
+    async def fake_request(method: str, url: str, **kwargs):
+        return (_FakeResponse(url, headers={"Content-Length": "142"}), "")
+
+    monkeypatch.setattr(manager.computed.async_client, "request", fake_request)
+
+    result = await base_web.check_url("https://pics.dmm.co.jp/digital/video/504ibw00786z/504ibw00786z-1.jpg")
+
+    assert result is None
+
+
+@pytest.mark.asyncio
 async def test_get_url_content_length_uses_get_for_dmm_images(monkeypatch: pytest.MonkeyPatch):
     calls: list[tuple[str, str]] = []
 

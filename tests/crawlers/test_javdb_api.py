@@ -281,3 +281,9 @@ def test_wanted_matches():
 def test_copy_uses_direct_url():
     crawler = JavdbApiCrawler(client=None)
     assert crawler._get_headers(None) is None or "cookie" in (crawler._get_headers(None) or {})
+
+
+def test_search_candidates_adds_base_for_dmm_z_suffix():
+    # 议题 #106：DMM `z` 尾缀番号在 javdb 收录为基础番号，搜索候选应附带
+    assert JavdbApiCrawler._search_candidates("IBW-786Z") == ["IBW-786Z", "IBW-786"]
+    assert JavdbApiCrawler._search_candidates("BF-030") == ["BF-030"]

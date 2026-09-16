@@ -131,15 +131,37 @@ def _matches_suren_prefix(number: str, key: str) -> bool:
     return key_upper == "CUTE-" and number_upper.startswith("SCUTE-")
 
 
+def number_search_variants(number: str) -> list[str]:
+    """番号搜索候选：原番号在前，附带去掉 DMM `z` 尾缀的基础番号。
+
+    DMM 图床部分番号带 `z` 尾缀（如 IBW-786z），而 javdb/javbus 等站点收录的是
+    `IBW-786`，直接用带尾缀的番号搜会「未收录」。这里只放宽搜索，不改写番号本身，
+    命名与落库仍保留原样。保序去重。
+    """
+    cleaned = str(number or "").strip()
+    if not cleaned:
+        return []
+    variants = [cleaned]
+    if len(cleaned) > 1 and cleaned.upper().endswith("Z"):
+        base = cleaned[:-1].rstrip("-_. ")
+        if base:
+            variants.append(base)
+    return list(dict.fromkeys(variants))
+
+
 def match_number(text: str, number: str) -> bool:
     """搜索结果番号匹配。
 
     字母前缀番号（BF、BS 等）严格匹配，避免 BF-002 被 ABF-002 误匹配；
     数字前缀素人番号（252MY-001 等）保持宽松包含匹配。
+    番号带 DMM `z` 尾缀时同时接受站点收录的基础番号（IBW-786z 命中 IBW-786）。
     """
     if re.match(r"^\d", number):
         return number.upper() in text.upper()
-    return re.search(rf"(?<![A-Z0-9]){re.escape(number)}(?![A-Z0-9])", text, re.IGNORECASE) is not None
+    for candidate in number_search_variants(number):
+        if re.search(rf"(?<![A-Z0-9]){re.escape(candidate)}(?![A-Z0-9])", text, re.IGNORECASE) is not None:
+            return True
+    return False
 
 
 def get_number_letters(number: str) -> str:

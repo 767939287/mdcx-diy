@@ -38,6 +38,17 @@ def test_should_skip_dmm_upgrade_uncensored():
     assert not _should_skip_dmm_upgrade("WANZ-100")
 
 
+def test_is_match_tolerates_dmm_z_suffix():
+    # 议题 #106：DMM `z` 尾缀番号应命中站点收录的基础番号
+    from mdcx.crawlers.javbus import is_match
+
+    assert is_match("/IBW-786", "IBW-786z")
+    assert is_match("/IBW-786z", "IBW-786z")
+    assert is_match("/IBW-786_1", "IBW-786z")
+    assert not is_match("/IBW-7860", "IBW-786z")
+    assert not is_match("/IBW-123", "IBW-786z")
+
+
 def test_build_aws_cover_candidates_ssis():
     from mdcx.crawlers.javbus import _build_aws_cover_candidates
 

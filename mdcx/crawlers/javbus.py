@@ -8,6 +8,7 @@ from lxml import etree
 from ..config.enums import Website
 from ..config.manager import manager
 from ..core.mosaic import is_plain_uncensored_mosaic
+from ..number import number_search_variants
 from .base import BaseCrawler, Context, CrawlerData, CrawlerException
 from .base.base_types import split_csv
 
@@ -400,10 +401,13 @@ def is_match(each_url: str, number: str) -> bool:
         return upper
 
     each_upper = _normalize(each_url, strip_ppv=True)
-    normalized = _normalize(number, strip_ppv=True)
-    number_1 = "/" + normalized
-    number_2 = number_1 + "_"
-    return each_upper.endswith(number_1) or number_2 in each_upper
+    for candidate in number_search_variants(number):
+        normalized = _normalize(candidate, strip_ppv=True)
+        number_1 = "/" + normalized
+        number_2 = number_1 + "_"
+        if each_upper.endswith(number_1) or number_2 in each_upper:
+            return True
+    return False
 
 
 async def get_real_url(client, ctx: Context, number, url_type, javbus_url, headers):  # 获取详情页链接
@@ -413,33 +417,34 @@ async def get_real_url(client, ctx: Context, number, url_type, javbus_url, heade
     else:
         base_candidates = [javbus_url]
 
-    for base in base_candidates:
-        if url_type == "us":
-            url_search = base + "/search/" + number
-        elif url_type == "censored":  # 有码
-            url_search = base + "/search/" + number + "&type=&parent=ce"
-        else:  # 无码
-            url_search = base + "/uncensored/search/" + number + "&type=0&parent=uc"
+    for candidate in number_search_variants(number):
+        for base in base_candidates:
+            if url_type == "us":
+                url_search = base + "/search/" + candidate
+            elif url_type == "censored":  # 有码
+                url_search = base + "/search/" + candidate + "&type=&parent=ce"
+            else:  # 无码
+                url_search = base + "/uncensored/search/" + candidate + "&type=0&parent=uc"
 
-        ctx.debug(f"搜索地址: {url_search}")
-        ctx.debug_info.search_urls.append(url_search)
-        html_search, error = await client.get_text(url_search, headers=headers)
-        if html_search is None:
-            ctx.debug(f"搜索请求失败: {error}, 尝试下一镜像")
-            continue
-        if "lostpasswd" in html_search:
-            raise CrawlerException("Cookie 无效！请重新填写 Cookie 或更新节点！")
+            ctx.debug(f"搜索地址: {url_search}")
+            ctx.debug_info.search_urls.append(url_search)
+            html_search, error = await client.get_text(url_search, headers=headers)
+            if html_search is None:
+                ctx.debug(f"搜索请求失败: {error}, 尝试下一镜像")
+                continue
+            if "lostpasswd" in html_search:
+                raise CrawlerException("Cookie 无效！请重新填写 Cookie 或更新节点！")
 
-        html = etree.fromstring(html_search, etree.HTMLParser())
-        url_list = html.xpath("//a[@class='movie-box']/@href")
-        for each in url_list:
-            if is_match(each, number):
-                ctx.debug(f"番号地址: {each}")
-                # 搜索结果 href 可能是根相对路径（如 /SSIS-538），直接请求会因 host 为空而失败，需补全为绝对 URL
-                if each.startswith("/"):
-                    each = base + each
-                return each
-        ctx.debug(f"镜像 {base} 未匹配到番号, 尝试下一镜像")
+            html = etree.fromstring(html_search, etree.HTMLParser())
+            url_list = html.xpath("//a[@class='movie-box']/@href")
+            for each in url_list:
+                if is_match(each, number):
+                    ctx.debug(f"番号地址: {each}")
+                    # 搜索结果 href 可能是根相对路径（如 /SSIS-538），直接请求会因 host 为空而失败，需补全为绝对 URL
+                    if each.startswith("/"):
+                        each = base + each
+                    return each
+            ctx.debug(f"镜像 {base} 未匹配到番号, 尝试下一镜像")
     raise CrawlerException("搜索结果: 未匹配到番号！")
 
 
