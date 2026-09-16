@@ -560,3 +560,52 @@ async def test_build_poster_candidates_size_probe_falls_back_to_jdbstatic(monkey
 
     assert len(sized) == 1
     assert sized[0].size == (800, 1200)
+
+
+def test_dmm_aws_to_pics_fallback_url():
+    """AWS 无水印 URL 反向为 pics.dmm.co.jp 原图 host，形态不符返回空串。"""
+    assert (
+        base_web.dmm_aws_to_pics_fallback_url(
+            "https://awsimgsrc.dmm.co.jp/pics_dig/digital/video/504ibw00786z/504ibw00786z-6.jpg"
+        )
+        == "https://pics.dmm.co.jp/digital/video/504ibw00786z/504ibw00786z-6.jpg"
+    )
+    # 已是 pics 原图 / 非 awsimgsrc 形态 → 无回退目标
+    assert base_web.dmm_aws_to_pics_fallback_url("https://pics.dmm.co.jp/digital/video/x/x.jpg") == ""
+    assert base_web.dmm_aws_to_pics_fallback_url("https://awsimgsrc.dmm.co.jp/other/x.jpg") == ""
+
+
+@pytest.mark.asyncio
+async def test_download_extrafanart_task_falls_back_to_pics_when_aws_404(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+):
+    """剧照 AWS 无水印下载 404 时，回退 pics.dmm.co.jp 原图重试。"""
+    requested: list[str] = []
+
+    async def fake_dmm_download(url: str, file_path: Path, folder_new_path: Path) -> bool:
+        requested.append(url)
+        if "awsimgsrc.dmm.co.jp" in url:
+            return False  # AWS 404
+        return True
+
+    monkeypatch.setattr(base_web, "download_dmm_extrafanart_with_filepath", fake_dmm_download)
+
+    async def fake_check_pic_async(path: Path):
+        return (800, 600)
+
+    monkeypatch.setattr(base_web, "check_pic_async", fake_check_pic_async)
+
+    result = await base_web.download_extrafanart_task(
+        (
+            "https://awsimgsrc.dmm.co.jp/pics_dig/digital/video/504ibw00786z/504ibw00786z-6.jpg",
+            tmp_path / "fanart1.jpg",
+            tmp_path,
+            "fanart1.jpg",
+        )
+    )
+
+    assert result is True
+    assert requested == [
+        "https://awsimgsrc.dmm.co.jp/pics_dig/digital/video/504ibw00786z/504ibw00786z-6.jpg",
+        "https://pics.dmm.co.jp/digital/video/504ibw00786z/504ibw00786z-6.jpg",
+    ]

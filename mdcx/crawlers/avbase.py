@@ -1,6 +1,4 @@
-import asyncio
 import json
-import random
 import re
 from typing import Any, override
 from urllib.parse import quote, urljoin
@@ -380,72 +378,24 @@ class AvbaseCrawler(BaseCrawler):
         return ""
 
     async def _sanitize_extrafanart_urls(self, ctx_or_image_urls, image_urls: list[str] | None = None) -> list[str]:
-        ctx = None
+        # 剧照「有就下、没有就没有」：仅做 pics.dmm.co.jp → awsimgsrc.dmm.co.jp/pics_dig 无水印域名替换，
+        # 不做 120x90 探测抽检、不按字节卡占位图——真占位图靠下载层 now_printing 跳转 / 404 自然识别，
+        # 按 120x90 缩略图字节判会误杀 2.8KB+ 的真实剧照（#106 16 张缺图根因）。
+        # 兼容双参调用：首个参数可为 ctx（此时剧照在 image_urls），或直接传剧照列表。
         if image_urls is None:
             image_urls = ctx_or_image_urls
-        else:
-            ctx = ctx_or_image_urls
-        candidates: list[str] = []
+
+        valid_urls: list[str] = []
         seen: set[str] = set()
         for image_url in image_urls:
             normalized = normalize_media_url(self._to_absolute_url(image_url))
-            if not normalized or normalized in seen:
+            if not normalized:
                 continue
-            seen.add(normalized)
-            candidates.append(normalized)
-
-        if not candidates:
-            return []
-
-        sample_indexes = list(range(len(candidates)))
-        if len(candidates) > 3:
-            sample_indexes = sorted(random.sample(range(len(candidates)), 3))
-
-        async def validate_candidate(image_url: str, *, prefer_aws: bool) -> str:
-            normalized = self._prefer_dmm_image_url(image_url) if prefer_aws else image_url
-            if is_dmm_image_url(normalized):
-                validated = await self._check_image_url(ctx, normalized)
-                if not validated:
-                    return ""
-                return str(validated)
-            return normalized
-
-        sampled_candidates = [(index, candidates[index]) for index in sample_indexes]
-        sampled_results = await asyncio.gather(
-            *[validate_candidate(image_url, prefer_aws=True) for _, image_url in sampled_candidates]
-        )
-        validated_by_index = {
-            index: validated for (index, _), validated in zip(sampled_candidates, sampled_results, strict=True)
-        }
-
-        if all(sampled_results):
-            self._log(f"剧照抽检通过: 随机抽检 {len(sampled_candidates)}/{len(candidates)}，整批升级 AWS")
-            valid_urls: list[str] = []
-            for index, image_url in enumerate(candidates):
-                resolved_url = validated_by_index.get(index) or self._prefer_dmm_image_url(image_url) or image_url
-                if resolved_url not in valid_urls:
-                    valid_urls.append(resolved_url)
-            return valid_urls
-
-        passed_count = sum(1 for image_url in sampled_results if image_url)
-        self._log(f"剧照抽检失败: 随机抽检 {passed_count}/{len(sampled_candidates)} 通过，回退全量校验")
-
-        remaining_candidates = [
-            (index, image_url) for index, image_url in enumerate(candidates) if not validated_by_index.get(index)
-        ]
-        if remaining_candidates:
-            # 复用抽检结果，避免回退后对已探测过的 URL 重复发起请求。
-            remaining_results = await asyncio.gather(
-                *[validate_candidate(image_url, prefer_aws=False) for _, image_url in remaining_candidates]
-            )
-            for (index, _), validated in zip(remaining_candidates, remaining_results, strict=True):
-                validated_by_index[index] = validated
-
-        valid_urls = []
-        for index in range(len(candidates)):
-            normalized = validated_by_index.get(index, "")
-            if normalized and normalized not in valid_urls:
-                valid_urls.append(normalized)
+            resolved = self._prefer_dmm_image_url(normalized) or normalized
+            if resolved in seen:
+                continue
+            seen.add(resolved)
+            valid_urls.append(resolved)
         return valid_urls
 
     def _extract_sample_image_urls(self, sample_image_urls: list[Any]) -> list[str]:

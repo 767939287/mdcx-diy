@@ -205,6 +205,25 @@ def learn_spfcas_image_segment(url: str) -> str:
     return ""
 
 
+def dmm_aws_to_pics_fallback_url(url: str) -> str:
+    """无水印 AWS CDN（awsimgsrc.dmm.co.jp/pics_dig/...）URL 回退为带水印 pics.dmm.co.jp 原图 URL；形态不符返回空串。
+
+    镜像 avbase._prefer_dmm_image_url 的 host 替换（pics.dmm.co.jp → awsimgsrc.dmm.co.jp/pics_dig），
+    用于 AWS 端 404 时回退 pics.dmm.co.jp 原图重试；pics.dmm.co.jp 对原路径均可正确服务。
+    """
+    normalized = normalize_media_url(url)
+    if normalized.startswith("//"):
+        normalized = "https:" + normalized
+    try:
+        split_result = urlsplit(normalized)
+    except Exception:
+        return ""
+    if split_result.netloc.lower() != "awsimgsrc.dmm.co.jp" or "/pics_dig" not in split_result.path.lower():
+        return ""
+    path = split_result.path.replace("/pics_dig/", "", 1)
+    return urlunsplit((split_result.scheme, "pics.dmm.co.jp", path, split_result.query, split_result.fragment))
+
+
 def jdbstatic_to_spfcas(url: str) -> str:
     """网页版 CDN（带水印）URL 变换为 App CDN（无水印）URL；形态不符返回空串。
 
@@ -1242,9 +1261,16 @@ async def download_extrafanart_task(task: tuple[str, Path, Path, str]) -> bool:
     extrafanart_url, extrafanart_file_path, extrafanart_folder_path, extrafanart_name = task
     normalized_url = normalize_media_url(extrafanart_url)
     if is_dmm_image_url(normalized_url):
+        # 优先无水印 AWS CDN（_prefer_dmm_image_url 升级），失败（含 404）回退 pics.dmm.co.jp 原图
         downloaded = await download_dmm_extrafanart_with_filepath(
             normalized_url, extrafanart_file_path, extrafanart_folder_path
         )
+        if not downloaded:
+            fallback_url = dmm_aws_to_pics_fallback_url(normalized_url)
+            if fallback_url and fallback_url != normalized_url:
+                downloaded = await download_dmm_extrafanart_with_filepath(
+                    fallback_url, extrafanart_file_path, extrafanart_folder_path
+                )
     else:
         # 优先 App CDN 无水印变体（下载层透明解密），失败（含中段过期 404）回退网页版原图
         downloaded = False
