@@ -55,7 +55,9 @@ class NetworkCheckResult:
 
 # 连通性检测通过后，用该番号实际探测爬虫搜索能力，避免"能连≠能刮"误导用户
 SCRAPE_PROBE_NUMBER = "SSNI-647"
-SCRAPE_PROBE_TIMEOUT = 8.0
+# 真实刮削探测走完整 run() 流程，慢站/走代理/CF bypass 站响应偏慢，8s 易误报"探测超时"，
+# 调大到 15s 让慢站有足够时间收敛，避免把"能刮但慢"误判成"刮不动"
+SCRAPE_PROBE_TIMEOUT = 15.0
 
 
 ProgressCallback = Callable[[str], None]
