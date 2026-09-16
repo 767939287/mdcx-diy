@@ -136,6 +136,20 @@ def test_get_file_number_keeps_non_suren_prefixes(raw_number: str, expected_numb
 
 
 @pytest.mark.parametrize(
+    ("raw_number", "expected_number"),
+    [
+        (r"D:/test/IBW-786z_【松本一香】_連れ子姉妹_[2020-06-25].mp4", "IBW-786"),
+        (r"D:/test/IBW-786Z.mp4", "IBW-786"),
+        (r"D:/test/MKBD-120Z.mp4", "MKBD-120"),
+        (r"D:/test/IBW-786.mp4", "IBW-786"),
+    ],
+)
+def test_get_file_number_strips_dmm_z_suffix(raw_number: str, expected_number: str):
+    # issue #106: DMM z-suffix numbers normalize to the base number
+    assert get_file_number(raw_number, []) == expected_number
+
+
+@pytest.mark.parametrize(
     ("raw_number", "not_expected_number"),
     [
         # 单字母+两位数字厂牌分支收窄为两位头数字，编码/分辨率串不能被当作番号

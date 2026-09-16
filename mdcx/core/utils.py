@@ -124,8 +124,10 @@ def deal_some_field(json_data: CrawlersResult):
             json_data.number = temp_n[0]
             json_data.letters = get_number_letters(json_data.number)
 
+    # DMM 图床部分番号带 `z` 尾缀（IBW-786z，站内收录为 IBW-786），
+    # 统一按基础番号命名落库；爬虫/文件名残留大写 Z 时兜底剥掉
     if number.endswith("Z"):
-        json_data.number = json_data.number[:-1] + "z"
+        json_data.number = json_data.number[:-1]
     return json_data
 
 

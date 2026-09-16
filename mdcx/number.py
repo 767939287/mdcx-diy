@@ -321,8 +321,10 @@ def get_file_number(filepath: str, escape_string_list: list[str]) -> str:
         file_number = r.group()
 
     elif r := re.search(
-        r"\d?[A-Z]{2,}-\d{2,}[Z]?", filename
+        r"\d?[A-Z]{2,}-\d{2,}", filename
     ):  # 提取类似mkbd-120 / 3ds-1234 番号（前导单数字属 studio 名，保留）
+        # DMM 图床部分番号带 `z` 尾缀（IBW-786z，站内收录为 IBW-786），
+        # 尾缀不带入番号，统一按基础番号搜索与命名
         file_number = r.group()
         for key, value in ManualConfig.SUREN_DIC.items():
             if _matches_suren_prefix(file_number, key):
