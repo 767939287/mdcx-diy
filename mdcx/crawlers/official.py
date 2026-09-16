@@ -113,7 +113,7 @@ def split_csv(value: str) -> list[str]:
 
 
 class OfficialCrawler(BaseCrawler):
-    description = "按番号前缀路由到子爬虫（综合：有码+无码）"
+    description = "无码官网按番号前缀自动路由：DLDSS→Dahlia、FNS/JIMMY→Faleno，1pondo/10musume/Pacopacomama/Caribbeancom/Heyzo 等无码官网直连；均走代理，综合有码+无码"
 
     @classmethod
     @override

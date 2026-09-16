@@ -228,7 +228,7 @@ class Parser(DetailPageParser):
 
 
 class JavdbApiCrawler(BaseCrawler):
-    description = "JavDB 镜像站直连，简繁转换（综合：有码+无码，免 CF）"
+    description = "JavDB（javdb.com 系镜像站）网页直连刮削，简繁转换（综合：有码+无码，免 CF）；区别于 thejavdb_api（DMM 数据 API）"
     parser = Parser()
 
     def __init__(self, client, base_url: str = "", browser=None):

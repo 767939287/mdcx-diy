@@ -37,7 +37,7 @@ class TheJavdbMovie(BaseModel):
 
 
 class TheJavdbApiCrawler(DmmCrawler):
-    description = "TheJavDB API 数据源（免 CF，仅能有码）"
+    description = "thejavdb.net 第三方 DMM 数据 API（免 CF，仅能有码；DMM 有码番号的补充数据源）"
 
     @staticmethod
     def _log(message: str):
