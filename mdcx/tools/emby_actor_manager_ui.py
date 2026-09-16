@@ -111,7 +111,7 @@ class LibrarySelectDialog(QDialog):
 
 class FetchActorsThread(QThread):
     progress = Signal(int, int, str)
-    fetch_done = Signal(list)
+    fetch_done = Signal(list, int)
     error = Signal(str)
 
     def __init__(self, parent=None):
@@ -120,7 +120,7 @@ class FetchActorsThread(QThread):
 
     def run(self):
         try:
-            actors = executor.run(
+            actors, raw_count = executor.run(
                 fetch_all_actors(
                     filter_actor_only=manager.config.actor_filter_only,
                     deduplicate=manager.config.actor_deduplicate,
@@ -128,7 +128,7 @@ class FetchActorsThread(QThread):
                     progress_callback=lambda c, t, m: self.progress.emit(c, t, m),
                 )
             )
-            self.fetch_done.emit(actors)
+            self.fetch_done.emit(actors, raw_count)
         except Exception as e:
             self.error.emit(str(e))
 
@@ -326,6 +326,8 @@ class EmbyActorManagerDialog(QDialog):
         self.cache_dir = resources.u("emby_actor_cache")
         self.cache_dir.mkdir(parents=True, exist_ok=True)
         self._actors: list[ActorInfo] = []
+        self._raw_count: int = 0
+        self._show_unique: bool = False
         self._gfriends_index = None
         self._preview_thread = None
         self._sync_thread = None
@@ -458,6 +460,11 @@ class EmbyActorManagerDialog(QDialog):
             lbl.setStyleSheet("padding: 2px 8px;")
             stats_layout.addWidget(lbl)
         stats_layout.addStretch()
+        stats_layout.addWidget(QLabel("计数方式:"))
+        self.cmb_count_mode = QComboBox()
+        self.cmb_count_mode.addItems(["原始条目数", "唯一名字数"])
+        self.cmb_count_mode.currentIndexChanged.connect(self._on_count_mode_changed)
+        stats_layout.addWidget(self.cmb_count_mode)
         parent_layout.addLayout(stats_layout)
         filter_layout = QHBoxLayout()
         filter_layout.addWidget(QLabel("筛选:"))
@@ -727,8 +734,9 @@ class EmbyActorManagerDialog(QDialog):
             self.progress_bar.setValue(current)
         self.setWindowTitle(f"Emby 演员管理器 - {msg}")
 
-    def _on_fetch_finished(self, actors: list[ActorInfo]):
+    def _on_fetch_finished(self, actors: list[ActorInfo], raw_count: int):
         self._actors = actors
+        self._raw_count = raw_count
         self._set_status("获取完成")
         self.log(f"获取完成，共 {len(actors)} 个演员")
         self._populate_table(actors)
@@ -884,7 +892,7 @@ class EmbyActorManagerDialog(QDialog):
         self._refresh_thread.error.connect(self._on_thread_error)
         self._refresh_thread.start()
 
-    def _on_auto_refresh_finished(self, actors: list[ActorInfo]):
+    def _on_auto_refresh_finished(self, actors: list[ActorInfo], raw_count: int):
         if self._failed_names:
             failed_old = {a.name: a for a in self._actors if a.name in self._failed_names}
             if failed_old:
@@ -905,6 +913,7 @@ class EmbyActorManagerDialog(QDialog):
                 actors = merged
                 self.log(f"🔁 已保留 {len(failed_old)} 个同步失败演员的待同步状态，可直接重试")
         self._actors = actors
+        self._raw_count = raw_count
         self._populate_table(actors)
         self._update_statistics(actors)
         self.btn_preview.setEnabled(len(actors) > 0)
@@ -1021,8 +1030,16 @@ class EmbyActorManagerDialog(QDialog):
         self.table.setSortingEnabled(True)
         self._update_sync_button()
 
+    def _on_count_mode_changed(self, index: int):
+        self._show_unique = index == 1
+        self._update_statistics(self._actors)
+
     def _update_statistics(self, actors: list[ActorInfo]):
-        total = len(actors)
+        if self._show_unique:
+            unique_names = {a.name for a in actors}
+            total = len(unique_names)
+        else:
+            total = self._raw_count if self._raw_count > 0 else len(actors)
         has_both = sum(1 for a in actors if a.has_image and a.has_overview)
         has_image_only = sum(1 for a in actors if a.has_image and not a.has_overview)
         has_info_only = sum(1 for a in actors if not a.has_image and a.has_overview)

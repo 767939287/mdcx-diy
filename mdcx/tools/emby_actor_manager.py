@@ -285,10 +285,11 @@ async def fetch_all_actors(
     parent_ids: list[str] | None = None,
     progress_callback: Callable | None = None,
     concurrency: int = 8,
-) -> list[ActorInfo]:
+) -> tuple[list[ActorInfo], int]:
     persons = await get_emby_actor_list(filter_actor_only=filter_actor_only)
+    raw_count = len(persons)
     if not persons:
-        return []
+        return [], 0
     seen_names = set()
     person_counts, person_titles, lib_person_names = await fetch_person_item_stats(
         parent_ids=parent_ids, filter_actor_only=filter_actor_only
@@ -364,7 +365,7 @@ async def fetch_all_actors(
     await asyncio.gather(*(_fill(info, p) for _, info, p in stubs))
 
     # 按原顺序返回 (稳定性)
-    return [info for _, info, _ in stubs]
+    return [info for _, info, _ in stubs], raw_count
 
 
 def _gfriends_cdn_url(gfriends_github) -> str:

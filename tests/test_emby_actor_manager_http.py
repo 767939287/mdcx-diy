@@ -262,7 +262,7 @@ async def test_concurrent_fetch_all_actors_does_not_duplicate_network_calls(acto
         ),
         patch("mdcx.tools.emby_actor_manager.fetch_actor_detail", side_effect=fake_detail),
     ):
-        result = await fetch_all_actors(filter_actor_only=False, deduplicate=True, parent_ids=None)
+        result, raw_count = await fetch_all_actors(filter_actor_only=False, deduplicate=True, parent_ids=None)
 
     assert len(result) == 5
     # 每个 name 只被调一次 (N+1 重构后必须)
@@ -307,7 +307,7 @@ async def test_fetch_all_actors_reuses_list_fields_when_present(emby_configured)
         patch("mdcx.tools.emby_actor_manager.manager.acquire_computed", return_value=_make_lease(fake_client)),
         patch("mdcx.tools.emby_actor_manager.fetch_actor_detail", side_effect=fake_detail),
     ):
-        result = await fetch_all_actors(filter_actor_only=False, deduplicate=True, parent_ids=None)
+        result, raw_count = await fetch_all_actors(filter_actor_only=False, deduplicate=True, parent_ids=None)
 
     assert len(result) == 1
     assert result[0].existing_overview == "已有简介"
