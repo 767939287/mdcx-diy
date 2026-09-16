@@ -370,7 +370,7 @@ async def test_delete_actor_image_404_treated_as_success(monkeypatch: pytest.Mon
 
 @pytest.mark.asyncio
 async def test_get_emby_actor_list_jellyfin_uses_items_endpoint(monkeypatch: pytest.MonkeyPatch):
-    """Jellyfin 12 的演员列表必须走 /Items+includeItemTypes（/Persons 列表 401，真机实测议题 #32）。"""
+    """Jellyfin 12 的演员列表走 /Persons（/Items+includeItemTypes 结构性拿不到全量 Person，议题 #103）。"""
     from mdcx.config.manager import manager
     from mdcx.tools import emby_actor_manager
 
@@ -410,13 +410,13 @@ async def test_get_emby_actor_list_jellyfin_uses_items_endpoint(monkeypatch: pyt
     query = parse_qs(parsed.query)
 
     assert actor_list == [{"Name": "演员A"}]
-    assert parsed.path == "/Items"
-    assert query["includeItemTypes"] == ["Person"]
+    assert parsed.path == "/Persons"
+    assert "includeItemTypes" not in query
     assert query["personTypes"] == ["Actor"]
 
 
 def _fake_acquire(monkeypatch: pytest.MonkeyPatch, fake_client) -> None:
-    """按 test_get_emby_actor_list_jellyfin_uses_items_endpoint 同款方式替换 acquire_computed。"""
+    """按 test_get_emby_actor_list_jellyfin_uses_items_endpoint 同款方式替换 acquire_computed（现断言 /Persons）。"""
     from mdcx.config.manager import manager
 
     class _FakeComputed:

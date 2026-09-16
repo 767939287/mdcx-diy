@@ -87,9 +87,9 @@ async def test_get_emby_actor_list_uses_jellyfin_actor_endpoint(monkeypatch: pyt
     assert actor_list == [{"Name": "演员A"}]
     assert parsed.scheme == "http"
     assert parsed.netloc == "127.0.0.1:8096"
-    # Jellyfin 12 起 /Persons 列表端点 401（真机实测议题 #32），改走 /Items 查询
-    assert parsed.path == "/Items"
-    assert query["includeItemTypes"] == ["Person"]
+    # Jellyfin 12 的 /Persons 列表端点走独立 PeopleRepository 全量返回（议题 #103 回退）
+    assert parsed.path == "/Persons"
+    assert "includeItemTypes" not in query
     assert query["personTypes"] == ["Actor"]
     assert query["fields"] == [",".join(emby_actor_image.JELLYFIN_PERSON_FIELDS)]
     assert query["enableImages"] == ["true"]
