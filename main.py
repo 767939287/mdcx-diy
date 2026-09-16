@@ -3,10 +3,9 @@ import json
 import os
 import platform
 import sys
-import tempfile
 
 from PIL import ImageFile
-from PyQt6.QtCore import QLockFile, Qt
+from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QIcon
 from PyQt6.QtWidgets import QApplication
 
@@ -127,30 +126,31 @@ def _ensure_stdio() -> None:
         sys.stderr = open(os.devnull, "w", encoding="utf-8")  # type: ignore[assignment]
 
 
-def _ensure_single_instance() -> QLockFile | None:
-    """单实例锁：若已有一个 MDCx 在运行，阻止第二个主窗口启动（根因 3 双开）。
+def _ensure_block_auto_relaunch() -> bool:
+    """拦截「MDCx 自身代码再 exec main.py」导致的自动二次启动，放行手工多开。
 
-    跨进程用 QLockFile（Qt 原生，PyInstaller/source 两种模式都可靠）：
-    首个实例 tryLock 成功并持锁直到进程退出；后续实例 tryLock 失败即返回 None。
-    检测网络/外部 CF 适配层等路径触发的「再次 exec main.py」在此被拦下。
-    锁文件落 temp 目录，进程退出时自动 unlock 释放。
+    标记机制：
+    - MDCx 首次启动时设置环境变量 MDCX_IS_FIRST_INSTANCE=1
+    - 检测网络/外部 CF 适配层等路径再次 exec main.py 时，继承该环境变量
+    - 再次 exec 的进程检测到 MDCX_IS_FIRST_INSTANCE 已存在 → 自动拦截，直接退出
+    - 用户手工双击/命令行新开（全新进程树，环境变量未继承）→ 放行，不限多开
+    返回 True = 放行；False = 拦截（调用方应直接退出）。
     """
-    lock_path = os.path.join(tempfile.gettempdir(), "mdcx_single_instance.lock")
-    lock = QLockFile(lock_path)
-    if not lock.tryLock(0):
-        print(f"[MDCx] 检测到已有实例运行，跳过第二个窗口 ({lock_path})")
-        return None
-    return lock
+    if os.environ.get("MDCX_IS_FIRST_INSTANCE") == "1":
+        print("[MDCx] 检测到由已运行 MDCx 自动拉起的二次启动，拦截（手工多开不受限）")
+        return False
+    # 首次启动（或手工多开）：标记本进程树，供后续自动 exec 继承
+    os.environ["MDCX_IS_FIRST_INSTANCE"] = "1"
+    return True
 
 
 def main() -> int:
     _enable_crash_dump()
     _ensure_stdio()
+    if not _ensure_block_auto_relaunch():
+        return 0
     show_constants()
     _apply_ui_scale_factor()
-    single_instance_lock = _ensure_single_instance()
-    if single_instance_lock is None:
-        return 0
     app, _ui = _create_application()
     try:
         return_code = app.exec()
@@ -166,7 +166,6 @@ def main() -> int:
         return 1
     finally:
         flush_tmdb_query_cache()
-        single_instance_lock.unlock()
 
 
 if __name__ == "__main__":
