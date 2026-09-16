@@ -3,9 +3,10 @@ import json
 import os
 import platform
 import sys
+import tempfile
 
 from PIL import ImageFile
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import QLockFile, Qt
 from PyQt6.QtGui import QIcon
 from PyQt6.QtWidgets import QApplication
 
@@ -126,11 +127,30 @@ def _ensure_stdio() -> None:
         sys.stderr = open(os.devnull, "w", encoding="utf-8")  # type: ignore[assignment]
 
 
+def _ensure_single_instance() -> QLockFile | None:
+    """单实例锁：若已有一个 MDCx 在运行，阻止第二个主窗口启动（根因 3 双开）。
+
+    跨进程用 QLockFile（Qt 原生，PyInstaller/source 两种模式都可靠）：
+    首个实例 tryLock 成功并持锁直到进程退出；后续实例 tryLock 失败即返回 None。
+    检测网络/外部 CF 适配层等路径触发的「再次 exec main.py」在此被拦下。
+    锁文件落 temp 目录，进程退出时自动 unlock 释放。
+    """
+    lock_path = os.path.join(tempfile.gettempdir(), "mdcx_single_instance.lock")
+    lock = QLockFile(lock_path)
+    if not lock.tryLock(0):
+        print(f"[MDCx] 检测到已有实例运行，跳过第二个窗口 ({lock_path})")
+        return None
+    return lock
+
+
 def main() -> int:
     _enable_crash_dump()
     _ensure_stdio()
     show_constants()
     _apply_ui_scale_factor()
+    single_instance_lock = _ensure_single_instance()
+    if single_instance_lock is None:
+        return 0
     app, _ui = _create_application()
     try:
         return_code = app.exec()
@@ -146,6 +166,7 @@ def main() -> int:
         return 1
     finally:
         flush_tmdb_query_cache()
+        single_instance_lock.unlock()
 
 
 if __name__ == "__main__":
