@@ -24426,15 +24426,19 @@ p, li { white-space: pre-wrap; }
 &lt;/ul&gt;
 
 &lt;h4&gt;四、网站选择&lt;/h4&gt;
-&lt;p&gt;网站下拉框由已注册的爬虫自动生成（当前 35 个），可按需选用全部网站或指定网站。主要来源包括：&lt;/p&gt;
+&lt;p&gt;网站下拉框由已注册的爬虫自动生成（当前 36 个），可按需选用全部网站或指定网站。主要来源包括：&lt;/p&gt;
  &lt;ul&gt;
- &lt;li&gt;&lt;b&gt;有码&lt;/b&gt;：仅能有码——DMM、DMM-API、TheJavDB-API、LibreDMM、R18.dev、AVBase、Xcity、Prestige、MGStage、Getchu、JavLibrary、FreeJavBT、Lulubar、AVMOO；综合（有码+无码）——JavBus、JavDB 系、MissAV 系、Official、airav.cc、AVSex、JavDay、JavFree、IQQTV&lt;/li&gt;
- &lt;li&gt;&lt;b&gt;无码&lt;/b&gt;：AVSOX、AVEntertainments 及综合站（JavBus、JavDB 系、MissAV 系、AVSex、Official、JavDay、IQQTV）&lt;/li&gt;
- &lt;li&gt;&lt;b&gt;素人&lt;/b&gt;：MGStage（259LUXU 等）、Prestige、JavBus、JavDB 系、DMM、DMM-API、AVBase、MissAV 系、MyWife、IQQTV&lt;/li&gt;
- &lt;li&gt;&lt;b&gt;FC2&lt;/b&gt;：FC2、FC2PPVDB、JavDB 系、JavFree&lt;/li&gt;
- &lt;li&gt;&lt;b&gt;国产&lt;/b&gt;：MADOUQU、MADOU_CLUB、AVSex、IQQTV、JavDay&lt;/li&gt;
- &lt;li&gt;&lt;b&gt;欧美&lt;/b&gt;：THEPORNDB、AVHEAT&lt;/li&gt;
+  &lt;li&gt;&lt;b&gt;有码&lt;/b&gt;：仅能有码——DMM、DMM-API、TheJavDB-API、LibreDMM、R18.dev、AVBase、Xcity、Prestige、MGStage、Getchu、JavLibrary、FreeJavBT、Lulubar、AVMOO；综合（有码+无码）——JavBus、JavDB 系、MissAV 系、Official、airav.cc、AVSex、JavDay、JavFree、IQQTV&lt;/li&gt;
+  &lt;li&gt;&lt;b&gt;无码&lt;/b&gt;：AVSOX、AVEntertainments 及综合站（JavBus、JavDB 系、MissAV 系、AVSex、Official、JavDay、IQQTV）&lt;/li&gt;
+  &lt;li&gt;&lt;b&gt;素人&lt;/b&gt;：MGStage（259LUXU 等）、Prestige、JavBus、JavDB 系、DMM、DMM-API、AVBase、MissAV 系、MyWife、IQQTV&lt;/li&gt;
+  &lt;li&gt;&lt;b&gt;FC2&lt;/b&gt;：FC2、FC2PPVDB、JavDB 系、JavFree&lt;/li&gt;
+  &lt;li&gt;&lt;b&gt;国产&lt;/b&gt;：MADOUQU、MADOU_CLUB、AVSex、IQQTV、JavDay&lt;/li&gt;
+  &lt;li&gt;&lt;b&gt;欧美&lt;/b&gt;：THEPORNDB、AVHEAT&lt;/li&gt;
  &lt;/ul&gt;
+ &lt;p&gt;&lt;b&gt;Official（综合：有码+无码，按番号前缀自动路由到各官网，全部走代理）：&lt;/b&gt;&lt;br/&gt;
+有码片商官网 30 家——S1（s1s1s1）、Moodyz（moodyz）、Madonna（madonna-av）、WANZ FACTORY（wanz-factory）、IdeaPocket（ideapocket）、Kirakira（kirakira-av）、E-Body（av-e-body）、Bi（bi-av）、Premium Beauty（premium-beauty）、MIMAN（miman）、Tameikegoro（tameikegoro）、Fitch（fitch-av）、Kawaiikawaii（kawaiikawaii）、BeeFree（befreebe）、Muku（muku.tv）、Attackers（attackers）、MKO-Labo（mko-labo）、Dasdas（dasdas）、MVG（mvg）、AV Opera（av-opera）、Oppai（oppai-av）、V-av（v-av）、To-Satsu（to-satsu）、Bibian（bibian-av）、Honnaka（honnaka）、Rookie（rookie-av）、Nanpa（nanpa-japan）、Hajime Kikaku（hajimekikaku）、HHH（hhh-av）、Prestige（prestige-av）&lt;br/&gt;
+无码官网 5 站（JSON API 直连）——Caribbeancom、Heyzo、1Pondo、Pacopacomama、10Musume&lt;br/&gt;
+番号前缀 DLDSS/FNS/JIMMY 还分别路由到 Dahlia/Faleno 官网。官网前缀表维护在代码 manual.py 的 OFFICIAL 字典中，增减不影响使用说明。&lt;/p&gt;
 
 &lt;h4&gt;五、Cloudflare 绕过（CF Bypass）&lt;/h4&gt;
 &lt;p&gt;MDCx 提供多种 Cloudflare 绕过能力，遇到受 Cloudflare 保护的站点时自动尝试绕过：&lt;/p&gt;

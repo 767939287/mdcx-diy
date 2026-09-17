@@ -34,7 +34,7 @@ MDCx 支持的功能全景。只想快速上手的话，先看 [QUICKSTART.md](Q
 | mgstage | mgstage.com | 有码/素人官网（仅能有码+素人） |
 | prestige | prestige-av.com | Prestige 官网 JSON API（仅能有码+素人） |
 | r18dev | r18.dev | JSON API 直连，番号自动补零（仅能有码） |
-| official | 各官网 | 按番号前缀路由到子爬虫（综合：有码+无码） |
+| official | 各官网 | 按番号前缀自动路由到 30 家有码片商官网 + 5 家无码官网（Caribbeancom/Heyzo/1Pondo/Pacopacomama/10Musume JSON 直连）+ Dahlia/Faleno 子爬虫（综合：有码+无码；全部走代理；前缀表维护在 `manual.py` 的 `OFFICIAL` 字典） |
 | avbase | av-base.net | 有码信息站（仅能有码+素人） |
 | freejavbt | freejavbt.com | 磁力信息站（仅能有码） |
 | mywife | mywife.cc | No. 素人番号（素人） |
