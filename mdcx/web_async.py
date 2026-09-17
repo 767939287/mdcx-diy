@@ -184,12 +184,33 @@ def _safe_float(value: object, default: float) -> float:
         return default
 
 
+# 维基媒体（Wikidata/Wikipedia）按客户端类型限速：未识别 10 req/min、
+# 仅合规 User-Agent 200 req/min。通用 8 req/s 远高于其限额，批量补全演员信息
+# 时会触发 429。这里对 wiki 域名单独设 1 req/s，平滑请求、留足余量（议题 #125）。
+_MEDIAWIKI_HOSTS = (
+    "wikidata.org",
+    "www.wikidata.org",
+    "m.wikidata.org",
+    "wikipedia.org",
+    "www.wikipedia.org",
+    "m.wikipedia.org",
+    "zh.wikipedia.org",
+    "zh.m.wikipedia.org",
+    "ja.wikipedia.org",
+    "ja.m.wikipedia.org",
+)
+_MEDIAWIKI_RATE = 1  # req/s
+
+
 class AsyncWebLimiters:
     def __init__(self):
         self.limiters: dict[str, AsyncLimiter] = {
             "127.0.0.1": AsyncLimiter(300, 1),
             "localhost": AsyncLimiter(300, 1),
         }
+        # 预置 wiki 域名限速器：get() 走 setdefault，命中此处即用慢速档
+        for host in _MEDIAWIKI_HOSTS:
+            self.limiters[host] = AsyncLimiter(_MEDIAWIKI_RATE, 1)
 
     def get(self, key: str, rate: float = 8, period: float = 1) -> AsyncLimiter:
         """默认对所有域名启用 8 req/s 的速率限制"""

@@ -21,6 +21,20 @@ from ..models.emby import EMbyActressInfo
 from ..signals import signal
 from ..utils.language import is_english
 
+# 维基媒体要求请求方提供可识别的 User-Agent：缺失或纯浏览器 UA 会被划入
+# 「未识别」档（10 req/min），带项目地址的 UA 归入「仅 User-Agent」档
+# （200 req/min）。配合 web_async 中 wikidata/wikipedia 域名的独立限速，
+# 避免批量补全演员信息时触发 429（议题 #125）。
+_WIKI_USER_AGENT = "MDCx/2.1 (https://github.com/cdlongbow/mdcx-diy) mediawiki-client"
+
+
+def _wiki_headers() -> dict[str, str]:
+    """维基百科/维基数据请求头：固定可识别 UA，覆盖随机浏览器指纹。"""
+    return {
+        "User-Agent": _WIKI_USER_AGENT,
+        "Accept": "application/json,text/html;q=0.9,*/*;q=0.8",
+    }
+
 
 async def search_wiki(actor_info: EMbyActressInfo) -> tuple[str | None, str]:
     """
@@ -48,7 +62,7 @@ async def search_wiki(actor_info: EMbyActressInfo) -> tuple[str | None, str]:
         # 请求维基百科搜索页接口
         url = f"https://www.wikidata.org/w/api.php?action=wbsearchentities&search={urllib.parse.quote(actor_name)}&language=zh&format=json"
         async with manager.acquire_computed() as computed:
-            res, error = await computed.async_client.get_json(url, headers=computed.random_headers)
+            res, error = await computed.async_client.get_json(url, headers=_wiki_headers())
         if res is None:
             return None, f"维基百科搜索结果请求失败: {error}"
 
@@ -60,7 +74,7 @@ async def search_wiki(actor_info: EMbyActressInfo) -> tuple[str | None, str]:
                 return None, "维基百科暂未收录"
             url = f"https://www.wikidata.org/w/api.php?action=wbsearchentities&search={urllib.parse.quote(actor_name_tw)}&language=zh&format=json"
             async with manager.acquire_computed() as computed:
-                res, error = await computed.async_client.get_json(url)
+                res, error = await computed.async_client.get_json(url, headers=_wiki_headers())
             if res is None:
                 return None, f"维基百科搜索结果请求失败: {error}"
             search_results = res.get("search")
@@ -88,7 +102,7 @@ async def search_wiki(actor_info: EMbyActressInfo) -> tuple[str | None, str]:
             wiki_id = each_result.get("id")
             url = f"https://m.wikidata.org/wiki/Special:EntityData/{wiki_id}.json"
             async with manager.acquire_computed() as computed:
-                res, error = await computed.async_client.get_json(url, headers=computed.random_headers)
+                res, error = await computed.async_client.get_json(url, headers=_wiki_headers())
             if res is None:
                 continue
             # 获取详细信息并返回URL
@@ -108,7 +122,7 @@ async def get_detail(url: str, url_log: str, actor_info: EMbyActressInfo) -> tup
         ja = "ja." in url
         emby_on = manager.config.emby_on
         async with manager.acquire_computed() as computed:
-            res, error = await computed.async_client.get_text(url, headers=computed.random_headers)
+            res, error = await computed.async_client.get_text(url, headers=_wiki_headers())
         if res is None:
             return False, f"维基百科演员页请求失败: {error}"
         if "noarticletext mw-content-ltr" in res:
