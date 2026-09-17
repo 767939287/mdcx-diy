@@ -1622,7 +1622,12 @@ async def _replace_dir_atomic(temp_dir: Path, target_dir: Path) -> None:
     await to_thread(shutil.rmtree, backup_dir, ignore_errors=True)
 
 
-async def extrafanart_download(extrafanart: list[str], extrafanart_from: str, folder_new_path: Path) -> bool | None:
+async def extrafanart_download(
+    extrafanart: list[str],
+    extrafanart_from: str,
+    folder_new_path: Path,
+    candidates: list[tuple[str, list[str]]] | None = None,
+) -> bool | None:
     start_time = time.time()
     download_files = manager.config.download_files
     keep_files = manager.config.keep_files
@@ -1632,7 +1637,6 @@ async def extrafanart_download(extrafanart: list[str], extrafanart_from: str, fo
         download_files=download_files,
         keep_files=keep_files,
     )
-    extrafanart_list = extrafanart
     extrafanart_folder_path = folder_new_path / "extrafanart"
 
     # 不下载不保留时删除返回
@@ -1649,47 +1653,62 @@ async def extrafanart_download(extrafanart: list[str], extrafanart_from: str, fo
     if not extrafanart_policy.should_download:
         return True
 
-    if extrafanart_list:
-        extrafanart_folder_path_temp = extrafanart_folder_path
-        if await aiofiles.os.path.exists(extrafanart_folder_path_temp):
-            extrafanart_folder_path_temp = extrafanart_folder_path.with_name(
-                extrafanart_folder_path.name + "[DOWNLOAD]"
-            )
-            await aiofiles.os.makedirs(extrafanart_folder_path_temp, exist_ok=True)
-        else:
-            await aiofiles.os.makedirs(extrafanart_folder_path_temp, exist_ok=True)
+    # 议题 #131：按来源优先级组装候选。主来源剧照可能已被站点删除（下载 404），
+    # 整组失败时依次回退到下一来源（如 javdb → avbase），任一来源整组成功即采用。
+    ordered_sources: list[tuple[str, list[str]]] = []
+    seen_urls: set[tuple[str, ...]] = set()
+    for source, urls in [(extrafanart_from, extrafanart), *(candidates or [])]:
+        if not urls:
+            continue
+        urls_key = tuple(urls)
+        if urls_key in seen_urls:
+            continue
+        seen_urls.add(urls_key)
+        ordered_sources.append((source, list(urls)))
 
-        extrafanart_count = 0
-        extrafanart_count_succ = 0
+    if not ordered_sources:
+        # 无任何候选：沿用本地旧文件（若存在）
+        return True if await aiofiles.os.path.exists(extrafanart_folder_path) else None
+
+    # 下载到独立临时目录：整组成功后再原子替换，避免任一来源的残缺结果污染输出目录
+    extrafanart_folder_path_temp = extrafanart_folder_path.with_name(extrafanart_folder_path.name + "[DOWNLOAD]")
+    await to_thread(shutil.rmtree, extrafanart_folder_path_temp, ignore_errors=True)
+
+    for source, extrafanart_list in ordered_sources:
+        # 换来源前清空上一来源的残留
+        await to_thread(shutil.rmtree, extrafanart_folder_path_temp, ignore_errors=True)
+        await aiofiles.os.makedirs(extrafanart_folder_path_temp, exist_ok=True)
+
         task_list = []
-        for extrafanart_url in extrafanart_list:
-            extrafanart_count += 1
-            extrafanart_name = "fanart" + str(extrafanart_count) + ".jpg"
+        for idx, extrafanart_url in enumerate(extrafanart_list, start=1):
+            extrafanart_name = "fanart" + str(idx) + ".jpg"
             extrafanart_file_path = extrafanart_folder_path_temp / extrafanart_name
             task_list.append((extrafanart_url, extrafanart_file_path, extrafanart_folder_path_temp, extrafanart_name))
 
         # 使用异步并发执行下载任务
-        tasks = [download_extrafanart_task(task) for task in task_list]
-        results = await asyncio.gather(*tasks, return_exceptions=True)
+        results = await asyncio.gather(*(download_extrafanart_task(task) for task in task_list), return_exceptions=True)
+        extrafanart_count_succ = sum(1 for res in results if res is True)
+        extrafanart_count = len(task_list)
 
-        for res in results:
-            if res is True:
-                extrafanart_count_succ += 1
         if extrafanart_count_succ == extrafanart_count:
-            if extrafanart_folder_path_temp != extrafanart_folder_path:
-                await _replace_dir_atomic(extrafanart_folder_path_temp, extrafanart_folder_path)
+            await _replace_dir_atomic(extrafanart_folder_path_temp, extrafanart_folder_path)
             LogBuffer.log().write(
-                f"\n 🍀 ExtraFanart done! ({extrafanart_from} {extrafanart_count_succ}/{extrafanart_count})({get_used_time(start_time)}s)"
+                f"\n 🍀 ExtraFanart done! ({source} {extrafanart_count_succ}/{extrafanart_count})({get_used_time(start_time)}s)"
             )
             return True
+
         LogBuffer.log().write(
-            f"\n 🟠 ExtraFanart download failed! ({extrafanart_from} {extrafanart_count_succ}/{extrafanart_count})({get_used_time(start_time)}s)"
+            f"\n 🟠 ExtraFanart download failed! ({source} {extrafanart_count_succ}/{extrafanart_count})"
         )
-        if extrafanart_folder_path_temp != extrafanart_folder_path:
-            await to_thread(shutil.rmtree, extrafanart_folder_path_temp)
-        else:
-            LogBuffer.log().write(f"\n 🍀 ExtraFanart done! (incomplete)({get_used_time(start_time)}s)")
-            return False
-        LogBuffer.log().write("\n 🟠 ExtraFanart download failed! 将继续使用本地旧文件！")
+        if len(ordered_sources) > 1:
+            LogBuffer.log().write(f"\n 🔁 ExtraFanart 尝试下一来源...({get_used_time(start_time)}s)")
+
+    # 所有来源均未完整下载：清理临时目录
+    await to_thread(shutil.rmtree, extrafanart_folder_path_temp, ignore_errors=True)
     if await aiofiles.os.path.exists(extrafanart_folder_path):  # 使用旧文件
+        LogBuffer.log().write(
+            f"\n 🟠 ExtraFanart download failed! 将继续使用本地旧文件！({get_used_time(start_time)}s)"
+        )
         return True
+    LogBuffer.log().write(f"\n 🟠 ExtraFanart download failed!({get_used_time(start_time)}s)")
+    return False

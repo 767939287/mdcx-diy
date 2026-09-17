@@ -765,7 +765,11 @@ class Scraper:
             poster_download(res, other, file_info.cd_part, folder_new_path, poster_final_path, media_context)
         )
         extrafanart_task = (
-            asyncio.create_task(extrafanart_download(res.extrafanart, res.extrafanart_from, folder_new_path))
+            asyncio.create_task(
+                extrafanart_download(
+                    res.extrafanart, res.extrafanart_from, folder_new_path, candidates=res.extrafanart_list
+                )
+            )
             if single_folder_catched
             else None
         )

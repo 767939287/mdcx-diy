@@ -595,6 +595,28 @@ class FileScraper:
             if data and data.poster:
                 reduced.poster_list.append((data.source, data.poster, data.image_download))
 
+        # 议题 #131：剧照候选按剧照字段优先级收集各站 URL 列表。主来源剧照被站点删除
+        # 导致下载失败时，下载层可依次回退到下一来源（如 javdb → avbase）。
+        ef_config = self.config.get_field_config(CrawlerResultFields.EXTRAFANART)
+        ef_priority_config: FieldConfig | FieldPriorityConfig
+        if use_type_field_config and hasattr(self.config, "get_type_field_config"):
+            ef_priority_config = self.config.get_type_field_config(
+                classification.scraping_type, CrawlerResultFields.EXTRAFANART
+            )
+        else:
+            ef_priority_config = ef_config
+        if not (getattr(ef_priority_config, "skip", False) or getattr(ef_config, "skip", False)):
+            _seen_ef_urls: set[tuple[str, ...]] = set()
+            for site in ef_priority_config.site_prority:
+                data = self._get_cached_site_result(all_res, site, ef_config.language)
+                if not (data and data.extrafanart):
+                    continue
+                urls_key = tuple(data.extrafanart)
+                if urls_key in _seen_ef_urls:
+                    continue
+                _seen_ef_urls.add(urls_key)
+                reduced.extrafanart_list.append((data.source, list(data.extrafanart)))
+
         for data in all_res.values():
             # 记录所有来源的 actor 用于 Amazon 搜图
             if data.actor:
@@ -667,6 +689,8 @@ class FileScraper:
                 res.thumb_list = [(website, res.thumb)]
             if res.poster:
                 res.poster_list = [(website, res.poster, res.image_download)]
+            if res.extrafanart:
+                res.extrafanart_list = [(website, list(res.extrafanart))]
 
             # 加入来源信息
             res.field_sources = dict.fromkeys(CrawlerResultFields, website.value)
