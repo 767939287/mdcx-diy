@@ -87,3 +87,70 @@ def test_emby_actor_settings_dialog_startup_no_crash(app):
         dlg.close()
         dlg.deleteLater()
         app.processEvents()
+
+
+def test_emby_actor_manager_table_has_birthday_and_location_columns(app):
+    """议题 #134：详情与标签之间新增出生日期/出生地列，且详情/标签列填满宽度。"""
+    from PyQt6.QtWidgets import QHeaderView
+
+    from mdcx.tools.emby_actor_manager_ui import EmbyActorManagerDialog
+
+    dlg = EmbyActorManagerDialog()
+    try:
+        table = dlg.table
+        headers = [table.horizontalHeaderItem(i).text() for i in range(table.columnCount())]
+        assert headers == ["状态", "姓名", "头像", "简介", "详情", "出生日期", "出生地", "标签", "影片数"]
+        header = table.horizontalHeader()
+        assert header.sectionResizeMode(4) == QHeaderView.ResizeMode.Stretch
+        assert header.sectionResizeMode(7) == QHeaderView.ResizeMode.Stretch
+    finally:
+        dlg.close()
+        dlg.deleteLater()
+        app.processEvents()
+
+
+def test_emby_actor_manager_populates_birthday_and_location(app):
+    """议题 #134：出生日期取 Emby PremiereDate 前 10 位，出生地按逗号拼接。"""
+    from mdcx.tools.emby_actor_manager import ActorInfo
+    from mdcx.tools.emby_actor_manager_ui import EmbyActorManagerDialog
+
+    dlg = EmbyActorManagerDialog()
+    try:
+        actor = ActorInfo(
+            name="测试演员",
+            actor_id="1",
+            server_id="s",
+            existing_premiere_date="1994-08-26T00:00:00.0000000Z",
+            existing_production_locations=["日本", "东京都"],
+        )
+        dlg._actors = [actor]
+        dlg._populate_table(dlg._actors)
+        assert dlg.table.item(0, 5).text() == "1994-08-26"
+        assert dlg.table.item(0, 6).text() == "日本, 东京都"
+    finally:
+        dlg.close()
+        dlg.deleteLater()
+        app.processEvents()
+
+
+def test_emby_actor_manager_blank_birthday_placeholder(app):
+    """议题 #134：Emby 未设置生日时返回 0001-01-01，列表中按空值展示。"""
+    from mdcx.tools.emby_actor_manager import ActorInfo
+    from mdcx.tools.emby_actor_manager_ui import EmbyActorManagerDialog
+
+    dlg = EmbyActorManagerDialog()
+    try:
+        actor = ActorInfo(
+            name="无生日演员",
+            actor_id="2",
+            server_id="s",
+            existing_premiere_date="0001-01-01T00:00:00.0000000Z",
+        )
+        dlg._actors = [actor]
+        dlg._populate_table(dlg._actors)
+        assert dlg.table.item(0, 5).text() == ""
+        assert dlg.table.item(0, 6).text() == ""
+    finally:
+        dlg.close()
+        dlg.deleteLater()
+        app.processEvents()

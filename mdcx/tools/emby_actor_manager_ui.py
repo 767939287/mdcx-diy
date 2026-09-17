@@ -487,12 +487,17 @@ class EmbyActorManagerDialog(QDialog):
         self.progress_bar.setVisible(False)
         parent_layout.addWidget(self.progress_bar)
         self.table = QTableWidget()
-        self.table.setColumnCount(7)
-        self.table.setHorizontalHeaderLabels(["状态", "姓名", "头像", "简介", "详情", "标签", "影片数"])
+        self.table.setColumnCount(9)
+        self.table.setHorizontalHeaderLabels(
+            ["状态", "姓名", "头像", "简介", "详情", "出生日期", "出生地", "标签", "影片数"]
+        )
         horizontal_header = self.table.horizontalHeader()
         assert horizontal_header is not None
         horizontal_header.setStretchLastSection(False)
         horizontal_header.setSectionResizeMode(1, QHeaderView.ResizeMode.Interactive)
+        # 议题 #134：详情/标签列改为 Stretch，宽窗口下自动填满右侧空间，不再大片留白
+        horizontal_header.setSectionResizeMode(4, QHeaderView.ResizeMode.Stretch)
+        horizontal_header.setSectionResizeMode(7, QHeaderView.ResizeMode.Stretch)
         self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.table.setSelectionMode(QTableWidget.SelectionMode.ExtendedSelection)
         self.table.setAlternatingRowColors(True)
@@ -506,9 +511,9 @@ class EmbyActorManagerDialog(QDialog):
         self.table.setColumnWidth(1, 160)
         self.table.setColumnWidth(2, 55)
         self.table.setColumnWidth(3, 55)
-        self.table.setColumnWidth(4, 350)
-        self.table.setColumnWidth(5, 200)
-        self.table.setColumnWidth(6, 60)
+        self.table.setColumnWidth(5, 110)
+        self.table.setColumnWidth(6, 140)
+        self.table.setColumnWidth(8, 60)
         self.table.cellDoubleClicked.connect(self._on_table_double_clicked)
         parent_layout.addWidget(self.table)
 
@@ -1015,13 +1020,22 @@ class EmbyActorManagerDialog(QDialog):
                 else (actor.existing_overview or "（无）")
             )
             self.table.setItem(row, 4, QTableWidgetItem(overview_text))
+            # 议题 #134：详情与标签之间展示出生日期、出生地，均为 Emby 服务器现有值
+            raw_birthday = (actor.existing_premiere_date or "")[:10]
+            # Emby 未设置生日时返回 0001-01-01，按空值展示，避免列表出现占位日期
+            birthday_text = "" if raw_birthday.startswith("0001-01-01") else raw_birthday
+            self.table.setItem(row, 5, QTableWidgetItem(birthday_text))
+            location_text = (
+                ", ".join(actor.existing_production_locations) if actor.existing_production_locations else ""
+            )
+            self.table.setItem(row, 6, QTableWidgetItem(location_text))
             tags = ", ".join(actor.existing_taglines[:2]) if actor.existing_taglines else ""
-            self.table.setItem(row, 5, QTableWidgetItem(tags))
+            self.table.setItem(row, 7, QTableWidgetItem(tags))
             mc_item = QTableWidgetItem(str(actor.movie_count) if actor.movie_count > 0 else "0")
             mc_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
             if actor.movie_titles:
                 mc_item.setToolTip("\n".join(actor.movie_titles[:20]))
-            self.table.setItem(row, 6, mc_item)
+            self.table.setItem(row, 8, mc_item)
             if actor.need_update_info or actor.need_update_image:
                 for col in range(self.table.columnCount()):
                     item = self.table.item(row, col)
