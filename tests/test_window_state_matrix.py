@@ -880,9 +880,16 @@ def test_minimized_main_not_popped_on_app_activate(win, app):
     assert win.isMinimized(), "最小化主窗被 ApplicationActivate 弹出（状态脱离 minimized）"
 
 
-def test_hidden_non_minimized_main_still_shown_on_app_activate(win, app):
-    """议题 #102-① 反面：非最小化的隐藏态（HIDE_CLOSE 的 hide）保留原 show() 行为，
-    应用激活时主窗应被恢复显示，避免误伤托盘隐藏场景。"""
+def test_hidden_non_minimized_main_not_shown_on_app_activate(win, app):
+    """议题 #132：主窗隐藏（托盘图标隐藏 / 关闭到托盘 / 最小化到托盘）后，应用激活
+    事件（操作 Emby 演员管理器等工具会触发）不得把隐藏的主窗弹出前台。
+
+    回归背景：议题 #102 曾保留「非最小化隐藏态」的 show()（当时认为隐藏态需要被
+    恢复），但 #132 实测反馈：仅用托盘图标隐藏主窗后，对演员管理器做任何操作仍会
+    把主窗弹出；要先最小化再隐藏才不弹。根因即此分支对非最小化隐藏态调用 show()。
+    修复：隐藏是用户主动行为，恢复只由托盘图标/菜单触发，ApplicationActivate 不再
+    自动 show()。
+    """
     from PyQt6.QtCore import QEvent
 
     win.show()
@@ -895,7 +902,64 @@ def test_hidden_non_minimized_main_still_shown_on_app_activate(win, app):
     app.sendEvent(viewport, QEvent(QEvent.Type.ApplicationActivate))
     app.processEvents()
 
-    assert win.isVisible(), "非最小化隐藏主窗未被 ApplicationActivate 恢复显示"
+    assert not win.isVisible(), "隐藏主窗被 ApplicationActivate 自动弹出（议题 #132）"
+
+
+def test_tray_hidden_main_stays_hidden_after_manager_operation(win, app, monkeypatch):
+    """议题 #132 主场景：托盘隐藏主窗后打开演员管理器并触发应用激活，主窗保持隐藏。
+
+    ApplicationActivate 由操作演员管理器触发，等价于向主窗 eventFilter 投递该事件。
+    """
+    from PyQt6.QtCore import QEvent
+    from PyQt6.QtWidgets import QSystemTrayIcon
+
+    from mdcx.controllers.main_window import main_window as mw_mod
+    from mdcx.controllers.main_window.tool_handlers import (
+        pushButton_emby_actor_manager_clicked,
+    )
+
+    # tray_icon_click 仅在 Windows 走隐藏分支（IS_WINDOWS 门控），测试环境显式开启
+    monkeypatch.setattr(mw_mod, "IS_WINDOWS", True)
+
+    win.show()
+    app.processEvents()
+
+    # 用户点击托盘图标隐藏主窗（tray_icon_click 的 hide 路径）
+    win.tray_icon_click(QSystemTrayIcon.ActivationReason.Trigger)
+    app.processEvents()
+    assert not win.isVisible(), "前置失败：托盘图标未隐藏主窗"
+
+    # 打开演员管理器，并模拟其操作触发应用激活事件
+    pushButton_emby_actor_manager_clicked(win)
+    app.processEvents()
+    viewport = win.Ui.textBrowser_log_main.viewport()
+    app.sendEvent(viewport, QEvent(QEvent.Type.ApplicationActivate))
+    app.processEvents()
+
+    assert not win.isVisible(), "托盘隐藏后操作演员管理器把主窗弹出了（议题 #132）"
+
+
+def test_tray_icon_click_restores_main_window_after_hide(win, app, monkeypatch):
+    """议题 #132 配套：移除 ApplicationActivate 自动 show() 后，托盘图标点击仍能恢复主窗。
+
+    防止修复过度——恢复显示必须继续由托盘交互负责。
+    """
+    from PyQt6.QtWidgets import QSystemTrayIcon
+
+    from mdcx.controllers.main_window import main_window as mw_mod
+
+    monkeypatch.setattr(mw_mod, "IS_WINDOWS", True)
+
+    win.show()
+    app.processEvents()
+    win.tray_icon_click(QSystemTrayIcon.ActivationReason.Trigger)
+    app.processEvents()
+    assert not win.isVisible(), "前置失败：托盘图标未隐藏主窗"
+
+    # 再次点击托盘图标 → 恢复显示
+    win.tray_icon_click(QSystemTrayIcon.ActivationReason.Trigger)
+    app.processEvents()
+    assert win.isVisible(), "托盘图标点击未恢复主窗显示"
 
 
 def test_main_page_cover_scales_proportionally_when_maximized(win, app):

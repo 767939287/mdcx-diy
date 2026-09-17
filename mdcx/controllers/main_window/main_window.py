@@ -502,16 +502,13 @@ class MyMAinWindow(QMainWindow):
 
         if a1.type() == QEvent.Type.MouseButtonRelease:  # 松开鼠标，检查是否在前台
             self.recover_windowflags()
-        if a1.type() == QEvent.Type.ApplicationActivate and not self.isVisible():
-            # 议题 #102：Emby 演员管理器/其他工具操作时应用激活事件会把隐藏/最小化
-            # 的主窗无条件 show() 拉出前台。最小化时维持状态不动，交给用户手动还原；
-            # 非最小化的隐藏态（hide）仍保留原逻辑 show()。
-            if self.isMinimized():
-                pass
-            else:
-                self._user_initiated_close = True
-                self.show()
-                self._user_initiated_close = False
+        # 议题 #132：不再在 ApplicationActivate 时自动 show() 隐藏的主窗。
+        # 主窗隐藏（托盘图标隐藏 / 关闭到托盘 / 最小化到托盘）都是用户主动行为，
+        # 此时操作 Emby 演员管理器等工具会触发 ApplicationActivate，旧逻辑会把隐藏的
+        # 主窗拉出前台。恢复显示只由托盘菜单/托盘图标点击（tray_icon_show /
+        # tray_icon_click）负责；最小化态由 Qt 自行保持。
+        # 议题 #102 曾保留「非最小化隐藏态」的 show()，议题 #132 实测反馈表明托盘
+        # 隐藏后操作管理器仍会弹出主窗，故此处改为完全不自动弹出。
         if a0.objectName() == "label_poster" or a0.objectName() == "label_thumb":
             if a1.type() == QEvent.Type.MouseButtonPress:
                 a1 = cast("QMouseEvent", a1)
