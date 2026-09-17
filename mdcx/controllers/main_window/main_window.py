@@ -50,7 +50,7 @@ from mdcx.core.network_check import (
     NetworkCheckStatus,
     merge_site_check_cache,
     run_network_check,
-    scrape_probe_timeout,
+    scrape_probe_ladder_text,
 )
 from mdcx.core.nfo import write_nfo
 from mdcx.core.scrape_cache import ScrapeStateCache
@@ -188,8 +188,6 @@ class MyMAinWindow(QMainWindow):
         self.main_log_max_count = 10000
         self.network_check_cancel_event: threading.Event | None = None
         self.network_check_future = None
-        # 「重试失败项」轮次：首轮全量检测重置为 0，每次重试递增，用于递进刮削探测超时（议题 #115）
-        self._net_retry_count = 0
         self.file_main_open_path = Path()  # 主界面打开的文件路径
         self.json_array: dict[str, ShowData] = {}  # 主界面右侧结果树状数据
         self.preview_request_id = 0  # 主界面图片预览请求序号，用于丢弃过期加载结果
@@ -3754,7 +3752,6 @@ class MyMAinWindow(QMainWindow):
             self.network_check_cancel_event = cancel_event
             self.network_check_results = None
             self._net_check_lines = []
-            self._net_retry_count = 0  # 首轮全量检测从 30s 起步
 
             def progress(line):
                 self._net_check_lines.append(line)
@@ -3803,9 +3800,9 @@ class MyMAinWindow(QMainWindow):
             cancel_event = threading.Event()
             self.network_check_cancel_event = cancel_event
             self._net_check_lines = []
-            self._net_retry_count = getattr(self, "_net_retry_count", 0) + 1
-            probe_timeout = scrape_probe_timeout(self._net_retry_count)
-            signal_qt.show_net_info(f"⏱ 本次刮削探测超时 {probe_timeout:.0f}s")
+            # 议题 #118：探测超时递进已移进单轮内部（30s/45s/60s 最多三次），
+            # 「重试失败项」回归纯重测——价值在于用户改完代理/CF 配置后再给一次机会
+            signal_qt.show_net_info(f"⏱ 单站刮削探测自动递进重试，超时阶梯 {scrape_probe_ladder_text()}")
 
             def progress(line):
                 self._net_check_lines.append(line)
@@ -3821,7 +3818,6 @@ class MyMAinWindow(QMainWindow):
                     cancel_event=cancel_event,
                     specs=failed_specs,
                     emit_header=False,
-                    probe_timeout=probe_timeout,
                 )
             )
             self.network_check_results = self.network_check_future.result()

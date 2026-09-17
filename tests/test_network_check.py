@@ -253,6 +253,27 @@ async def test_mirror_sample_spec_skips_scrape_probe(monkeypatch: pytest.MonkeyP
     assert not probe_called, "镜像抽样不应触发刮削探测"
 
 
+@pytest.mark.anyio
+async def test_run_network_check_item_retries_probe_within_first_round(monkeypatch: pytest.MonkeyPatch):
+    """议题 #118：首轮检测内部就自动递进重试（30s/45s/60s），用户不必手动点「重试失败项」。"""
+    seen: list[float | None] = []
+
+    async def fake(client, spec, probe_timeout=None):
+        seen.append(probe_timeout)
+        return NetworkCheckStatus.WARNING, "站点可达但刮削探测超时"
+
+    monkeypatch.setattr(nc, "_probe_crawler_capability", fake)
+    lines: list[str] = []
+    spec = NetworkCheckSpec(name="avbase", group="刮削站点", url="https://www.avbase.net", site=Website.AVBASE)
+
+    result = await run_network_check_item(spec, client=FakeClient(), progress=lines.append)
+
+    assert seen == [30.0, 45.0, 60.0], "单项检测必须走满轮内阶梯"
+    assert result.status == NetworkCheckStatus.WARNING
+    assert "3 次均超时" in result.message
+    assert any("avbase 第 2/3 次刮削探测" in line for line in lines), lines
+
+
 def test_message_for_error_tls_handshake():
     """SSL_ERROR_SYSCALL / UNEXPECTED_EOF 类的 TLS 握手中断要给出可执行指引（议题 #77 javdb_api/r18dev）。"""
     from mdcx.core.network_check import _message_for_error
@@ -302,6 +323,7 @@ def test_format_summary_groups_failure_causes():
         r("missav", NetworkCheckStatus.WARNING, "站点可达但搜索页被 Cloudflare 拦截"),
         r("getchu", NetworkCheckStatus.FAILED, "HTTP 403 请求被拒绝：当前节点出口 IP 可能被站点封禁"),
         r("javdb_api", NetworkCheckStatus.FAILED, "TLS 握手中断"),
+        r("avbase", NetworkCheckStatus.WARNING, "站点可达但刮削探测 3 次均超时（30s/45s/60s），判定该站刮削探测无效"),
         r("ok", NetworkCheckStatus.OK, "连接正常"),
     ]
     lines = format_summary(results, elapsed=5.0, cancelled=False)
@@ -310,6 +332,9 @@ def test_format_summary_groups_failure_causes():
     assert "根因分组" in text
     assert "Cloudflare" in text
     assert "节点" in text
+    # 议题 #118：轮内重试仍超时的站点要单独成组，不能混进「其他异常」或「未收录」
+    assert "刮削探测多次超时 ×1" in text
+    assert "30s/45s/60s" in text
 
 
 @pytest.mark.anyio
@@ -344,10 +369,10 @@ async def test_run_network_check_survives_task_level_exception(monkeypatch: pyte
 
     real_item = nc_module.run_network_check_item
 
-    async def flaky_item(spec, *, cancel_event=None, client=None, probe_timeout=None):
+    async def flaky_item(spec, *, cancel_event=None, client=None, progress=None):
         if spec.name == "boom":
             raise TimeoutError  # 空消息异常，复刻用户场景的形态
-        return await real_item(spec, cancel_event=cancel_event, client=client, probe_timeout=probe_timeout)
+        return await real_item(spec, cancel_event=cancel_event, client=client, progress=progress)
 
     monkeypatch.setattr("mdcx.core.network_check.run_network_check_item", flaky_item)
     lines: list[str] = []
@@ -383,10 +408,10 @@ async def test_run_network_check_cancelled_task_does_not_stop(monkeypatch: pytes
 
     real_item = nc.run_network_check_item
 
-    async def flaky_item(spec, *, cancel_event=None, client=None, probe_timeout=None):
+    async def flaky_item(spec, *, cancel_event=None, client=None, progress=None):
         if spec.name == "cancelled":
             raise asyncio.CancelledError
-        return await real_item(spec, cancel_event=cancel_event, client=client, probe_timeout=probe_timeout)
+        return await real_item(spec, cancel_event=cancel_event, client=client, progress=progress)
 
     monkeypatch.setattr("mdcx.core.network_check.run_network_check_item", flaky_item)
     lines: list[str] = []
@@ -710,19 +735,34 @@ class ProbeFakeClient:
         return response, ""
 
 
-def test_scrape_probe_timeout_ladder():
-    """议题 #115：首轮 30s，重试递进 45s → 60s（封顶）。"""
+def test_scrape_probe_attempt_timeout_ladder():
+    """议题 #118：单站探测阶梯 30s → 45s → 60s，超出档数取最后一档。"""
     assert nc.SCRAPE_PROBE_TIMEOUT == 30.0
-    assert nc.scrape_probe_timeout(0) == 30.0
-    assert nc.scrape_probe_timeout(-1) == 30.0
-    assert nc.scrape_probe_timeout(1) == 45.0
-    assert nc.scrape_probe_timeout(2) == 60.0
-    assert nc.scrape_probe_timeout(3) == 60.0
+    assert nc.SCRAPE_PROBE_ATTEMPT_TIMEOUTS == (30.0, 45.0, 60.0)
+    assert nc.scrape_probe_attempt_timeout(0) == 30.0
+    assert nc.scrape_probe_attempt_timeout(1) == 45.0
+    assert nc.scrape_probe_attempt_timeout(2) == 60.0
+    assert nc.scrape_probe_attempt_timeout(3) == 60.0
+    assert nc.scrape_probe_attempt_timeout(-1) == 30.0
+    assert nc.scrape_probe_ladder_text() == "30s/45s/60s"
+
+
+def test_transient_probe_result_classification():
+    """议题 #118：只有瞬时性结果值得轮内再试，确定性结论首次即定论。"""
+    assert nc._is_transient_probe_result("站点可达但刮削探测超时")
+    assert nc._is_transient_probe_result("站点可达但搜索页请求失败: timeout")
+    assert nc._is_transient_probe_result("站点可达但刮削探测异常: boom")
+    assert nc._is_transient_probe_result("站点可达但刮削探测失败: 500")
+    # 确定性：重试必然同样结论
+    assert not nc._is_transient_probe_result("站点可达，但测试番号 SSNI-647 未被该站点收录")
+    assert not nc._is_transient_probe_result("站点可达但搜索页被 Cloudflare 拦截")
+    assert not nc._is_transient_probe_result("站点可达但无法自动探测刮削，可用设置页指定网址实测")
+    assert not nc._is_transient_probe_result("连接正常，刮削正常")
 
 
 @pytest.mark.anyio
 async def test_probe_crawler_capability_passes_probe_timeout_to_search_request(monkeypatch: pytest.MonkeyPatch):
-    """重试失败项时传入的递进超时必须落到搜索页请求上。"""
+    """轮内递进重试的超时档必须落到搜索页请求上（否则第 2/3 次仍是 30s，重试无意义）。"""
     monkeypatch.setattr("mdcx.crawlers.get_crawler", lambda site: ProbeCrawler)
     client = ProbeFakeClient()
     spec = NetworkCheckSpec(name="avbase", group="刮削站点", url="https://www.avbase.net", site=Website.AVBASE)
@@ -768,6 +808,126 @@ async def test_probe_crawler_by_run_uses_passed_timeout(monkeypatch: pytest.Monk
     assert captured["timeout"] == 60.0
     assert status == NetworkCheckStatus.WARNING
     assert "超时" in message
+
+
+def _stub_probe_attempts(monkeypatch: pytest.MonkeyPatch, results: list[tuple[NetworkCheckStatus | None, str]]):
+    """替换单轮探测，按顺序吐出 results（用完重复最后一条），记录每次超时值。"""
+    seen: list[float | None] = []
+
+    async def fake(client, spec, probe_timeout=None):
+        seen.append(probe_timeout)
+        index = min(len(seen) - 1, len(results) - 1)
+        return results[index]
+
+    monkeypatch.setattr(nc, "_probe_crawler_capability", fake)
+    return seen
+
+
+_PROBE_SPEC = NetworkCheckSpec(name="avbase", group="刮削站点", url="https://www.avbase.net", site=Website.AVBASE)
+
+
+@pytest.mark.anyio
+async def test_probe_retry_stops_when_a_later_attempt_passes(monkeypatch: pytest.MonkeyPatch):
+    """议题 #118：首探超时后自动第 2 次并放宽到 45s，成功即定论，不再跑第 3 次。"""
+    _stub_probe_attempts(
+        monkeypatch,
+        [
+            (NetworkCheckStatus.WARNING, "站点可达但刮削探测超时"),
+            (NetworkCheckStatus.OK, "连接正常，刮削正常"),
+        ],
+    )
+    lines: list[str] = []
+
+    status, message = await nc._probe_crawler_capability_with_retry(
+        ProbeFakeClient(), _PROBE_SPEC, progress=lines.append
+    )
+
+    assert status == NetworkCheckStatus.OK
+    assert "刮削正常" in message
+
+
+@pytest.mark.anyio
+async def test_probe_retry_three_timeouts_declares_probe_invalid(monkeypatch: pytest.MonkeyPatch):
+    """三次都超时 → 给出「判定该站刮削探测无效」终局说明，并列出实际用过的阶梯。"""
+    seen = _stub_probe_attempts(monkeypatch, [(NetworkCheckStatus.WARNING, "站点可达但刮削探测超时")])
+
+    status, message = await nc._probe_crawler_capability_with_retry(ProbeFakeClient(), _PROBE_SPEC)
+
+    assert seen == [30.0, 45.0, 60.0]
+    assert status == NetworkCheckStatus.WARNING
+    assert "3 次均超时" in message
+    assert "30s/45s/60s" in message
+    assert "判定该站刮削探测无效" in message
+
+
+@pytest.mark.anyio
+async def test_probe_retry_skips_deterministic_result(monkeypatch: pytest.MonkeyPatch):
+    """「测试番号未被收录」是确定性结论：只探一次，不白等 45+60s。"""
+    seen = _stub_probe_attempts(
+        monkeypatch,
+        [(NetworkCheckStatus.WARNING, "站点可达，但测试番号 SSNI-647 未被该站点收录（属正常情况）")],
+    )
+
+    status, message = await nc._probe_crawler_capability_with_retry(ProbeFakeClient(), _PROBE_SPEC)
+
+    assert seen == [30.0]
+    assert status == NetworkCheckStatus.WARNING
+    assert "未被该站点收录" in message
+
+
+@pytest.mark.anyio
+async def test_probe_retry_emits_attempt_progress_lines(monkeypatch: pytest.MonkeyPatch):
+    """重试要留痕，否则用户面对十几秒静默以为检测卡死。"""
+    _stub_probe_attempts(monkeypatch, [(NetworkCheckStatus.WARNING, "站点可达但刮削探测超时")])
+    lines: list[str] = []
+
+    await nc._probe_crawler_capability_with_retry(ProbeFakeClient(), _PROBE_SPEC, progress=lines.append)
+
+    assert any("avbase 第 2/3 次刮削探测" in line and "45s" in line for line in lines), lines
+    assert any("avbase 第 3/3 次刮削探测" in line and "60s" in line for line in lines), lines
+    assert not any("第 1/3 次" in line for line in lines), "首探无需额外提示"
+
+
+@pytest.mark.anyio
+async def test_probe_retry_stops_when_cancelled(monkeypatch: pytest.MonkeyPatch):
+    """点「停止」后不再继续下一档探测。"""
+    cancel_event = threading.Event()
+    seen: list[float | None] = []
+
+    async def fake(client, spec, probe_timeout=None):
+        seen.append(probe_timeout)
+        cancel_event.set()
+        return NetworkCheckStatus.WARNING, "站点可达但刮削探测超时"
+
+    monkeypatch.setattr(nc, "_probe_crawler_capability", fake)
+
+    status, message = await nc._probe_crawler_capability_with_retry(
+        ProbeFakeClient(), _PROBE_SPEC, cancel_event=cancel_event
+    )
+
+    assert seen == [30.0]
+    assert status == NetworkCheckStatus.WARNING
+    assert "超时" in message
+
+
+@pytest.mark.anyio
+async def test_probe_retry_mixed_transient_keeps_last_reason(monkeypatch: pytest.MonkeyPatch):
+    """非全超时（请求失败/异常混合）时终局说明保留最后一次原因，避免误报「均超时」。"""
+    _stub_probe_attempts(
+        monkeypatch,
+        [
+            (NetworkCheckStatus.WARNING, "站点可达但搜索页请求失败: conn reset"),
+            (NetworkCheckStatus.WARNING, "站点可达但刮削探测异常: boom"),
+            (NetworkCheckStatus.WARNING, "站点可达但刮削探测失败: 500"),
+        ],
+    )
+
+    status, message = await nc._probe_crawler_capability_with_retry(ProbeFakeClient(), _PROBE_SPEC)
+
+    assert status == NetworkCheckStatus.WARNING
+    assert "3 次均未通过" in message
+    assert "最后一次" in message
+    assert "500" in message
 
 
 @pytest.mark.anyio

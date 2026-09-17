@@ -55,25 +55,26 @@ class NetworkCheckResult:
 
 # 连通性检测通过后，用该番号实际探测爬虫搜索能力，避免"能连≠能刮"误导用户
 SCRAPE_PROBE_NUMBER = "SSNI-647"
-# 真实刮削探测走完整 run() 流程，慢站/走代理/CF bypass 站响应偏慢，8s 偏紧（议题 #109）、
-# 15s 对慢网用户仍不够（议题 #115）。首轮全量检测取 30s，兼顾覆盖与整轮耗时
-# （探测按分组串行、组内并发 10，首轮最坏耗时即该阈值）。
-SCRAPE_PROBE_TIMEOUT = 30.0
-# 点「重试失败项」时的递进超时：第 1 次重试 45s、第 2 次及以后 60s。
-# 重试只重测上次失败/警告的少数项，等待成本可控，给偶发慢站更大收敛窗口。
-SCRAPE_PROBE_RETRY_TIMEOUTS = (45.0, 60.0)
+# 单站刮削探测的轮内超时阶梯（议题 #115/#118）：首探 30s，超时立即第 2 次 45s、
+# 再超时第 3 次 60s，三次都没过才判定该站探测无效。慢站/走代理/过 CF 的站响应偏慢
+# （实测 8s（#109）、15s（#115）都不够），把收敛窗口放在轮内自动递进，
+# 用户不必靠手动点「重试失败项」碰运气。探测按分组串行、组内并发 10，
+# 单站最坏 135s，只有真正超时的站才付这个代价。
+SCRAPE_PROBE_ATTEMPT_TIMEOUTS = (30.0, 45.0, 60.0)
+# 首轮首探超时（阶梯第一档），保留常量名供展示与默认值引用
+SCRAPE_PROBE_TIMEOUT = SCRAPE_PROBE_ATTEMPT_TIMEOUTS[0]
 
 
-def scrape_probe_timeout(retry_index: int = 0) -> float:
-    """按重试轮次返回刮削探测超时。
+def scrape_probe_attempt_timeout(attempt_index: int) -> float:
+    """第 attempt_index 次探测（0 基）的超时上限，超出档数取最后一档。"""
+    if attempt_index <= 0:
+        return SCRAPE_PROBE_ATTEMPT_TIMEOUTS[0]
+    return SCRAPE_PROBE_ATTEMPT_TIMEOUTS[min(attempt_index, len(SCRAPE_PROBE_ATTEMPT_TIMEOUTS) - 1)]
 
-    retry_index=0 为首轮全量检测，取 ``SCRAPE_PROBE_TIMEOUT``；
-    1 为第 1 次「重试失败项」，取 45s；2 及以后取 60s（封顶）。
-    """
-    if retry_index <= 0:
-        return SCRAPE_PROBE_TIMEOUT
-    index = min(retry_index - 1, len(SCRAPE_PROBE_RETRY_TIMEOUTS) - 1)
-    return SCRAPE_PROBE_RETRY_TIMEOUTS[index]
+
+def scrape_probe_ladder_text() -> str:
+    """探测阶梯的展示文本，如 ``30s/45s/60s``。"""
+    return "/".join(f"{timeout:.0f}s" for timeout in SCRAPE_PROBE_ATTEMPT_TIMEOUTS)
 
 
 ProgressCallback = Callable[[str], None]
@@ -418,6 +419,64 @@ async def _probe_crawler_capability(
         return NetworkCheckStatus.WARNING, f"站点可达但刮削探测异常: {exc}"
 
 
+# 值得在同一轮里再试一次的探测结果：换个时间窗就可能过（慢站、代理抖动、偶发异常）。
+_TRANSIENT_PROBE_MARKERS = (
+    "刮削探测超时",
+    "站点可达但搜索页请求失败",
+    "站点可达但刮削探测异常",
+    "站点可达但刮削探测失败",
+)
+
+# 首次即定论、重试必然同样结论的探测结果（不在上面的标记里）：
+# 「测试番号未被该站点收录」是业务常态、「被 Cloudflare 拦截」是确定性拦截、
+# 「无法自动探测刮削」是爬虫能力缺失——为它们白等 45+60s 没有意义（议题 #118）。
+
+
+def _is_transient_probe_result(message: str) -> bool:
+    return any(marker in message for marker in _TRANSIENT_PROBE_MARKERS)
+
+
+async def _probe_crawler_capability_with_retry(
+    client: Any,
+    spec: NetworkCheckSpec,
+    *,
+    progress: ProgressCallback | None = None,
+    cancel_event: threading.Event | None = None,
+) -> tuple[NetworkCheckStatus | None, str]:
+    """单站刮削探测：轮内按 30s → 45s → 60s 自动递进重试（议题 #118）。
+
+    任一次成功立即定论；只有瞬时性结果才继续下一档，确定性结果首次即定论。
+    阶梯全部走完仍未通过时给出终局说明（「判定该站刮削探测无效」），
+    避免用户以为再等等就能过。重试探测各次前输出一行进度，防止看着像卡死。
+    """
+    emit = progress or (lambda line: None)
+    attempts = len(SCRAPE_PROBE_ATTEMPT_TIMEOUTS)
+    all_timed_out = True
+
+    for attempt in range(attempts):
+        timeout = scrape_probe_attempt_timeout(attempt)
+        if attempt:
+            emit(f"↳ {spec.name} 第 {attempt + 1}/{attempts} 次刮削探测（超时上限 {timeout:.0f}s）")
+        status, message = await _probe_crawler_capability(client, spec, timeout)
+        if status is None or not _is_transient_probe_result(message):
+            return status, message
+        if "刮削探测超时" not in message:
+            all_timed_out = False
+        if cancel_event is not None and cancel_event.is_set():
+            return status, message
+
+    ladder = scrape_probe_ladder_text()
+    if all_timed_out:
+        return (
+            NetworkCheckStatus.WARNING,
+            f"站点可达但刮削探测 {attempts} 次均超时（{ladder}），判定该站刮削探测无效",
+        )
+    return (
+        NetworkCheckStatus.WARNING,
+        f"站点可达但刮削探测 {attempts} 次均未通过（{ladder}），最后一次: {message}",
+    )
+
+
 def _is_bypass_capable_client(client: Any) -> bool:
     return callable(getattr(client, "_try_bypass_cloudflare", None))
 
@@ -492,6 +551,7 @@ def _format_header() -> list[str]:
     lines.append(f"  {'CF Bypass代理':<16}{'已配置' if cf_bypass_proxy else '未配置'}")
     lines.append(f"  {'外部CF服务':<16}{'已配置' if trawl_url else '未配置'}")
     lines.append(f"  {'诊断超时':<16}{_diagnostic_timeout():.1f}s")
+    lines.append(f"  {'刮削探测':<16}单站最多 {len(SCRAPE_PROBE_ATTEMPT_TIMEOUTS)} 次（{scrape_probe_ladder_text()}）")
     lines.append("  " + "-" * 84)
     lines.append(f"  {'状态':<4} {'站点':<18} {'状态码':>4}  {'耗时':>8}  {'路由':<4} 信息")
     lines.append("=" * 88)
@@ -534,7 +594,14 @@ def format_summary(
         )
 
     # 失败/警告按根因分组计数，让用户一次看清「该做什么」（议题 #77 实测）
-    cause_counts: dict[str, int] = {"cf": 0, "node_blocked": 0, "unreachable": 0, "not_found": 0, "other": 0}
+    cause_counts: dict[str, int] = {
+        "cf": 0,
+        "node_blocked": 0,
+        "probe_timeout": 0,
+        "unreachable": 0,
+        "not_found": 0,
+        "other": 0,
+    }
     for result in results:
         if result.status not in (NetworkCheckStatus.FAILED, NetworkCheckStatus.WARNING):
             continue
@@ -543,6 +610,9 @@ def format_summary(
             cause_counts["cf"] += 1
         elif "节点" in message and ("封禁" in message or "出口" in message):
             cause_counts["node_blocked"] += 1
+        elif "刮削探测" in message and ("均超时" in message or "均未通过" in message):
+            # 轮内自动重试（议题 #118）后仍失败的站点，与"连不上"是两回事，单独成组
+            cause_counts["probe_timeout"] += 1
         elif "请求超时" in message or "连接超时" in message or "无法连接" in message or "DNS" in message:
             cause_counts["unreachable"] += 1
         elif "不存在" in message or "404" in message or "未匹配" in message or "未被" in message:
@@ -558,6 +628,11 @@ def format_summary(
             )
         if cause_counts["node_blocked"]:
             lines.append(f"  • 节点/IP 被封 ×{cause_counts['node_blocked']}：请更换代理节点或改用其他出口重试")
+        if cause_counts["probe_timeout"]:
+            lines.append(
+                f"  • 刮削探测多次超时 ×{cause_counts['probe_timeout']}：站点能连上但刮削响应过慢"
+                f"（已按 {scrape_probe_ladder_text()} 自动重试），多为代理节点质量或站点负载，可换节点/稍后再测"
+            )
         if cause_counts["unreachable"]:
             lines.append(f"  • 站点暂时不可达 ×{cause_counts['unreachable']}：检查网络或稍后重试")
         if cause_counts["not_found"]:
@@ -854,7 +929,7 @@ async def run_network_check_item(
     *,
     cancel_event: threading.Event | None = None,
     client: "AsyncWebClient | Any | None" = None,
-    probe_timeout: float | None = None,
+    progress: ProgressCallback | None = None,
 ) -> NetworkCheckResult:
     if cancel_event and cancel_event.is_set():
         return NetworkCheckResult(spec=spec, status=NetworkCheckStatus.CANCELLED, message="已取消")
@@ -977,7 +1052,9 @@ async def run_network_check_item(
             # （实测 xcity.jp 无 /api/search），探测会按主站 URL 模式产生误报。
             and not spec.name.endswith("·镜像")
         ):
-            probe_status, probe_message = await _probe_crawler_capability(request_client, spec, probe_timeout)
+            probe_status, probe_message = await _probe_crawler_capability_with_retry(
+                request_client, spec, progress=progress, cancel_event=cancel_event
+            )
             if probe_status is not None:
                 status, message = probe_status, probe_message
 
@@ -1056,13 +1133,12 @@ async def run_network_check(
     client: "AsyncWebClient | Any | None" = None,
     emit_header: bool = True,
     specs: list[NetworkCheckSpec] | None = None,
-    probe_timeout: float | None = None,
 ) -> list[NetworkCheckResult]:
     """执行网络检测。
 
     specs: 指定检测子集（用于"重试失败项"只重测失败/警告项）；None 表示全量构建检测项。
     on_item_done: 每完成一项回调 (done, total) 结构化进度（"基础环境"组不参与计数）；供 UI 显示百分比。
-    probe_timeout: 刮削探测超时；None 时取首轮默认值。重试失败项时由调用方按轮次传入递增值。
+    单站刮削探测的超时递进（30s/45s/60s 最多三次）在探测环节内部完成（议题 #118）。
     """
     progress = progress or (lambda line: None)
     if emit_header:
@@ -1077,9 +1153,7 @@ async def run_network_check(
 
     async def run_one(spec: NetworkCheckSpec) -> NetworkCheckResult:
         async with semaphore:
-            return await run_network_check_item(
-                spec, cancel_event=cancel_event, client=client, probe_timeout=probe_timeout
-            )
+            return await run_network_check_item(spec, cancel_event=cancel_event, client=client, progress=progress)
 
     start_time = time.perf_counter()
     proxy_down = False
