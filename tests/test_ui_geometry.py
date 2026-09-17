@@ -326,3 +326,48 @@ def test_cf_bypass_proxy_not_same_cell_as_timeout(main_window: QMainWindow) -> N
     assert by_name["label_cf_bypass_proxy"] != by_name["label_73"], (
         f"CF Bypass 代理{by_name['label_cf_bypass_proxy']} 与 超时时间{by_name['label_73']} 同 cell，将产生重影（#123）"
     )
+
+
+def test_page_main_info_fields_cleared_of_cover_boxes() -> None:
+    """#124 回归锁：主页信息区字段不得被封面/缩略图黑框横向盖住、纵向压叠。
+
+    根因：#102 封面区横向等比放大（cover_scale = main_w/820）后，缩略图框放大后
+    右缘 = 580×scale（1920 宽 → 1208），下方信息区（简介/标签/日期/导演/制作/
+    厂牌/系列/发行 + 分隔线 + 勾选框）仍停在设计 x，被黑框横向盖住出重影；
+    尺寸文字行钉死 y=380，被放大封面底（160+220×scale=618）纵向压叠。
+    修复：_sync_page_layouts 把信息区整组右移到「缩略图框放大后右缘 + 15px」、
+    尺寸文字/勾选框行 y 跟随封面底。本测试在 offscreen 实例化 controller 后
+    驱动 resize 同步（走真实 _sync_page_layouts），断言两方向越界归 0。
+    """
+    from mdcx.controllers.main_window import main_window as mw_mod
+
+    _app = QApplication.instance() or QApplication([])
+    win = mw_mod.MyMAinWindow()
+    win._app = _app  # 挂上 app 引用防 GC
+    win.resize(1920, 1020)  # 模拟 #124 报告人实机（原生边框最大化）
+    _app.processEvents()
+
+    ui = win.Ui
+    avail_w = max(1920 - 212, 400)
+    cover_scale = avail_w / 820
+    thumb_right = int(580 * cover_scale)
+    cover_bottom = int(160 + 220 * cover_scale)
+
+    # 横向：值列/右列/勾选框 左缘须在缩略图框右缘之后
+    for nm in (
+        "label_outline",
+        "label_tag",
+        "label_release",
+        "label_director",
+        "label_studio",
+        "label_runtime",
+        "label_series",
+        "label_publish",
+        "checkBox_cover",
+    ):
+        w = getattr(ui, nm)
+        assert w.x() >= thumb_right, f"#124 回归：{nm} 左缘 {w.x()} 仍在缩略图黑框右缘 {thumb_right} 内，横向重影"
+    # 纵向：尺寸文字/勾选框 顶须等于封面底（不被压叠）
+    for nm in ("label_poster_size", "label_thumb_size", "checkBox_cover"):
+        w = getattr(ui, nm)
+        assert w.y() == cover_bottom, f"#124 回归：{nm} 顶 {w.y()} 未跟随封面底 {cover_bottom}，纵向压叠"

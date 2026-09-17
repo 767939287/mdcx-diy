@@ -457,11 +457,15 @@ def test_probe_main_tool_content(win, app):
     print(f"series_x      : {before_series_x} -> {win.Ui.label_series.x()}")
     assert after_edit > before_edit + 200, f"工具页输入框未随视口拉宽: {before_edit} -> {after_edit}"
 
-    # 软件界面：信息区标签拉伸、下半区右列平移（贴结果树左缘-30）
+    # 软件界面：#124 后信息区整组右移到「缩略图框放大后右缘 + 15px」，简介标签
+    # 不再从左横向铺满，而是落在黑框右侧、右缘贴结果树左缘 - 30。
     tree_x = win.Ui.treeWidget_number.x()
-    assert win.Ui.label_outline.width() > before_outline + 200, "简介标签未拉伸"
-    assert win.Ui.label_outline.geometry().right() == pytest.approx(tree_x - 30, abs=4)
-    assert win.Ui.label_series.x() > before_series_x + 200, "下半区右列未平移"
+    assert win.Ui.label_outline.geometry().right() == pytest.approx(tree_x - 30, abs=4), "简介标签右缘未贴结果树"
+    # 简介标签左缘须在缩略图框放大后右缘之后（#124 横向重影消除）
+    cover_scale = win.Ui.page_main.width() / 820
+    thumb_right = int(580 * cover_scale)
+    assert win.Ui.label_outline.x() > thumb_right, "简介标签仍在缩略图黑框内（#124 未修复）"
+    assert win.Ui.label_series.x() > thumb_right, "下半区右列未移出缩略图黑框"
     # 上区受右侧按钮限制的拉伸右界
     assert win.Ui.label_number.geometry().right() == pytest.approx(min(450, tree_x - 30), abs=4)
 
@@ -470,8 +474,10 @@ def test_probe_main_tool_content(win, app):
     app.processEvents()
     win.resize(1920, 1040)
     app.processEvents()
-    assert win.Ui.label_series.x() == pytest.approx(350 + (tree_x - 30 - 570), abs=4), "右列平移漂移"
-    assert win.Ui.label_outline.geometry().right() == pytest.approx(tree_x - 30, abs=4), "标签拉伸漂移"
+    # #124 公式：info_anchor = int(580 × main_w/820) + 15；右列(dx=350) 起 info_anchor + 280
+    expected_anchor = int(580 * (1920 - 212) / 820) + 15
+    assert win.Ui.label_series.x() == pytest.approx(expected_anchor + 280, abs=4), "右列平移漂移"
+    assert win.Ui.label_outline.geometry().right() == pytest.approx(tree_x - 30, abs=4), "标签右缘漂移"
     assert after_edit == max((e.width() for e in tool_page.findChildren(QLineEdit)), default=0), "工具页输入框宽漂移"
 
 
@@ -489,13 +495,14 @@ def test_runtime_row_follows_right_column_on_maximize(win, app):
     win.resize(1920, 1040)
     app.processEvents()
 
-    tree_x = win.Ui.treeWidget_number.x()
-    expected_extra = tree_x - 30 - 570
-    assert win.Ui.label_22.x() == pytest.approx(310 + expected_extra, abs=4), (
-        f"时长标签未平移: {win.Ui.label_22.x()} != {310 + expected_extra}"
+    # #124 后右列起 info_anchor（缩略图框放大后右缘 + 15px），时长行随组平移：
+    # label_22(dx=310) → info_anchor + 240；label_runtime(dx=350) → info_anchor + 280
+    expected_anchor = int(580 * (1920 - 212) / 820) + 15
+    assert win.Ui.label_22.x() == pytest.approx(expected_anchor + 240, abs=4), (
+        f"时长标签未随 #124 公式平移: {win.Ui.label_22.x()} != {expected_anchor + 240}"
     )
-    assert win.Ui.label_runtime.x() == pytest.approx(350 + expected_extra, abs=4), (
-        f"时长值未平移: {win.Ui.label_runtime.x()} != {350 + expected_extra}"
+    assert win.Ui.label_runtime.x() == pytest.approx(expected_anchor + 280, abs=4), (
+        f"时长值未随 #124 公式平移: {win.Ui.label_runtime.x()} != {expected_anchor + 280}"
     )
 
 

@@ -639,9 +639,8 @@ class MyMAinWindow(QMainWindow):
                 layout.invalidate()
                 layout.activate()
 
-        # ============ page_main（软件界面）：横向跟随 ============
+        # ============ page_main（软件界面）：横向 + 纵向跟随 ============
         # 设计基准宽 820：宽幅控件拉伸贴右缘、右缘锚定控件保持宽度平移、其余保持原位。
-        # 纵向布局在设计高度内自然排布（用户确认纵向无问题），仅同步横向。
         main_page = ui.page_main
         main_w = main_page.width()
         # 宽幅拉伸（设计右缘≈页面右缘）：文件路径标签、分隔线
@@ -656,29 +655,45 @@ class MyMAinWindow(QMainWindow):
         # 选择目录按钮跟随开始按钮左移，保持 14px 视觉间距（设计 666 与 680 之间）
         ui.pushButton_select_media_folder.move(max(ui.pushButton_start_cap.x() - 101 - 14, 20), 13)
 
-        # 议题 #102：封面区（poster/thumb 图片框 + 尺寸文字）横向等比放大。
-        # 设计基准宽 820：宽高与 x 一起按 scale 等比缩放（y 不变，纵向位置保留），
-        # setScaledContents(True) 已保证图片填充不变形。幂等：基于设计基准 × scale，
-        # 不依赖当前值，resize 反复触发不累积漂移。
+        # 议题 #124：封面/缩略图黑框横向等比放大后，下方信息区（简介/标签/日期/
+        # 导演/制作/厂牌/系列/发行 + 分隔线 + 勾选框）仍停在设计 x，被放大后的
+        # 黑框横向盖住。整组信息区右移到「缩略图框放大后右缘 + 15px 间隙」，
+        # 内部各列间距保持设计值、宽度按剩余空间压缩。
+        # 幂等：基于设计基准 820 的 cover_scale 计算，不依赖当前几何，resize 反复
+        # 触发不累积漂移；设计 820 宽时 scale=1 → info_anchor=595，默认窗口零变化。
         cover_scale = main_w / 820
         ui.label_poster.setGeometry(int(80 * cover_scale), 160, int(156 * cover_scale), int(220 * cover_scale))
         ui.label_thumb.setGeometry(int(252 * cover_scale), 160, int(328 * cover_scale), int(220 * cover_scale))
-        ui.label_poster_size.setGeometry(int(80 * cover_scale), 380, int(411 * cover_scale), int(40 * cover_scale))
-        ui.label_thumb_size.setGeometry(int(222 * cover_scale), 380, int(201 * cover_scale), int(40 * cover_scale))
-
-        # 信息区宽幅标签拉伸（设计右缘 570，右侧留白区）：简介/标签/行分隔线
-        # 右界锚定结果树左缘 - 30（设计 600-30），避免与右列视觉重叠。
-        # 平移一律用「设计基准 + extra」固定公式，保证重复同步幂等（resize 反复
-        # 触发时基于当前值的增量平移会累积漂移）
-        info_right = max(ui.treeWidget_number.x() - 30, 400)
-        info_extra = max(info_right - 570, -440)  # 窄窗口时收缩下限，避免负宽
-        ui.label_outline.resize(max(500 + info_extra, 60), ui.label_outline.height())
-        ui.label_tag.resize(max(500 + info_extra, 60), ui.label_tag.height())
+        cover_bottom = int(160 + 220 * cover_scale)
+        ui.label_poster_size.setGeometry(
+            int(80 * cover_scale), cover_bottom, int(411 * cover_scale), int(40 * cover_scale)
+        )
+        ui.label_thumb_size.setGeometry(
+            int(222 * cover_scale), cover_bottom, int(201 * cover_scale), int(40 * cover_scale)
+        )
+        # 信息区左起点 = 缩略图框放大后右缘(580×scale) + 15px；右缘锚定结果树左缘
+        # -30（设计 570）。勾选框（设计 x=490，落在缩略图框 580 之内）随之右移。
+        tree_right = max(ui.treeWidget_number.x() - 30, 400)
+        info_anchor = int(580 * cover_scale) + 15
+        ui.checkBox_cover.move(info_anchor, cover_bottom)
+        col_w = max(tree_right - info_anchor, 60)
+        # 值列（设计 x=70）右移 info_anchor，左列标签（设计 x=30）保持其左侧 40px。
+        ui.label_outline.move(info_anchor, ui.label_outline.y())
+        ui.label_outline.resize(col_w, ui.label_outline.height())
+        ui.label_tag.move(info_anchor, ui.label_tag.y())
+        ui.label_tag.resize(col_w, ui.label_tag.height())
         for ln in ("line_6", "line_7"):
-            getattr(ui, ln).resize(max(500 + info_extra, 60), 20)
-        # 下半区双列（设计右列 x=350）：右列整组平移，左列保持原位
-        # 议题 #82：时长行（y=530：label_22 标签 + label_runtime 值）曾漏入列，
-        # 最大化后滞留原位与日期行错位。
+            w = getattr(ui, ln)
+            w.move(info_anchor, w.y())
+            w.resize(col_w, 20)
+        for ln in ("label_18", "label_33", "label_13", "label_23", "label_30"):
+            getattr(ui, ln).move(info_anchor - 40, getattr(ui, ln).y())
+        for ln in ("line_8", "line_12", "line_13", "label_release", "label_director", "label_studio"):
+            w = getattr(ui, ln)
+            w.move(info_anchor, w.y())
+            if ln.startswith("line_"):
+                w.resize(col_w, w.height())
+        # 右列（设计 x=350，标签 x=310）：相对值列(设计 x=70)的偏移量不变，整组随 info_anchor 平移。
         for ln, dx in (
             ("label_series", 350),
             ("label_publish", 350),
@@ -691,7 +706,8 @@ class MyMAinWindow(QMainWindow):
             ("line_11", 350),
         ):
             w = getattr(ui, ln)
-            w.move(dx + info_extra, w.y())
+            w.move(info_anchor + (dx - 70), w.y())
+            w.resize(max(220, col_w // 2), w.height())
         # 上区行（y70 番号/演员、y110 标题）右界受同右行按钮限制（label_source 460 /
         # pushButton_open_nfo 427）：右界 = min(对应限制, 结果树左缘-30)
         top_right = max(min(450, ui.treeWidget_number.x() - 30), 420)
