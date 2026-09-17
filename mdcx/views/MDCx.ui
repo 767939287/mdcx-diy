@@ -21121,14 +21121,14 @@
                       <x>0</x>
                       <y>0</y>
                       <width>860</width>
-                      <height>1880</height>
+                      <height>1916</height>
                     </rect>
                   </property>
                   <widget class="QGroupBox" name="groupBox_10">
                     <property name="geometry">
                       <rect>
                         <x>30</x>
-                        <y>605</y>
+                        <y>641</y>
                         <width>701</width>
                         <height>671</height>
                       </rect>
@@ -21549,7 +21549,7 @@
                         <x>30</x>
                         <y>20</y>
                         <width>701</width>
-                        <height>570</height>
+                        <height>606</height>
                       </rect>
                     </property>
                     <property name="styleSheet">
@@ -21564,11 +21564,11 @@
                           <x>20</x>
                           <y>30</y>
                           <width>661</width>
-                          <height>540</height>
+                          <height>576</height>
                         </rect>
                       </property>
                       <layout class="QGridLayout" name="gridLayout_9">
-                        <item row="8" column="0" colspan="2">
+                        <item row="9" column="0" colspan="2">
                           <widget class="QLabel" name="label_103">
                             <property name="sizePolicy">
                               <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
@@ -21610,7 +21610,7 @@
                             </item>
                           </layout>
                         </item>
-                        <item row="6" column="1">
+                        <item row="7" column="1">
                           <layout class="QHBoxLayout" name="horizontalLayout_3">
                             <item>
                               <widget class="CustomQSlider" name="horizontalSlider_timeout">
@@ -21691,7 +21691,7 @@
                             </item>
                           </layout>
                         </item>
-                        <item row="7" column="1">
+                        <item row="8" column="1">
                           <layout class="QHBoxLayout" name="horizontalLayout_retry">
                             <item>
                               <widget class="CustomQSlider" name="horizontalSlider_retry">
@@ -21766,7 +21766,7 @@
                             </item>
                           </layout>
                         </item>
-                        <item row="6" column="0">
+                        <item row="7" column="0">
                           <widget class="QLabel" name="label_73">
                             <property name="sizePolicy">
                               <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
@@ -22141,7 +22141,7 @@
                             </item>
                           </layout>
                         </item>
-                        <item row="10" column="0">
+                        <item row="11" column="0">
                           <widget class="QLabel" name="label_cf_bypass_trusted_hosts">
                             <property name="sizePolicy">
                               <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
@@ -22166,7 +22166,7 @@
                             </property>
                           </widget>
                         </item>
-                        <item row="10" column="1">
+                        <item row="11" column="1">
                           <widget class="QLineEdit" name="lineEdit_cf_bypass_trusted_hosts">
                             <property name="sizePolicy">
                               <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
@@ -22194,7 +22194,7 @@
                             </property>
                           </widget>
                         </item>
-                        <item row="11" column="1" colspan="3">
+                        <item row="12" column="1" colspan="3">
                           <widget class="QLabel" name="label_cf_bypass_trusted_hosts_desc">
                             <property name="sizePolicy">
                               <sizepolicy hsizetype="Minimum" vsizetype="Minimum">
@@ -22213,7 +22213,7 @@
                               </property>
                             </widget>
                         </item>
-                        <item row="7" column="0">
+                        <item row="8" column="0">
                           <widget class="QLabel" name="label_65">
                             <property name="sizePolicy">
                               <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
@@ -22266,7 +22266,7 @@
                             </property>
                           </widget>
                         </item>
-                        <item row="9" column="0">
+                        <item row="10" column="0">
                           <widget class="QLabel" name="label_verify_ssl">
                             <property name="sizePolicy">
                               <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
@@ -22294,7 +22294,7 @@
                             </property>
                           </widget>
                         </item>
-                        <item row="9" column="1">
+                        <item row="10" column="1">
                           <widget class="QCheckBox" name="checkBox_verify_ssl">
                             <property name="sizePolicy">
                               <sizepolicy hsizetype="Minimum" vsizetype="Fixed">
@@ -22314,7 +22314,7 @@
                     <property name="geometry">
                       <rect>
                         <x>30</x>
-                        <y>1536</y>
+                        <y>1572</y>
                         <width>701</width>
                         <height>301</height>
                       </rect>
@@ -22505,7 +22505,7 @@
                     <property name="geometry">
                       <rect>
                         <x>30</x>
-                        <y>1291</y>
+                        <y>1327</y>
                         <width>701</width>
                         <height>230</height>
                       </rect>

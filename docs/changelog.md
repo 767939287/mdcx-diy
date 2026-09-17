@@ -4,6 +4,8 @@
 
 ### 修复
 
+- **议题 #123 网络设置页「CF Bypass 代理」与「超时时间」两行文字重叠重影**：#114 新增「直连白名单」行后，其下方的超时/重试两行没有随之后移，与「CF Bypass代理」行叠在同一格，两个标签横向重叠成「CF Bypass时…」字样。现将超时/重试及其下各行整体后移一行，并同步加高网络设置分组与页面滚动区；新增结构回归测试直接解析界面文件锁定「同一网格单元格不得叠放多个控件」，杜绝同类漏移再犯
+
 - **议题 #121 软件日志页日志上方一大片空白**：日志内容不是从顶部开始、而是被推到页面中部（"当前配置"行出现在约 60% 高度处），上方整片空白被浪费。根因是界面文件里日志文本框初始内容残留了设计器空段落（约 12 个空行），启动后追加的日志都排在空段落之后。现清空这些残留空段落，日志从文本框顶部开始显示；同族的「成功列表」「说明」两个弹窗文本框一并清理（它们会在打开弹窗时露出同样的顶部空白）；「使用说明」页文本为真实使用手册内容、保留不动。新回归测试锁定"日志类文本框不得再带设计器空段落残留"
 
 - **议题 #122 使用说明展开 Official 官网清单**：使用说明「网站选择」里 Official 是一个黑盒，用户不知道选中它实际能刮哪些官网。现把 Official 展开为：有码片商官网 30 家（S1、Moodyz、Madonna、WANZ FACTORY、IdeaPocket、Kirakira、E-Body、Bi、Premium Beauty、MIMAN、Tameikegoro、Fitch、Kawaiikawaii、BeeFree、Muku、Attackers、MKO-Labo、Dasdas、MVG、AV Opera、Oppai、V-av、To-Satsu、Bibian、Honnaka、Rookie、Nanpa、Hajime Kikaku、HHH、Prestige，按番号前缀路由）+ 无码官网 5 站（Caribbeancom、Heyzo、1Pondo、Pacopacomama、10Musume，JSON 直连）+ DLDSS/FNS/JIMMY 前缀路由到 Dahlia/Faleno，并注明前缀表维护在 `manual.py` 的 `OFFICIAL` 字典、增减不影响使用说明；同步更新 `docs/FEATURES.md` 爬虫表的 official 行；顺带把使用说明"当前 35 个"订正为实测 36 个

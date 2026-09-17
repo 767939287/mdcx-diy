@@ -13,6 +13,7 @@
 """
 
 import os
+import re
 from itertools import combinations
 
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
@@ -230,3 +231,98 @@ def test_absolutely_positioned_children_no_overlap(main_window: QMainWindow) -> 
                 continue
             failures.append(f"parent={ref_name!r} 绝对定位子重叠: {n1}{a} <-> {n2}{b} (面积 {_overlap_area(a, b)})")
     assert not failures, "检测到绝对定位子控件重叠（重影风险）:\n" + "\n".join(failures)
+
+
+def _ui_cells(ui_path: str, layout_name: str) -> dict[tuple[int, int], list[str]]:
+    """按 .ui 文本解析指定 gridLayout 每个 (row,col) cell 挂的控件名。
+
+    重影根因形态：同一 (row,col) cell 被多个独立 <item row=X col=Y> 块注册
+    （pyuic 把两块都 addWidget 进同格，Qt 按顺序叠放 → #123「CF Bypass 代理
+    与 超时时间 同格」）。返回 (row,col) -> [widget 名...]，同名可跨块出现。
+
+    绕开 Qt API 盲区：QWidgetItem 无公开 row()/col()、itemAtPosition 对同 cell
+    多控件只返回最后一个，包围盒检测读不出前一个（#123 即漏判者），只能按
+    .ui 文本逐 <item> 块解析做结构级哨兵。纯 QHBoxLayout 型 item（item 内嵌
+    子布局、无直接 widget）不计入，避免误伤设计器合法摆放。
+    """
+    import re
+
+    text = open(ui_path, encoding="utf-8").read()
+    m = re.search(r'<layout class="QGridLayout" name="' + re.escape(layout_name) + r'">', text)
+    if m is None:
+        return {}
+    start = m.start()
+    depth = 0
+    end = start
+    for mm in re.finditer(r"<layout\b|</layout>", text[start:]):
+        if mm.group(0) == "</layout>":
+            depth -= 1
+            if depth == 0:
+                end = start + mm.end()
+                break
+        else:
+            depth += 1
+    seg = text[start:end]
+    cells: dict[tuple[int, int], list[str]] = {}
+    for it in re.finditer(r'<item\s+row="(\d+)"\s+column="(\d+)"[^>]*>(.*?)</item>', seg, re.S):
+        row, col = int(it.group(1)), int(it.group(2))
+        body = it.group(3)
+        # 仅取该 item 块**直接子级**（widget/layout 嵌套深度 0）的实控件；
+        # 嵌套在 widget 或 layout 内的子控件不算与兄弟 cell 抢位。
+        names: list[str] = []
+        local_depth = 0
+        for sub in re.finditer(r"<widget\b|</widget>|<layout\b|</layout>", body):
+            tag = sub.group(0)
+            if tag == "<widget" or tag == "<layout":
+                if tag == "<widget" and local_depth == 0:
+                    nm = re.match(r'<widget class="[^"]*" name="([a-zA-Z0-9_]+)"', body[sub.start() :])
+                    if nm:
+                        names.append(nm.group(1))
+                local_depth += 1
+            else:
+                local_depth -= 1
+        cells.setdefault((row, col), []).extend(names)
+    return cells
+
+
+def test_grid_no_two_items_in_same_cell(main_window: QMainWindow) -> None:
+    """同一 gridLayout cell 不允许被多个 <item> 块注册不同实控件（重影根因）。
+
+    历史坑：#123 网络页 8d119d28 新增直连白名单行后漏了下移超时/重试两行的
+    row 号，CF Bypass 代理 与 超时时间 两块同占 row6，两个右对齐 label 横向叠
+    出重影（「CF Bypass时…」）。QWidgetItem 无公开 row()/col()、itemAtPosition
+    读不出同 cell 多控件，必须按 .ui 文本逐 <item> 块解析。判定口径：某
+    (row,col) 收集到 >1 个不同直接 widget 名即冲突；同名跨 colspan 块重复
+    （如说明文字 label_103 的 colspan=2 同列被两段匹配）去重后不算冲突。
+    """
+    from pathlib import Path
+
+    ui_path = Path(M.__file__).parent / "MDCx.ui"
+    assert ui_path.exists(), f"未找到 {ui_path}"
+    text = open(ui_path, encoding="utf-8").read()
+    layout_names = re.findall(r'<layout class="QGridLayout" name="([^"]+)">', text)
+    failures: list[str] = []
+    for name in sorted(set(layout_names)):
+        cells = _ui_cells(str(ui_path), name)
+        for key, names in cells.items():
+            uniq = list(dict.fromkeys(names))
+            if len(uniq) > 1:
+                failures.append(f"layout={name!r} row{key[0]}col{key[1]} 同 cell 多控件: {uniq}")
+    assert not failures, "检测到 gridLayout 同 cell 多控件（重影根因）:\n" + "\n".join(failures)
+
+
+def test_cf_bypass_proxy_not_same_cell_as_timeout(main_window: QMainWindow) -> None:
+    """基准断言：网络页 CF Bypass 代理 与 超时时间 不得同 cell（#123 回归锁）。"""
+    from pathlib import Path
+
+    ui_path = Path(M.__file__).parent / "MDCx.ui"
+    cells = _ui_cells(str(ui_path), "gridLayout_9")
+    by_name: dict[str, tuple[int, int]] = {}
+    for key, names in cells.items():
+        for nm in names:
+            by_name[nm] = key
+    assert "label_cf_bypass_proxy" in by_name, "label_cf_bypass_proxy 未注册进 gridLayout_9"
+    assert "label_73" in by_name, "label_73(超时时间) 未注册进 gridLayout_9"
+    assert by_name["label_cf_bypass_proxy"] != by_name["label_73"], (
+        f"CF Bypass 代理{by_name['label_cf_bypass_proxy']} 与 超时时间{by_name['label_73']} 同 cell，将产生重影（#123）"
+    )
