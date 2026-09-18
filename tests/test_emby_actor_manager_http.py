@@ -8,6 +8,7 @@
 - 5xx 判失败
 - 本地文件不存在时直接失败不发请求
 - 并发 fetch_all_actors 每演员仅调一次详情
+- #126: payload 中的哨兵/非法日期与年份值被过滤, 合法值规范化类型后再下发
 
 实现说明
 --------
@@ -18,6 +19,7 @@ emby_actor_manager 通过 ``async with manager.acquire_computed() as computed``
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -95,6 +97,102 @@ async def test_update_person_info_failure_on_error(actor_stub):
 
     assert not ok
     assert "失败" in msg
+
+
+def _captured_post(return_value=(b"", "")):
+    """返回 (patch_ctx, captured dict): patch 租约并捕获 update_person_info 的 post body."""
+    captured: dict = {}
+
+    async def _post(url, data, *, headers=None, use_proxy=None, **kwargs):
+        captured["payload"] = json.loads(data)
+        return return_value
+
+    fake_client = MagicMock()
+    fake_client.post_content = AsyncMock(side_effect=_post)
+    ctx = patch(
+        "mdcx.tools.emby_actor_manager.manager.acquire_computed",
+        return_value=_make_lease(fake_client),
+    )
+    return ctx, captured
+
+
+async def test_update_person_info_drops_sentinel_date_and_year(actor_stub):
+    """#126 回归: 无生日演员的哨兵值 "0000-00-00"/"0000" 不得下发, 否则服务器 400.
+
+    EMbyActressInfo.dump() 对未命中的演员输出哨兵默认值, 是字符串且 truthy,
+    旧实现按真值直接放进 payload, Emby/Jellyfin 模型绑定拒收。
+    """
+    from mdcx.tools.emby_actor_manager import update_person_info
+
+    actor_stub.new_premiere_date = "0000-00-00"
+    actor_stub.new_production_year = "0000"
+    actor_stub.new_overview = "简介文本"
+
+    ctx, captured = _captured_post()
+    with ctx:
+        ok, msg = await update_person_info(actor_stub)
+
+    assert ok, msg
+    payload = captured["payload"]
+    assert "PremiereDate" not in payload, f"哨兵日期不应下发: {payload}"
+    assert "ProductionYear" not in payload, f"哨兵年份不应下发: {payload}"
+    assert payload.get("Overview") == "简介文本"
+
+
+async def test_update_person_info_keeps_valid_date_and_normalizes_types(actor_stub):
+    """合法生日规范化为完整 ISO; 年份字符串转 int."""
+    from mdcx.tools.emby_actor_manager import update_person_info
+
+    actor_stub.new_premiere_date = "1990-05-12"
+    actor_stub.new_production_year = "1990"
+    actor_stub.new_overview = "x"
+
+    ctx, captured = _captured_post()
+    with ctx:
+        ok, _ = await update_person_info(actor_stub)
+
+    assert ok
+    payload = captured["payload"]
+    assert payload["PremiereDate"] == "1990-05-12T00:00:00.0000000Z"
+    assert payload["ProductionYear"] == 1990
+    assert isinstance(payload["ProductionYear"], int)
+
+
+async def test_update_person_info_drops_invalid_dates(actor_stub):
+    """非法日期(月份越界/截断/非日期串)一律不下发."""
+    from mdcx.tools.emby_actor_manager import update_person_info
+
+    for bad in ("1990-13-40", "1990-1-2", "1990-", "未知", "1990/05/12", "abc-def-ghij"):
+        actor_stub.new_premiere_date = bad
+        actor_stub.new_production_year = None
+        actor_stub.new_overview = "x"
+        ctx, captured = _captured_post()
+        with ctx:
+            ok, _ = await update_person_info(actor_stub)
+        assert ok
+        assert "PremiereDate" not in captured["payload"], f"非法日期 {bad!r} 不应下发"
+
+
+async def test_update_person_info_drops_bad_year_types(actor_stub):
+    """年份非正数/bool/非数字字符串一律不下发, int 正数正常下发."""
+    from mdcx.tools.emby_actor_manager import update_person_info
+
+    for bad_year in (0, -5, True, "abc", "  ", None):
+        actor_stub.new_production_year = bad_year
+        actor_stub.new_premiere_date = ""
+        actor_stub.new_overview = "x"
+        ctx, captured = _captured_post()
+        with ctx:
+            ok, _ = await update_person_info(actor_stub)
+        assert ok
+        assert "ProductionYear" not in captured["payload"], f"坏年份 {bad_year!r} 不应下发"
+
+    actor_stub.new_production_year = 2001
+    ctx, captured = _captured_post()
+    with ctx:
+        ok, _ = await update_person_info(actor_stub)
+    assert ok
+    assert captured["payload"]["ProductionYear"] == 2001
 
 
 async def test_upload_actor_image_success_on_204_empty(actor_stub, tmp_path: Path):

@@ -8,6 +8,7 @@ import time
 import unicodedata
 from collections.abc import Callable
 from dataclasses import dataclass, field
+from datetime import date
 from pathlib import Path
 
 import aiofiles
@@ -498,6 +499,42 @@ async def get_gfriends_index() -> dict[str, str] | None:
     return None
 
 
+def _normalize_premiere_date(value: object) -> str:
+    """生日字段归一化为服务器可解析的 ISO 日期，无效值返回空串。
+
+    EMbyActressInfo 的生日默认值是哨兵 "0000-00-00"（truthy 字符串），
+    随 dump() 一路带进 payload 后会被服务器以 HTTP 400 拒收
+    （System.DateTime  rejects "0000-00-00"，议题 #126）。
+    合法日期统一补时间为 Emby 官方 DTO 格式。
+    """
+    if not isinstance(value, str):
+        return ""
+    candidate = value.strip()[:10]
+    if not candidate or candidate.startswith("0000"):
+        return ""
+    try:
+        date.fromisoformat(candidate)
+    except ValueError:
+        return ""
+    return f"{candidate}T00:00:00.0000000Z"
+
+
+def _normalize_production_year(value: object) -> int | None:
+    """年份字段归一化为正整数；哨兵 "0000"、非数字、非正数一律视为空。
+
+    Payload 里 ProductionYear 必须是 int（服务器模型字段为 int?），
+    dump() 的默认值 "0000" 是字符串，直接下发同样触发 400（议题 #126）。
+    """
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, int):
+        return value if value > 0 else None
+    if isinstance(value, str) and value.strip().isdigit():
+        year = int(value.strip())
+        return year if year > 0 else None
+    return None
+
+
 async def update_person_info(actor: ActorInfo) -> tuple[bool, str]:
     _, _, _, _, _, update_url = _generate_server_url(
         {"Name": actor.name, "Id": actor.actor_id, "ServerId": actor.server_id}
@@ -517,10 +554,12 @@ async def update_person_info(actor: ActorInfo) -> tuple[bool, str]:
         payload["ProductionLocations"] = actor.new_production_locations
     if actor.new_provider_ids:
         payload["ProviderIds"] = actor.new_provider_ids
-    if actor.new_production_year:
-        payload["ProductionYear"] = actor.new_production_year
-    if actor.new_premiere_date:
-        payload["PremiereDate"] = actor.new_premiere_date
+    year = _normalize_production_year(actor.new_production_year)
+    if year is not None:
+        payload["ProductionYear"] = year
+    premiere_date = _normalize_premiere_date(actor.new_premiere_date)
+    if premiere_date:
+        payload["PremiereDate"] = premiere_date
     # 议题 #56: Emby 4.9 对 POST /Items/{id} 无 Content-Type 的 JSON body 判 400
     headers = _build_jellyfin_headers({"Content-Type": "application/json"})
     async with manager.acquire_computed() as computed:
