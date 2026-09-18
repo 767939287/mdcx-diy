@@ -32,6 +32,7 @@
    - `gh` 自带 token 失效。正确姿势：`TOKEN=$(printf "protocol=https\nhost=github.com\n\n" | git credential fill | sed -n 's/^password=//p')` 再 `GH_TOKEN="$TOKEN" gh api ...`。`gh` 未登录（`gh auth login` 提示）时同样用此 token 走 curl 直连 API。`gh api user` 403 属正常（integration 无权限），仓库读写不受影响。凭据值禁止回显/落盘。
   - 议题截图（user-attachments/assets/xxx）直接 `curl -sL` 下载后用 Read 工具查看，无需认证；多图并行下载。截图是议题的主要证据源，不要跳过看图环节。
   - 同一报告人连续多议题时先横向看历史议题再定夺：诉求可能延续（#61 要求删功能 → #71 退让为隐藏入口），也可能与其他报告人冲突（#67 要求禁最大化 vs #69 要求恢复）——冲突时以代码证据和功能根因是否已修为裁决依据。
+  - **报告人 z291173301（#126/#127/#140/#142/#146 系列）使用 Windows 原生边框（未勾选「隐藏边框」）**（维护者 2026-09-18 提醒）：与软件默认隐藏边框模式（主窗口 FramelessWindowHint）长期磨合不佳，窗口尺寸/联动/外观类反馈优先按其环境分诊；「隐藏边框」只作用于主窗口，演员管理器等对话框本就是原生边框——排查时勿把边框模式当根因，也要如实告知修复在两种模式下的表现。
   - 用户一段描述里常夹带多个独立诉求（#70「代理问题 + 顺带要求删按钮」），回帖必须逐项回应，不遗漏。
   - 读议题优先 `gh api`；退化抓网页时评论正文从内联 JSON `"body"` 字段提取。未认证直连 api.github.com 撞 IP 级限流。
    - 回帖正确姿势（议题 #72/#73 实证）：**用 JSON POST**，`-d @/tmp/x.json` + `Content-Type: application/json`（`{"body": "..."}`，python3 打包）。**不要用 `-F body=@file`**——那是 multipart/form-data，评论接口返回 400。发送后 jq 验证 html_url。
