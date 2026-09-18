@@ -191,6 +191,10 @@ class MyMAinWindow(QMainWindow):
         self.file_main_open_path = Path()  # 主界面打开的文件路径
         self.json_array: dict[str, ShowData] = {}  # 主界面右侧结果树状数据
         self.preview_request_id = 0  # 主界面图片预览请求序号，用于丢弃过期加载结果
+        # 议题 #144: 原图 pixmap 缓存, 显示层按封面/缩略图框当前尺寸重缩放
+        # (最大化时框同步放大图片随之放大; resize/切番共用同一缩放出口)
+        self._poster_src_pixmap: QPixmap | None = None
+        self._thumb_src_pixmap: QPixmap | None = None
         self._did_apply_initial_size = False
         self._user_initiated_close = False  # 标记是否为用户主动关闭窗口
 
@@ -662,9 +666,15 @@ class MyMAinWindow(QMainWindow):
         cover_scale = main_w / 820
         ui.label_poster.setGeometry(int(80 * cover_scale), 160, int(156 * cover_scale), int(220 * cover_scale))
         ui.label_thumb.setGeometry(int(252 * cover_scale), 160, int(328 * cover_scale), int(220 * cover_scale))
+        # 议题 #144: 框放大后原图按新框尺寸重渲染(窗口缩放与图片显示同步)
+        self._rescale_preview_pixmaps()
         cover_bottom = int(160 + 220 * cover_scale)
         # 信息区下移量 = 封面框增高量；再夹到页面可用高度内，避免宽而矮的窗口把末行裁掉
         info_delta = min(cover_bottom - 380, max(main_page.height() - 700, 0))
+        # 议题 #144：简介/标签行高随窗口高度增高(最多各 60px)，屏大显示行数更多；
+        # 页面高度回到设计值时 row_grow=0，小窗布局零变化（双向幂等，由页面高度实时计算）。
+        row_grow = max(0, min((main_page.height() - info_delta - 700) // 2, 60))
+        info_grow = info_delta + 2 * row_grow  # 简介/标签以下各行的总下移量
         ui.label_poster_size.setGeometry(
             int(80 * cover_scale), cover_bottom, int(411 * cover_scale), int(40 * cover_scale)
         )
@@ -680,24 +690,22 @@ class MyMAinWindow(QMainWindow):
         #   · 右列整体按 ×scale 右移，避免与加长后的左列窄字段重叠。
         thumb_right = int(580 * cover_scale)
         # 左列标签（x 固定，保持与番号/标题/封面竖向对齐）
+        # 简介/标签两行标签与其值行同顶（含 row_grow 行高增量），其余行用 info_grow
+        ui.label_18.move(30, 430 + info_delta)
+        ui.label_33.move(30, 480 + row_grow + info_delta)
         for name, y in (
-            ("label_18", 430),
-            ("label_33", 480),
             ("label_13", 530),
             ("label_23", 580),
             ("label_30", 630),
         ):
-            getattr(ui, name).move(30, y + info_delta)
-        # 简介/标签：左缘 x=70，右缘延伸到缩略图右缘
+            getattr(ui, name).move(30, y + info_grow)
+        # 简介/标签：左缘 x=70，右缘延伸到缩略图右缘；行高按 row_grow 增高，
+        # 下划线贴行底(设计偏移 -10)，简介之下的各行整体再下移 2*row_grow（议题 #144）
         wide_w = max(thumb_right - 70, 60)
-        for name, y in (
-            ("label_outline", 430),
-            ("label_tag", 480),
-            ("line_6", 460),
-            ("line_7", 510),
-        ):
-            widget = getattr(ui, name)
-            widget.setGeometry(70, y + info_delta, wide_w, widget.height())
+        ui.label_outline.setGeometry(70, 430 + info_delta, wide_w, 40 + row_grow)
+        ui.line_6.setGeometry(70, 460 + row_grow + info_delta, wide_w, ui.line_6.height())
+        ui.label_tag.setGeometry(70, 480 + row_grow + info_delta, wide_w, 40 + row_grow)
+        ui.line_7.setGeometry(70, 510 + 2 * row_grow + info_delta, wide_w, ui.line_7.height())
         # 左列窄字段（日期/导演/制作）：宽度按 ×scale 等比例加长
         narrow_w = max(int(220 * cover_scale), 60)
         for name, y in (
@@ -708,7 +716,7 @@ class MyMAinWindow(QMainWindow):
             ("line_12", 610),
             ("line_13", 660),
         ):
-            getattr(ui, name).setGeometry(70, y + info_delta, narrow_w, getattr(ui, name).height())
+            getattr(ui, name).setGeometry(70, y + info_grow, narrow_w, getattr(ui, name).height())
         # 右列（标签 x=310、值 x=350，按 ×scale 右移）：下划线右缘延伸到缩略图右缘
         right_label_x = int(310 * cover_scale)
         right_value_x = int(350 * cover_scale)
@@ -718,7 +726,7 @@ class MyMAinWindow(QMainWindow):
             ("label_22", 530),
             ("label_24", 630),
         ):
-            getattr(ui, name).move(right_label_x, y + info_delta)
+            getattr(ui, name).move(right_label_x, y + info_grow)
         for name, y in (
             ("label_series", 580),
             ("label_runtime", 530),
@@ -727,7 +735,7 @@ class MyMAinWindow(QMainWindow):
             ("line_10", 610),
             ("line_11", 660),
         ):
-            getattr(ui, name).setGeometry(right_value_x, y + info_delta, right_line_w, getattr(ui, name).height())
+            getattr(ui, name).setGeometry(right_value_x, y + info_grow, right_line_w, getattr(ui, name).height())
         # 上区行（y70 番号/演员、y110 标题）右界受同右行按钮限制（label_source 460 /
         # pushButton_open_nfo 427）：右界 = min(对应限制, 结果树左缘-30)
         top_right = max(min(450, ui.treeWidget_number.x() - 30), 420)
@@ -1618,26 +1626,53 @@ class MyMAinWindow(QMainWindow):
             force_reload=True,
         )
 
+    def _rescale_preview_pixmaps(self) -> None:
+        """议题 #144: 按 label 当前几何重渲染原图, 保证窗口缩放与图片显示同步。
+
+        缩放规则 KeepAspectRatio(等比、不裁剪、居中留白由 QLabel 对齐负责),
+        design 尺寸与原行为一致; 缓存为空(占位文本态)时跳过。
+        """
+        for src, label in (
+            (self._poster_src_pixmap, self.Ui.label_poster),
+            (self._thumb_src_pixmap, self.Ui.label_thumb),
+        ):
+            if src is None or src.isNull():
+                continue
+            size = label.size()
+            if size.width() <= 0 or size.height() <= 0:
+                continue
+            label.setPixmap(
+                src.scaled(
+                    size,
+                    Qt.AspectRatioMode.KeepAspectRatio,
+                    Qt.TransformationMode.SmoothTransformation,
+                )
+            )
+
     def resize_label_and_setpixmap(self, poster_pix, thumb_pix):
         if poster_pix is not None:
-            self.Ui.label_poster.resize(poster_pix[3], poster_pix[4])
             if poster_pix[0]:
-                poster_pixmap = (
+                self._poster_src_pixmap = (
                     poster_pix[1] if isinstance(poster_pix[1], QPixmap) else QPixmap.fromImage(poster_pix[1])
                 )
-                self.Ui.label_poster.setPixmap(poster_pixmap)
             else:
+                self._poster_src_pixmap = None
                 self.Ui.label_poster.clear()
                 self.Ui.label_poster.setText(poster_pix[2])
 
         if thumb_pix is not None:
-            self.Ui.label_thumb.resize(thumb_pix[3], thumb_pix[4])
             if thumb_pix[0]:
-                thumb_pixmap = thumb_pix[1] if isinstance(thumb_pix[1], QPixmap) else QPixmap.fromImage(thumb_pix[1])
-                self.Ui.label_thumb.setPixmap(thumb_pixmap)
+                self._thumb_src_pixmap = (
+                    thumb_pix[1] if isinstance(thumb_pix[1], QPixmap) else QPixmap.fromImage(thumb_pix[1])
+                )
             else:
+                self._thumb_src_pixmap = None
                 self.Ui.label_thumb.clear()
                 self.Ui.label_thumb.setText(thumb_pix[2])
+
+        # 议题 #144: 几何归 _sync_page_layouts 管辖(此前 resize(156,220/328,220)
+        # 会把已放大的框砸回设计尺寸), 这里只负责按当前框尺寸出图
+        self._rescale_preview_pixmaps()
 
     # endregion
 
@@ -2445,8 +2480,10 @@ class MyMAinWindow(QMainWindow):
         if not self.Ui.checkBox_cover.isChecked():
             self.Ui.label_poster.setText("封面图")
             self.Ui.label_thumb.setText("缩略图")
-            self.Ui.label_poster.resize(156, 220)
-            self.Ui.label_thumb.resize(328, 220)
+            # 议题 #144: 占位文本态同时清原图缓存, 否则 resize 重放会把图盖回占位;
+            # 几何归 _sync_page_layouts 管辖, 此处不再 resize 设计尺寸
+            self._poster_src_pixmap = None
+            self._thumb_src_pixmap = None
             self.Ui.label_poster_size.setText("")
             self.Ui.label_thumb_size.setText("")
         else:
