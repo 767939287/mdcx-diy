@@ -329,45 +329,60 @@ def test_cf_bypass_proxy_not_same_cell_as_timeout(main_window: QMainWindow) -> N
 
 
 def test_page_main_info_fields_cleared_of_cover_boxes() -> None:
-    """#124 回归锁：主页信息区字段不得被封面/缩略图黑框横向盖住、纵向压叠。
+    """#124/#135 回归锁：主页信息区字段保持设计左列并整体下移，不被封面黑框盖住。
 
-    根因：#102 封面区横向等比放大（cover_scale = main_w/820）后，缩略图框放大后
-    右缘 = 580×scale（1920 宽 → 1208），下方信息区（简介/标签/日期/导演/制作/
-    厂牌/系列/发行 + 分隔线 + 勾选框）仍停在设计 x，被黑框横向盖住出重影；
-    尺寸文字行钉死 y=380，被放大封面底（160+220×scale=618）纵向压叠。
-    修复：_sync_page_layouts 把信息区整组右移到「缩略图框放大后右缘 + 15px」、
-    尺寸文字/勾选框行 y 跟随封面底。本测试在 offscreen 实例化 controller 后
-    驱动 resize 同步（走真实 _sync_page_layouts），断言两方向越界归 0。
+    根因：#102 封面区横向等比放大（cover_scale = main_w/820）后，封面/缩略图框增高
+    （底 = 160+220×scale，1920 宽 → 618），下方信息区（简介/标签/日期/导演/制作/
+    右列时长/系列/发行 + 分隔线 + 勾选框）停在设计 y，被放大后的黑框纵向压叠。
+    #124 曾把信息区整组**右移**到缩略图右侧，导致最小化时字段与「番号/标题/封面」
+    不对齐（#135）；现改为保持设计 x（左列对齐）并整体**下移**封面增高量。
+
+    本测试在 offscreen 实例化 controller 后驱动 resize 同步（走真实
+    _sync_page_layouts），断言：x 保持设计值（左对齐）、y 下移到封面框下方。
     """
     from mdcx.controllers.main_window import main_window as mw_mod
 
     _app = QApplication.instance() or QApplication([])
     win = mw_mod.MyMAinWindow()
     win._app = _app  # 挂上 app 引用防 GC
-    win.resize(1920, 1020)  # 模拟 #124 报告人实机（原生边框最大化）
+    win.resize(1920, 1020)  # 模拟报告人实机（原生边框最大化）
     _app.processEvents()
 
     ui = win.Ui
     avail_w = max(1920 - 212, 400)
     cover_scale = avail_w / 820
-    thumb_right = int(580 * cover_scale)
     cover_bottom = int(160 + 220 * cover_scale)
+    info_delta = cover_bottom - 380
 
-    # 横向：值列/右列/勾选框 左缘须在缩略图框右缘之后
-    for nm in (
-        "label_outline",
-        "label_tag",
-        "label_release",
-        "label_director",
-        "label_studio",
-        "label_runtime",
-        "label_series",
-        "label_publish",
-        "checkBox_cover",
-    ):
+    # 横向：信息区保持设计 x（与「番号/标题/封面」同一左列，不做右移）
+    design_x = {
+        "label_18": 30,
+        "label_33": 30,
+        "label_13": 30,
+        "label_23": 30,
+        "label_30": 30,
+        "label_outline": 70,
+        "label_tag": 70,
+        "label_release": 70,
+        "label_director": 70,
+        "label_studio": 70,
+        "label_31": 310,
+        "label_22": 310,
+        "label_24": 310,
+        "label_series": 350,
+        "label_runtime": 350,
+        "label_publish": 350,
+        "checkBox_cover": 490,
+    }
+    for nm, x in design_x.items():
         w = getattr(ui, nm)
-        assert w.x() >= thumb_right, f"#124 回归：{nm} 左缘 {w.x()} 仍在缩略图黑框右缘 {thumb_right} 内，横向重影"
+        assert w.x() == x, f"#135 回归：{nm} 左缘 {w.x()} 未保持设计 x={x}（与左列对齐）"
     # 纵向：尺寸文字/勾选框 顶须等于封面底（不被压叠）
     for nm in ("label_poster_size", "label_thumb_size", "checkBox_cover"):
         w = getattr(ui, nm)
         assert w.y() == cover_bottom, f"#124 回归：{nm} 顶 {w.y()} 未跟随封面底 {cover_bottom}，纵向压叠"
+    # 纵向：信息区首行（设计 y=430）须下移到封面底之下，且偏移量一致
+    for nm in ("label_18", "label_outline"):
+        w = getattr(ui, nm)
+        assert w.y() == 430 + info_delta, f"#135 回归：{nm} 未按封面增高下移（y={w.y()}）"
+        assert w.y() >= cover_bottom, f"#135 回归：{nm} 仍在封面框内（y={w.y()} < {cover_bottom}）"

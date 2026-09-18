@@ -652,59 +652,56 @@ class MyMAinWindow(QMainWindow):
         # 选择目录按钮跟随开始按钮左移，保持 14px 视觉间距（设计 666 与 680 之间）
         ui.pushButton_select_media_folder.move(max(ui.pushButton_start_cap.x() - 101 - 14, 20), 13)
 
-        # 议题 #124：封面/缩略图黑框横向等比放大后，下方信息区（简介/标签/日期/
-        # 导演/制作/厂牌/系列/发行 + 分隔线 + 勾选框）仍停在设计 x，被放大后的
-        # 黑框横向盖住。整组信息区右移到「缩略图框放大后右缘 + 15px 间隙」，
-        # 内部各列间距保持设计值、宽度按剩余空间压缩。
-        # 幂等：基于设计基准 820 的 cover_scale 计算，不依赖当前几何，resize 反复
-        # 触发不累积漂移；设计 820 宽时 scale=1 → info_anchor=595，默认窗口零变化。
+        # 议题 #124/#135：封面/缩略图按窗口宽度横向等比放大（160×220 → ×scale），
+        # 下方信息区（简介/标签/日期/导演/制作 + 右列时长/系列/发行 + 分隔线 + 勾选框）
+        # 按封面框的增高量整体**下移**，保持与「番号/标题/封面」同一左列（x 不变），
+        # 从而不会被放大的黑框盖住。#135 修正：此前误将信息区整组**右移**到缩略图
+        # 右侧，导致最小化时字段被推到窗口右半、与番号/标题/封面不对齐。
+        # 幂等：基于设计基准 820 的 cover_scale 计算，不依赖当前几何；设计宽下
+        # cover_scale=1 → info_delta=0，与设计稿完全一致，反复 resize 不漂移。
         cover_scale = main_w / 820
         ui.label_poster.setGeometry(int(80 * cover_scale), 160, int(156 * cover_scale), int(220 * cover_scale))
         ui.label_thumb.setGeometry(int(252 * cover_scale), 160, int(328 * cover_scale), int(220 * cover_scale))
         cover_bottom = int(160 + 220 * cover_scale)
+        # 信息区下移量 = 封面框增高量；再夹到页面可用高度内，避免宽而矮的窗口把末行裁掉
+        info_delta = min(cover_bottom - 380, max(main_page.height() - 700, 0))
         ui.label_poster_size.setGeometry(
             int(80 * cover_scale), cover_bottom, int(411 * cover_scale), int(40 * cover_scale)
         )
         ui.label_thumb_size.setGeometry(
             int(222 * cover_scale), cover_bottom, int(201 * cover_scale), int(40 * cover_scale)
         )
-        # 信息区左起点 = 缩略图框放大后右缘(580×scale) + 15px；右缘锚定结果树左缘
-        # -30（设计 570）。勾选框（设计 x=490，落在缩略图框 580 之内）随之右移。
-        tree_right = max(ui.treeWidget_number.x() - 30, 400)
-        info_anchor = int(580 * cover_scale) + 15
-        ui.checkBox_cover.move(info_anchor, cover_bottom)
-        col_w = max(tree_right - info_anchor, 60)
-        # 值列（设计 x=70）右移 info_anchor，左列标签（设计 x=30）保持其左侧 40px。
-        ui.label_outline.move(info_anchor, ui.label_outline.y())
-        ui.label_outline.resize(col_w, ui.label_outline.height())
-        ui.label_tag.move(info_anchor, ui.label_tag.y())
-        ui.label_tag.resize(col_w, ui.label_tag.height())
-        for ln in ("line_6", "line_7"):
-            w = getattr(ui, ln)
-            w.move(info_anchor, w.y())
-            w.resize(col_w, 20)
-        for ln in ("label_18", "label_33", "label_13", "label_23", "label_30"):
-            getattr(ui, ln).move(info_anchor - 40, getattr(ui, ln).y())
-        for ln in ("line_8", "line_12", "line_13", "label_release", "label_director", "label_studio"):
-            w = getattr(ui, ln)
-            w.move(info_anchor, w.y())
-            if ln.startswith("line_"):
-                w.resize(col_w, w.height())
-        # 右列（设计 x=350，标签 x=310）：相对值列(设计 x=70)的偏移量不变，整组随 info_anchor 平移。
-        for ln, dx in (
-            ("label_series", 350),
-            ("label_publish", 350),
-            ("label_runtime", 350),
-            ("label_31", 310),
-            ("label_24", 310),
-            ("label_22", 310),
-            ("line_9", 350),
-            ("line_10", 350),
-            ("line_11", 350),
+        ui.checkBox_cover.move(490, cover_bottom)
+        # 信息区各控件：x/宽保持设计值（左列与番号/标题/封面对齐），y 统一下移 info_delta。
+        # 设计坐标表：(控件名, 设计x, 设计y, 设计宽)；行高沿用设计/当前值。
+        for name, x, y, width in (
+            ("label_18", 30, 430, 50),
+            ("label_33", 30, 480, 50),
+            ("label_13", 30, 530, 50),
+            ("label_23", 30, 580, 50),
+            ("label_30", 30, 630, 50),
+            ("label_outline", 70, 430, 500),
+            ("label_tag", 70, 480, 500),
+            ("label_release", 70, 530, 220),
+            ("label_director", 70, 580, 220),
+            ("label_studio", 70, 630, 220),
+            ("line_6", 70, 460, 500),
+            ("line_7", 70, 510, 500),
+            ("line_8", 70, 560, 220),
+            ("line_12", 70, 610, 220),
+            ("line_13", 70, 660, 220),
+            ("label_31", 310, 580, 50),
+            ("label_22", 310, 530, 50),
+            ("label_24", 310, 630, 50),
+            ("label_series", 350, 580, 220),
+            ("label_runtime", 350, 530, 220),
+            ("label_publish", 350, 630, 220),
+            ("line_9", 350, 560, 220),
+            ("line_10", 350, 610, 220),
+            ("line_11", 350, 660, 220),
         ):
-            w = getattr(ui, ln)
-            w.move(info_anchor + (dx - 70), w.y())
-            w.resize(max(220, col_w // 2), w.height())
+            widget = getattr(ui, name)
+            widget.setGeometry(x, y + info_delta, width, widget.height())
         # 上区行（y70 番号/演员、y110 标题）右界受同右行按钮限制（label_source 460 /
         # pushButton_open_nfo 427）：右界 = min(对应限制, 结果树左缘-30)
         top_right = max(min(450, ui.treeWidget_number.x() - 30), 420)

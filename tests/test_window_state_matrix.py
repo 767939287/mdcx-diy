@@ -457,15 +457,18 @@ def test_probe_main_tool_content(win, app):
     print(f"series_x      : {before_series_x} -> {win.Ui.label_series.x()}")
     assert after_edit > before_edit + 200, f"工具页输入框未随视口拉宽: {before_edit} -> {after_edit}"
 
-    # 软件界面：#124 后信息区整组右移到「缩略图框放大后右缘 + 15px」，简介标签
-    # 不再从左横向铺满，而是落在黑框右侧、右缘贴结果树左缘 - 30。
-    tree_x = win.Ui.treeWidget_number.x()
-    assert win.Ui.label_outline.geometry().right() == pytest.approx(tree_x - 30, abs=4), "简介标签右缘未贴结果树"
-    # 简介标签左缘须在缩略图框放大后右缘之后（#124 横向重影消除）
+    # 软件界面：#135 信息区保持设计左列（x 与「番号/标题/封面」对齐），
+    # 仅按封面框增高量整体下移，不再右移到缩略图右侧。
     cover_scale = win.Ui.page_main.width() / 820
-    thumb_right = int(580 * cover_scale)
-    assert win.Ui.label_outline.x() > thumb_right, "简介标签仍在缩略图黑框内（#124 未修复）"
-    assert win.Ui.label_series.x() > thumb_right, "下半区右列未移出缩略图黑框"
+    cover_bottom = int(160 + 220 * cover_scale)
+    info_delta = cover_bottom - 380
+    tree_x = win.Ui.treeWidget_number.x()
+    assert win.Ui.label_outline.x() == 70, "简介左缘应保持设计 x=70（与左上角对齐）"
+    assert win.Ui.label_outline.width() == 500, "简介宽度应保持设计值 500"
+    assert win.Ui.label_series.x() == 350, "右列应保持设计 x=350"
+    # 信息区首行下移到封面框下方（不被放大后的黑框盖住）
+    assert win.Ui.label_outline.y() == pytest.approx(430 + info_delta, abs=2), "信息区未按封面增高下移"
+    assert win.Ui.label_outline.y() >= cover_bottom, "信息区首行仍在封面框内（#135 未修复）"
     # 上区受右侧按钮限制的拉伸右界
     assert win.Ui.label_number.geometry().right() == pytest.approx(min(450, tree_x - 30), abs=4)
 
@@ -474,10 +477,10 @@ def test_probe_main_tool_content(win, app):
     app.processEvents()
     win.resize(1920, 1040)
     app.processEvents()
-    # #124 公式：info_anchor = int(580 × main_w/820) + 15；右列(dx=350) 起 info_anchor + 280
-    expected_anchor = int(580 * (1920 - 212) / 820) + 15
-    assert win.Ui.label_series.x() == pytest.approx(expected_anchor + 280, abs=4), "右列平移漂移"
-    assert win.Ui.label_outline.geometry().right() == pytest.approx(tree_x - 30, abs=4), "标签右缘漂移"
+    # #135 固定公式：信息区 x 恒为设计值，y = 设计 y + info_delta
+    assert win.Ui.label_series.x() == 350, "右列 x 漂移"
+    assert win.Ui.label_outline.x() == 70, "简介 x 漂移"
+    assert win.Ui.label_outline.y() == pytest.approx(430 + info_delta, abs=2), "信息区 y 漂移"
     assert after_edit == max((e.width() for e in tool_page.findChildren(QLineEdit)), default=0), "工具页输入框宽漂移"
 
 
@@ -495,14 +498,14 @@ def test_runtime_row_follows_right_column_on_maximize(win, app):
     win.resize(1920, 1040)
     app.processEvents()
 
-    # #124 后右列起 info_anchor（缩略图框放大后右缘 + 15px），时长行随组平移：
-    # label_22(dx=310) → info_anchor + 240；label_runtime(dx=350) → info_anchor + 280
-    expected_anchor = int(580 * (1920 - 212) / 820) + 15
-    assert win.Ui.label_22.x() == pytest.approx(expected_anchor + 240, abs=4), (
-        f"时长标签未随 #124 公式平移: {win.Ui.label_22.x()} != {expected_anchor + 240}"
-    )
-    assert win.Ui.label_runtime.x() == pytest.approx(expected_anchor + 280, abs=4), (
-        f"时长值未随 #124 公式平移: {win.Ui.label_runtime.x()} != {expected_anchor + 280}"
+    # #135：右列保持设计 x（label_22=310，label_runtime=350），仅随信息区整体下移。
+    # 时长行 y 与日期行（y=530）一致地下移 info_delta。
+    cover_scale = win.Ui.page_main.width() / 820
+    info_delta = int(160 + 220 * cover_scale) - 380
+    assert win.Ui.label_22.x() == 310, f"时长标签 x 漂移: {win.Ui.label_22.x()}"
+    assert win.Ui.label_runtime.x() == 350, f"时长值 x 漂移: {win.Ui.label_runtime.x()}"
+    assert win.Ui.label_22.y() == pytest.approx(530 + info_delta, abs=2), (
+        f"时长标签未随信息区下移: {win.Ui.label_22.y()} != {530 + info_delta}"
     )
 
 
