@@ -671,9 +671,11 @@ class MyMAinWindow(QMainWindow):
         cover_bottom = int(160 + 220 * cover_scale)
         # 信息区下移量 = 封面框增高量；再夹到页面可用高度内，避免宽而矮的窗口把末行裁掉
         info_delta = min(cover_bottom - 380, max(main_page.height() - 700, 0))
-        # 议题 #144：简介/标签行高随窗口高度增高(最多各 60px)，屏大显示行数更多；
-        # 页面高度回到设计值时 row_grow=0，小窗布局零变化（双向幂等，由页面高度实时计算）。
-        row_grow = max(0, min((main_page.height() - info_delta - 700) // 2, 60))
+        # 议题 #152（撤销 #144 的 60px 拉伸行高）：简介/标签每行恒定 40px、自动换行、
+        # 行数随页高真实余量增长（行数不限，最大化比最小化显示更多）；页面高度回到设计
+        # 值时 row_grow=0，小窗布局零变化（双向幂等，由页面高度实时计算）。最多 4 行防溢出。
+        _free_h = max(0, main_page.height() - info_delta - 660)
+        row_grow = min(_free_h // 40, 4) * 40
         info_grow = info_delta + 2 * row_grow  # 简介/标签以下各行的总下移量
         ui.label_poster_size.setGeometry(
             int(80 * cover_scale), cover_bottom, int(411 * cover_scale), int(40 * cover_scale)
@@ -827,6 +829,25 @@ class MyMAinWindow(QMainWindow):
         ui.pushButton_view_failed_list.move(max(log_page.width() - 257, 20), 13)
         ui.pushButton_show_hide_logs.move(0, max(log_page.height() - 42, 13))
         ui.pushButton_save_failed_list.move(0, max(log_page.height() - 42, 13))
+
+        # ============ widget_nfo（「编辑 NFO」覆盖层）随主窗口缩放（议题 #152）============
+        # widget_nfo 是 centralwidget 的绝对定位覆盖层（设计 (10,10,791,681)），主窗口放大后
+        # 固定几何会让 NFO 编辑器滞留在左上角。可见时将其铺满右侧内容区（nav 栏 x=210 之右），
+        # 内部 scrollArea 随 widget 填满，用户无需再横向滚动即可边编辑边看更多字段。
+        nfo = ui.widget_nfo
+        if nfo is not None and not nfo.isHidden():
+            nfo_x, nfo_y, nfo_margin = 215, 8, 12
+            nfo.setGeometry(
+                nfo_x, nfo_y, max(self.width() - nfo_x - nfo_margin, 400), max(self.height() - nfo_y - nfo_margin, 300)
+            )
+            nfo_scroll = ui.scrollArea_nfo
+            if nfo_scroll is not None:
+                nfo_scroll.setGeometry(
+                    nfo_scroll.x(),
+                    nfo_scroll.y(),
+                    max(nfo.width() - nfo_scroll.x() - nfo_margin, 300),
+                    max(nfo.height() - nfo_scroll.y() - nfo_margin, 200),
+                )
 
         # ============ page_nfo_library: 简介/标签高度自适应（议题 #117）============
         self._sync_nfo_lib_form_fields()

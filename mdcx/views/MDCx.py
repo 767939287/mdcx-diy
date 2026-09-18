@@ -82,7 +82,7 @@ class Ui_MDCx(object):
             | QtCore.Qt.AlignmentFlag.AlignLeft
             | QtCore.Qt.AlignmentFlag.AlignVCenter
         )
-        self.label_outline.setWordWrap(False)
+        self.label_outline.setWordWrap(True)
         self.label_outline.setObjectName("label_outline")
         self.label_18 = QtWidgets.QLabel(parent=self.page_main)
         self.label_18.setGeometry(QtCore.QRect(30, 430, 50, 40))

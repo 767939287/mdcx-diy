@@ -1,9 +1,10 @@
-"""议题 #144 回归: 最大化时封面/缩略图随框同步放大; 简介/标签行高随窗口增高。
+"""议题 #144/#152 回归: 最大化时封面/缩略图随框同步放大; 简介/标签行高随窗口增高。
 
 三态纪律(MEMORY #110/#117): fresh 小窗 → 拉大 → 还原小窗, 断言
 1) 封面 pixmap 显示尺寸跟随 label 框几何(等比、随窗口变大变小), 且切换封面
-   不得再把已放大的框砸回设计尺寸(旧 resize(156,220) 硬编码回归);
-2) 简介/标签行高: 小窗 == 设计 40, 大窗 > 40, 下划线随行底, 后续行 = +2*grow;
+   后不得再把已放大的框砸回设计尺寸(旧 resize(156,220) 硬编码回归);
+2) 简介/标签行高: 小窗 == 设计 40, 大窗 > 40(按整行 40px 翻倍、最多 4 行),
+   下划线随行底, 后续行 = +2*grow(#152 撤销 #144 的 60px 拉伸行高);
 3) 还原后与小窗 fresh 状态完全一致(双向幂等)。
 """
 
@@ -125,7 +126,8 @@ def test_info_rows_grow_for_taller_window(win):
     big_outline_h = ui.label_outline.height()
     grow = big_outline_h - 40
     assert grow > 0, "窗口拉高后简介行高必须增高(可显示更多行)"
-    assert big_outline_h <= 100, "行高增幅必须有上限"
+    assert grow % 40 == 0, f"简介行高按整行(40px)翻倍: grow={grow}"
+    assert big_outline_h <= 40 + 4 * 40, "行高增幅必须有上限(最多 4 行翻倍)"
     # 下划线贴行底(设计偏移 30 保持), 标签行在 underline 间距 20 之后
     assert ui.line_6.y() - ui.label_outline.y() == 30 + grow
     assert ui.label_tag.y() - ui.line_6.y() == 20

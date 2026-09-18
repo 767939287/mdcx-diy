@@ -502,11 +502,13 @@ def test_runtime_row_follows_right_column_on_maximize(win, app):
     app.processEvents()
 
     # #141：右列随 ×scale 右移（label_22=310×scale，label_runtime=350×scale），
-    # 时长行 y 与日期行（y=530）一致地下移。#144 起简介/标签行还会随窗口高度增高，
-    # 其下各行再让出 2*row_grow，因此下移量为 info_grow = info_delta + 2*row_grow。
+    # 时长行 y 与日期行（y=530）一致地下移。#152 起简介/标签行随窗口高度按整行
+    # (40px)翻倍(最多 4 行)、其下各行再让出 2*row_grow，因此下移量为
+    # info_grow = info_delta + 2*row_grow。
     cover_scale = win.Ui.page_main.width() / 820
     info_delta = int(160 + 220 * cover_scale) - 380
-    row_grow = max(0, min((win.Ui.page_main.height() - info_delta - 700) // 2, 60))
+    _free_h = max(0, win.Ui.page_main.height() - info_delta - 660)
+    row_grow = min(_free_h // 40, 4) * 40
     info_grow = info_delta + 2 * row_grow
     assert win.Ui.label_22.x() == int(310 * cover_scale), f"时长标签 x 漂移: {win.Ui.label_22.x()}"
     assert win.Ui.label_runtime.x() == int(350 * cover_scale), f"时长值 x 漂移: {win.Ui.label_runtime.x()}"
