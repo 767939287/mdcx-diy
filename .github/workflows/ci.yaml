@@ -63,7 +63,7 @@ jobs:
 
       - name: Set up uv
         if: steps.changes.outputs.code_changed == 'true'
-        uses: astral-sh/setup-uv@v10
+        uses: astral-sh/setup-uv@v10.1.0
 
       - name: Install locked dependencies
         if: steps.changes.outputs.code_changed == 'true'
@@ -148,7 +148,7 @@ jobs:
 
       - name: Set up uv
         if: steps.changes.outputs.code_changed == 'true'
-        uses: astral-sh/setup-uv@v10
+        uses: astral-sh/setup-uv@v10.1.0
         with:
           activate-environment: true
 
