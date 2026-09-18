@@ -56,6 +56,22 @@ from .emby_actor_manager import (
 
 
 class LibrarySelectDialog(QDialog):
+    # 议题 #146: 默认最小尺寸只够 ~7 行, 媒体库多时需滚动半屏。
+    # 现按库数自适应初始大小(最多同时展示 20 行, 宽高 16:9, 不超过屏幕可用区 85%)。
+    MAX_VISIBLE_ROWS = 20
+
+    @staticmethod
+    def initial_size(row_h: int, visible_rows: int, chrome_h: int, avail_w: int, avail_h: int) -> tuple[int, int]:
+        """计算对话框初始宽高: 高 = chrome + 可见行, 宽按 16:9, 双向钳制到屏幕可用区 85%。
+
+        纯函数便于测试: chrome_h 为除列表可视区外的窗口内容高度(layout sizeHint 差值)。
+        """
+        target_h = chrome_h + visible_rows * row_h + 12
+        target_w = int(round(target_h * 16 / 9))
+        target_w = max(420, min(target_w, int(avail_w * 0.85)))
+        target_h = max(320, min(target_h, int(avail_h * 0.85)))
+        return target_w, target_h
+
     def __init__(self, libraries: list[dict], parent=None):
         super().__init__(parent)
         self.setWindowTitle("选择媒体库")
@@ -64,6 +80,17 @@ class LibrarySelectDialog(QDialog):
         self._libraries = libraries
         self._checkboxes: list[QCheckBox] = []
         self._init_ui()
+        self._apply_initial_size()
+
+    def _apply_initial_size(self):
+        parent = self.parentWidget()
+        screen_obj = parent.screen() if parent is not None else QGuiApplication.primaryScreen()
+        available = screen_obj.availableGeometry()
+        row_h = max((cb.sizeHint().height() for cb in self._checkboxes), default=0)
+        row_h = max(row_h, self.list_widget.fontMetrics().height() + 8, 26)
+        visible = max(1, min(len(self._libraries), self.MAX_VISIBLE_ROWS))
+        chrome_h = max(0, self.layout().sizeHint().height() - self.list_widget.sizeHint().height())
+        self.resize(*self.initial_size(row_h, visible, chrome_h, available.width(), available.height()))
 
     def _init_ui(self):
         layout = QVBoxLayout(self)
