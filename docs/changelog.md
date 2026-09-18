@@ -4,6 +4,8 @@
 
 ### 修复
 
+- **#140 发布工作流 macOS Intel 构建永远排队**：GitHub 已于 2025-12-04 下线 `macos-13` runner 镜像，macOS x86_64 构建 job 无 runner 可接、停在 Queued。现替换为官方 Intel 接替镜像 `macos-15-intel`，并把所有工作流的 actions 升级到原生 Node 24 版本（checkout v7 / setup-python v7 / setup-uv v10 / upload-artifact v7 / download-artifact v8 / cache v6 / stale v11 / github-script v9 / action-gh-release v3），Node.js 20 弃用警告随之消除（Intel runner 2027 年秋季将整体退役，届时 x86_64 mac 产物停止提供）
+
 - **Dependabot/OSV 安全告警：soupsieve 2.8.4 → 2.9.2**（beautifulsoup4 的传递依赖，生产依赖）：2.8.x 在 selector 正则上存在两处多项式时间 ReDoS（O(n²)，CVSS Low，仅可用性）。CSS 选择器由代码固定、并非来自被抓取内容，实际可利用性很低，但升级零成本且向下兼容，现升级到 2.9.2；升级后 OSV 复扫 123 个锁定依赖 **0 已知漏洞**
 
 - **#130 启动自检纳入 FC2PPVDB，且 cookie 检查只告警不清空**：启动自检由「数据库 / ThePornDB / JavDb / JavBus」扩展为含 **FC2PPVDB** cookie 有效性检测（未填写时不发请求），并在日志输出其连接状态。同时修正 javdb cookie 检查"自动清空保存"的激进行为——网络/站点不可达、或页面未出现 `/logout` 只说明"未检测到登录态"，都不构成 cookie 失效的确凿证据：现一律**只告警、保留 cookie**，由用户手动替换。另修正 fc2cmadb 实际下发的会话 cookie 名为 `fc2cmadb-session`（连字符）而白名单只列了下划线写法的问题

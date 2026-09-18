@@ -22,7 +22,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           fetch-depth: 1
 
@@ -79,7 +79,7 @@ jobs:
 
       - name: Cache Camoufox Browser
         id: cache-camoufox
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ~/.cache/camoufox
           key: ${{ runner.os }}-camoufox-${{ steps.version.outputs.version }}
@@ -198,7 +198,7 @@ jobs:
           Write-Host ("{0} - {1:N2} MB" -f $File.Name, ($File.Length / 1MB))
 
       - name: Upload Artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: trawl-portable-${{ steps.version.outputs.version }}-windows
           path: trawl-portable-${{ steps.version.outputs.version }}-windows.zip
@@ -206,7 +206,7 @@ jobs:
 
       - name: Create GitHub Release
         if: inputs.upload_to_releases
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: trawl-${{ steps.version.outputs.version }}
           name: TRAWL ${{ steps.version.outputs.version }} Windows Portable
