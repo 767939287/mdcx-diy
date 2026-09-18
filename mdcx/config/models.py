@@ -668,6 +668,7 @@ class Config(BaseModel):
     )
     actor_filter_only: bool = Field(default=True, title="只获取演员类型")
     actor_deduplicate: bool = Field(default=True, title="重复演员去重")
+    actor_count_mode: int = Field(default=0, title="演员计数方式 0=原始条目数 1=唯一名字数")
     actor_photo_kodi_auto: bool = Field(default=False, title="演员照片Kodi自动")
     # endregion
 

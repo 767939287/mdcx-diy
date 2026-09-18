@@ -377,7 +377,8 @@ class EmbyActorManagerDialog(QDialog):
         self.cache_dir.mkdir(parents=True, exist_ok=True)
         self._actors: list[ActorInfo] = []
         self._raw_count: int = 0
-        self._show_unique: bool = False
+        # 议题 #143: 计数方式为持久化配置, 重开管理器/重启后恢复
+        self._show_unique: bool = manager.config.actor_count_mode == 1
         self._gfriends_index = None
         self._preview_thread = None
         self._sync_thread = None
@@ -512,6 +513,8 @@ class EmbyActorManagerDialog(QDialog):
         stats_layout.addWidget(QLabel("计数方式:"))
         self.cmb_count_mode = QComboBox()
         self.cmb_count_mode.addItems(["原始条目数", "唯一名字数"])
+        # 议题 #143: 先恢复已保存的选择再 connect, 避免构造时误触发保存
+        self.cmb_count_mode.setCurrentIndex(1 if self._show_unique else 0)
         self.cmb_count_mode.currentIndexChanged.connect(self._on_count_mode_changed)
         stats_layout.addWidget(self.cmb_count_mode)
         parent_layout.addLayout(stats_layout)
@@ -1131,6 +1134,14 @@ class EmbyActorManagerDialog(QDialog):
     def _on_count_mode_changed(self, index: int):
         self._show_unique = index == 1
         self._update_statistics(self._actors)
+        # 议题 #143: 切换即保存, 重启 MDCx / 重开管理器后保持不变
+        try:
+            cfg = manager.config.model_copy(deep=True)
+            cfg.actor_count_mode = 1 if index == 1 else 0
+            manager._replace_config(cfg)
+            manager.save()
+        except Exception as e:
+            self.log(f"🔶 计数方式保存失败: {e}")
 
     def _update_statistics(self, actors: list[ActorInfo]):
         if self._show_unique:
