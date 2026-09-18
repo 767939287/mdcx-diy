@@ -2,7 +2,7 @@
 
 修改后逻辑：
 1. 全局单线程（并发度 1）顺序执行请求。
-2. 累计请求满 300 次后自动暂停并冷却 1 分钟（60 秒），冷却结束后重置计数并继续。
+2. 累计请求满 600 次后自动暂停并冷却 1 分钟（60 秒），冷却结束后重置计数并继续。
 3. 捕获 HTTP 429 (Too Many Requests) 错误时，同样强制触发 1 分钟冷却。
 """
 
@@ -35,7 +35,7 @@ def test_single_thread_and_batch_cooldown_config():
         
         # 2. 验证满 300 次触发冷却的阈值设置
         max_reqs = getattr(limiter, "max_requests", None) or _MAX_REQUESTS_BEFORE_COOLDOWN
-        assert max_reqs == 300, f"{host} 连续请求上限未配置为 300 次"
+        assert max_reqs == 600, f"{host} 连续请求上限未配置为 300 次"
 
         # 3. 验证冷却时长配置为 60 秒
         cooldown = getattr(limiter, "cooldown_seconds", None) or _MEDIAWIKI_COOL_DOWN_SEC
