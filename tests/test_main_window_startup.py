@@ -90,9 +90,7 @@ def test_emby_actor_settings_dialog_startup_no_crash(app):
 
 
 def test_emby_actor_manager_table_has_birthday_and_location_columns(app):
-    """议题 #134：详情与标签之间新增出生日期/出生地列，且详情/标签列填满宽度。"""
-    from PyQt6.QtWidgets import QHeaderView
-
+    """议题 #134/#136：新增出生日期/出生地列；详情/标签列按 3:1 分配且总宽铺满。"""
     from mdcx.tools.emby_actor_manager_ui import EmbyActorManagerDialog
 
     dlg = EmbyActorManagerDialog()
@@ -100,9 +98,23 @@ def test_emby_actor_manager_table_has_birthday_and_location_columns(app):
         table = dlg.table
         headers = [table.horizontalHeaderItem(i).text() for i in range(table.columnCount())]
         assert headers == ["状态", "姓名", "头像", "简介", "详情", "出生日期", "出生地", "标签", "影片数"]
-        header = table.horizontalHeader()
-        assert header.sectionResizeMode(4) == QHeaderView.ResizeMode.Stretch
-        assert header.sectionResizeMode(7) == QHeaderView.ResizeMode.Stretch
+
+        # #136：详情:标签 = 3:1（标签约为原等分宽度的一半），各列总宽铺满视口
+        dlg.resize(1600, 900)
+        dlg.show()
+        app.processEvents()
+        dlg._apply_column_widths()
+        app.processEvents()
+        detail_w = table.columnWidth(4)
+        tags_w = table.columnWidth(7)
+        assert detail_w == pytest.approx(tags_w * 3, rel=0.15), f"详情/标签非 3:1: {detail_w}:{tags_w}"
+        total = sum(table.columnWidth(i) for i in range(table.columnCount()))
+        assert total == pytest.approx(table.viewport().width(), abs=4), "各列总宽未铺满视口"
+        # 固定列宽度保持不变
+        assert table.columnWidth(0) == 50
+        assert table.columnWidth(1) == 160
+        assert table.columnWidth(5) == 110
+        assert table.columnWidth(6) == 140
     finally:
         dlg.close()
         dlg.deleteLater()

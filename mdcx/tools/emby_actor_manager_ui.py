@@ -494,9 +494,10 @@ class EmbyActorManagerDialog(QDialog):
         assert horizontal_header is not None
         horizontal_header.setStretchLastSection(False)
         horizontal_header.setSectionResizeMode(1, QHeaderView.ResizeMode.Interactive)
-        # 议题 #134：详情/标签列改为 Stretch，宽窗口下自动填满右侧空间，不再大片留白
-        horizontal_header.setSectionResizeMode(4, QHeaderView.ResizeMode.Stretch)
-        horizontal_header.setSectionResizeMode(7, QHeaderView.ResizeMode.Stretch)
+        # 议题 #136：详情/标签改为按 3:1 分配剩余宽度（标签过宽、详情过窄），
+        # 具体宽度由 _apply_column_widths 在 resize 时按视口计算，总宽保持铺满。
+        horizontal_header.setSectionResizeMode(4, QHeaderView.ResizeMode.Interactive)
+        horizontal_header.setSectionResizeMode(7, QHeaderView.ResizeMode.Interactive)
         self.table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
         self.table.setSelectionMode(QTableWidget.SelectionMode.ExtendedSelection)
         self.table.setAlternatingRowColors(True)
@@ -515,6 +516,34 @@ class EmbyActorManagerDialog(QDialog):
         self.table.setColumnWidth(8, 60)
         self.table.cellDoubleClicked.connect(self._on_table_double_clicked)
         parent_layout.addWidget(self.table)
+
+    # 固定宽度列（0 状态/1 姓名/2 头像/3 简介/5 出生日期/6 出生地/8 影片数）；
+    # 剩余宽度在 4 详情 与 7 标签 之间按 _DETAIL_WIDTH_RATIO 分配（议题 #136）。
+    _FIXED_COLUMN_WIDTHS = {0: 50, 1: 160, 2: 55, 3: 55, 5: 110, 6: 140, 8: 60}
+    _DETAIL_WIDTH_RATIO = 0.75  # 详情占剩余宽度的 3/4，标签 1/4（标签约为原一半）
+
+    def _apply_column_widths(self) -> None:
+        """按视口宽度重新分配「详情/标签」列宽，保证各列总宽铺满且比例稳定。"""
+        table = getattr(self, "table", None)
+        if table is None:
+            return
+        viewport_w = table.viewport().width()
+        if viewport_w <= 0:
+            return
+        fixed_sum = sum(self._FIXED_COLUMN_WIDTHS.values())
+        remain = max(viewport_w - fixed_sum, 120)
+        detail_w = int(remain * self._DETAIL_WIDTH_RATIO)
+        tags_w = remain - detail_w
+        table.setColumnWidth(4, detail_w)
+        table.setColumnWidth(7, tags_w)
+
+    def resizeEvent(self, a0):
+        super().resizeEvent(a0)
+        self._apply_column_widths()
+
+    def showEvent(self, a0):
+        super().showEvent(a0)
+        self._apply_column_widths()
 
     def _build_log_section(self, parent_layout: QVBoxLayout):
         group = QGroupBox("运行日志")
