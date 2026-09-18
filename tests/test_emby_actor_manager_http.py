@@ -9,6 +9,8 @@
 - 本地文件不存在时直接失败不发请求
 - 并发 fetch_all_actors 每演员仅调一次详情
 - #126: payload 中的哨兵/非法日期与年份值被过滤, 合法值规范化类型后再下发
+- #145: 非零填充/多分隔符的合法生日(如 1990-1-2 / 1990/05/12)补零后下发完整 ISO
+- #148: Genres/Tags/ProviderIds 恒为集合, 规避服务器 UpdateItem 空引用 400
 
 实现说明
 --------
@@ -159,10 +161,10 @@ async def test_update_person_info_keeps_valid_date_and_normalizes_types(actor_st
 
 
 async def test_update_person_info_drops_invalid_dates(actor_stub):
-    """非法日期(月份越界/截断/非日期串)一律不下发."""
+    """非法日期(月份越界/不存在日期/截断/非日期串)一律不下发."""
     from mdcx.tools.emby_actor_manager import update_person_info
 
-    for bad in ("1990-13-40", "1990-1-2", "1990-", "未知", "1990/05/12", "abc-def-ghij"):
+    for bad in ("1990-13-40", "1990-02-30", "1990-", "1990-1", "未知", "abc-def-ghij"):
         actor_stub.new_premiere_date = bad
         actor_stub.new_production_year = None
         actor_stub.new_overview = "x"
@@ -171,6 +173,67 @@ async def test_update_person_info_drops_invalid_dates(actor_stub):
             ok, _ = await update_person_info(actor_stub)
         assert ok
         assert "PremiereDate" not in captured["payload"], f"非法日期 {bad!r} 不应下发"
+
+
+async def test_update_person_info_normalizes_lenient_date_formats(actor_stub):
+    """议题 #145: 非零填充/多分隔符的合法生日应补零下发, 而非丢弃."""
+    from mdcx.tools.emby_actor_manager import update_person_info
+
+    cases = {
+        "1990-1-2": "1990-01-02T00:00:00.0000000Z",
+        "1990/5/12": "1990-05-12T00:00:00.0000000Z",
+        "1990.1.2": "1990-01-02T00:00:00.0000000Z",
+        "1990年1月2日": "1990-01-02T00:00:00.0000000Z",
+        "19900102": "1990-01-02T00:00:00.0000000Z",
+    }
+    for raw, expected in cases.items():
+        actor_stub.new_premiere_date = raw
+        actor_stub.new_production_year = None
+        actor_stub.new_overview = "x"
+        ctx, captured = _captured_post()
+        with ctx:
+            ok, _ = await update_person_info(actor_stub)
+        assert ok
+        assert captured["payload"]["PremiereDate"] == expected, f"{raw!r} 归一化错误"
+
+
+async def test_update_person_info_always_sends_collection_fields(actor_stub):
+    """议题 #148: Genres/Tags/ProviderIds 必须恒为集合, 否则服务器 UpdateItem 空引用 400."""
+    from mdcx.tools.emby_actor_manager import update_person_info
+
+    ctx, captured = _captured_post()
+    with ctx:
+        ok, _ = await update_person_info(actor_stub)
+    assert ok
+    payload = captured["payload"]
+    assert payload["Genres"] == []
+    assert payload["Tags"] == []
+    assert payload["ProviderIds"] == {}
+
+    actor_stub.existing_genres = ["女优", ""]
+    actor_stub.existing_tags = ["身高: 164cm", ""]
+    actor_stub.existing_provider_ids = {"Imdb": "nm1", "Tmdb": ""}
+    ctx, captured = _captured_post()
+    with ctx:
+        ok, _ = await update_person_info(actor_stub)
+    assert ok
+    payload = captured["payload"]
+    assert payload["Genres"] == ["女优"]
+    assert payload["Tags"] == ["身高: 164cm"]
+    assert payload["ProviderIds"] == {"Imdb": "nm1"}
+
+
+async def test_update_person_info_merges_provider_ids(actor_stub):
+    """议题 #148: 新增 ProviderIds 覆盖同名键, 并保留服务器已有键."""
+    from mdcx.tools.emby_actor_manager import update_person_info
+
+    actor_stub.existing_provider_ids = {"Tmdb": "1", "Imdb": "tt2"}
+    actor_stub.new_provider_ids = {"Tmdb": "9", "Douban": ""}
+    ctx, captured = _captured_post()
+    with ctx:
+        ok, _ = await update_person_info(actor_stub)
+    assert ok
+    assert captured["payload"]["ProviderIds"] == {"Tmdb": "9", "Imdb": "tt2"}
 
 
 async def test_update_person_info_drops_bad_year_types(actor_stub):

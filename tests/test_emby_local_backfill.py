@@ -82,8 +82,8 @@ async def test_local_hit_backfills_birth_date_and_bio(monkeypatch):
     flag, msg = await emby_actor_info._process_actor_async(_actor(), [])
     assert flag & 8
     payload = state["post"][0]
-    assert payload["PremiereDate"] == "1993-06-05"
-    assert payload["ProductionYear"] == "1993"
+    assert payload["PremiereDate"] == "1993-06-05T00:00:00.0000000Z"
+    assert payload["ProductionYear"] == 1993
     assert "身高158cm<br/>三围B86" in payload["Overview"]
     assert state["wiki"] == 0 and state["minnano"] == 0 and state["db"] == 0
     assert "本地库命中" in msg
@@ -105,7 +105,7 @@ async def test_local_bio_empty_falls_back_for_overview(monkeypatch):
     flag, _ = await emby_actor_info._process_actor_async(_actor(), [])
     assert state["wiki"] == 1
     assert flag & 8
-    assert state["post"][0]["PremiereDate"] == "1993-06-05"
+    assert state["post"][0]["PremiereDate"] == "1993-06-05T00:00:00.0000000Z"
 
 
 @pytest.mark.asyncio
