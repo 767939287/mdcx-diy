@@ -18,6 +18,7 @@ FC2CMADB_BASE_URL = "https://fc2cmadb.com"
 # 以及旧版 fc2ppvdb 兼容。命中其一即视为 cookie 至少含登录态字段，
 # 不再硬性要求必须出现 fc2ppvdb_session。
 FC2_LOGIN_COOKIE_KEYS: tuple[str, ...] = (
+    "fc2cmadb-session",
     "fc2cmadb_session",
     "fc2ppvdb_session",
     "laravel_session",

@@ -1091,7 +1091,7 @@ class MyMAinWindow(QMainWindow):
         # 议题 #73: 用户误以为启动自检在某项失败后"停止检测"。声明自检范围与
         # 全量检测入口, 避免混淆（全量检测在「检测网络」页, 单站失败互相独立）。
         signal_qt.show_log_text(
-            " 启动自检：数据库 / ThePornDB / JavDb / JavBus 连通性（如需检测全部站点，请到左侧「检测网络」页）"
+            " 启动自检：数据库 / ThePornDB / JavDb / JavBus / FC2PPVDB 连通性（如需检测全部站点，请到左侧「检测网络」页）"
         )
         # QWidget 与 cookie 检查必须在主线程执行：通过信号调度回主线程
         self.version_check_done.emit(has_new_version)
@@ -1110,6 +1110,8 @@ class MyMAinWindow(QMainWindow):
             self.Ui.label_show_version.setCursor(Qt.CursorShape.OpenHandCursor)  # 设置鼠标形状为十字形
         self.pushButton_check_javdb_cookie_clicked()  # 检测javdb cookie
         self.pushButton_check_javbus_cookie_clicked()  # 检测javbus cookie
+        # 议题 #130：启动时也检测 FC2PPVDB cookie 有效性（未填写时该函数直接返回，不发请求）
+        self.pushButton_check_fc2ppvdb_cookie_clicked()  # 检测fc2ppvdb cookie
 
     # endregion
 
@@ -3969,12 +3971,8 @@ class MyMAinWindow(QMainWindow):
             response, error = get_text_sync(javdb_url, headers=header)
             if response is None:
                 if "Cookie" in error:
-                    if manager.config.javdb != input_cookie:
-                        tips = "❌ Cookie 已过期！"
-                    else:
-                        tips = "❌ Cookie 已过期！已清理！(不清理无法访问)"
-                        self.set_javdb_cookie.emit("")
-                        self.exec_save_config.emit()
+                    # 议题 #130：网络/站点不可达不等于 cookie 失效，一律只告警、保留 cookie
+                    tips = "❌ Cookie 检查失败（网络/站点不可达），已保留原 Cookie"
                 else:
                     tips = f"❌ 连接失败！请检查网络或代理设置！ {response}"
             else:
@@ -3998,12 +3996,9 @@ class MyMAinWindow(QMainWindow):
                         else:
                             tips = f"✅ 连接正常！（{vip_info}）"
                 else:
-                    if manager.config.javdb != input_cookie:
-                        tips = "❌ Cookie 无效！请重新填写！"
-                    else:
-                        tips = "❌ Cookie 无效！已清理！"
-                        self.set_javdb_cookie.emit("")
-                        self.exec_save_config.emit()
+                    # 议题 #130：/logout 缺失只说明"未检测到登录态"，可能是维护页/拦截页，
+                    # 不构成 cookie 失效的确凿证据——只告警、保留 cookie，由用户手动替换。
+                    tips = "❌ 未检测到登录态，Cookie 可能无效（已保留，可手动替换）"
         except Exception as e:
             tips = f"❌ 连接失败！请检查网络或代理设置！ {e}"
             signal_qt.show_traceback_log(tips)
