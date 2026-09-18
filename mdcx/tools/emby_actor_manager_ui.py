@@ -1106,7 +1106,10 @@ class EmbyActorManagerDialog(QDialog):
             raw_birthday = (actor.existing_premiere_date or "")[:10]
             # Emby 未设置生日时返回 0001-01-01，按空值展示，避免列表出现占位日期
             birthday_text = "" if raw_birthday.startswith("0001-01-01") else raw_birthday
-            self.table.setItem(row, 5, QTableWidgetItem(birthday_text))
+            birthday_item = QTableWidgetItem(birthday_text)
+            # 议题 #153：出生日期为定宽列, 居中显示与 状态/头像/影片数 列观感一致
+            birthday_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+            self.table.setItem(row, 5, birthday_item)
             location_text = (
                 ", ".join(actor.existing_production_locations) if actor.existing_production_locations else ""
             )

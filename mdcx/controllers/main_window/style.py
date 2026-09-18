@@ -183,15 +183,18 @@ def build_menu_style(dark: bool) -> str:
 def build_scrollbar_style(dark: bool) -> str:
     handle = "#4B5563" if dark else "#CBD5E1"
     handle_hover = "#64748B" if dark else "#94A3B8"
+    track = "#1F2937" if dark else "#E5E7EB"
+    # 议题 #153: 加宽(10->16px)、改直角实心、给轨道淡底色, 更接近浏览器滚动条;
+    # 深/浅主题颜色由 build_scrollbar_style(dark) 统一切换。
     return f"""
         QScrollBar:vertical{{
-            width: 10px;
+            width: 16px;
             margin: 0;
-            background: transparent;
+            background: {track};
         }}
         QScrollBar::handle:vertical{{
-            min-height: 32px;
-            border-radius: 5px;
+            min-height: 44px;
+            border-radius: 3px;
             background: {handle};
         }}
         QScrollBar::handle:vertical:hover{{
@@ -205,13 +208,13 @@ def build_scrollbar_style(dark: bool) -> str:
             background: transparent;
         }}
         QScrollBar:horizontal{{
-            height: 10px;
+            height: 16px;
             margin: 0;
-            background: transparent;
+            background: {track};
         }}
         QScrollBar::handle:horizontal{{
-            min-width: 32px;
-            border-radius: 5px;
+            min-width: 44px;
+            border-radius: 3px;
             background: {handle};
         }}
         QScrollBar::handle:horizontal:hover{{
