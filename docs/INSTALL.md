@@ -14,9 +14,8 @@
 |------|---------|
 | Windows 10/11（64 位） | `MDCx-...-windows-x86_64-....exe`（单文件，直接运行）|
 | macOS（Apple Silicon）| `MDCx-...-macos-aarch64-....dmg` |
+| macOS（Intel）| `MDCx-...-macos-x86_64-....dmg` |
 | Linux（x86_64） | `MDCx-...-linux-x86_64-...`（单文件可执行程序） |
-
-Intel 芯片 Mac 暂无预编译包，请从下文的源码方式运行。
 
 Linux 下载后先赋予执行权限，再启动：
 

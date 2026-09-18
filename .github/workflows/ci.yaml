@@ -106,7 +106,7 @@ jobs:
 
   windows:
     name: Windows Compatibility and Build
-    runs-on: windows-latest
+    runs-on: windows-2025
     timeout-minutes: 45
     steps:
       - name: Checkout code
@@ -164,3 +164,12 @@ jobs:
           QT_QPA_PLATFORM: offscreen
           PYTHONIOENCODING: utf-8
         run: uv run pytest tests/ --tb=short -m "not network"
+
+      # 打包参数回归（hidden-import / add-binary / 图标）只在发版 tag 才暴露，
+      # 这里做一次 PyInstaller 冒烟构建，把问题前置到 PR/主干。
+      - name: Build smoke test (PyInstaller)
+        if: steps.changes.outputs.code_changed == 'true'
+        timeout-minutes: 20
+        env:
+          PYTHONIOENCODING: utf-8
+        run: uv run scripts/build.py --version 0 --debug

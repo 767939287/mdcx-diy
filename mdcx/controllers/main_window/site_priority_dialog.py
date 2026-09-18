@@ -73,7 +73,7 @@ FIELD_TITLES = {
     CrawlerResultFields.STUDIO: "片商",
     CrawlerResultFields.PUBLISHER: "发行商",
     CrawlerResultFields.TRAILER: "预告片",
-    CrawlerResultFields.WANTED: "想看",
+    CrawlerResultFields.WANTED: "想看人数",
 }
 
 FIELD_PRIORITY_FIELDS = (

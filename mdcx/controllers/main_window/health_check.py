@@ -26,7 +26,9 @@ def run_config_dir_writable_check() -> None:
 
 def run_tmdb_key_check() -> None:
     if not manager.config.tmdb_api_key:
-        signal_qt.show_net_info(" ⚠️ 未配置 TMDB API Key，演员信息/封面补全将受限。请在【设置】-【元数据】配置。")
+        signal_qt.show_net_info(
+            " ⚠️ 未配置 TMDB API Key，演员信息/封面补全将受限。请在【设置】-【网络】-【网站设置】配置。"
+        )
 
 
 def run_proxy_reachability_check() -> None:

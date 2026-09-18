@@ -44,7 +44,7 @@ _DIFF_FIELDS: list[tuple[str, str, bool]] = [
     ("year", "年份", False),
     ("runtime", "时长", False),
     ("directors", "导演", True),
-    ("studio", "制作商", False),
+    ("studio", "片商", False),
     ("publisher", "发行商", False),
     ("series", "系列", False),
     ("score", "评分", False),

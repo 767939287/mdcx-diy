@@ -12569,7 +12569,7 @@ class Ui_MDCx(object):
         self.treeWidget_number.setSortingEnabled(__sortingEnabled)
         self.label_file_path.setText(
             _translate(
-                "MDCx", "视频目录设置：【设置】-【目录】-【待刮削视频目录】。程序将刮削该目录及子目录的所有文件。"
+                "MDCx", "视频目录设置：【设置】-【刮削目录】-【待刮削视频目录】。程序将刮削该目录及子目录的所有文件。"
             )
         )
         self.pushButton_select_media_folder.setText(_translate("MDCx", "选择目录"))
@@ -13039,10 +13039,10 @@ class Ui_MDCx(object):
         self.groupBox_35.setTitle(_translate("MDCx", "字段刮削网站"))
         self.label_114.setText(_translate("MDCx", "标题："))
         self.label_227.setText(_translate("MDCx", "导演："))
-        self.label_182.setText(_translate("MDCx", "发行时间："))
+        self.label_182.setText(_translate("MDCx", "发行日期："))
         self.label_129.setText(_translate("MDCx", "原始标题："))
         self.label_406.setText(_translate("MDCx", "简介："))
-        self.label_191.setText(_translate("MDCx", "封面（大）："))
+        self.label_191.setText(_translate("MDCx", "海报："))
         self.label_183.setText(_translate("MDCx", "评分："))
         self.label_144.setText(_translate("MDCx", "标签："))
         self.label_211.setText(_translate("MDCx", "片商："))
@@ -13050,7 +13050,7 @@ class Ui_MDCx(object):
         self.label_307.setText(_translate("MDCx", "想看人数："))
         self.label_222.setText(_translate("MDCx", "发行商："))
         self.label_142.setText(_translate("MDCx", "原始简介："))
-        self.label_229.setText(_translate("MDCx", "封面（小）："))
+        self.label_229.setText(_translate("MDCx", "缩略图："))
         self.label_143.setText(_translate("MDCx", "女演员："))
         self.label_181.setText(_translate("MDCx", "时长："))
         self.label_206.setText(_translate("MDCx", "预告片："))
@@ -13475,7 +13475,7 @@ class Ui_MDCx(object):
                 "                                <br>\n"
                 "                                演员名映射翻译表文件名为：actor_database.xlsx<br>\n"
                 "                                ·\n"
-                "                                Windows位置：\\配置文件目录\\userdata\\actor_database.xlsx（配置文件目录在「设置」-「其他」中设置）<br>\n"
+                "                                Windows位置：\\配置文件目录\\userdata\\actor_database.xlsx（配置文件目录在「设置」-「高级」中设置）<br>\n"
                 "                                · Mac位置：/配置文件目录/userdata/actor_database.xlsx<br>\n"
                 "                                你可使用文件编辑工具打开该文件自定义修改添加。映射表中的字段含义如下：<br>\n"
                 "                                1、keyword：匹配词（每个名字前后都要有逗号）。刮削网站获取演员名后，会在 keyword 的名字中进行匹配。<br>\n"
@@ -13703,9 +13703,9 @@ class Ui_MDCx(object):
         self.checkBox_nfo_genre.setText(_translate("MDCx", "风格（使用标签字段）"))
         self.checkBox_nfo_actor_set.setText(_translate("MDCx", "合集（使用演员字段）"))
         self.checkBox_nfo_set.setText(_translate("MDCx", "合集（使用系列字段）"))
-        self.checkBox_nfo_poster.setText(_translate("MDCx", "封面（poster）"))
-        self.checkBox_nfo_cover.setText(_translate("MDCx", "背景（cover）"))
-        self.checkBox_nfo_trailer.setText(_translate("MDCx", "预告片（trilaer）"))
+        self.checkBox_nfo_poster.setText(_translate("MDCx", "海报（poster）"))
+        self.checkBox_nfo_cover.setText(_translate("MDCx", "缩略图（cover）"))
+        self.checkBox_nfo_trailer.setText(_translate("MDCx", "预告片（trailer）"))
         self.checkBox_nfo_website.setText(_translate("MDCx", "网址（website）"))
         self.label_163.setText(_translate("MDCx", "标题："))
         self.label_388.setText(_translate("MDCx", "片商/发行商："))
@@ -13783,8 +13783,8 @@ class Ui_MDCx(object):
         self.pushButton_add_actor_pic.setText(_translate("MDCx", "开始补全"))
         self.label_297.setText(_translate("MDCx", "使用网络头像库或本地头像库，补全 Emby/Jellyfin 演员头像。"))
         self.checkBox_actor_photo_auto.setText(_translate("MDCx", "刮削结束后自动补全演员头像"))
-        self.radioButton_actor_photo_all.setText(_translate("MDCx", "所有女优"))
-        self.radioButton_actor_photo_miss.setText(_translate("MDCx", "仅缺少头像的女优"))
+        self.radioButton_actor_photo_all.setText(_translate("MDCx", "所有演员"))
+        self.radioButton_actor_photo_miss.setText(_translate("MDCx", "仅缺少头像的演员"))
         self.label_296.setText(_translate("MDCx", "补全范围："))
         self.label_77.setText(_translate("MDCx", "下载头像包解压，填写头像图片目录的路径"))
         self.label_293.setText(_translate("MDCx", "头像来源："))
@@ -13824,8 +13824,8 @@ class Ui_MDCx(object):
                 "MDCx", "使用minnano-av和维基百科补全Emby/Jellyfin演员信息，包括:生日、身高、三围、出道时间和作品等。"
             )
         )
-        self.radioButton_actor_info_all.setText(_translate("MDCx", "所有女优"))
-        self.radioButton_actor_info_miss.setText(_translate("MDCx", "仅缺少信息的女优"))
+        self.radioButton_actor_info_all.setText(_translate("MDCx", "所有演员"))
+        self.radioButton_actor_info_miss.setText(_translate("MDCx", "仅缺少信息的演员"))
         self.label_299.setText(_translate("MDCx", "补全范围："))
         self.checkBox_actor_info_photo.setText(_translate("MDCx", "补全完成后自动补全演员头像"))
         self.groupBox_68.setTitle(_translate("MDCx", "补全 Kodi/Plex/Jvedio 演员头像"))
@@ -14060,7 +14060,7 @@ class Ui_MDCx(object):
                 "<h4>一、快速开始</h4>\n"
                 "<ol>\n"
                 "<li><b>设置媒体路径</b>：软件设置 → 刮削目录，配置「待刮削视频目录」「成功输出目录」和「失败输出目录」。也可以在软件界面点击「选择目录」临时选择待刮削目录。</li>\n"
-                "<li><b>选择刮削网站</b>：软件设置 → 刮削网站，为不同类型（有码 / 无码 / FC2 / 国产 / 欧美）分别选择数据源网站。</li>\n"
+                "<li><b>选择刮削网站</b>：软件设置 → 刮削网站，为不同类型（有码 / 无码 / 素人 / FC2 / 欧美 / 国产）分别选择数据源网站。</li>\n"
                 "<li><b>选择下载项</b>：软件设置 → 下载，勾选需要下载的元数据、图片与字幕。</li>\n"
                 "<li><b>开始刮削</b>：软件界面点击「选择目录」选择待刮削目录，再点击「开始」。建议先用 1~3 个文件测试效果。</li>\n"
                 "</ol>\n"
@@ -14068,7 +14068,7 @@ class Ui_MDCx(object):
                 "<h4>二、刮削模式</h4>\n"
                 "<ul>\n"
                 "<li><b>正常模式</b>：通过番号联网抓取元数据、封面、缩略图、背景图，并整理文件。适合新下载的视频建立完整海报墙。</li>\n"
-                "<li><b>整理模式</b>（视频模式）：仅联网刮削番号用于命名，然后重命名和移动视频文件，不下载图片、不生成 NFO。适合不需要海报墙、只想归类文件的用户。</li>\n"
+                "<li><b>视频模式</b>（整理模式）：仅联网刮削番号用于命名，然后重命名和移动视频文件，不下载图片、不生成 NFO。适合不需要海报墙、只想归类文件的用户。</li>\n"
                 "<li><b>更新模式</b>：对已有 NFO 的影片在不改动文件位置结构的前提下重新整理文件结构，按更新规则重新命名目录和文件。适合已刮过但想调整目录结构的情况。</li>\n"
                 "<li><b>读取模式</b>：通过读取本地 NFO 文件实现无需联网的查看或更新，4 个独立选项可自由组合——有 NFO 时更新（按更新规则整理）、无 NFO 时刮削（对没 NFO 的文件联网刮）、重新下载（重新下载图片）、更新 NFO（更新 NFO 内容如补演员 TMDB ID）。读取模式不受断点续刮缓存干扰，始终处理全部选中文件。</li>\n"
                 " <li><b>NFO 合并策略</b>（读取模式区域下拉框）：写入 NFO 前按策略决定如何处理已存在的 NFO——偏好刮削结果（prefer_scraper）/ 偏好本地 NFO（prefer_nfo）/ 数组字段合并（merge_arrays）/ 保留现有（preserve_existing）/ 仅填空缺（fill_missing_only），防止重刮覆盖手动整理的内容。</li>\n"
@@ -14111,7 +14111,7 @@ class Ui_MDCx(object):
                 "<h4>六、代理设置</h4>\n"
                 '<p>在"设置 → 网络"中配置：</p>\n'
                 "<ul>\n"
-                "<li><b>启用代理</b>：开启后填写 HTTP / HTTPS 或 SOCKS5 代理地址（如 http://127.0.0.1:7890）。</li>\n"
+                "<li><b>使用代理</b>：开启后填写 HTTP / HTTPS 或 SOCKS5 代理地址（如 http://127.0.0.1:7890）。</li>\n"
                 "<li><b>走代理网站</b>：仅指定域名走代理，其余直连。默认包含 amazon.co.jp、m.media-amazon.com、xcity.jp、minnano-av.com、avbase.net、javbus.com、javdb.com、javlibrary.com、r18.dev、mgstage.com、prestige-av.com、seesaawiki.jp、avsox.click、avsox.com、avmoo.shop、avmoo.com、avheat.shop、avheat.com、caribbeancom.com、heyzo.com、1pondo.tv、pacopacomama.com、10musume.com、mywife.cc、github.com、raw.githubusercontent.com、google.com、missav.ws、missav.ai、missav.live、aventertainments.com、javfree.me、7mmtv.sx、7tv022.com。可按需增删（也可直接填数据源名，如 missav、javdb，站点及其镜像域名将整体走代理）。</li>\n"
                 "<li><b>CF Bypass 代理</b>：为绕过 Cloudflare 的请求单独设置代理。</li>\n"
                 "</ul>\n"
@@ -14141,10 +14141,10 @@ class Ui_MDCx(object):
                 "\n"
                 "<h4>十、软件工具页面</h4>\n"
                 " <ul>\n"
-                "  <li><b>NFO 库管理</b>：左侧导航独立页面，浏览和编辑整个 NFO 库。选择目录后递归扫描所有 .nfo 文件生成列表（支持番号/演员/标题筛选）；点列表项读取 NFO 填充 15 字段编辑表单（番号/标题/演员/发行日/年份/时长/导演/制作商/发行商/系列/评分/简介/标签/封面URL/海报URL），右侧同步预览本地海报和缩略图，可调起裁剪工具；保存前自动对比改动弹窗确认（字段级 diff），无改动不写盘；批量操作面板支持多选后一键替换演员名、加标签、删标签、统一系列名；列表右键菜单提供重新刮削（找同目录同名视频入队）、打开所在目录、删除 NFO。</li>\n"
+                "  <li><b>NFO 库管理</b>：左侧导航独立页面，浏览和编辑整个 NFO 库。选择目录后递归扫描所有 .nfo 文件生成列表（支持番号/演员/标题筛选）；点列表项读取 NFO 填充 15 字段编辑表单（番号/标题/演员/发行日/年份/时长/导演/片商/发行商/系列/评分/简介/标签/封面URL/海报URL），右侧同步预览本地海报和缩略图，可调起裁剪工具；保存前自动对比改动弹窗确认（字段级 diff），无改动不写盘；批量操作面板支持多选后一键替换演员名、加标签、删标签、统一系列名；列表右键菜单提供重新刮削（找同目录同名视频入队）、打开所在目录、删除 NFO。</li>\n"
                 "  <li><b>演员库维护</b>：直接操作 actor_database.xlsx。补全中文名（按 TMDB ID 补翻译）、补全 LibreDMM 链接、补全别名（可选来源：TMDB、minnano 或 JavDB；默认仅补缺别名的条目，勾选「全量更新」则并入全部行，不覆盖本地已有别名，支持「起始行/限量」分片续跑）、JavDB 中文名（从 JavDB 影片详情页抓取演员中文名，并发拉取影片详情，支持分片续跑与「停止当前维护任务」）、minnano 补全（从 minnano-av 补缺生日/简介，日文字段自动翻译）、检查用户库（扫描格式/结构/数据异常并弹窗报告，安全项可一键自动修复，tmdb 项给人工修复步骤）、打开数据库（用默认程序打开 xlsx 供手工编辑）、剔除男演员（按 TMDB 性别删除男优）、校验 tmdbid 有效性（清除 TMDB 失效 id 并按名字重搜补回）、更新 nfo tmdbid（用本地库新 id 覆盖 nfo 旧 id）。联网工具支持限量分片与「停止当前维护任务」按钮，网络请求自动并发，进度实时显示。</li>\n"
                 "  <li><b>刮削缓存管理</b>：在「软件工具」页刮削缓存面板可查看断点续刮缓存状态（已完成/失败/总数），支持刷新缓存统计、导出缓存数据、重置缓存（清除全部已完成标记，下次全量重刮）、清空缓存（删除 scrape_state.db 文件）。适合在断点续刮数据异常或需要重新全量刮削时使用。</li>\n"
-                "  <li><b>Emby 演员管理器</b>：填写 Emby 地址和 API 密钥后连接服务器，获取演员列表并按媒体库筛选（可配置只获取演员类型 / 重复去重）；从 Gfriends / graphis.ne.jp / minnano-av / 本地文件夹按可配置优先级匹配头像和背景图（本地文件夹采用预扫描索引，N 次全树遍历降为 1 次），从本地演员库 / 维基百科 / minnano-av / 数据库按可配置优先级匹配简介和出生日期；Gfriends / Graphis / 信息链路已合并为统一函数，按数据源优先级依次尝试；「数据源测试」可逐源验证结果，「设置」可配置数据源优先级与获取过滤；预览后批量同步到 Emby（支持仅补缺失或强制重新获取，同步完成后自动刷新列表），双击演员行打开详情编辑对话框，可编辑简介 / 信息并单独同步头像 / 简介；头像缓存持久化到 userdata/emby_actor_cache/ 目录（不再随临时目录清理丢失），「清空缓存文件夹」可一键清理。</li>\n"
+                "  <li><b>Emby/Jellyfin 演员管理器</b>：填写 Emby/Jellyfin 地址和 API 密钥后连接服务器，获取演员列表并按媒体库筛选（可配置只获取演员类型 / 重复去重）；从 Gfriends / graphis.ne.jp / minnano-av / 本地文件夹按可配置优先级匹配头像和背景图（本地文件夹采用预扫描索引，N 次全树遍历降为 1 次），从本地演员库 / 维基百科 / minnano-av / 数据库按可配置优先级匹配简介和出生日期；Gfriends / Graphis / 信息链路已合并为统一函数，按数据源优先级依次尝试；「数据源测试」可逐源验证结果，「设置」可配置数据源优先级与获取过滤；预览后批量同步到服务器（支持仅补缺失或强制重新获取，同步完成后自动刷新列表），双击演员行打开详情编辑对话框，可编辑简介 / 信息并单独同步头像 / 简介；头像缓存持久化到 userdata/emby_actor_cache/ 目录（不再随临时目录清理丢失），「清空缓存文件夹」可一键清理。</li>\n"
                 " <li><b>单文件刮削</b>：指定某个文件的番号网址进行刮削，当存在相同番号时可手工指定。</li>\n"
                 " <li><b>封面补图</b>：输入番号（多个用空格分隔），自动刮削并补齐缺失的 poster.jpg 和 thumb.jpg，复用当前配置的站点优先级、命名、裁切、水印规则；所有站点拿不到图时自动走 DMM 官方高清直链兜底（内置约 110 个主流系列前缀表并自动学习未收录厂牌，竖版高清优先，无码番号跳过）。</li>\n"
                 " <li><b>海报裁剪</b>：将图片裁剪为 2:3 标准封面图大小，支持加水印。</li>\n"
@@ -14161,7 +14161,7 @@ class Ui_MDCx(object):
                 " <li><b>素人</b>：MGStage: 259LUXU-1111；JavDB: LUXU-1111；FC2: FC2-111111、FC2-PPV-111111</li>\n"
                 "<li><b>欧美</b>：JavDB / JavBus: sexart.11.11.11（系列.年.月.日）</li>\n"
                 "<li><b>字幕影片</b>：ssni-xxx-c.mp4 / -C.mp4（字幕标记靠近扩展名）</li>\n"
-                "<li><b>多集影片</b>：ssni-xxx-cd1.mp4、ssni-xxx-cd2.mp4（默认支持 -cdN / -partN / -hdN / 单数字结尾 -1 等形式；如需 -A 字母分集或 -01 两位数字分集，可在设置 → 命名中勾选『允许识别分集』对应选项）</li>\n"
+                "<li><b>多分集影片</b>：ssni-xxx-cd1.mp4、ssni-xxx-cd2.mp4（默认支持 -cdN / -partN / -hdN / 单数字结尾 -1 等形式；如需 -A 字母分集或 -01 两位数字分集，可在设置 → 命名中勾选『允许识别分集』对应选项）</li>\n"
                 "<li><b>外挂字幕</b>：字幕文件名需与影片一致，支持 srt / ass / sub，方可随影片一起移动</li>\n"
                 "</ul>\n"
                 "\n"
@@ -14208,7 +14208,7 @@ class Ui_MDCx(object):
         self.label_nfo_lib_year.setText(_translate("MDCx", "年份"))
         self.label_nfo_lib_runtime.setText(_translate("MDCx", "时长"))
         self.label_nfo_lib_director.setText(_translate("MDCx", "导演"))
-        self.label_nfo_lib_studio.setText(_translate("MDCx", "制作商"))
+        self.label_nfo_lib_studio.setText(_translate("MDCx", "片商"))
         self.label_nfo_lib_publisher.setText(_translate("MDCx", "发行商"))
         self.label_nfo_lib_series.setText(_translate("MDCx", "系列"))
         self.label_nfo_lib_score.setText(_translate("MDCx", "评分"))
@@ -14226,7 +14226,8 @@ class Ui_MDCx(object):
         self.pushButton_emby_manager_nav.setText(_translate("MDCx", " 演员管理"))
         self.pushButton_emby_manager_nav.setToolTip(
             _translate(
-                "MDCx", "Emby 演员管理器（管理演员头像和简介）：连接 Emby 后获取演员列表、匹配头像简介、批量同步写入"
+                "MDCx",
+                "Emby/Jellyfin 演员管理器（管理演员头像和简介）：连接 Emby/Jellyfin 后获取演员列表、匹配头像简介、批量同步写入",
             )
         )
         self.pushButton_nfo_library.setText(_translate("MDCx", " 信息管理"))
@@ -14245,7 +14246,7 @@ class Ui_MDCx(object):
         self.label_365.setText(_translate("MDCx", "系列："))
         self.label_366.setText(_translate("MDCx", "导演："))
         self.label_367.setText(_translate("MDCx", "发行商："))
-        self.label_368.setText(_translate("MDCx", "制作商："))
+        self.label_368.setText(_translate("MDCx", "片商："))
         self.label_369.setText(_translate("MDCx", "国家："))
         self.comboBox_nfo.setItemText(0, _translate("MDCx", "JP"))
         self.comboBox_nfo.setItemText(1, _translate("MDCx", "US"))

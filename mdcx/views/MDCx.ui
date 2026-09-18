@@ -923,7 +923,7 @@
               <number>0</number>
             </property>
             <property name="text">
-              <string>视频目录设置：【设置】-【目录】-【待刮削视频目录】。程序将刮削该目录及子目录的所有文件。</string>
+              <string>视频目录设置：【设置】-【刮削目录】-【待刮削视频目录】。程序将刮削该目录及子目录的所有文件。</string>
             </property>
             <property name="wordWrap">
               <bool>true</bool>
@@ -8511,7 +8511,7 @@
                               <enum>QFrame::NoFrame</enum>
                             </property>
                             <property name="text">
-                              <string>发行时间：</string>
+                              <string>发行日期：</string>
                             </property>
                             <property name="alignment">
                               <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
@@ -8661,7 +8661,7 @@
                               <enum>QFrame::NoFrame</enum>
                             </property>
                             <property name="text">
-                              <string>封面（大）：</string>
+                              <string>海报：</string>
                             </property>
                             <property name="alignment">
                               <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
@@ -9039,7 +9039,7 @@
                               <enum>QFrame::NoFrame</enum>
                             </property>
                             <property name="text">
-                              <string>封面（小）：</string>
+                              <string>缩略图：</string>
                             </property>
                             <property name="alignment">
                               <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
@@ -15064,7 +15064,7 @@
                                 &lt;br&gt;
                                 演员名映射翻译表文件名为：actor_database.xlsx&lt;br&gt;
                                 ·
-                                Windows位置：\配置文件目录\userdata\actor_database.xlsx（配置文件目录在「设置」-「其他」中设置）&lt;br&gt;
+                                Windows位置：\配置文件目录\userdata\actor_database.xlsx（配置文件目录在「设置」-「高级」中设置）&lt;br&gt;
                                 · Mac位置：/配置文件目录/userdata/actor_database.xlsx&lt;br&gt;
                                 你可使用文件编辑工具打开该文件自定义修改添加。映射表中的字段含义如下：&lt;br&gt;
                                 1、keyword：匹配词（每个名字前后都要有逗号）。刮削网站获取演员名后，会在 keyword 的名字中进行匹配。&lt;br&gt;
@@ -18099,21 +18099,21 @@
                             <item>
                               <widget class="QCheckBox" name="checkBox_nfo_poster">
                                 <property name="text">
-                                  <string>封面（poster）</string>
+                                  <string>海报（poster）</string>
                                 </property>
                               </widget>
                             </item>
                             <item>
                               <widget class="QCheckBox" name="checkBox_nfo_cover">
                                 <property name="text">
-                                  <string>背景（cover）</string>
+                                  <string>缩略图（cover）</string>
                                 </property>
                               </widget>
                             </item>
                             <item>
                               <widget class="QCheckBox" name="checkBox_nfo_trailer">
                                 <property name="text">
-                                  <string>预告片（trilaer）</string>
+                                  <string>预告片（trailer）</string>
                                 </property>
                               </widget>
                             </item>
@@ -19951,14 +19951,14 @@
                                 </size>
                               </property>
                               <property name="text">
-                                <string>所有女优</string>
+                                <string>所有演员</string>
                               </property>
                             </widget>
                           </item>
                           <item>
                             <widget class="QRadioButton" name="radioButton_actor_photo_miss">
                               <property name="text">
-                                <string>仅缺少头像的女优</string>
+                                <string>仅缺少头像的演员</string>
                               </property>
                             </widget>
                           </item>
@@ -20834,14 +20834,14 @@
                                 </size>
                               </property>
                               <property name="text">
-                                <string>所有女优</string>
+                                <string>所有演员</string>
                               </property>
                             </widget>
                           </item>
                           <item>
                             <widget class="QRadioButton" name="radioButton_actor_info_miss">
                               <property name="text">
-                                <string>仅缺少信息的女优</string>
+                                <string>仅缺少信息的演员</string>
                               </property>
                             </widget>
                           </item>
@@ -24401,7 +24401,7 @@ p, li { white-space: pre-wrap; }
 &lt;h4&gt;一、快速开始&lt;/h4&gt;
 &lt;ol&gt;
 &lt;li&gt;&lt;b&gt;设置媒体路径&lt;/b&gt;：软件设置 → 刮削目录，配置「待刮削视频目录」「成功输出目录」和「失败输出目录」。也可以在软件界面点击「选择目录」临时选择待刮削目录。&lt;/li&gt;
-&lt;li&gt;&lt;b&gt;选择刮削网站&lt;/b&gt;：软件设置 → 刮削网站，为不同类型（有码 / 无码 / FC2 / 国产 / 欧美）分别选择数据源网站。&lt;/li&gt;
+&lt;li&gt;&lt;b&gt;选择刮削网站&lt;/b&gt;：软件设置 → 刮削网站，为不同类型（有码 / 无码 / 素人 / FC2 / 欧美 / 国产）分别选择数据源网站。&lt;/li&gt;
 &lt;li&gt;&lt;b&gt;选择下载项&lt;/b&gt;：软件设置 → 下载，勾选需要下载的元数据、图片与字幕。&lt;/li&gt;
 &lt;li&gt;&lt;b&gt;开始刮削&lt;/b&gt;：软件界面点击「选择目录」选择待刮削目录，再点击「开始」。建议先用 1~3 个文件测试效果。&lt;/li&gt;
 &lt;/ol&gt;
@@ -24409,7 +24409,7 @@ p, li { white-space: pre-wrap; }
 &lt;h4&gt;二、刮削模式&lt;/h4&gt;
 &lt;ul&gt;
 &lt;li&gt;&lt;b&gt;正常模式&lt;/b&gt;：通过番号联网抓取元数据、封面、缩略图、背景图，并整理文件。适合新下载的视频建立完整海报墙。&lt;/li&gt;
-&lt;li&gt;&lt;b&gt;整理模式&lt;/b&gt;（视频模式）：仅联网刮削番号用于命名，然后重命名和移动视频文件，不下载图片、不生成 NFO。适合不需要海报墙、只想归类文件的用户。&lt;/li&gt;
+&lt;li&gt;&lt;b&gt;视频模式&lt;/b&gt;（整理模式）：仅联网刮削番号用于命名，然后重命名和移动视频文件，不下载图片、不生成 NFO。适合不需要海报墙、只想归类文件的用户。&lt;/li&gt;
 &lt;li&gt;&lt;b&gt;更新模式&lt;/b&gt;：对已有 NFO 的影片在不改动文件位置结构的前提下重新整理文件结构，按更新规则重新命名目录和文件。适合已刮过但想调整目录结构的情况。&lt;/li&gt;
 &lt;li&gt;&lt;b&gt;读取模式&lt;/b&gt;：通过读取本地 NFO 文件实现无需联网的查看或更新，4 个独立选项可自由组合——有 NFO 时更新（按更新规则整理）、无 NFO 时刮削（对没 NFO 的文件联网刮）、重新下载（重新下载图片）、更新 NFO（更新 NFO 内容如补演员 TMDB ID）。读取模式不受断点续刮缓存干扰，始终处理全部选中文件。&lt;/li&gt;
  &lt;li&gt;&lt;b&gt;NFO 合并策略&lt;/b&gt;（读取模式区域下拉框）：写入 NFO 前按策略决定如何处理已存在的 NFO——偏好刮削结果（prefer_scraper）/ 偏好本地 NFO（prefer_nfo）/ 数组字段合并（merge_arrays）/ 保留现有（preserve_existing）/ 仅填空缺（fill_missing_only），防止重刮覆盖手动整理的内容。&lt;/li&gt;
@@ -24452,7 +24452,7 @@ p, li { white-space: pre-wrap; }
 &lt;h4&gt;六、代理设置&lt;/h4&gt;
 &lt;p&gt;在"设置 → 网络"中配置：&lt;/p&gt;
 &lt;ul&gt;
-&lt;li&gt;&lt;b&gt;启用代理&lt;/b&gt;：开启后填写 HTTP / HTTPS 或 SOCKS5 代理地址（如 http://127.0.0.1:7890）。&lt;/li&gt;
+&lt;li&gt;&lt;b&gt;使用代理&lt;/b&gt;：开启后填写 HTTP / HTTPS 或 SOCKS5 代理地址（如 http://127.0.0.1:7890）。&lt;/li&gt;
 &lt;li&gt;&lt;b&gt;走代理网站&lt;/b&gt;：仅指定域名走代理，其余直连。默认包含 amazon.co.jp、m.media-amazon.com、xcity.jp、minnano-av.com、avbase.net、javbus.com、javdb.com、javlibrary.com、r18.dev、mgstage.com、prestige-av.com、seesaawiki.jp、avsox.click、avsox.com、avmoo.shop、avmoo.com、avheat.shop、avheat.com、caribbeancom.com、heyzo.com、1pondo.tv、pacopacomama.com、10musume.com、mywife.cc、github.com、raw.githubusercontent.com、google.com、missav.ws、missav.ai、missav.live、aventertainments.com、javfree.me、7mmtv.sx、7tv022.com。可按需增删（也可直接填数据源名，如 missav、javdb，站点及其镜像域名将整体走代理）。&lt;/li&gt;
 &lt;li&gt;&lt;b&gt;CF Bypass 代理&lt;/b&gt;：为绕过 Cloudflare 的请求单独设置代理。&lt;/li&gt;
 &lt;/ul&gt;
@@ -24482,10 +24482,10 @@ p, li { white-space: pre-wrap; }
 
 &lt;h4&gt;十、软件工具页面&lt;/h4&gt;
  &lt;ul&gt;
-  &lt;li&gt;&lt;b&gt;NFO 库管理&lt;/b&gt;：左侧导航独立页面，浏览和编辑整个 NFO 库。选择目录后递归扫描所有 .nfo 文件生成列表（支持番号/演员/标题筛选）；点列表项读取 NFO 填充 15 字段编辑表单（番号/标题/演员/发行日/年份/时长/导演/制作商/发行商/系列/评分/简介/标签/封面URL/海报URL），右侧同步预览本地海报和缩略图，可调起裁剪工具；保存前自动对比改动弹窗确认（字段级 diff），无改动不写盘；批量操作面板支持多选后一键替换演员名、加标签、删标签、统一系列名；列表右键菜单提供重新刮削（找同目录同名视频入队）、打开所在目录、删除 NFO。&lt;/li&gt;
+  &lt;li&gt;&lt;b&gt;NFO 库管理&lt;/b&gt;：左侧导航独立页面，浏览和编辑整个 NFO 库。选择目录后递归扫描所有 .nfo 文件生成列表（支持番号/演员/标题筛选）；点列表项读取 NFO 填充 15 字段编辑表单（番号/标题/演员/发行日/年份/时长/导演/片商/发行商/系列/评分/简介/标签/封面URL/海报URL），右侧同步预览本地海报和缩略图，可调起裁剪工具；保存前自动对比改动弹窗确认（字段级 diff），无改动不写盘；批量操作面板支持多选后一键替换演员名、加标签、删标签、统一系列名；列表右键菜单提供重新刮削（找同目录同名视频入队）、打开所在目录、删除 NFO。&lt;/li&gt;
   &lt;li&gt;&lt;b&gt;演员库维护&lt;/b&gt;：直接操作 actor_database.xlsx。补全中文名（按 TMDB ID 补翻译）、补全 LibreDMM 链接、补全别名（可选来源：TMDB、minnano 或 JavDB；默认仅补缺别名的条目，勾选「全量更新」则并入全部行，不覆盖本地已有别名，支持「起始行/限量」分片续跑）、JavDB 中文名（从 JavDB 影片详情页抓取演员中文名，并发拉取影片详情，支持分片续跑与「停止当前维护任务」）、minnano 补全（从 minnano-av 补缺生日/简介，日文字段自动翻译）、检查用户库（扫描格式/结构/数据异常并弹窗报告，安全项可一键自动修复，tmdb 项给人工修复步骤）、打开数据库（用默认程序打开 xlsx 供手工编辑）、剔除男演员（按 TMDB 性别删除男优）、校验 tmdbid 有效性（清除 TMDB 失效 id 并按名字重搜补回）、更新 nfo tmdbid（用本地库新 id 覆盖 nfo 旧 id）。联网工具支持限量分片与「停止当前维护任务」按钮，网络请求自动并发，进度实时显示。&lt;/li&gt;
   &lt;li&gt;&lt;b&gt;刮削缓存管理&lt;/b&gt;：在「软件工具」页刮削缓存面板可查看断点续刮缓存状态（已完成/失败/总数），支持刷新缓存统计、导出缓存数据、重置缓存（清除全部已完成标记，下次全量重刮）、清空缓存（删除 scrape_state.db 文件）。适合在断点续刮数据异常或需要重新全量刮削时使用。&lt;/li&gt;
-  &lt;li&gt;&lt;b&gt;Emby 演员管理器&lt;/b&gt;：填写 Emby 地址和 API 密钥后连接服务器，获取演员列表并按媒体库筛选（可配置只获取演员类型 / 重复去重）；从 Gfriends / graphis.ne.jp / minnano-av / 本地文件夹按可配置优先级匹配头像和背景图（本地文件夹采用预扫描索引，N 次全树遍历降为 1 次），从本地演员库 / 维基百科 / minnano-av / 数据库按可配置优先级匹配简介和出生日期；Gfriends / Graphis / 信息链路已合并为统一函数，按数据源优先级依次尝试；「数据源测试」可逐源验证结果，「设置」可配置数据源优先级与获取过滤；预览后批量同步到 Emby（支持仅补缺失或强制重新获取，同步完成后自动刷新列表），双击演员行打开详情编辑对话框，可编辑简介 / 信息并单独同步头像 / 简介；头像缓存持久化到 userdata/emby_actor_cache/ 目录（不再随临时目录清理丢失），「清空缓存文件夹」可一键清理。&lt;/li&gt;
+  &lt;li&gt;&lt;b&gt;Emby/Jellyfin 演员管理器&lt;/b&gt;：填写 Emby/Jellyfin 地址和 API 密钥后连接服务器，获取演员列表并按媒体库筛选（可配置只获取演员类型 / 重复去重）；从 Gfriends / graphis.ne.jp / minnano-av / 本地文件夹按可配置优先级匹配头像和背景图（本地文件夹采用预扫描索引，N 次全树遍历降为 1 次），从本地演员库 / 维基百科 / minnano-av / 数据库按可配置优先级匹配简介和出生日期；Gfriends / Graphis / 信息链路已合并为统一函数，按数据源优先级依次尝试；「数据源测试」可逐源验证结果，「设置」可配置数据源优先级与获取过滤；预览后批量同步到服务器（支持仅补缺失或强制重新获取，同步完成后自动刷新列表），双击演员行打开详情编辑对话框，可编辑简介 / 信息并单独同步头像 / 简介；头像缓存持久化到 userdata/emby_actor_cache/ 目录（不再随临时目录清理丢失），「清空缓存文件夹」可一键清理。&lt;/li&gt;
  &lt;li&gt;&lt;b&gt;单文件刮削&lt;/b&gt;：指定某个文件的番号网址进行刮削，当存在相同番号时可手工指定。&lt;/li&gt;
  &lt;li&gt;&lt;b&gt;封面补图&lt;/b&gt;：输入番号（多个用空格分隔），自动刮削并补齐缺失的 poster.jpg 和 thumb.jpg，复用当前配置的站点优先级、命名、裁切、水印规则；所有站点拿不到图时自动走 DMM 官方高清直链兜底（内置约 110 个主流系列前缀表并自动学习未收录厂牌，竖版高清优先，无码番号跳过）。&lt;/li&gt;
  &lt;li&gt;&lt;b&gt;海报裁剪&lt;/b&gt;：将图片裁剪为 2:3 标准封面图大小，支持加水印。&lt;/li&gt;
@@ -24502,7 +24502,7 @@ p, li { white-space: pre-wrap; }
  &lt;li&gt;&lt;b&gt;素人&lt;/b&gt;：MGStage: 259LUXU-1111；JavDB: LUXU-1111；FC2: FC2-111111、FC2-PPV-111111&lt;/li&gt;
 &lt;li&gt;&lt;b&gt;欧美&lt;/b&gt;：JavDB / JavBus: sexart.11.11.11（系列.年.月.日）&lt;/li&gt;
 &lt;li&gt;&lt;b&gt;字幕影片&lt;/b&gt;：ssni-xxx-c.mp4 / -C.mp4（字幕标记靠近扩展名）&lt;/li&gt;
-&lt;li&gt;&lt;b&gt;多集影片&lt;/b&gt;：ssni-xxx-cd1.mp4、ssni-xxx-cd2.mp4（默认支持 -cdN / -partN / -hdN / 单数字结尾 -1 等形式；如需 -A 字母分集或 -01 两位数字分集，可在设置 → 命名中勾选『允许识别分集』对应选项）&lt;/li&gt;
+&lt;li&gt;&lt;b&gt;多分集影片&lt;/b&gt;：ssni-xxx-cd1.mp4、ssni-xxx-cd2.mp4（默认支持 -cdN / -partN / -hdN / 单数字结尾 -1 等形式；如需 -A 字母分集或 -01 两位数字分集，可在设置 → 命名中勾选『允许识别分集』对应选项）&lt;/li&gt;
 &lt;li&gt;&lt;b&gt;外挂字幕&lt;/b&gt;：字幕文件名需与影片一致，支持 srt / ass / sub，方可随影片一起移动&lt;/li&gt;
 &lt;/ul&gt;
 
@@ -24908,7 +24908,7 @@ p, li { white-space: pre-wrap; }
                           <item row="7" column="0">
                             <widget class="QLabel" name="label_nfo_lib_studio">
                               <property name="text">
-                                <string>制作商</string>
+                                <string>片商</string>
                               </property>
                             </widget>
                           </item>
@@ -25302,7 +25302,7 @@ p, li { white-space: pre-wrap; }
                     <string> 演员管理</string>
                   </property>
                   <property name="toolTip">
-                    <string>Emby 演员管理器（管理演员头像和简介）：连接 Emby 后获取演员列表、匹配头像简介、批量同步写入</string>
+                    <string>Emby/Jellyfin 演员管理器（管理演员头像和简介）：连接 Emby/Jellyfin 后获取演员列表、匹配头像简介、批量同步写入</string>
                   </property>
                 </widget>
               </item>
@@ -25908,7 +25908,7 @@ p, li { white-space: pre-wrap; }
                 <number>0</number>
               </property>
               <property name="text">
-                <string>制作商：</string>
+                <string>片商：</string>
               </property>
               <property name="alignment">
                 <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>

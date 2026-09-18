@@ -36,6 +36,7 @@ jobs:
           # https://docs.github.com/en/actions/using-github-hosted-runners/about-github-hosted-runners/about-github-hosted-runners
 
           items+=('{"build": "macos", "os": "macos-latest", "arch": "aarch64"}')
+          items+=('{"build": "macos", "os": "macos-13", "arch": "x86_64"}')
           items+=('{"build": "windows", "os": "windows-2025", "arch": "x86_64"}')
           items+=('{"build": "linux", "os": "ubuntu-latest", "arch": "x86_64"}')
 
@@ -55,6 +56,7 @@ jobs:
   build-app:
     needs: init-matrix
     runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
     strategy:
       fail-fast: false
       matrix:
@@ -119,6 +121,7 @@ jobs:
         run: |
           version="${{ steps.release-tag.outputs.tag }}"
           uv run scripts/build.py --create-dmg --version "$version" --debug
+          mv dist/MDCx.dmg "dist/MDCx-${{ matrix.arch }}.dmg"
 
       - name: Build Windows app - Windows
         if: ${{ matrix.build == 'windows' }}
@@ -137,7 +140,7 @@ jobs:
         if: ${{ matrix.build == 'macos' }}
         with:
           name: mdcx-macos-${{ matrix.arch }}
-          path: dist/MDCx.dmg
+          path: dist/MDCx-${{ matrix.arch }}.dmg
 
       - name: Pre-check Windows artifact for release upload
         if: ${{ matrix.build == 'windows' }}
@@ -253,13 +256,24 @@ jobs:
             echo "$delimiter"
           } >> "$GITHUB_OUTPUT"
 
-      - name: Create Release - macOS
+      - name: Create Release - macOS (Apple Silicon)
         uses: svenstaro/upload-release-action@v2
         with:
           overwrite: true
           release_name: ${{ steps.metadata.outputs.name }}
           asset_name: MDCx-${{ steps.metadata.outputs.tag }}-macos-aarch64-${{ github.sha }}.dmg
-          file: dist/MDCx.dmg
+          file: dist/MDCx-aarch64.dmg
+          prerelease: ${{ steps.metadata.outputs.prerelease }}
+          body: ${{ steps.changelog.outputs.CHANGELOG }}
+          tag: ${{ steps.metadata.outputs.tag }}
+
+      - name: Create Release - macOS (Intel)
+        uses: svenstaro/upload-release-action@v2
+        with:
+          overwrite: true
+          release_name: ${{ steps.metadata.outputs.name }}
+          asset_name: MDCx-${{ steps.metadata.outputs.tag }}-macos-x86_64-${{ github.sha }}.dmg
+          file: dist/MDCx-x86_64.dmg
           prerelease: ${{ steps.metadata.outputs.prerelease }}
           body: ${{ steps.changelog.outputs.CHANGELOG }}
           tag: ${{ steps.metadata.outputs.tag }}

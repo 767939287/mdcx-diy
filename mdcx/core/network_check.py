@@ -638,7 +638,7 @@ def format_summary(
         if cause_counts["not_found"]:
             lines.append(f"  • 站点未收录/未匹配 ×{cause_counts['not_found']}：不一定代表站点坏了，可换个番号重试")
         if cause_counts["other"]:
-            lines.append(f"  • 其他异常 ×{cause_counts['other']}：请上方失败详情，或截图提交议题")
+            lines.append(f"  • 其他异常 ×{cause_counts['other']}：请查看上方失败详情，或截图提交议题")
     if failed or warning:
         lines.append(
             "建议优先查看失败/警告项；若基础连通性失败，先检查代理或系统网络；"

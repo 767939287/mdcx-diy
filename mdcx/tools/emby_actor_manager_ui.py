@@ -304,7 +304,7 @@ class EmbyActorManagerDialog(QDialog):
         # 不传 parent：始终保持独立顶层窗口。议题 #61——以主窗口为 parent 时，
         # 主窗口 hide 会级联隐藏 dialog，最大化 dialog 又会把主窗口带出。
         super().__init__(None)
-        self.setWindowTitle("Emby 演员管理器")
+        self.setWindowTitle("Emby/Jellyfin 演员管理器")
         self.setMinimumSize(1100, 700)
         self.setWindowFlags(
             self.windowFlags()
@@ -383,20 +383,19 @@ class EmbyActorManagerDialog(QDialog):
         self.status_bar.showMessage(f"{prefix} | {message}")
 
     def _build_connection_section(self, parent_layout: QVBoxLayout):
-        group = QGroupBox("Emby 连接设置")
+        group = QGroupBox("Emby/Jellyfin 连接设置")
         grid = QGridLayout(group)
-        grid.setSpacing(8)
-        grid.addWidget(QLabel("Emby 地址:"), 0, 0)
+        grid.addWidget(QLabel("服务器地址:"), 0, 0)
         self.txt_url = QLineEdit(str(manager.config.emby_url or ""))
         self.txt_url.setPlaceholderText("http://192.168.1.100:8096")
         grid.addWidget(self.txt_url, 0, 1)
         grid.addWidget(QLabel("API 密钥:"), 0, 2)
         self.txt_api_key = QLineEdit(manager.config.api_key or "")
-        self.txt_api_key.setPlaceholderText("Emby 管理后台 → 高级 → API 密钥")
+        self.txt_api_key.setPlaceholderText("Emby：管理后台 → 高级 → API 密钥；Jellyfin：控制台 → API 密钥")
         self.txt_api_key.setEchoMode(QLineEdit.EchoMode.Password)
         grid.addWidget(self.txt_api_key, 0, 3)
         btn_layout = QHBoxLayout()
-        self.btn_connect = QPushButton("连接 Emby")
+        self.btn_connect = QPushButton("连接 Emby/Jellyfin")
         self.btn_connect.setObjectName("btnPrimary")
         btn_layout.addWidget(self.btn_connect)
         self.btn_fetch = QPushButton("获取演员列表")
@@ -435,7 +434,7 @@ class EmbyActorManagerDialog(QDialog):
         grid.addLayout(btn_layout, 1, 0, 1, 4)
         help_label = QLabel(
             "使用说明：① 填写地址和密钥 → ② 连接/获取演员列表 → ③ 选择模式获取数据 → "
-            "④ 绿色行=待更新 → ⑤ 开始同步到 Emby。双击行可查看当前头像/简介/出生日期/影片数等详情。"
+            "④ 绿色行=待更新 → ⑤ 开始同步到服务器。双击行可查看当前头像/简介/出生日期/影片数等详情。"
         )
         help_label.setStyleSheet("color: #888888; font-size: 12px; padding: 2px 0;")
         grid.addWidget(help_label, 2, 0, 1, 4)
@@ -622,7 +621,7 @@ class EmbyActorManagerDialog(QDialog):
         url = self.txt_url.text().strip()
         key = self.txt_api_key.text().strip()
         if not url or not key:
-            QMessageBox.warning(self, "提示", "请输入 Emby 地址和 API 密钥")
+            QMessageBox.warning(self, "提示", "请输入服务器地址和 API 密钥")
             return
         from .emby_shared import _build_jellyfin_headers
 
@@ -656,7 +655,7 @@ class EmbyActorManagerDialog(QDialog):
         except Exception as e:
             future = None
             self.btn_connect.setEnabled(True)
-            self.btn_connect.setText("连接 Emby")
+            self.btn_connect.setText("连接 Emby/Jellyfin")
             self._set_status("连接失败")
             self.log(f"❌ 连接失败: {e}")
             return
@@ -665,7 +664,7 @@ class EmbyActorManagerDialog(QDialog):
     def _on_connect_result(self, result: tuple[bool, str]):
         ok, msg = result
         self.btn_connect.setEnabled(True)
-        self.btn_connect.setText("已连接" if ok else "连接 Emby")
+        self.btn_connect.setText("已连接" if ok else "连接 Emby/Jellyfin")
         if ok:
             self._connected = True
             self.btn_fetch.setEnabled(True)
@@ -692,7 +691,7 @@ class EmbyActorManagerDialog(QDialog):
 
     def _on_fetch(self):
         if not hasattr(self, "_connected") or not self._connected:
-            QMessageBox.warning(self, "提示", "请先连接 Emby 服务器")
+            QMessageBox.warning(self, "提示", "请先连接 Emby/Jellyfin 服务器")
             return
         self.btn_fetch.setEnabled(False)
         self._set_status("获取媒体库列表...")
@@ -737,7 +736,7 @@ class EmbyActorManagerDialog(QDialog):
         if total > 0:
             self.progress_bar.setMaximum(total)
             self.progress_bar.setValue(current)
-        self.setWindowTitle(f"Emby 演员管理器 - {msg}")
+        self.setWindowTitle(f"Emby/Jellyfin 演员管理器 - {msg}")
 
     def _on_fetch_finished(self, actors: list[ActorInfo], raw_count: int):
         self._actors = actors
@@ -819,7 +818,7 @@ class EmbyActorManagerDialog(QDialog):
         reply = QMessageBox.question(
             self,
             "确认同步",
-            f"将同步 {len(to_sync)} 个演员的信息/头像/背景图到 Emby，\n此操作不可撤销，是否继续？",
+            f"将同步 {len(to_sync)} 个演员的信息/头像/背景图到 Emby/Jellyfin，\n此操作不可撤销，是否继续？",
             QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
         )
         if reply != QMessageBox.StandardButton.Yes:
@@ -842,7 +841,7 @@ class EmbyActorManagerDialog(QDialog):
     def _on_sync_progress(self, current: int, total: int, msg: str):
         self.progress_bar.setMaximum(total)
         self.progress_bar.setValue(current)
-        self.setWindowTitle(f"Emby 演员管理器 - {msg}")
+        self.setWindowTitle(f"Emby/Jellyfin 演员管理器 - {msg}")
 
     def _on_sync_actor_done(self, actor_id: str, name: str, success: bool, msg: str):
         # 用 actor_id 匹配，避免同名演员（未去重时）按名字错位更新状态
@@ -1155,11 +1154,11 @@ class EmbyActorSettingsDialog(QDialog):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("Emby 演员设置")
+        self.setWindowTitle("Emby/Jellyfin 演员设置")
         self.setMinimumWidth(420)
         layout = QVBoxLayout(self)
 
-        filter_group = QGroupBox("Emby 演员获取过滤")
+        filter_group = QGroupBox("Emby/Jellyfin 演员获取过滤")
         filter_layout = QVBoxLayout(filter_group)
         self.filter_only_check = QCheckBox("只获取演员类型（不含导演/编剧/制片人）")
         self.filter_only_check.setChecked(manager.config.actor_filter_only)

@@ -60,7 +60,7 @@ MDCx 支持的功能全景。只想快速上手的话，先看 [QUICKSTART.md](Q
 
 > 注意：javdb_api、javdb_app、missav_api、r18dev、thejavdb_api 这五条是免 CF 直连通道，稳定性好，建议优先选用。
 
-**各爬虫适用类型**（刮削类型默认网站源，可在「设置→站点」调整）：
+**各爬虫适用类型**（刮削类型默认网站源，可在「设置→刮削网站」调整）：
 - **仅能有码**：dmm、dmm_api、thejavdb_api、libredmm、r18dev、avbase、xcity、prestige、mgstage、getchu、javlibrary、freejavbt、lulubar、avmoo
 - **无码专属**：aventertainments、avsox
 - **综合（有码+无码）**：javbus、javdb、javdb_api、javdb_app、missav、missav_api、javday、javfree、airav_cc、avsex、official、iqqtv、7mmtv
@@ -185,7 +185,7 @@ MDCx 支持的功能全景。只想快速上手的话，先看 [QUICKSTART.md](Q
 
 以 Excel 文件（`userdata/actor_database.xlsx`）存储演员信息：
 
-- **字段**：ID、日文名、中文名、繁体名、别名、信息链接、TMDB ID、出生日期、简介
+- **字段**：日文原名、中文名、繁体名、别名、链接、tmdbid、tmdb url、出生日期、简介
 - **自动补全**：通过 TMDB API 查询演员 ID 和多语言名称
 - **数据来源**：TMDB、Wikidata、Gfriends、graphis.ne.jp
 - **反向查询**：已知中文名找日文名，或反过来

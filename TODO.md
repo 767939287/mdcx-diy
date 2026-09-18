@@ -184,4 +184,4 @@
 
 ### 20. amazon 搜索 URL 双重 quote_plus ✅（已实测确认正确，无需改动）
 - **价值：低**　**难度：低**（验证类）
-- 已实测：`core/amazon.py:1032` 的双重 `quote_plus` 是正确且必要的——Amazon 对 returnUrl 解一层得到内层 `/s?k=`，跳转时 k 值再解一层；单次编码会导致跳转失败直接去首页。当前代码不改。
+- 已实测：`core/amazon.py:1107` 的双重 `quote_plus` 是正确且必要的——Amazon 对 returnUrl 解一层得到内层 `/s?k=`，跳转时 k 值再解一层；单次编码会导致跳转失败直接去首页。当前代码不改。

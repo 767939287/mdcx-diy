@@ -76,7 +76,7 @@
      - **命名截断的目录一致性设计锚点**（#95 实证）：模板里构成路径一级的字段（series/actor 等，判定法：该字段 token 与下一字段之间存在 `/`）截断会改变归档目录归属，必须用「稳定预算」——预算只由模板结构（字面字符长 + 每个其它变量字段预留 `DIRECTORY_FIELD_MIN_WIDTH`）与最大长度决定，与同批次其它文件的字段长度无关；目录级字段不参与溢出量分摊（分摊会让截断长度随标题/演员长短漂移 → 同系列分家）。**回归验证必须两部同系列文件对比一级目录完全一致**（单文件跑一遍看不出分家）；番号识别类 bug 的第一锚点是日志 `[number]` 行——它显示整段文件名即番号提取失败（站点"失败跳过"多是这个根因，别去查站点连通性）。**`get_file_number` 的兜底 else 分支会把清洗后整段文件名当番号返回**——裸番号测试用例（`T38-041.mp4`）会"碰巧通过"，回归用例必须带后续标题文本。
     - **「开关组合」类 bug 的检验法：先分清每个开关的写入端/读取端各在哪**（#98-1 实证）：三个调试开关里字段来源/字段内容的**写入端**早就各自按开关写、但全写进同一个 log 通道，而**读取端**只判 `show_web_log` 一个闸门——关闸时整段丢弃，另两个开关形同虚设。修复是加 `LogBuffer.web()` 过程明细通道 + 读取端按开关拼装；归类纪律：结果标记行（🍀🟠🔴🥺 done/failed）留 log 通道恒出，过程/决策明细（🖼🔎🟡 校验、下载重试、TMDB/翻译过程）进 web 通道。**凡是"多开关不生效"类报告，先画清楚每个开关控制写入还是读取，再定它们是否共用同一个消费端**。
     - **持久化快照的三个必备性质**（#98-2 实证）：用户手动停止后丢任务，根因横跨四层——①非原子写（读取端可能读到半截文件）必须 tmp+`os.replace`；②后台异步保存完成后**按快照比对才清 dirty**（无条件清会吞掉保存期间的新变化）；③停止/退出路径必须有**强制落盘点**，不能只依赖周期定时器（竞态窗口正好落在停止期间）；④**子集续跑不得拿子集做全库清理**（`cleanup_missing(existing)` 的 existing 必须是完整媒体库集合，显式传入任务列表时跳过）。另：续跑/工具调用传 `Flags` 全局列表一律传 `list(...)` 快照。
-    - **映射云盘上 API 返回成功 ≠ 文件真的落了：写后必须校验存在性**（2026-09-14 用户报告实证）：用户 v2.0.9 批刮 60 部到 115 云盘 `Z:`，日志全显示 `🍀 Nfo done! (new)`，盘上 0 个 nfo——`os.replace` 在映射云盘驱动上可静默吞写（返回成功、目标不落）。教训：①**「日志说成功但文件不存在」类报告，第一嫌疑目标不是写代码路径而是"写后无回验"**——`write_file_atomic(_async)` 的 fix 模式是 replace 后 `exists` 校验、不过退回直写、仍不落抛错让调用方走失败分支；②同盘历史坑三板斧（samefile 假阳性 / PermissionError 瞬时占用 / 本次静默吞写）都在 `_copy_file_atomic_sync` 与 `write_file_atomic(_async)` 两处有防御模板可抄；③映射云盘行为 devbox 无法复现，回归用 monkeypatch"静默吞写"桩（删掉 tmp 且 replace 无副作用）锁定行为。
+    - **映射云盘上 API 返回成功 ≠ 文件真的落了：写后必须校验存在性**（2026-09-14 用户报告实证）：用户 v2.0.9 批刮 60 部到 115 云盘 `Z:`，日志全显示 `🍀 Nfo done! (new)`，盘上 0 个 nfo——`os.replace` 在映射云盘驱动上可静默吞写（返回成功、目标不落）。教训：①**「日志说成功但文件不存在」类报告，第一嫌疑目标不是写代码路径而是"写后无回验"**——`write_file_atomic(_async)` 的 fix 模式是 replace 后 `exists` 校验、不过退回直写、仍不落抛错让调用方走失败分支；②同盘历史坑三板斧（samefile 假阳性 / PermissionError 瞬时占用 / 本次静默吞写）都在 `_copy_file_atomic_sync` 与 `write_file_atomic(_async)` 两处有防御模板可抄；③映射云盘行为 devbox 无法复现，回归用 monkeypatch"静默吞写"桩（删掉 tmp 且 replace 无副作用）锁定行为；④网络映射盘（`Z:` 等）上 `os.path.samefile` 对两个不同文件会返回 True（inode 不可靠），`shutil.copy` 因此抛 `SameFileError`（等于没复制）并被跳过——复制改用 `shutil.copyfileobj`（字节级读写、不依赖 samefile），v2.0.8 已在 Z 盘实测完成。
     - **集合合并类 bug（"同一批对象被两条路径各自进队一次"）的第一嫌疑永远是"有无 dedupe"**（#100-① 实证）：断点续刮的"scan 又扫到 failed 文件 + list_pending 恢复 failed 文件"两条路径交叉，同文件入队两次，用户实测计数 11→22。凡是在业务层遇到"同一对象重复出现的列表"，立刻想到去重点：①交叉的两条路径各自来源是什么；②交集是否被显式排除；改动成本一行 list/set 过滤。**测试回归办法：构造同对象在两条路径里同时在场，断言合并后总数不变**。
     - **给用户看到"结果"的文案，只需一张表就能说明白；给开发者看的 label（如"已失败, 跳过"）若不带类因，就是诊断盲区**（#100-③ / #101 实证）：两条信息让用户无从定位问题源头——"图片已被网站删除"不标 host、"已失败"不带原因，用户只能对着一长串日志干瞪眼。改法都是"把决策时候的原始上下文带一行出来"——host 标在 URL 前、失败原因摘自 `FailureReason.classify` 的固化分类。**提交日志/失败汇总里凡是"不标来源就报告结果"的字段，都是兼具可维护性与用户表现的高低成本改造点。**
 
@@ -90,6 +90,8 @@
    - **「取消打断收尾」类租约泄漏的排查与防护范式**（#98 追加反馈实证）：「网络/LLM 客户端等待空闲超过 300 秒（残留租约 1）」的定性法——**看双客户端是否同时残留**：双残留指向 `Computed` 级租约（一次 retain 同时持两客户端，cancel 打断在 gather 双释放的挂起点，实验 4/4 复现 leases=(1,1)）；单残留指向 `CrawlerProvider` 级（只 retain async_client）。泄漏窗口实验法：用「慢实例拉长收尾窗口 + cancel 注入窗口内」复现（实验 3），单发 cancel 在 finally 的同步段前减计数是安全的、不需过度防护。防护三件套：释放路径 `asyncio.shield` / try-finally 恒执行 release / 逐实例 `suppress(Exception)` 防单个异常阻断——`#55` 只修了同步 `__exit__`（submit_critical 通道），**`__aexit__`（async with）是同款缺口，凡「同步路径有防护、异步路径裸奔」的成对入口都要成对审计**。反向验证纪律：防护类测试必须撤掉防护跑一次确认转红（防恒真），且**测试必须打到真实代码**——复刻形态的测试在撤真实防护时仍绿（test_lease_release_on_cancel.py 教训：本地 `_LeaseCtx` 复刻了 shield，撤 manager.py 的 shield 测试照过，需补 AST 哨兵锁真实源码结构；conftest dummy 遮蔽 `ComputedLease` 导入，AST 哨兵是绕 dummy 的标准手段）。
    - **LogBuffer 任务树归因**：写入按 `_ROOT` contextvar 归因，`process_one_file` 入口 `new_root()` 切断兄弟继承。勿按 task_id 全局聚合、勿回退"get() 拼全局 buffers"旧模式（跨影片污染，测试锁定）。
    - **后台线程跑异步复用共享 curl_cffi 客户端，禁用一次性事件循环**（#87 实证）：`QThread.run` 里 `asyncio.new_event_loop()` + `run_until_complete(共享客户端协程)` + `loop.close()` 是反模式——共享 curl_cffi `AsyncSession` 的 cffi 定时器被注册到该一次性 loop，`close()` 后定时器仍触发 → curl_cffi 回调抛 `RuntimeError: Event loop is closed` → Windows 上弹 "Python-CFFI error" 框（cffi 回调异常无法传播时的默认弹窗）。**正确范式：一律走全局 `AsyncBackgroundExecutor.run/submit`（app 持久后台循环，永不随线程关闭）**。项目内 FetchActorsThread/SyncThread 已用 executor，唯独数据源测试线程（`ActorSourceTestThread`）曾自建 loop 漏网——新增任何「后台线程 + 共享网络栈」的 QThread 一律复用 executor，不新开 loop；用 AST 哨兵锁住方法内不得再出现 `new_event_loop`/`run_until_complete`。
+  - **数据/任务并发范式**：文件间批量用 `asyncio.wait(FIRST_COMPLETED)` 滑动窗口，文件内多站点 `gather`；网络请求不跨 executor loop 复用。后台协程统一 `utils/qt_thread.py::run_in_background`，结果经 Qt signal 回主线程；新增后跑 `scripts/check_thread_safety.py`。
+  - 出厂模板在 `resources/userdata/`，运行时数据在 `manager.data_folder/userdata/`；devbox 代理 127.0.0.1:7890 可能无进程，排查网络时临时关闭代理。
 
 ## UI 开发与排错
 
@@ -107,7 +109,7 @@
    - **最大化→还原回程与滚动区 min 尺寸计算源**（议题 #82/#117 实证）：还原回程三个锁死 bug——①`sync_wide_children_width` 只增不减（extra<=0 return），拉宽 groupBox 还原不缩回；②`content.minimumWidth` 从膨胀 childrenRect 计算并锁死（设置页 1599/工具页 1603 vs 视口 770），widgetResizable 受 minimumWidth 阻挡无法缩回，内容右缘被裁且水平滚动条 AlwaysOff 无迹可循；③QFormLayout 驱动内容的 Expanding 行（简介/标签多行框）在超高容器中分得额外空间，childrenRect 抬高→minimumHeight 自锁 993 降不回 674，保存按钮被推出视口。**军规**：几何同步函数一律「设计基准+extra」双向幂等（负 extra 即缩回）；**min 尺寸计算源必须稳定，且区分「首选」与「硬最小」**——宽度下限用 `layout.minimumSize().width()`（硬最小，允许跟随视口收缩；取 sizeHint 首选宽会把内容钉死，垂直滚动条一占位 14px 内容右缘就被裁、输入框圆角变平口），高度下限用 `layout.sizeHint().height()`（紧凑排布、与容器拉伸无关），两者都禁止取自被拉伸/膨胀后的 childrenRect。**底部余量是「按页」属性、不是全局常量**：滚到底时「最后一行底 = 视口底 - margin」，margin 必须 ≥ 浮框侵入 + 视觉缓冲（设置页浮框侵入 63 → 默认 72）；无遮挡的页要收紧（信息管理页 8——沿用 72 白占一行多高度，把「保存当前 NFO」挤出视口凭空顶出滚动条），由 `CustomScrollArea.set_content_bottom_margin()` 按实例覆盖、两个分支统一经 `content_bottom_margin()` 取值。回归测试断言标准：**最大化→还原后与 fresh 同尺寸状态完全一致**（内容宽=min_w≈设计宽、按钮 y 坐标相同）；余量由 `test_setting_content_clears_config_bar_when_scrolled` 锁定。
    - **同页面一组控件的同步必须按「设计器清单穷举」自检，不按报错补丁**（2026-09-06 设置页浮框实证）：`_sync_page_layouts` 浮框段同步了 label_config/comboBox_change_config/pushButton_save_new_config/pushButton_init_config/pushButton_save_config 五个，唯独漏了「当前配置:」label_241——同属 page_setting 直接子级、同一浮框组，应被一并锚定却被漏，最大化后该文字悬空在 y=629 原设计位置。与 92 条（组内行漏一对值/标签）同根的姊妹形态：**同步函数管辖的控件清单**与设计器里**该页的控件清单**必须一一对账，不只补当前报错的那个。
    - **自定义拉伸机制与 .ui 的 maximumSize 上限冲突**（2026-09-06 设置页 34 处实证）：本项目的 groupBox 宽幅拉伸靠 resize 时 `setGeometry` 推到目标宽，**.ui 里同控件若留有 maximumWidth（设计器历史占位值 860）会静默夹断拉伸**形成「同页部分框拉满、部分停在整十值」的不一致。定位法：探针 dump 全部拉伸目标实测宽，凡是停在整十数（如 860）且 `right == x + 上限值` 的即上限导致；根源是设计器「拖好再锁」留下的 maximumSize。修复：.ui 里删 maximumSize 节点再 pyuic 重编译（不要保留算了），grep `QSize(<上限值>,` 核对剩余处。解决同类 bug 的用户基准对照（如「刮削目录正常」）意味着该页 groupBox 无上限——把正常页与异常页的设计器属性清单 diff 一遍立刻定位差异点。
-   - **窗口状态操控的汇聚点审计**（议题 #82 问题 1 实证）：「主窗最小化后被弹出」的根因不止 #79 修的显式入口（raise_/activateWindow），还有 `save_config.py`/`load_config.py` 末尾无条件的 `setWindowState(去最小化|WindowActive)+activateWindow()` 隐式路径——**刮削完成自动保存等后台链路同样弹主窗**。修复窗口联动类 bug 时，grep `setWindowState|activateWindow|showNormal|show()` 全库枚举汇聚点逐一加「可见且未最小化」守卫；配置保存/加载这类业务函数**不得顺手操控窗口状态**。
+   - **窗口状态操控的汇聚点审计**（议题 #79/#82 实证）：「主窗最小化后被弹出」的根因不止 #79 修的显式入口（子窗口的 `raise_/activateWindow` 会联动拉起最小化的主窗，Windows 原生边框行为；修法是仅在**主窗可见且未最小化**时才 raise/activate，最小化时只 `show()` 子窗口自身），还有 `save_config.py`/`load_config.py` 末尾无条件的 `setWindowState(去最小化|WindowActive)+activateWindow()` 隐式路径——**刮削完成自动保存等后台链路同样弹主窗**。修复窗口联动类 bug 时，grep `setWindowState|activateWindow|showNormal|show|hide` 全库枚举汇聚点逐一加「可见且未最小化」守卫；配置保存/加载这类业务函数**不得顺手操控窗口状态**。议题 #132 补充：主窗隐藏后（托盘/关闭到托盘/最小化到托盘）`eventFilter` 的 `ApplicationActivate` 分支也不得自动 `show()`——隐藏属用户主动行为，恢复只由托盘图标/菜单负责。
    - **PyQt6 测试 qFatal abort**：槽函数未捕获异常触发 qt_assert 原生 abort（栈里无 Python 行号）——查 QTimer 槽与 dummy 桩缺方法。防御：fixture 构造后立即停全部 QTimer；几何断言不需 `window.show()`。不设 offscreen 的 Aborted 是环境固有——先 stash 基线对照区分环境问题与改动引入。**每个含 Qt 的测试文件必须自持 `os.environ.setdefault("QT_QPA_PLATFORM","offscreen")`（放文件最顶部、PyQt6 导入前），不能靠收集顺序前其它测试模块接力**——单文件 `pytest tests/xxx.py` 时进程里无人先设，立即崩（test_window_state_matrix 单跑崩的实证）。
    - **`.ui` 中间插行后下方所有行 row 号必须整体 +1，漏改即同 cell 叠放重影；此类 bug 几何检测抓不到，须用 .ui 文本级结构哨兵**（议题 #123 实证）：#114 在 gridLayout_9 的 row3 插「直连白名单」后，下方超时/重试两行的 row 号漏 +1，与「CF Bypass 代理」行双双落在 row6，两个右对齐 label 横向叠出「CF Bypass时…」重影（打包 Windows 实机才显形，此前 offscreen 全绿假阴）。三条纪律：①**插行后 grep 该 grid 全部 `<item row=` 确认插入点之后每行 row 号严格递增无重复**（`.ui` 文本是唯一可靠判据，几何探针 `itemAtPosition` 对同 cell 多 item 只返回最后一个、`test_ui_geometry` 包围盒检测对叠放同 cell 报「不重叠」假绿——**渲染层允许同 cell 叠放，几何层天然抓不到这种静态定义冲突**）；②新增 `test_grid_no_two_items_in_same_cell`（解析 `.ui` 文本按 (row,col) 聚合直接子控件，同 cell ≥2 个不同控件即红）+ 定向基准锁 `test_cf_bypass_proxy_not_same_cell_as_timeout` 防回归；③哨兵写完必做**冲突态/修复态双验证**：故意把控件挪回冲突 cell 跑测试须转红，还原后转绿，防恒真。
    - **抬高某行后同滚动内容的兄弟 groupBox 与滚动容器高度要一起下移**（议题 #123 实证，与上条同根的另一侧）：网络设置页「直连白名单」插行 + 重影修复使 gridLayoutWidget_9 内容多占一行后，同处 `scrollAreaWidgetContents_wangluo` 绝对定位的 4 组控件（groupBox_28/10/14/44）必须按「设计 y 顺序」整体下移保 15px 间距，滚动容器 height 同步抬到不裁最深底，否则 `test_groupboxes_no_overlap_and_consistent_gap` 与 `test_groupboxes_fit_scroll_area` 转红。改前 grep 该滚动内容容器内全部兄弟控件设计 y 坐标，按文档序（非 y 序）逐一核对，与 108 条「设计器清单穷举」同一军规。
@@ -126,9 +128,12 @@
   - 无码官网五站由 official_uncensored.py 统一路由；均需代理；1pondo/pacopacomama/10musume 的 dyn/phpauto JSON API 直通。
   - 被墙站测试：`uv run python -m scripts.dev_proxy start|status|test <url>|stop`；日本 IP 限制站用 `--port 7891 --regions "jp|日本"`。
    - devbox 环境限制：超时属云端限制≠站点死亡；高频批量测试触发 CF IP 拉黑换时段；连通性验证必须 curl_cffi impersonate；批量探测校验 data.title 为真实字符串防假阳性。
-   - **HTTP 4xx/5xx 错误串必须携带截断响应体，不能只留状态码**（#88 Emby 400 实证）：`web_async.request` 原对 status>=400 只写 `"HTTP {code}"`、丢掉响应体，上层只见 "HTTP 400" 无从定位。现对 status>=400 追加截断（~500 字节）响应体、**保留 `"HTTP {status}"` 前缀**（网络检查/失败分类的 `in`/startswith 匹配不破坏）。通用纪律：任何把 HTTP 错误上报给用户/日志的落点，校验类 4xx 的 body 才有根因（Emby 的字段校验错误 JSON 就在 body 里）。
+   - **HTTP 4xx/5xx 错误串必须携带截断响应体，不能只留状态码**（#88 Emby 400 实证）：`web_async.request` 原对 status>=400 只写 `"HTTP {code}"`、丢掉响应体，上层只见 "HTTP 400" 无从定位。现对 status>=400 追加截断（~500 字节）响应体、**保留 `"HTTP {status}"` 前缀**（网络检查/失败分类的 `in`/startswith 匹配不破坏）。通用纪律：任何把 HTTP 错误上报给用户/日志的落点，校验类 4xx 的 body 才有根因（Emby 的字段校验错误 JSON 就在 body 里）。**定位顺序**（#56）：先看客户端实际发了什么（条件分支误判覆盖鉴权头之类），再想服务端；同函数多调用点的硬编码分支改一处漏一处是高频错误形态。
    - **番号归一化：前导单数字有双重语义，改正则须双向验证不误伤**（#84 实证）：`number.py` 前导数字①studio 名单数字（`3DSVR`/`7PPP` 的 3/7，须**保留**）②DMM 预约版 `9` 前缀（`9SSIS-001`，须**剥掉**）。#84 为保留 ①把 mkbd 分支 `[A-Z]{2,}-` 改成 `\d?[A-Z]{2,}-`，误把 DMM 9 前缀的带横杠形态（`9SSIS-001`）也保留了 → 需同步把 9 前缀规则加 `-?` 兼容带横杠写法。教训：改归一化正则前 grep 全部分支，改后跑相邻语义的既有测试（DMM 9 前缀、素人多位前缀 `259LUXU` 等）防双向误伤；多位素人前缀由更早的 `\d{2,}[A-Z]` 分支 + `short_number` 单独剥离，不受单数字分支影响。
    - **站点域名优先级 / 删站属产品取舍，查证给方案不擅动**（#85 实证）：报告人要求 javbus/javlibrary 原版优先、删 4 个 CF 站。查证发现域名优先顺序常有**实测依据**（`_JAVBUS_DOMAINS` 注释「按可用性排列 2026-08-25 实测」，镜像优先因大陆可达性，非随意摆放）——改默认行为前先 grep 该列表注释依据，不擅自翻序。删站影响面大：爬虫注册表 + `Website` 枚举 + 默认 proxy 列表（`Config.proxy_sites`）+ **`config/migrations.py` 清洗旧值**（漏迁移=pydantic 校验失败"保存不生效"）+ UI 站点列表。此类不擅自改，查证后给「改/不改、删/不删」方案让用户定；单站「不通」需真机/网络实测确认站点死活（devbox 网络受限无法可靠复现，别用 devbox 结果判站点死活）。
+   - **javdb 系三源与图源（2026-08-31）**：**thejavdb_api 与 javdb 无关**（用户澄清），勿归入 javdb 系。javdb 系三源：javdb（网页）/javdb_api（镜像站 573-575，偶发超时需重试轮换）/javdb_app（App API 免 CF 最稳）。App API 域知识来自**用户私有逆向仓库**，增量时用户会上传 README 到工作区；机制文档 `docs/JAVDB_APP_SIGNATURE.md`。
+   - **javdb 图源无水印体系**：`tp.spfcas.com` App 专用无水印 CDN（单字节 XOR 加密流，首字节 key），`c0.jdbstatic.com` 网页版带水印。解密与双向变换集中在 `base/web.py`（`decode_spfcas_image_content`/`jdbstatic_to_spfcas`），下载层三路径自动生效。App CDN 路径中段会变，`learn_spfcas_image_segment` 由 javdb_app 响应学习自愈。**加密流尺寸探测 (0,0) 属预期**（auto_best 用逆向 URL 探测回退），勿当"图失效"。
+   - javdb_app 排障锚点：签名失效=三主机同时 400/401/403 或 ParameterInvalid/InvalidSignature（fail-fast 已内建）；环境变量 `MDCX_JAVDB_APP_SIG_PREFIX/SIG_SUFFIX/VERSION_NUMBER` 免改码覆盖；搜索 limit≤50、type=movie，分页须 `movie_sort_by=release`（默认 relevance 不稳定会漏）。
 
 ## Windows 打包与发布
 
@@ -138,15 +143,6 @@
   - 函数内延迟导入须同步加 scripts/build.py 的 --hidden-import/--collect-all；改依赖/构建脚本/Release 工作流逐项核对。**importlib 动态导入的模块 PyInstaller 静态分析不可靠**（7mmtv 数字开头模块实证），必须显式 --hidden-import 收录，漏收时仅打包版运行时刮削崩溃（源码/CI 均测不出）；`tests/test_build_hidden_imports.py` 哨兵锁定"__init__.py 的 import_module 字面量 ⊆ build.py hidden-import"，新增动态模块自动被 CI 捕获。
   - EXCLUDED_MODULES 中 rich/typer 等只供构建/CLI；Windows curl_cffi.libs 需显式 --add-binary。
   - Release 发版全自动流程：推送纯数字 tag（`git tag YYYYMMDD && git push origin YYYYMMDD`）触发 `release.yml`（macOS aarch64 + Windows x86_64 双构建 → 自动建 release 页，正文自动取 changelog 当前版本段）；发版前确认 `consts.py` 的 `LOCAL_VERSION`/`VERSION_NAME` 与 changelog 段标题一致、release 产物名规则 `MDCx-<tag>-<平台>-<arch>-<完整40位sha>.<exe|dmg>`（2026-09-11 实测 20260906 版产物：sha 用 `${{ github.sha }}` 全长不截断；Windows zip 版由 `package-trawl.yml` 单独管道）。
-
-## 并发与数据
-
-- Date: 2026-08-24
-- Category: 构建方法
-- Instructions:
-  - 文件间批量用 asyncio.wait(FIRST_COMPLETED) 滑动窗口，文件内多站点 gather；网络请求不跨 executor loop 复用。
-  - 后台协程统一 utils/qt_thread.py::run_in_background，结果经 Qt signal 回主线程；新增后跑 scripts/check_thread_safety.py。
-  - 出厂模板在 resources/userdata/，运行时数据在 manager.data_folder/userdata/；devbox 代理 127.0.0.1:7890 可能无进程，排查网络临时关闭代理。
 
 ## 日亚 ASIN 数据库与校验方法论
 
@@ -158,8 +154,6 @@
   - **待修正 sheet 清理三分类法**：① 主表已有番号一致 → 残留直接删；② 主表已有但番号不同 → 用主表番号去 libredmm/javbus 反查标题，与主表日亚标题比对裁谁对；③ 主表未有 → 标题法/cid 反查裁决入库或标记真错。批量行**先按 ASIN 去重**再分类（源表同 ASIN 因不同搜索词出现多行）。
   - **ASIN 列污染教训**（2026-09-02 真 bug）：入库注记列索引错位——注记写到 ASIN 列（`B003CIPVJM [原挂:EBOD-108; ...]`污染 9 行，出厂库对比扫描才发现），本应是搜索关键词列。**列写入走显式列号映射/查表，不手数 index**；入库后 sanity check 一行 `r[1]` 应是纯 ASIN。
   - **出厂库（resources/userdata/）更新仍须用户明确确认**——本次扩容 26620 行也是用户确认后才替换。
-  - **网络映射盘（Z: 盘等）的 samefile 假阳性**：网络盘 `os.path.samefile` 对两个完全不同的文件返回 True（inode 不可靠），`shutil.copy` 会抛 `SameFileError`（照抄没有复制）且复制路径被跳过。复制改用 `shutil.copyfileobj`（字节级读写、不依赖 samefile 判断）。本次 v2.0.8 修复（Z 盘实测完成）。
-  - **同一应用的 top-level window 联动（Windows 原生边框）**：主窗最小化后，**任何子窗口（如 Emby 演员管理器）的 raise_/activateWindow 会联动拉起主窗**——老代码里 `.show(); existing.raise_(); existing.activateWindow()` 是诱因。修复：`raise_()/activateWindow()` 只在**主窗可见且未最小化**时使用；主窗最小化时只 `show()` 恢复子窗口自身，主窗状态不变（议题 #79 实锤）。
   - **评估库存价值先问"生产会不会走到那一步"**（用户方法论）：DMM 能给高清图（宽≥700）的番号其日亚记录无运行时价值——探测须按生产标准过滤 147x200 缩略图形态（10-19KB 恰过 4KB 阈值，取"第一个成功"会误判）。
   - **裁决图遍历全部候选取最高分**：同番号存在 digital 再版与 mono 原版双封面（ABF-008 两版都真）；同系列多集误挂同 ASIN 的低分是各集真实差距，不是错杀。
   - **番号规范化预检防假案**：缩位写法（ABF-34 vs ABF-034）会制造"自己和自己冲突"；比对一律 (系列字母, int(数字)) 做 key。批量导入 xlsx 必须走含去重入口（`save_asin_to_excel`），直接 ws.append 产生成批重复。
@@ -169,14 +163,4 @@
   - **DMM cid 结构**：前缀映射 + 数字双态（5 位补零 digital 与 3 位原样 mono **同系列可并存**）+ 双路径（digital/video 与 mono/movie/adult 各半）+ 变体后缀无需枚举。DMM 图床：站点下架但 CDN 不删对象；占位图 200+<4KB 已拒收（`_validate_dmm_image_url`）。
   - **日亚图域知识**：SL1500 商品图**物理无条码**（0/50，条码 OCR 只能从 DMM/爬虫侧封面联图拿——app 横版联图获取率 94%）；老商品标题用**半角片假名**（NFKC 必做）；日亚 DVD 封与 DMM digital 封**版本不同**，图像比对天花板 ~0.62。
   - tenhow.net 图床：`images/{ASIN}.jpg` 与日亚 SL1500 同源同分辨率，免代理直取（T0 优先，404 回退）；页面条目图名即可入库 ASIN（全站索引 36441 条）。旧索引 8126 条抓取残缺已作废。环境限制：DMM/fanza 地区锁；日亚 dp 页 devbox 直连 404 需代理；tesseract 对日系封面效果差不可作依据。
-  - **HTTP 4xx 定位顺序**（#56）：先看客户端实际发了什么（条件分支误判覆盖鉴权头之类），再想服务端；同函数多调用点的硬编码分支改一处漏一处是高频错误形态。
   - **ASIN 校验工程散点教训**：① 数据治理前先 `Counter` 关键列识别导入批次残留（title 全为 "tenhow" 的 367 行对标题反查=对错误对象用正确方法）；② openpyxl 迭代中 `delete_rows` 后行上移会跳行，稳定模式是一次读出→去重→清空重写；③ javbus 搜索不识别 ASIN，正查通道是番号→详情页标题→与日亚标题比对；④ 多源判定合并禁用 or 链（多源 dict 上 `src.get('a') or src.get('b')` 短路吞判定）；⑤ 外部 API 错误码 marker 取响应原文字面值；⑥ v2 裁决链覆盖 95%+，剩余待人工行给用户一句话解释差什么证据。
-
-## javdb 系爬虫与图源
-
-- Date: 2026-08-31
-- Category: 排错调试
-- Instructions:
-  - **thejavdb_api 与 javdb 无关**（用户澄清），勿归入 javdb 系。javdb 系三源：javdb（网页）/javdb_api（镜像站 573-575，偶发超时需重试轮换）/javdb_app（App API 免 CF 最稳）。App API 域知识来自**用户私有逆向仓库**，增量时用户会上传 README 到工作区；机制文档 `docs/JAVDB_APP_SIGNATURE.md`。
-  - **图源无水印体系**：`tp.spfcas.com` App 专用无水印 CDN（单字节 XOR 加密流，首字节 key），`c0.jdbstatic.com` 网页版带水印。解密与双向变换集中在 `base/web.py`（`decode_spfcas_image_content`/`jdbstatic_to_spfcas`），下载层三路径自动生效。App CDN 路径中段会变，`learn_spfcas_image_segment` 由 javdb_app 响应学习自愈。**加密流尺寸探测 (0,0) 属预期**（auto_best 用逆向 URL 探测回退），勿当"图失效"。
-  - javdb_app 排障锚点：签名失效=三主机同时 400/401/403 或 ParameterInvalid/InvalidSignature（fail-fast 已内建）；环境变量 `MDCX_JAVDB_APP_SIG_PREFIX/SIG_SUFFIX/VERSION_NUMBER` 免改码覆盖；搜索 limit≤50、type=movie，分页须 `movie_sort_by=release`（默认 relevance 不稳定会漏）。

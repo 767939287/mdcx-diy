@@ -37,12 +37,14 @@ MDCx-diy 是一个桌面工具，自动从 36 个网站抓取视频文件的元�
 |------|---------|------|
 | **[使用 Wiki](https://github.com/cdlongbow/mdcx-diy/wiki)** | **新用户先看这里** | 三分钟上手、常见问题 FAQ（90% 问题有答案） |
 | [QUICKSTART.md](docs/QUICKSTART.md) | 所有人 | 5 分钟上手，完成第一次刮削 |
-| [INSTALL.md](docs/INSTALL.md) | 需要安装的人 | 系统要求、Release/源码/Docker 三种安装方式 |
+| [INSTALL.md](docs/INSTALL.md) | 需要安装的人 | 系统要求、Release/源码两种安装方式 |
 | [FEATURES.md](docs/FEATURES.md) | 想了解能做什么的人 | 全部功能、36 个网站列表、四种刮削模式 |
 | [USER_GUIDE.md](docs/USER_GUIDE.md) | 日常使用的人 | 完整使用手册、常见问题、实际场景 |
 | [CONFIGURATION.md](docs/CONFIGURATION.md) | 想调设置的人 | 每个配置项是干什么的 |
 | [changelog.md](docs/changelog.md) | 关注版本更新的人 | 每个版本改了啥 |
 | [DEVELOPMENT.md](docs/DEVELOPMENT.md) | 想改代码的人 | 项目架构、爬虫开发、测试、代码规范 |
+| [JAVDB_APP_SIGNATURE.md](docs/JAVDB_APP_SIGNATURE.md) | 想改 JavDB App 爬虫的人 | JavDB App API 签名机制与逆向域知识 |
+| [male_actor_list.md](docs/male_actor_list.md) | 想维护男演员名单的人 | 男演员名单格式与维护说明 |
 
 ## 核心特色
 

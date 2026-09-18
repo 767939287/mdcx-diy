@@ -127,14 +127,14 @@ class BuildManager:
         r = self._run_command([sys.executable, "-m", "PyInstaller", "-v"], error_msg="PyInstaller 未安装")
         logger.info(f"\tPyInstaller 版本: {r}")
 
-        # 检查 create-dmg
+        # 检查 create-dmg（用 which 判存在，create-dmg 未必支持 --version）
         if self.is_mac and self.create_dmg:
-            r = self._run_command(["create-dmg", "--version"])
-            if not r:
+            dmg_bin = shutil.which("create-dmg")
+            if not dmg_bin:
                 logger.warning("create-dmg 未安装, 尝试安装: brew install create-dmg ...")
                 self._run_command(["brew", "install", "create-dmg"], error_msg="create-dmg 安装失败")
-                r = self._run_command(["create-dmg", "--version"])
-            logger.info(f"\tcreate-dmg 版本: {r}")
+                dmg_bin = shutil.which("create-dmg")
+            logger.info(f"\tcreate-dmg 路径: {dmg_bin or '未找到'}")
 
         logger.info("检查必要文件...")
         required_files = ["main.py", "mdcx", "resources"]

@@ -265,7 +265,7 @@ class MyMAinWindow(QMainWindow):
 
         # region 启动显示信息和后台检查更新
         self.show_scrape_info()  # 主界面左下角显示一些配置信息
-        self.show_net_info("\n🏠 代理设置在:【设置】 - 【网络】 - 【代理设置】。")
+        self.show_net_info("\n🏠 代理设置在:【设置】 - 【网络】 - 【网络设置】。")
         show_netstatus()  # 检查网络界面显示当前网络代理信息
         self.show_net_info(
             "\n💡 Cloudflare Bypass：在【设置】-【网络】-【外部 CF 服务】填写 TRAWL / FlareSolverr "

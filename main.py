@@ -66,7 +66,11 @@ def _create_application() -> tuple[QApplication, MyMAinWindow]:
         app.setStyle("Fusion")
     apply_application_palette(False)
     if platform.system() != "Windows":
-        app.setWindowIcon(QIcon("resources/Img/MDCx.ico"))  # 设置任务栏图标
+        # 用 resources.icon_ico（已处理 PyInstaller _MEIPASS）而非相对 CWD 路径，
+        # 否则冻结包双击运行时 CWD 不同会丢任务栏图标。
+        from mdcx.config.resources import resources
+
+        app.setWindowIcon(QIcon(resources.icon_ico))  # 设置任务栏图标
 
     ui = MyMAinWindow()
     ui.show()
