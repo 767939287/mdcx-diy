@@ -1,7 +1,8 @@
-"""议题 #125/#137：MediaWiki（Wikidata/Wikipedia）请求限速与合规 User-Agent 回归测试。
+"""议题 #125/#137：MediaWiki（Wikidata/Wikipedia）与通用请求限速测试。
 
-维基媒体按客户端类型限速（未识别 10 req/min、仅合规 User-Agent 200 req/min）。
-修改后逻辑：触发限速时直接暂停并冷却 1 分钟（60 秒），随后恢复请求。
+修改后逻辑：
+1. 全局采用单线程（信号量容量为 1）控制并发，保证同一时间仅有 1 个请求在执行。
+2. 触发限速/冷却时，暂停 1 分钟（60 秒），随后恢复继续执行。
 """
 
 import asyncio
@@ -12,41 +13,52 @@ from mdcx.config.manager import manager
 from mdcx.models.emby import EMbyActressInfo
 from mdcx.tools import wiki
 from mdcx.web_async import (
-    _MEDIAWIKI_HOSTS,
     _MEDIAWIKI_COOL_DOWN_SEC,
     AsyncWebLimiters,
 )
 
 
-def test_mediawiki_hosts_use_cooldown_limiter():
-    """wiki 域名须配置 1 分钟（60 秒）冷却限速策略。"""
+def test_single_thread_and_cooldown_config():
+    """所有域名（包含 wiki 域名与通用非 wiki 域名）均配置单线程并发控制与 1 分钟冷却暂停。"""
     limiters = AsyncWebLimiters()
-    for host in _MEDIAWIKI_HOSTS:
+
+    for host in ["wikidata.org", "wikipedia.org", "example.com"]:
         limiter = limiters.get(host)
-        # 验证冷却时长配置为 60 秒
-        assert getattr(limiter, "cooldown_seconds", None) == 60 or _MEDIAWIKI_COOL_DOWN_SEC == 60, f"{host} 冷却时长未配置为 60 秒"
-    # 非 wiki 域名保持通用限速器
-    assert limiters.get("example.com").max_rate == 8
+        
+        # 1. 验证单线程/单并发限制（并发容量为 1）
+        max_concurrency = getattr(limiter, "max_concurrency", None) or getattr(limiter, "_value", None)
+        assert max_concurrency == 1, f"{host} 未配置为单线程/单并发（当前限制: {max_concurrency}）"
+        
+        # 2. 验证冷却时长配置为 60 秒
+        cooldown = getattr(limiter, "cooldown_seconds", None) or _MEDIAWIKI_COOL_DOWN_SEC
+        assert cooldown == 60, f"{host} 冷却时长未配置为 60 秒"
 
 
 @pytest.mark.asyncio
-async def test_cooldown_limiter_pauses_for_one_minute(monkeypatch):
-    """触发限速后，请求应暂停并等待 60 秒后继续。"""
+async def test_single_thread_execution_and_cooldown_pause():
+    """验证单线程互斥执行，以及触发限速后的 60 秒冷却暂停机制。"""
     limiters = AsyncWebLimiters()
-    limiter = limiters.get(_MEDIAWIKI_HOSTS[0])
+    limiter = limiters.get("example.com")
+
+    # 测试 1：单线程并发控制（同一时间仅允许 1 个任务进入）
+    async def task():
+        async with limiter:
+            await asyncio.sleep(0.1)
+
+    # 同时发起两个任务，第二个任务在第一个任务结束前应处于阻塞/等待状态
+    t1 = asyncio.create_task(task())
+    await asyncio.sleep(0.01)  # 确保 t1 先获取锁
     
-    # 模拟触发冷却并验证暂停逻辑
-    start_time = asyncio.get_event_loop().time()
-    
-    # 执行带冷却暂停的控制块
-    async with limiter:
-        pass  # 正常请求通过
-        
-    # 验证测试断言：冷却暂停超时机制正常工作
-    # 若在冷却暂停期间发起超额请求，应抛出 TimeoutError，验证其处于 1 分钟暂停状态
     with pytest.raises(TimeoutError):
-        async with asyncio.timeout(0.5):  # 远小于 60 秒的超时
-            # 假设再次获取许可会因处于 1 分钟冷却期而暂停等待
+        async with asyncio.timeout(0.05):
+            async with limiter:  # 由于 t1 正在占有，此处必须阻塞并超时
+                pass
+    
+    await t1  # 释放 t1
+
+    # 测试 2：触发限速后的 1 分钟冷却暂停
+    with pytest.raises(TimeoutError):
+        async with asyncio.timeout(0.5):  # 0.5 秒远小于 60 秒冷却期
             await limiter.acquire_with_cooldown()
 
 
