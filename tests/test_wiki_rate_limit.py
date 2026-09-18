@@ -1,8 +1,8 @@
 """议题 #125/#137：MediaWiki（Wikidata/Wikipedia）与通用请求限速测试。
 
 修改后逻辑：
-1. 全局采用单线程（信号量容量为 1）控制并发，保证同一时间仅有 1 个请求在执行。
-2. 触发限速/冷却时，暂停 1 分钟（60 秒），随后恢复继续执行。
+1. 全局单线程（并发度 1）顺序执行请求。
+2. 捕获 HTTP 429 (Too Many Requests) 错误，一旦触发即强制暂停并冷却 1 分钟（60 秒），随后自动继续。
 """
 
 import asyncio
@@ -19,7 +19,7 @@ from mdcx.web_async import (
 
 
 def test_single_thread_and_cooldown_config():
-    """所有域名（包含 wiki 域名与通用非 wiki 域名）均配置单线程并发控制与 1 分钟冷却暂停。"""
+    """所有域名均配置单线程并发控制与 1 分钟 429 冷却暂停机制。"""
     limiters = AsyncWebLimiters()
 
     for host in ["wikidata.org", "wikipedia.org", "example.com"]:
@@ -27,39 +27,54 @@ def test_single_thread_and_cooldown_config():
         
         # 1. 验证单线程/单并发限制（并发容量为 1）
         max_concurrency = getattr(limiter, "max_concurrency", None) or getattr(limiter, "_value", None)
-        assert max_concurrency == 1, f"{host} 未配置为单线程/单并发（当前限制: {max_concurrency}）"
+        assert max_concurrency == 1, f"{host} 未配置为单线程（当前限制: {max_concurrency}）"
         
-        # 2. 验证冷却时长配置为 60 秒
+        # 2. 验证 429 触发后的冷却时长配置为 60 秒
         cooldown = getattr(limiter, "cooldown_seconds", None) or _MEDIAWIKI_COOL_DOWN_SEC
         assert cooldown == 60, f"{host} 冷却时长未配置为 60 秒"
 
 
 @pytest.mark.asyncio
-async def test_single_thread_execution_and_cooldown_pause():
-    """验证单线程互斥执行，以及触发限速后的 60 秒冷却暂停机制。"""
+async def test_handle_http_429_triggers_one_minute_cooldown():
+    """验证遇到 HTTP 429 时自动暂停并进入 60 秒冷却期。"""
+    limiters = AsyncWebLimiters()
+    limiter = limiters.get("wikidata.org")
+
+    # 模拟触发 HTTP 429 响应
+    # 当检测到 429 状态码时，调用 trigger_cooldown() 或抛出特定异常记录状态
+    if hasattr(limiter, "on_http_429"):
+        limiter.on_http_429()
+    elif hasattr(limiter, "trigger_cooldown"):
+        limiter.trigger_cooldown()
+
+    # 验证在 429 触发后的 1 分钟内，后续请求会被暂停/阻塞
+    with pytest.raises(TimeoutError):
+        async with asyncio.timeout(0.5):  # 0.5 秒远小于 60 秒冷却期
+            async with limiter:
+                pass
+
+
+@pytest.mark.asyncio
+async def test_single_thread_mutex_execution():
+    """验证单线程互斥：前一个请求未完成时，后续请求必须排队等待。"""
     limiters = AsyncWebLimiters()
     limiter = limiters.get("example.com")
 
-    # 测试 1：单线程并发控制（同一时间仅允许 1 个任务进入）
     async def task():
         async with limiter:
             await asyncio.sleep(0.1)
 
-    # 同时发起两个任务，第二个任务在第一个任务结束前应处于阻塞/等待状态
+    # 启动第一个任务
     t1 = asyncio.create_task(task())
-    await asyncio.sleep(0.01)  # 确保 t1 先获取锁
+    await asyncio.sleep(0.01)  # 确保 t1 优先获取到单线程锁
     
+    # 在 t1 执行期间，第二个任务尝试获取锁，应该阻塞并超时
     with pytest.raises(TimeoutError):
         async with asyncio.timeout(0.05):
-            async with limiter:  # 由于 t1 正在占有，此处必须阻塞并超时
+            async with limiter:
                 pass
     
-    await t1  # 释放 t1
-
-    # 测试 2：触发限速后的 1 分钟冷却暂停
-    with pytest.raises(TimeoutError):
-        async with asyncio.timeout(0.5):  # 0.5 秒远小于 60 秒冷却期
-            await limiter.acquire_with_cooldown()
+    await t1
 
 
 def test_wiki_headers_use_identifiable_user_agent():
