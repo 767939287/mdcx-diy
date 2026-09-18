@@ -672,36 +672,62 @@ class MyMAinWindow(QMainWindow):
             int(222 * cover_scale), cover_bottom, int(201 * cover_scale), int(40 * cover_scale)
         )
         ui.checkBox_cover.move(490, cover_bottom)
-        # 信息区各控件：x/宽保持设计值（左列与番号/标题/封面对齐），y 统一下移 info_delta。
-        # 设计坐标表：(控件名, 设计x, 设计y, 设计宽)；行高沿用设计/当前值。
-        for name, x, y, width in (
-            ("label_18", 30, 430, 50),
-            ("label_33", 30, 480, 50),
-            ("label_13", 30, 530, 50),
-            ("label_23", 30, 580, 50),
-            ("label_30", 30, 630, 50),
-            ("label_outline", 70, 430, 500),
-            ("label_tag", 70, 480, 500),
-            ("label_release", 70, 530, 220),
-            ("label_director", 70, 580, 220),
-            ("label_studio", 70, 630, 220),
-            ("line_6", 70, 460, 500),
-            ("line_7", 70, 510, 500),
-            ("line_8", 70, 560, 220),
-            ("line_12", 70, 610, 220),
-            ("line_13", 70, 660, 220),
-            ("label_31", 310, 580, 50),
-            ("label_22", 310, 530, 50),
-            ("label_24", 310, 630, 50),
-            ("label_series", 350, 580, 220),
-            ("label_runtime", 350, 530, 220),
-            ("label_publish", 350, 630, 220),
-            ("line_9", 350, 560, 220),
-            ("line_10", 350, 610, 220),
-            ("line_11", 350, 660, 220),
+        # 信息区各控件：左列标签锚定设计 x=30（与「番号/标题/封面」对齐），y 统一下移
+        # info_delta；下划线/值列按 cover_scale 等比例加长（议题 #141）：
+        #   · 简介/标签（设计 x=70、宽 500）与右列时长/系列/发行（设计 x=350）的下划线
+        #     右缘延伸到「缩略图框右缘」thumb_right = 580×scale；
+        #   · 左列窄字段（日期/导演/制作，设计宽 220）宽度按 ×scale 加长；
+        #   · 右列整体按 ×scale 右移，避免与加长后的左列窄字段重叠。
+        thumb_right = int(580 * cover_scale)
+        # 左列标签（x 固定，保持与番号/标题/封面竖向对齐）
+        for name, y in (
+            ("label_18", 430),
+            ("label_33", 480),
+            ("label_13", 530),
+            ("label_23", 580),
+            ("label_30", 630),
+        ):
+            getattr(ui, name).move(30, y + info_delta)
+        # 简介/标签：左缘 x=70，右缘延伸到缩略图右缘
+        wide_w = max(thumb_right - 70, 60)
+        for name, y in (
+            ("label_outline", 430),
+            ("label_tag", 480),
+            ("line_6", 460),
+            ("line_7", 510),
         ):
             widget = getattr(ui, name)
-            widget.setGeometry(x, y + info_delta, width, widget.height())
+            widget.setGeometry(70, y + info_delta, wide_w, widget.height())
+        # 左列窄字段（日期/导演/制作）：宽度按 ×scale 等比例加长
+        narrow_w = max(int(220 * cover_scale), 60)
+        for name, y in (
+            ("label_release", 530),
+            ("label_director", 580),
+            ("label_studio", 630),
+            ("line_8", 560),
+            ("line_12", 610),
+            ("line_13", 660),
+        ):
+            getattr(ui, name).setGeometry(70, y + info_delta, narrow_w, getattr(ui, name).height())
+        # 右列（标签 x=310、值 x=350，按 ×scale 右移）：下划线右缘延伸到缩略图右缘
+        right_label_x = int(310 * cover_scale)
+        right_value_x = int(350 * cover_scale)
+        right_line_w = max(thumb_right - right_value_x, 60)
+        for name, y in (
+            ("label_31", 580),
+            ("label_22", 530),
+            ("label_24", 630),
+        ):
+            getattr(ui, name).move(right_label_x, y + info_delta)
+        for name, y in (
+            ("label_series", 580),
+            ("label_runtime", 530),
+            ("label_publish", 630),
+            ("line_9", 560),
+            ("line_10", 610),
+            ("line_11", 660),
+        ):
+            getattr(ui, name).setGeometry(right_value_x, y + info_delta, right_line_w, getattr(ui, name).height())
         # 上区行（y70 番号/演员、y110 标题）右界受同右行按钮限制（label_source 460 /
         # pushButton_open_nfo 427）：右界 = min(对应限制, 结果树左缘-30)
         top_right = max(min(450, ui.treeWidget_number.x() - 30), 420)

@@ -457,15 +457,17 @@ def test_probe_main_tool_content(win, app):
     print(f"series_x      : {before_series_x} -> {win.Ui.label_series.x()}")
     assert after_edit > before_edit + 200, f"工具页输入框未随视口拉宽: {before_edit} -> {after_edit}"
 
-    # 软件界面：#135 信息区保持设计左列（x 与「番号/标题/封面」对齐），
-    # 仅按封面框增高量整体下移，不再右移到缩略图右侧。
+    # 软件界面：#135 信息区保持设计左列（与「番号/标题/封面」对齐），按封面增高下移；
+    # #141 下划线/值列按 ×scale 等比例加长，右列下划线延伸到缩略图右缘。
     cover_scale = win.Ui.page_main.width() / 820
     cover_bottom = int(160 + 220 * cover_scale)
     info_delta = cover_bottom - 380
+    thumb_right = int(580 * cover_scale)
     tree_x = win.Ui.treeWidget_number.x()
     assert win.Ui.label_outline.x() == 70, "简介左缘应保持设计 x=70（与左上角对齐）"
-    assert win.Ui.label_outline.width() == 500, "简介宽度应保持设计值 500"
-    assert win.Ui.label_series.x() == 350, "右列应保持设计 x=350"
+    assert win.Ui.label_outline.x() + win.Ui.label_outline.width() == thumb_right, "简介下划线右缘应延伸到缩略图右缘"
+    assert win.Ui.label_series.x() == int(350 * cover_scale), "右列应随 ×scale 右移"
+    assert win.Ui.label_series.x() + win.Ui.label_series.width() == thumb_right, "右列下划线右缘应延伸到缩略图右缘"
     # 信息区首行下移到封面框下方（不被放大后的黑框盖住）
     assert win.Ui.label_outline.y() == pytest.approx(430 + info_delta, abs=2), "信息区未按封面增高下移"
     assert win.Ui.label_outline.y() >= cover_bottom, "信息区首行仍在封面框内（#135 未修复）"
@@ -477,9 +479,10 @@ def test_probe_main_tool_content(win, app):
     app.processEvents()
     win.resize(1920, 1040)
     app.processEvents()
-    # #135 固定公式：信息区 x 恒为设计值，y = 设计 y + info_delta
-    assert win.Ui.label_series.x() == 350, "右列 x 漂移"
+    # #135/#141 固定公式：左列 x 恒为设计值，右列 x 与下划线右缘由 ×scale 决定
+    assert win.Ui.label_series.x() == int(350 * cover_scale), "右列 x 漂移"
     assert win.Ui.label_outline.x() == 70, "简介 x 漂移"
+    assert win.Ui.label_outline.x() + win.Ui.label_outline.width() == thumb_right, "简介右缘漂移"
     assert win.Ui.label_outline.y() == pytest.approx(430 + info_delta, abs=2), "信息区 y 漂移"
     assert after_edit == max((e.width() for e in tool_page.findChildren(QLineEdit)), default=0), "工具页输入框宽漂移"
 
@@ -498,12 +501,12 @@ def test_runtime_row_follows_right_column_on_maximize(win, app):
     win.resize(1920, 1040)
     app.processEvents()
 
-    # #135：右列保持设计 x（label_22=310，label_runtime=350），仅随信息区整体下移。
+    # #141：右列随 ×scale 右移（label_22=310×scale，label_runtime=350×scale），
     # 时长行 y 与日期行（y=530）一致地下移 info_delta。
     cover_scale = win.Ui.page_main.width() / 820
     info_delta = int(160 + 220 * cover_scale) - 380
-    assert win.Ui.label_22.x() == 310, f"时长标签 x 漂移: {win.Ui.label_22.x()}"
-    assert win.Ui.label_runtime.x() == 350, f"时长值 x 漂移: {win.Ui.label_runtime.x()}"
+    assert win.Ui.label_22.x() == int(310 * cover_scale), f"时长标签 x 漂移: {win.Ui.label_22.x()}"
+    assert win.Ui.label_runtime.x() == int(350 * cover_scale), f"时长值 x 漂移: {win.Ui.label_runtime.x()}"
     assert win.Ui.label_22.y() == pytest.approx(530 + info_delta, abs=2), (
         f"时长标签未随信息区下移: {win.Ui.label_22.y()} != {530 + info_delta}"
     )
