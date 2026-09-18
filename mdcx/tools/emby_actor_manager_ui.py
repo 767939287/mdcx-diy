@@ -42,7 +42,6 @@ from ..utils import executor
 from .emby_actor_manager import (
     ActorInfo,
     build_local_avatar_index,
-    fetch_actor_detail,
     fetch_actor_info_from_source,
     fetch_all_actors,
     from_gfriends,
@@ -138,9 +137,32 @@ class PreparePreviewThread(QThread):
     preview_done = Signal(list)
     error = Signal(str)
 
+    _INFO_PLACEHOLDER = "无维基百科信息"
+
+    @classmethod
+    def select_targets(cls, actors: list[ActorInfo], mode: str) -> list[ActorInfo]:
+        """议题 #127: 按获取模式筛出需要处理的演员子集, 避免无效的逐人遍历与服务器复核。
+
+        - missing_image: 仅缺头像的演员
+        - missing_info : 仅缺简介的演员（含服务器简介只剩占位文案的情况）
+        - missing_all  : 缺头像或缺简介的并集
+        - force_*      : 用户显式选择「重新获取」, 不做筛选
+        """
+        if mode.startswith("force"):
+            return list(actors)
+
+        want_image = mode in ("missing_all", "missing_image")
+        want_info = mode in ("missing_all", "missing_info")
+
+        def missing_info(a: ActorInfo) -> bool:
+            return not a.has_overview or cls._INFO_PLACEHOLDER in a.existing_overview
+
+        return [a for a in actors if (want_image and not a.has_image) or (want_info and missing_info(a))]
+
     def __init__(self, parent=None):
         super().__init__(parent)
         self.actors = []
+        self.targets: list[ActorInfo] | None = None
         self.mode = "missing_all"
         self.gfriends_index = None
         self.cache_dir = resources.u("emby_actor_cache")
@@ -157,7 +179,8 @@ class PreparePreviewThread(QThread):
             from .minnano_crawler import load_cache as minnano_load_cache
 
             minnano_load_cache()
-            total = len(self.actors)
+            targets = self.targets if self.targets is not None else self.select_targets(self.actors, self.mode)
+            total = len(targets)
             if total == 0:
                 self.preview_done.emit(self.actors)
                 return
@@ -165,7 +188,7 @@ class PreparePreviewThread(QThread):
             need_info = self.mode in ("missing_all", "missing_info", "force_all", "force_info")
             force = "force" in self.mode
             cancelled = False
-            cancelled = executor.run(self._process_all(need_image, need_info, force, total))
+            cancelled = executor.run(self._process_all(targets, need_image, need_info, force, total))
             if not cancelled:
                 self.progress.emit(total, total, "预览数据准备完成")
             self.preview_done.emit(self.actors)
@@ -174,7 +197,9 @@ class PreparePreviewThread(QThread):
 
             self.error.emit(f"获取数据失败: {traceback.format_exc()}")
 
-    async def _process_all(self, need_image: bool, need_info: bool, force: bool, total: int) -> bool:
+    async def _process_all(
+        self, targets: list[ActorInfo], need_image: bool, need_info: bool, force: bool, total: int
+    ) -> bool:
         """在单个 event loop 内并发处理所有演员，避免多线程多 loop 并发共享 async_client。"""
         if need_image and "local" in self.image_sources and self.local_avatar_dir:
             self.progress.emit(0, total, "扫描本地头像目录...")
@@ -199,7 +224,7 @@ class PreparePreviewThread(QThread):
 
         completed = 0
         cancelled = False
-        tasks = [guarded(actor) for actor in self.actors]
+        tasks = [guarded(actor) for actor in targets]
         for coro in asyncio.as_completed(tasks):
             if self._cancel:
                 cancelled = True
@@ -254,12 +279,10 @@ class PreparePreviewThread(QThread):
         return None
 
     async def _try_fetch_info(self, actor: ActorInfo, force: bool):
-        if not force and actor.has_overview:
-            detail = await fetch_actor_detail(actor.name)
-            if detail:
-                overview = (detail.get("Overview") or "").strip()
-                if overview and "无维基百科信息" not in overview:
-                    return
+        # 议题 #127: 简介缺失判定已由 select_targets 前置（列表阶段已带回 existing_overview，
+        # 不再逐演员发 fetch_actor_detail 复核）；占位简介视为缺失需重新补全。
+        if not force and actor.has_overview and self._INFO_PLACEHOLDER not in actor.existing_overview:
+            return
         result = await search_actor_info(actor)
         if result:
             actor.need_update_info = True
@@ -804,15 +827,21 @@ class EmbyActorManagerDialog(QDialog):
             "全部简介（重新获取）": "force_info",
         }
         mode = mode_map.get(self.cmb_fetch_mode.currentText(), "missing_all")
+        # 议题 #127: 「缺失」类模式只处理子集, 不再逐人遍历全库
+        targets = PreparePreviewThread.select_targets(self._actors, mode)
+        if self._actors and not targets:
+            self.log("✅ 按当前模式没有需要获取数据的演员")
+            return
         self._set_buttons_enabled(False)
         self.btn_preview.setEnabled(True)
         self.btn_preview.setText("停止获取")
         self.progress_bar.setVisible(True)
         self.progress_bar.setValue(0)
         self._set_status("获取数据中...")
-        self.log(f"📥 正在获取数据（模式: {self.cmb_fetch_mode.currentText()}）")
+        self.log(f"📥 正在获取数据（模式: {self.cmb_fetch_mode.currentText()}，共 {len(targets)} 人）")
         self._preview_thread = PreparePreviewThread(self)
         self._preview_thread.actors = self._actors
+        self._preview_thread.targets = targets
         self._preview_thread.mode = mode
         self._preview_thread.gfriends_index = self._gfriends_index
         self._preview_thread.cache_dir = self.cache_dir
