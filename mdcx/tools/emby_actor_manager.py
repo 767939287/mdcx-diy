@@ -30,6 +30,9 @@ from .actress_db import ActressDB
 from .emby_shared import (  # noqa: F401
     _append_query,
     _build_jellyfin_headers,
+    _emby_api_prefix,
+    _emby_get_json,
+    _emby_request,
     _generate_server_url,
     _is_jellyfin_server,
     _upload_actor_photo,
@@ -158,15 +161,10 @@ async def get_emby_actor_list(filter_actor_only: bool = True) -> list[dict]:
 
 
 async def get_media_folders() -> list[dict]:
-    base_url = str(manager.config.emby_url).rstrip("/")
-    headers = _build_jellyfin_headers()
-    if "emby" == manager.config.server_type:
-        url = f"{base_url}/emby/Library/MediaFolders"
-    else:
-        url = f"{base_url}/Library/MediaFolders"
-    async with manager.acquire_computed() as computed:
-        response, error = await computed.async_client.get_json(url, headers=headers, use_proxy=False)
+    # 议题 #133: 用轻量直连 httpx(无指纹/无池/无限流), 避免对内网 Emby 握手拖分钟
+    response, error = await _emby_get_json(f"{_emby_api_prefix()}/Library/MediaFolders")
     if response is None:
+        signal.show_log_text(f"🔴 获取媒体库列表失败！{error}")
         return []
     return response.get("Items", [])
 
@@ -218,7 +216,6 @@ async def fetch_person_item_stats(
     counts: dict = {}
     titles: dict = {}
     person_names: set = set()
-    base_url = str(manager.config.emby_url).rstrip("/")
     headers = _build_jellyfin_headers()
     if parent_ids:
         # 每个媒体库独立分页；不带 ParentId 时统一走单循环（lib_id=None 不拼参数）
@@ -226,9 +223,9 @@ async def fetch_person_item_stats(
     else:
         target_lib_ids = [None]
 
-    def _items_url(lib_id: str | None, start_index: int) -> str:
-        prefix = f"{base_url}/emby" if "emby" == manager.config.server_type else base_url
-        url = (
+    def _items_path(lib_id: str | None, start_index: int) -> str:
+        prefix = _emby_api_prefix()
+        path = (
             f"{prefix}/Items?"
             "Recursive=true&Fields=People"
             "&IncludeItemTypes=Movie,Episode"
@@ -236,50 +233,52 @@ async def fetch_person_item_stats(
             f"&StartIndex={start_index}&Limit={page_limit}"
         )
         if lib_id:
-            url += f"&ParentId={lib_id}"
-        return url
+            path += f"&ParentId={lib_id}"
+        return path
 
-    async with manager.acquire_computed() as computed:
-        for lib_id in target_lib_ids:
-            start_index = 0
-            while True:
-                response, error = await computed.async_client.get_json(
-                    _items_url(lib_id, start_index), headers=headers, use_proxy=False
-                )
-                if response is None:
-                    # 该库失败（如超时）只跳过本库，其余库照常统计
-                    break
-                items = response.get("Items", [])
-                if not items:
-                    break
-                for item in items:
-                    people = item.get("People") or []
-                    item_name = item.get("Name", "")
-                    item_type = item.get("Type", "")
-                    seen_in_item = set()
-                    for person in people:
-                        # filter_actor_only: 只统计 Type=Actor 的角色（Emby 默认返回导演/编剧等）
-                        if filter_actor_only and person.get("Type") not in ("Actor", None):
-                            continue
-                        name = person.get("Name", "")
-                        if not name:
-                            continue
-                        seen_in_item.add(name)
-                        person_names.add(name)
-                    for name in seen_in_item:
-                        counts[name] = counts.get(name, 0) + 1
-                        if name not in titles:
-                            titles[name] = []
-                        titles[name].append(f"[{item_type}] {item_name}")
-                # TotalRecordCount 缺失/为 0 时不能短路退出：start_index(500) >= 0
-                # 恒真会让循环只拉第一页，出演统计大面积缺失——此时退化为
-                # 仅靠短页信号（len(items) < page_limit）判定终止（全库审查 M7）
-                total_count = response.get("TotalRecordCount")
-                start_index += page_limit
-                if (total_count is not None and int(total_count) > 0 and start_index >= int(total_count)) or (
-                    len(items) < page_limit
-                ):
-                    break
+    # 议题 #133: 出演统计是批量/分页路径(几十页), 走轻量直连避免多次指纹握手拖慢
+    for lib_id in target_lib_ids:
+        start_index = 0
+        while True:
+            response, _ = await _emby_request("GET", _items_path(lib_id, start_index), headers=headers)
+            if response is None:
+                # 该库失败(如超时)只跳过本库, 其余库照常统计
+                break
+            try:
+                data = response.json()
+            except Exception:
+                break
+            items = data.get("Items", [])
+            if not items:
+                break
+            for item in items:
+                people = item.get("People") or []
+                item_name = item.get("Name", "")
+                item_type = item.get("Type", "")
+                seen_in_item = set()
+                for person in people:
+                    # filter_actor_only: 只统计 Type=Actor 的角色（Emby 默认返回导演/编剧等）
+                    if filter_actor_only and person.get("Type") not in ("Actor", None):
+                        continue
+                    name = person.get("Name", "")
+                    if not name:
+                        continue
+                    seen_in_item.add(name)
+                    person_names.add(name)
+                for name in seen_in_item:
+                    counts[name] = counts.get(name, 0) + 1
+                    if name not in titles:
+                        titles[name] = []
+                    titles[name].append(f"[{item_type}] {item_name}")
+            # TotalRecordCount 缺失/为 0 时不能短路退出：start_index(500) >= 0
+            # 恒真会让循环只拉第一页，出演统计大面积缺失——此时退化为
+            # 仅靠短页信号（len(items) < page_limit）判定终止（全库审查 M7）
+            total_count = data.get("TotalRecordCount")
+            start_index += page_limit
+            if (total_count is not None and int(total_count) > 0 and start_index >= int(total_count)) or (
+                len(items) < page_limit
+            ):
+                break
     return counts, titles, person_names
 
 
@@ -535,10 +534,8 @@ async def update_person_info(actor: ActorInfo) -> tuple[bool, str]:
         payload["PremiereDate"] = premiere_date
     # 议题 #56: Emby 4.9 对 POST /Items/{id} 无 Content-Type 的 JSON body 判 400
     headers = _build_jellyfin_headers({"Content-Type": "application/json"})
-    async with manager.acquire_computed() as computed:
-        body, err = await computed.async_client.post_content(
-            url=update_url, data=json.dumps(payload), headers=headers, use_proxy=False
-        )
+    # 议题 #133: 信息更新是同步批量路径(每演员一次), 走轻量直连
+    body, err = await _emby_request("POST", update_url, headers=headers, data=json.dumps(payload))
     # Emby POST 成功常返回 200/204 + 空 body; 不能 iff "ok": 空 bytes 是 falsy
     if err == "" and body is not None:
         return True, f"✅ {actor.name} 信息更新成功"
@@ -566,10 +563,10 @@ async def delete_actor_image(actor: ActorInfo) -> tuple[bool, str]:
     else:
         url = f"{base_url}/Items/{actor.actor_id}/Images/Primary"
     headers = _build_jellyfin_headers()
-    async with manager.acquire_computed() as computed:
-        resp, err = await computed.async_client.request("DELETE", url, headers=headers, use_proxy=False)
+    # 议题 #133: 删除属同步批量路径, 走轻量直连
+    resp, err = await _emby_request("DELETE", url, headers=headers)
     if resp is None:
-        # request() 对 HTTP>=400 返回 (None, err)，404 表示本来就没有，也视为"删干净了"
+        # _emby_request 对 HTTP>=400 返回 (None, "HTTP 404...")，404 表示本来就没有，也视为"删干净了"
         if "404" in str(err):
             return True, f"✅ {actor.name} 旧头像本来就不存在 (HTTP 404)"
         return False, f"❌ {actor.name} 删除旧头像请求失败: {err}"
@@ -587,8 +584,7 @@ async def delete_actor_backdrop(actor: ActorInfo) -> tuple[bool, str]:
     else:
         url = f"{base_url}/Items/{actor.actor_id}/Images/Backdrop/0"
     headers = _build_jellyfin_headers()
-    async with manager.acquire_computed() as computed:
-        resp, err = await computed.async_client.request("DELETE", url, headers=headers, use_proxy=False)
+    resp, err = await _emby_request("DELETE", url, headers=headers)
     if resp is None:
         if "404" in str(err):
             return True, f"✅ {actor.name} 旧背景本来就不存在 (HTTP 404)"

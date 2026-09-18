@@ -705,29 +705,24 @@ class EmbyActorManagerDialog(QDialog):
         if not url or not key:
             QMessageBox.warning(self, "提示", "请输入服务器地址和 API 密钥")
             return
-        from .emby_shared import _build_jellyfin_headers
+        from .emby_shared import _build_jellyfin_headers, _emby_api_prefix, _emby_get_json
 
-        if "emby" in str(manager.config.server_type):
-            headers = {"Authorization": f'MediaBrowser Token="{key}"'}
-        else:
-            # Jellyfin 10.11+/12.x 要求完整 MediaBrowser 设备标识, 复用统一构造器
-            headers = _build_jellyfin_headers(token=key)
         self._emby_url = url
         self._emby_key = key
 
         async def test():
-            async with manager.acquire_computed() as computed:
-                test_url = (
-                    f"{url.rstrip('/')}/emby/System/Info?api_key={key}"
-                    if "emby" in str(manager.config.server_type)
-                    else f"{url.rstrip('/')}/System/Info"
-                )
-                resp, err = await computed.async_client.get_json(test_url, headers=headers, use_proxy=False)
-                if resp:
-                    name = resp.get("ServerName", "Emby")
-                    version = resp.get("Version", "")
-                    return True, f"连接成功！{name} v{version}"
-                return False, f"连接失败: {err}"
+            # 议题 #133: 连接探测改用轻量直连 httpx(无指纹/无池/无限流)。
+            # Emby/Jellyfin 都用 Authorization 头携带 token, 统一走 header 校验,
+            # 不再为 Emby 单独拼 ?api_key=。传入用户刚输入的 token, 校验后才持久化。
+            resp, err = await _emby_get_json(
+                f"{_emby_api_prefix()}/System/Info",
+                headers=_build_jellyfin_headers(token=key),
+            )
+            if resp:
+                name = resp.get("ServerName", "Emby")
+                version = resp.get("Version", "")
+                return True, f"连接成功！{name} v{version}"
+            return False, f"连接失败: {err}"
 
         self.btn_connect.setEnabled(False)
         self.btn_connect.setText("连接中...")
