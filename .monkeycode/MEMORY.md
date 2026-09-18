@@ -142,7 +142,8 @@
 - Category: 环境配置
 - Instructions:
   - **只有「字符串动态导入」才必须显式 --hidden-import**：`importlib.import_module("...")`/`__import__("...")` 这类运行时字符串，PyInstaller 静态分析不可靠（7mmtv 数字开头模块实证），漏收时仅打包版运行时才崩（源码/CI 均测不出）。**函数体内的静态 `from x import y` 会被 PyInstaller 静态分析正常收集，无需 hidden-import**（曾误以为"函数内延迟导入都要手工登记"）。改依赖/构建脚本/Release 工作流逐项核对；`tests/test_build_hidden_imports.py` 哨兵锁定「全仓 `import_module/__import__` 的 mdcx.* 字面量 ⊆ build.py hidden-import 或在允许清单」，新增动态模块自动被 CI 捕获；CI Windows job 另有 PyInstaller 冒烟构建把参数回归前置。
-  - EXCLUDED_MODULES 中 rich/typer 等只供构建/CLI；Windows curl_cffi.libs 需显式 --add-binary。
+   - EXCLUDED_MODULES 中 rich/typer 等只供构建/CLI；Windows curl_cffi.libs 需显式 --add-binary。
+   - **GitHub Actions 升级两坑（#140 实证）**：① runner 标签会整体下线——`macos-13` 已于 2025-12-04 关闭（job 永远 Queued 无报错），Intel x86_64 接替标签是 `macos-15-intel`（公共仓库免费；Intel runner 整体 2027 年秋退役，届时删该矩阵项）；② **`astral-sh/setup-uv` 无主版本浮动标签**（只有 v10.1.0 全版本号，写 @v10 报 "unable to find version"）——升级 actions 前必须确认目标仓库是否维护裸主版本 tag（actions/* 系有，astral-sh 系无）。
   - Release 发版全自动流程：推送纯数字 tag（`git tag YYYYMMDD && git push origin YYYYMMDD`）触发 `release.yml`（矩阵构建 macOS aarch64 + macOS x86_64 + Windows x86_64 + Linux x86_64 → 自动建 release 页，正文自动取 changelog 当前版本段）；发版前确认 `consts.py` 的 `LOCAL_VERSION`/`VERSION_NAME` 与 changelog 段标题一致、release 产物名规则 `MDCx-<tag>-<平台>-<arch>-<完整40位sha>.<exe|dmg>`（2026-09-11 实测 20260906 版产物：sha 用 `${{ github.sha }}` 全长不截断；**macOS DMG 按架构命名 `dist/MDCx-<arch>.dmg` 以区分两种 mac 产物**；Windows zip 版由 `package-trawl.yml` 单独管道）。发版 bump 用 `uv run python scripts/bump.py --version <YYYYMMDD> --name <X.Y.Z>`（`--name` 同步 `VERSION_NAME`+`pyproject.toml`+changelog 段日期）；`bump.py --check` 与 `tests/test_version_consistency.py` 校验四处版本点一致。
 
 ## 日亚 ASIN 数据库与校验方法论
