@@ -167,11 +167,25 @@ class PreparePreviewThread(QThread):
     _INFO_PLACEHOLDER = "无维基百科信息"
 
     @classmethod
+    def _is_missing_image(cls, a: ActorInfo) -> bool:
+        """是否缺头像: 服务器无 Primary 头像标签。"""
+        return not a.has_image
+
+    @classmethod
+    def _is_missing_info(cls, a: ActorInfo) -> bool:
+        """是否缺简介: 无简介, 或简介仅剩「无维基百科信息」占位文案。
+
+        #147: 该判口径必须与「统计栏缺简介」保持一致——占位简介按缺处理,
+        否则取数模式选中的数与统计栏分项对不上。
+        """
+        return not a.has_overview or cls._INFO_PLACEHOLDER in a.existing_overview
+
+    @classmethod
     def select_targets(cls, actors: list[ActorInfo], mode: str) -> list[ActorInfo]:
-        """议题 #127: 按获取模式筛出需要处理的演员子集, 避免无效的逐人遍历与服务器复核。
+        """议题 #127: 按获取模式筛出需要处理的演员子集, 避免无效人次的遍历与服务器的复核。
 
         - missing_image: 仅缺头像的演员
-        - missing_info : 仅缺简介的演员（含服务器简介只剩占位文案的情况）
+        - missing_info : 仅缺简介的演员（含简介只剩占位文案的情况）
         - missing_all  : 缺头像或缺简介的并集
         - force_*      : 用户显式选择「重新获取」, 不做筛选
         """
@@ -181,10 +195,9 @@ class PreparePreviewThread(QThread):
         want_image = mode in ("missing_all", "missing_image")
         want_info = mode in ("missing_all", "missing_info")
 
-        def missing_info(a: ActorInfo) -> bool:
-            return not a.has_overview or cls._INFO_PLACEHOLDER in a.existing_overview
-
-        return [a for a in actors if (want_image and not a.has_image) or (want_info and missing_info(a))]
+        return [
+            a for a in actors if (want_image and cls._is_missing_image(a)) or (want_info and cls._is_missing_info(a))
+        ]
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -456,14 +469,26 @@ class EmbyActorManagerDialog(QDialog):
         self.cmb_fetch_mode = QComboBox()
         self.cmb_fetch_mode.addItems(
             [
-                "仅全部缺失头像+简介",
-                "仅全部缺失头像",
-                "仅全部缺失简介",
+                "仅缺失头像或缺简介",
+                "仅缺失头像",
+                "仅缺失简介",
                 "全部头像+简介（重新获取）",
                 "全部头像（重新获取）",
                 "全部简介（重新获取）",
             ]
         )
+        # 议题 #147: 明确「或=并集(缺任一即取)/且=交集(两者都缺)」, 并说明占位简介按缺失处理,
+        # 与统计栏分项统一口径。
+        self.cmb_fetch_mode.setItemData(
+            0, "缺头像 或 缺简介 = 并集（缺任其一即选取；全缺也在内）", Qt.ItemDataRole.ToolTipRole
+        )
+        self.cmb_fetch_mode.setItemData(1, "仅缺头像的演员（含缺简介者，只要缺头像）", Qt.ItemDataRole.ToolTipRole)
+        self.cmb_fetch_mode.setItemData(
+            2, "仅缺简介的演员（简介仅剩「无维基百科信息」占位也按缺处理）", Qt.ItemDataRole.ToolTipRole
+        )
+        self.cmb_fetch_mode.setItemData(3, "不筛缺失，为全部演员 重新获取 头像+简介", Qt.ItemDataRole.ToolTipRole)
+        self.cmb_fetch_mode.setItemData(4, "不筛缺失，为全部演员 重新获取 头像", Qt.ItemDataRole.ToolTipRole)
+        self.cmb_fetch_mode.setItemData(5, "不筛缺失，为全部演员 重新获取 简介", Qt.ItemDataRole.ToolTipRole)
         self.cmb_fetch_mode.setCurrentIndex(0)
         self.cmb_fetch_mode.setFixedWidth(220)
         btn_layout.addWidget(self.cmb_fetch_mode)
@@ -844,9 +869,9 @@ class EmbyActorManagerDialog(QDialog):
             self.btn_preview.setText("根据设定获取数据")
             return
         mode_map = {
-            "仅全部缺失头像+简介": "missing_all",
-            "仅全部缺失头像": "missing_image",
-            "仅全部缺失简介": "missing_info",
+            "仅缺失头像或缺简介": "missing_all",
+            "仅缺失头像": "missing_image",
+            "仅缺失简介": "missing_info",
             "全部头像+简介（重新获取）": "force_all",
             "全部头像（重新获取）": "force_image",
             "全部简介（重新获取）": "force_info",
@@ -1147,10 +1172,26 @@ class EmbyActorManagerDialog(QDialog):
             total = len(unique_names)
         else:
             total = self._raw_count if self._raw_count > 0 else len(actors)
-        has_both = sum(1 for a in actors if a.has_image and a.has_overview)
-        has_image_only = sum(1 for a in actors if a.has_image and not a.has_overview)
-        has_info_only = sum(1 for a in actors if not a.has_image and a.has_overview)
-        has_none = sum(1 for a in actors if not a.has_image and not a.has_overview)
+        # 议题 #147: 分项与「获取数据」模式用同一套缺失判定 (占位简介按缺处理),
+        # 保证统计栏的 缺头像/缺简介/全缺 之和与取数模式选中的候选数一致; 完整=两者皆不缺。
+        has_both = sum(
+            1
+            for a in actors
+            if not PreparePreviewThread._is_missing_image(a) and not PreparePreviewThread._is_missing_info(a)
+        )
+        has_image_only = sum(
+            1
+            for a in actors
+            if PreparePreviewThread._is_missing_info(a) and not PreparePreviewThread._is_missing_image(a)
+        )
+        has_info_only = sum(
+            1
+            for a in actors
+            if PreparePreviewThread._is_missing_image(a) and not PreparePreviewThread._is_missing_info(a)
+        )
+        has_none = sum(
+            1 for a in actors if PreparePreviewThread._is_missing_image(a) and PreparePreviewThread._is_missing_info(a)
+        )
         backdrop_count = sum(1 for a in actors if a.has_backdrop)
         self.lbl_total.setText(f"总数: {total}")
         self.lbl_has_both.setText(f"完整: {has_both}")

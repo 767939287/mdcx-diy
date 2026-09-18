@@ -66,7 +66,7 @@ def test_missing_info_includes_placeholder_overview(actors):
 
 
 def test_missing_all_is_union_not_intersection(actors):
-    """「仅全部缺失头像+简介」的语义 = 缺任一字段者都处理 (并集), 完整者除外。"""
+    """「仅缺失头像或缺简介」的语义 = 缺任一字段者都处理 (并集), 完整者除外。"""
     from mdcx.tools.emby_actor_manager_ui import PreparePreviewThread
 
     got = PreparePreviewThread.select_targets(actors, "missing_all")
@@ -138,3 +138,30 @@ async def test_try_fetch_info_force_ignores_existing(actors):
     complete = actors[0]
     await _call_try_fetch_info(complete, force=True, search_mock=search_mock)
     assert search_mock.await_count == 1
+
+
+def test_statistics_classes_share_missing_predicates(actors):
+    """议题 #147: 统计栏分项与「获取数据」模式用同一缺失判定, 避免计数漂移。
+
+    占位简介(「无维基百科信息」)必须计入「缺简介」而非「完整」, 否则统计栏
+    与 missing_all 并集(select_targets)口径不一致 —— 用户截图"统计 7404 vs 并集 7257"即此根因。
+    """
+    from mdcx.tools.emby_actor_manager_ui import PreparePreviewThread
+
+    is_mi, is_mn = PreparePreviewThread._is_missing_image, PreparePreviewThread._is_missing_info
+    has_both = [a for a in actors if not is_mn(a) and not is_mi(a)]
+    has_image_only = [a for a in actors if is_mi(a) and not is_mn(a)]  # 有简介、缺头像
+    has_info_only = [a for a in actors if not is_mi(a) and is_mn(a)]  # 有头像、缺简介
+    has_none = [a for a in actors if is_mi(a) and is_mn(a)]  # 都缺
+
+    # 四类互斥且完整覆盖全体(合计 == 总数)
+    assert sum(len(x) for x in (has_both, has_image_only, has_info_only, has_none)) == len(actors)
+    assert sorted(a.name for a in has_both) == ["完整"]
+    assert sorted(a.name for a in has_image_only) == ["缺头像"]
+    assert sorted(a.name for a in has_info_only) == ["占位简介", "缺简介"]
+    assert sorted(a.name for a in has_none) == ["占位简介缺图", "都缺"]
+
+    # 统计的「缺失」分项并集 == missing_all 取数候选: 二者都来自 _is_missing_info/_is_missing_image,
+    # 保证用户在统计栏看到的分项之和 = 选「仅缺失头像或缺简介」时实际取出的人数。
+    union = PreparePreviewThread.select_targets(actors, "missing_all")
+    assert sorted(a.name for a in has_image_only + has_info_only + has_none) == _names(union)
