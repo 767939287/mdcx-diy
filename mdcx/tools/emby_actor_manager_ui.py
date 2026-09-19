@@ -610,6 +610,12 @@ class EmbyActorManagerDialog(QDialog):
     def _build_actor_list(self, parent_layout: QVBoxLayout):
         stats_layout = QHBoxLayout()
         self.lbl_total = QLabel("总数: -")
+        # 议题 #157: 重复演员数 = 原始条目数 − 唯一名字数, 直接展示免用户两种计数方式手算
+        self.lbl_duplicate = QLabel("重复: -")
+        self.lbl_duplicate.setToolTip(
+            "重复演员数 = 同名演员产生的多余条目数（原始条目数 − 唯一名字数）。\n"
+            "可在「设置」中勾选「重复演员去重（按名称合并）」合并同名条目。"
+        )
         self.lbl_has_both = QLabel("完整: -")
         self.lbl_missing_image = QLabel("缺头像: -")
         self.lbl_missing_info = QLabel("缺简介: -")
@@ -617,6 +623,7 @@ class EmbyActorManagerDialog(QDialog):
         self.lbl_backdrop = QLabel("有背景图: -")
         for lbl in (
             self.lbl_total,
+            self.lbl_duplicate,
             self.lbl_has_both,
             self.lbl_missing_image,
             self.lbl_missing_info,
@@ -1346,11 +1353,13 @@ class EmbyActorManagerDialog(QDialog):
             self.log(f"🔶 计数方式保存失败: {e}")
 
     def _update_statistics(self, actors: list[ActorInfo]):
+        unique_all = {a.name for a in actors}
         if self._show_unique:
-            unique_names = {a.name for a in actors}
-            total = len(unique_names)
+            total = len(unique_all)
         else:
             total = self._raw_count if self._raw_count > 0 else len(actors)
+        # 议题 #157: 重复数 = 过滤后条目数 − 唯一名字数, 与计数方式切换无关, 恒为同名多余条目
+        self.lbl_duplicate.setText(f"重复: {max(self._raw_count - len(unique_all), 0)}")
         # 议题 #147: 分项与「获取数据」模式用同一套缺失判定 (占位简介按缺处理),
         # 保证统计栏的 缺头像/缺简介/全缺 之和与取数模式选中的候选数一致; 完整=两者皆不缺。
         has_both = sum(

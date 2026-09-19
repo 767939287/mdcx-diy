@@ -291,7 +291,6 @@ async def fetch_all_actors(
     concurrency: int = 8,
 ) -> tuple[list[ActorInfo], int]:
     persons = await get_emby_actor_list(filter_actor_only=filter_actor_only)
-    raw_count = len(persons)
     if not persons:
         return [], 0
     seen_names = set()
@@ -302,14 +301,23 @@ async def fetch_all_actors(
     # 第一遍: 过滤+构建 stub (不发起网络请求)
     stubs: list[tuple[int, ActorInfo, dict]] = []  # (原索引, actor_stub, person_raw)
     skipped_not_in_lib: list[str] = []  # 指定媒体库过滤但不在影片 People 里
+    # 议题 #157: raw_count 语义 =「过滤后(库+角色)、去重前」条目数——统计栏「原始条目数」
+    # 与「重复 = raw − 唯一名字」都以过滤后的演员集合为基准, 不能含被剔除的非演出角色。
+    filtered_raw = 0
     for i, p in enumerate(persons):
         _raise_if_stop_requested()
         name = p.get("Name", "")
         if not name:
             continue
-        if parent_ids and name not in lib_person_names:
+        # 议题 #157: Emby 的 /Persons 端点不支持按角色过滤——personTypes 仅在配合 Person
+        # 参数时生效（官方 API 参考），服务端把导演/编剧/制片等非演出角色一并返回，
+        # 此前"只看演员"开关对 Emby 从未真正生效（Jellyfin 端 personTypes 有效）。
+        # 统一改为与「所选库(缺省全库)影片 People 中角色=Actor 的人名集合」交集过滤；
+        # 出演统计整体失败导致集合为空时不过滤（兜底防误删，与 #32 教训一致）。
+        if (parent_ids or filter_actor_only) and lib_person_names and name not in lib_person_names:
             skipped_not_in_lib.append(name)
             continue
+        filtered_raw += 1
         if deduplicate:
             if name in seen_names:
                 continue
@@ -333,7 +341,9 @@ async def fetch_all_actors(
     if skipped_not_in_lib:
         preview = ", ".join(skipped_not_in_lib[:5])
         more = f" 等共 {len(skipped_not_in_lib)} 人" if len(skipped_not_in_lib) > 5 else ""
-        signal.show_log_text(f"⚠️ 跳过 {len(skipped_not_in_lib)} 个不在所选媒体库影片中的演员: {preview}{more}")
+        signal.show_log_text(
+            f"⚠️ 跳过 {len(skipped_not_in_lib)} 个不在所选媒体库影片中出演(Actor)的人员: {preview}{more}"
+        )
 
     # 第二遍: 并发抓详情 (注意限流——Emby/Jellyfin 一般无速率压力, 8 并发保守)
     # 列表请求已带 fields 时可直接复用 Item 中的详情字段, 避免逐人二次请求
@@ -369,7 +379,7 @@ async def fetch_all_actors(
     await asyncio.gather(*(_fill(info, p) for _, info, p in stubs))
 
     # 按原顺序返回 (稳定性)
-    return [info for _, info, _ in stubs], raw_count
+    return [info for _, info, _ in stubs], filtered_raw
 
 
 def _gfriends_cdn_url(gfriends_github) -> str:
