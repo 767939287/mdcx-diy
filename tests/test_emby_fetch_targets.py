@@ -66,7 +66,7 @@ def test_missing_info_includes_placeholder_overview(actors):
 
 
 def test_missing_all_is_union_not_intersection(actors):
-    """「缺失头像或缺失简介（并集）」的语义 = 缺任一字段者都处理, 完整者除外。"""
+    """「缺失头像或缺失简介」的语义 = 缺任一字段者都处理, 完整者除外。"""
     from mdcx.tools.emby_actor_manager_ui import PreparePreviewThread
 
     got = PreparePreviewThread.select_targets(actors, "missing_all")
@@ -162,7 +162,7 @@ def test_statistics_classes_share_missing_predicates(actors):
     assert sorted(a.name for a in has_none) == ["占位简介缺图", "都缺"]
 
     # 统计的「缺失」分项并集 == missing_all 取数候选: 二者都来自 _is_missing_info/_is_missing_image,
-    # 保证用户在统计栏看到的分项之和 = 选「缺失头像或缺失简介（并集）」时实际取出的人数。
+    # 保证用户在统计栏看到的分项之和 = 选「缺失头像或缺失简介」时实际取出的人数。
     union = PreparePreviewThread.select_targets(actors, "missing_all")
     assert sorted(a.name for a in has_image_only + has_info_only + has_none) == _names(union)
 
@@ -230,7 +230,7 @@ def test_fetch_mode_dropdown_map_tooltip_in_sync():
             if isinstance(f, ast.Attribute) and f.attr == "addItems" and node.args:
                 for arg in node.args:
                     if isinstance(arg, ast.List) and any(
-                        isinstance(e, ast.Constant) and e.value == "缺失头像或缺失简介（并集）" for e in arg.elts
+                        isinstance(e, ast.Constant) and e.value == "缺失头像或缺失简介" for e in arg.elts
                     ):
                         items = [e.value for e in arg.elts if isinstance(e, ast.Constant)]
             # 只统计获取模式下拉的 tooltip: setItemData 的 receiver 为 self.cmb_fetch_mode
@@ -251,6 +251,94 @@ def test_fetch_mode_dropdown_map_tooltip_in_sync():
         ):
             mode_map_keys = [k.value for k in node.value.keys if isinstance(k, ast.Constant)]
 
-    assert "头像和简介都缺（交集）" in items
+    assert "头像和简介都缺" in items
     assert items == mode_map_keys, "下拉项与 mode_map 必须一一对应且同序"
     assert tooltip_indexes == set(range(len(items))), "每个下拉项都必须有 tooltip"
+
+
+# ==================== 议题 #164: 重排/默认锚定/仅简介重新获取模式 ====================
+
+
+def test_force_overview_takes_everyone(actors):
+    """「重新获取所有演员简介」(force_overview) 不筛缺失, 取全量。"""
+    from mdcx.tools.emby_actor_manager_ui import PreparePreviewThread
+
+    got = PreparePreviewThread.select_targets(actors, "force_overview")
+    assert _names(got) == _names(actors)
+
+
+async def test_force_overview_clears_non_overview_fields():
+    """force_overview 取数后清空其余 new_* 字段——同步出口按真值写入, 只回写简介。"""
+    from mdcx.tools.emby_actor_manager_ui import PreparePreviewThread
+
+    actor = _make_actor("完整", image=True, overview="正常简介")
+
+    async def _fake_search(a, wiki_intro=""):
+        a.new_overview = "新简介"
+        a.new_taglines = ["t"]
+        a.new_premiere_date = "1990-01-01"
+        a.new_production_year = 1990
+        a.new_production_locations = ["jp"]
+        a.new_provider_ids = {"imdb": "x"}
+        return True
+
+    from types import SimpleNamespace
+
+    with patch("mdcx.tools.emby_actor_manager_ui.search_actor_info", _fake_search):
+        fake_self = SimpleNamespace(_INFO_PLACEHOLDER=PreparePreviewThread._INFO_PLACEHOLDER, mode="force_overview")
+        await PreparePreviewThread._try_fetch_info(fake_self, actor, True)
+
+    assert actor.new_overview == "新简介"
+    assert actor.new_taglines == []
+    assert actor.new_premiere_date == ""
+    assert actor.new_production_year is None
+    assert actor.new_production_locations == []
+    assert actor.new_provider_ids == {}
+    assert actor.need_update_info is True
+
+
+async def test_force_overview_no_overview_found_not_marked():
+    """force_overview 下简介没取到: 不标记待同步(避免空简介覆盖服务器)。"""
+    from mdcx.tools.emby_actor_manager_ui import PreparePreviewThread
+
+    actor = _make_actor("完整", image=True, overview="正常简介")
+
+    async def _fake_search(a, wiki_intro=""):
+        return False
+
+    from types import SimpleNamespace
+
+    with patch("mdcx.tools.emby_actor_manager_ui.search_actor_info", _fake_search):
+        fake_self = SimpleNamespace(_INFO_PLACEHOLDER=PreparePreviewThread._INFO_PLACEHOLDER, mode="force_overview")
+        await PreparePreviewThread._try_fetch_info(fake_self, actor, True)
+
+    assert actor.need_update_info is False
+
+
+def test_default_fetch_mode_is_union_after_reorder():
+    """#164 重排后默认项显式锚定「缺失头像或缺失简介」(index 3), 不改默认行为。"""
+    import ast
+    from pathlib import Path
+
+    src = (Path(__file__).resolve().parents[1] / "mdcx/tools/emby_actor_manager_ui.py").read_text(encoding="utf-8")
+    tree = ast.parse(src)
+    items: list[str] = []
+    set_current: list[int] = []
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Call) or not isinstance(node.func, ast.Attribute):
+            continue
+        f = node.func
+        if f.attr == "addItems" and node.args and isinstance(node.args[0], ast.List):
+            elts = [e.value for e in node.args[0].elts if isinstance(e, ast.Constant)]
+            if "缺失头像或缺失简介" in elts:
+                items = elts
+        if (
+            f.attr == "setCurrentIndex"
+            and isinstance(f.value, ast.Attribute)
+            and f.value.attr == "cmb_fetch_mode"
+            and node.args
+            and isinstance(node.args[0], ast.Constant)
+        ):
+            set_current.append(node.args[0].value)
+    assert items[3] == "缺失头像或缺失简介"
+    assert set_current == [3], f"默认项须锚定并集 index 3, 实际: {set_current}"

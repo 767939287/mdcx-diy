@@ -265,7 +265,14 @@ class PreparePreviewThread(QThread):
                 self.preview_done.emit(self.actors)
                 return
             need_image = self.mode in ("missing_all", "missing_image", "missing_both", "force_all", "force_image")
-            need_info = self.mode in ("missing_all", "missing_info", "missing_both", "force_all", "force_info")
+            need_info = self.mode in (
+                "missing_all",
+                "missing_info",
+                "missing_both",
+                "force_all",
+                "force_info",
+                "force_overview",
+            )
             force = "force" in self.mode
             cancelled = False
             cancelled = executor.run(self._process_all(targets, need_image, need_info, force, total))
@@ -366,6 +373,16 @@ class PreparePreviewThread(QThread):
         result = await search_actor_info(actor)
         if result:
             actor.need_update_info = True
+        if getattr(self, "mode", "") == "force_overview":
+            # 议题 #164: 「重新获取所有演员简介」只回写简介——清空其余 new_* 字段,
+            # 同步出口(update_person_info)按真值逐字段写入, 出生日期/出生地/标签/
+            # ProviderIds 均保持服务器原值; 简介没取到则不标记待同步。
+            actor.new_taglines = []
+            actor.new_production_year = None
+            actor.new_premiere_date = ""
+            actor.new_production_locations = []
+            actor.new_provider_ids = {}
+            actor.need_update_info = bool(actor.new_overview)
 
 
 class SyncThread(QThread):
@@ -535,41 +552,52 @@ class EmbyActorManagerDialog(QDialog):
         self.btn_fetch.setEnabled(False)
         btn_layout.addWidget(self.btn_fetch)
         self.cmb_fetch_mode = QComboBox()
+        # 议题 #164: 按「单缺字段 → 双缺 → 并集 → 重新获取组」范围递增排序;
+        # 去掉（并集）（交集）标注——名称已自明, 集合术语保留在 tooltip。
         self.cmb_fetch_mode.addItems(
             [
-                "缺失头像或缺失简介（并集）",
-                "仅缺失头像",
                 "仅缺失简介",
-                "头像和简介都缺（交集）",
-                "重新获取全部头像和简介",
-                "重新获取全部头像",
-                "更新所有演员数据（不含头像/影片数）",
+                "仅缺失头像",
+                "头像和简介都缺",
+                "缺失头像或缺失简介",
+                "更新所有演员详情（不含头像/影片数）",
+                "重新获取所有演员简介",
+                "重新获取所有演员头像",
+                "重新获取所有演员头像和简介",
             ]
         )
         # 议题 #147: 明确「或=并集(缺任一即取)/且=交集(两者都缺)」, 并说明占位简介按缺失处理,
         # 与统计栏分项统一口径。议题 #155: 补「交集」独立入口, 与统计栏「全缺」分项对应。
         self.cmb_fetch_mode.setItemData(
-            0, "缺头像 或 缺简介 = 并集（缺任其一即选取；全缺也在内）", Qt.ItemDataRole.ToolTipRole
+            0, "仅缺简介的演员（简介仅剩「无维基百科信息」占位也按缺处理）", Qt.ItemDataRole.ToolTipRole
         )
         self.cmb_fetch_mode.setItemData(1, "仅缺头像的演员（含缺简介者，只要缺头像）", Qt.ItemDataRole.ToolTipRole)
         self.cmb_fetch_mode.setItemData(
-            2, "仅缺简介的演员（简介仅剩「无维基百科信息」占位也按缺处理）", Qt.ItemDataRole.ToolTipRole
-        )
-        self.cmb_fetch_mode.setItemData(
-            3,
+            2,
             "缺头像 且 缺简介 = 交集（两者都缺才选取，对应统计栏「全缺」；占位简介按缺处理）",
             Qt.ItemDataRole.ToolTipRole,
         )
-        self.cmb_fetch_mode.setItemData(4, "不筛缺失，为全部演员 重新获取 头像+简介", Qt.ItemDataRole.ToolTipRole)
-        self.cmb_fetch_mode.setItemData(5, "不筛缺失，为全部演员 重新获取 头像", Qt.ItemDataRole.ToolTipRole)
+        self.cmb_fetch_mode.setItemData(
+            3, "缺头像 或 缺简介 = 并集（缺任其一即选取；全缺也在内）", Qt.ItemDataRole.ToolTipRole
+        )
         # 议题 #149: 全量刷新简介/出生日期/出生地/标签等信息; 影片数来自服务器、
         # 头像交由第三方工具, 均不在本模式范围内。
         self.cmb_fetch_mode.setItemData(
-            6,
+            4,
             "不筛缺失，为全部演员 重新获取 简介/出生日期/出生地/标签（不动头像与影片数）",
             Qt.ItemDataRole.ToolTipRole,
         )
-        self.cmb_fetch_mode.setCurrentIndex(0)
+        # 议题 #164: 仅简介的重新获取——同步出口按真值逐字段写入, 只回写简介,
+        # 不覆盖手动修正过的出生日期/出生地/标签。
+        self.cmb_fetch_mode.setItemData(
+            5,
+            "不筛缺失，为全部演员 重新获取 简介（只回写简介，出生日期/出生地/标签/头像/影片数均不动）",
+            Qt.ItemDataRole.ToolTipRole,
+        )
+        self.cmb_fetch_mode.setItemData(6, "不筛缺失，为全部演员 重新获取 头像", Qt.ItemDataRole.ToolTipRole)
+        self.cmb_fetch_mode.setItemData(7, "不筛缺失，为全部演员 重新获取 头像+简介", Qt.ItemDataRole.ToolTipRole)
+        # 议题 #164: 重排后默认项显式锚定并集(index 3)——保持"打开即最通用模式"的既有行为
+        self.cmb_fetch_mode.setCurrentIndex(3)
         self.cmb_fetch_mode.setFixedWidth(220)
         btn_layout.addWidget(self.cmb_fetch_mode)
         self.btn_preview = QPushButton("根据设定获取数据")
@@ -990,13 +1018,14 @@ class EmbyActorManagerDialog(QDialog):
             self.btn_preview.setText("根据设定获取数据")
             return
         mode_map = {
-            "缺失头像或缺失简介（并集）": "missing_all",
-            "仅缺失头像": "missing_image",
             "仅缺失简介": "missing_info",
-            "头像和简介都缺（交集）": "missing_both",
-            "重新获取全部头像和简介": "force_all",
-            "重新获取全部头像": "force_image",
-            "更新所有演员数据（不含头像/影片数）": "force_info",
+            "仅缺失头像": "missing_image",
+            "头像和简介都缺": "missing_both",
+            "缺失头像或缺失简介": "missing_all",
+            "更新所有演员详情（不含头像/影片数）": "force_info",
+            "重新获取所有演员简介": "force_overview",
+            "重新获取所有演员头像": "force_image",
+            "重新获取所有演员头像和简介": "force_all",
         }
         mode = mode_map.get(self.cmb_fetch_mode.currentText(), "missing_all")
         # 议题 #127: 「缺失」类模式只处理子集, 不再逐人遍历全库
