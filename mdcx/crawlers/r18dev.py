@@ -214,7 +214,7 @@ class R18devCrawler(BaseCrawler):
     async def _generate_search_url(self, ctx) -> list[str]:
         number = ctx.input.number.strip()
         normalized = _normalize_id(number)
-        url = f"{_API_BASE}/videos/vod/movies/detail/-/dvd_id={normalized}/json"
+        url = f"{self.base_url}/videos/vod/movies/detail/-/dvd_id={normalized}/json"
         ctx.debug(f"R18dev 搜索地址: {url} (原始番号: {number})")
         return [url]
 
@@ -236,7 +236,7 @@ class R18devCrawler(BaseCrawler):
             normalized = _normalize_id(ctx.input.number)
             returned = _normalize_id(dvd_id)
             if returned == normalized:
-                combined_url = f"{_API_BASE}/videos/vod/movies/detail/-/combined={content_id}/json"
+                combined_url = f"{self.base_url}/videos/vod/movies/detail/-/combined={content_id}/json"
                 ctx.debug(f"R18dev 精确匹配: {combined_url}")
                 return [combined_url]
         if content_id:
@@ -245,7 +245,7 @@ class R18devCrawler(BaseCrawler):
             # dmm_api 同类逻辑有 _match_score 打分，此处对齐防护）
             returned_dvd = _normalize_id(data.get("dvd_id", "") or "")
             if returned_dvd and returned_dvd == _normalize_id(ctx.input.number):
-                combined_url = f"{_API_BASE}/videos/vod/movies/detail/-/combined={content_id}/json"
+                combined_url = f"{self.base_url}/videos/vod/movies/detail/-/combined={content_id}/json"
                 ctx.debug(f"R18dev content_id 匹配: {combined_url}")
                 return [combined_url]
         return None
@@ -400,7 +400,7 @@ class R18devCrawler(BaseCrawler):
 
         ctx.debug(f"R18dev 尝试 {len(variations)} 个 content_id 变体")
         for cid in variations:
-            url = f"{_API_BASE}/videos/vod/movies/detail/-/combined={cid}/json"
+            url = f"{self.base_url}/videos/vod/movies/detail/-/combined={cid}/json"
             html, error = await self._fetch_search(ctx, url)
             if html is None:
                 continue
@@ -414,7 +414,7 @@ class R18devCrawler(BaseCrawler):
                 returned_dvd = _normalize_id(data.get("dvd_id", "") or "")
                 if not returned_dvd or returned_dvd != _normalize_id(number):
                     continue
-                combined_url = f"{_API_BASE}/videos/vod/movies/detail/-/combined={content_id}/json"
+                combined_url = f"{self.base_url}/videos/vod/movies/detail/-/combined={content_id}/json"
                 ctx.debug(f"R18dev content_id 变体命中: {combined_url}")
                 return [combined_url]
 
