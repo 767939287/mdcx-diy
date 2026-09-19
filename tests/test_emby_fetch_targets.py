@@ -165,3 +165,92 @@ def test_statistics_classes_share_missing_predicates(actors):
     # 保证用户在统计栏看到的分项之和 = 选「仅缺失头像或缺简介」时实际取出的人数。
     union = PreparePreviewThread.select_targets(actors, "missing_all")
     assert sorted(a.name for a in has_image_only + has_info_only + has_none) == _names(union)
+
+
+# ==================== 议题 #155: 「且都缺(交集)」独立入口 ====================
+
+
+def test_missing_both_is_intersection(actors):
+    """交集模式只取「头像和简介都缺」者, 含占位简介缺图者; 单缺/完整一律排除。"""
+    from mdcx.tools.emby_actor_manager_ui import PreparePreviewThread
+
+    got = PreparePreviewThread.select_targets(actors, "missing_both")
+    assert _names(got) == ["占位简介缺图", "都缺"]
+
+
+def test_missing_both_equals_statistics_all_missing_class(actors):
+    """交集候选必然等于统计栏「全缺」分项——同一对判定函数, 口径一致 (#147 延续)。"""
+    from mdcx.tools.emby_actor_manager_ui import PreparePreviewThread
+
+    is_mi, is_mn = PreparePreviewThread._is_missing_image, PreparePreviewThread._is_missing_info
+    all_missing = [a for a in actors if is_mi(a) and is_mn(a)]
+    assert _names(PreparePreviewThread.select_targets(actors, "missing_both")) == _names(all_missing)
+
+
+def test_missing_both_thread_fetches_both_fields():
+    """交集模式的取数线程必须同时开头像与简介两路 (need_image/need_info 都含 missing_both)。"""
+    import ast
+    import inspect
+
+    from mdcx.tools.emby_actor_manager_ui import PreparePreviewThread
+
+    fn = next(
+        n
+        for n in ast.walk(ast.parse(inspect.getsource(PreparePreviewThread)))
+        if isinstance(n, ast.FunctionDef) and n.name == "run"
+    )
+    flags: dict[str, set[str]] = {}
+    for node in ast.walk(fn):
+        if isinstance(node, ast.Assign) and isinstance(node.targets[0], ast.Name):
+            target = node.targets[0].id
+            if target in ("need_image", "need_info") and isinstance(node.value, ast.Compare):
+                comps = node.value.comparators
+                if len(comps) == 1 and isinstance(comps[0], ast.Tuple):
+                    flags[target] = {e.value for e in comps[0].elts if isinstance(e, ast.Constant)}
+    assert "missing_both" in flags.get("need_image", set()), "交集模式须取头像"
+    assert "missing_both" in flags.get("need_info", set()), "交集模式须取简介"
+
+
+def test_fetch_mode_dropdown_map_tooltip_in_sync():
+    """下拉项、mode_map、tooltip 三处一一对账: 新增/改名模式漏任何一处即红。"""
+    import ast
+    from pathlib import Path
+
+    src = (Path(__file__).resolve().parents[1] / "mdcx" / "tools" / "emby_actor_manager_ui.py").read_text(
+        encoding="utf-8"
+    )
+    tree = ast.parse(src)
+
+    items: list[str] = []
+    tooltip_indexes: set[int] = set()
+    mode_map_keys: list[str] = []
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Call):
+            f = node.func
+            if isinstance(f, ast.Attribute) and f.attr == "addItems" and node.args:
+                for arg in node.args:
+                    if isinstance(arg, ast.List) and any(
+                        isinstance(e, ast.Constant) and e.value == "仅缺失头像或缺简介" for e in arg.elts
+                    ):
+                        items = [e.value for e in arg.elts if isinstance(e, ast.Constant)]
+            # 只统计获取模式下拉的 tooltip: setItemData 的 receiver 为 self.cmb_fetch_mode
+            if (
+                isinstance(f, ast.Attribute)
+                and f.attr == "setItemData"
+                and node.args
+                and isinstance(node.args[0], ast.Constant)
+                and isinstance(f.value, ast.Attribute)
+                and f.value.attr == "cmb_fetch_mode"
+            ):
+                tooltip_indexes.add(node.args[0].value)
+        if (
+            isinstance(node, ast.Assign)
+            and isinstance(node.targets[0], ast.Name)
+            and node.targets[0].id == "mode_map"
+            and isinstance(node.value, ast.Dict)
+        ):
+            mode_map_keys = [k.value for k in node.value.keys if isinstance(k, ast.Constant)]
+
+    assert "仅缺失头像且简介（交集）" in items
+    assert items == mode_map_keys, "下拉项与 mode_map 必须一一对应且同序"
+    assert tooltip_indexes == set(range(len(items))), "每个下拉项都必须有 tooltip"
