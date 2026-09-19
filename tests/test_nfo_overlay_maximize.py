@@ -1,12 +1,8 @@
-"""议题 #154 回归：编辑 NFO 覆盖层随窗口缩放。
+"""议题 #154/#166 回归：编辑 NFO 覆盖层几何与切番号。
 
-背景：覆盖层内容区此前固定 860x1300、19 个字段绝对定位，窗口最大化后字段
-仍定宽（右侧大片留白）；保存/关闭按钮固定在 y=630 中部，窗口放大后悬在中间。
-现内容区改行式布局随宽度拉伸、按钮钉底。断言：
-1) 内容区建立布局，字段宽度随窗口增大；
-2) 双字段行左右不重叠；
-3) 保存/关闭钉底右下且不被滚动区覆盖；
-4) 首次打开路径（不经 resizeEvent）也会同步几何。
+#154：内容区行式布局、字段随宽度拉伸、按钮钉底。
+#166：覆盖层改为主页伴侣面板——右缘收到缩略图/结果树之间，不盖番号树；
+保存/关闭成对居中；切番号时面板保持打开并刷新表单；未保存改动需确认。
 """
 
 from __future__ import annotations
@@ -16,7 +12,7 @@ import os
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 
 import pytest
-from PyQt6.QtWidgets import QApplication
+from PyQt6.QtWidgets import QApplication, QMessageBox, QTreeWidgetItem
 
 _app: QApplication | None = None
 
@@ -60,6 +56,25 @@ def _open_overlay(win):
     win._sync_nfo_overlay_geometry()
 
 
+def _pair_geometry(nfo_w: int) -> tuple[int, int]:
+    btn_w, gap = 91, 24
+    pair_w = btn_w + gap + btn_w
+    save_x = max((nfo_w - pair_w) // 2, 0)
+    return save_x, save_x + btn_w + gap
+
+
+def _add_result(win, name: str, number: str, title: str):
+    from mdcx.models.model_types import ShowData
+
+    data = ShowData.empty()
+    data.show_name = name
+    data.data.number = number
+    data.data.title = title
+    data.data.actors = ["演员A"]
+    win.json_array[name] = data
+    return QTreeWidgetItem(win.item_succ, [name])
+
+
 def test_overlay_fields_widen_with_window(win):
     ui = win.Ui
     _open_overlay(win)
@@ -96,7 +111,7 @@ def test_overlay_pair_rows_do_not_overlap(win):
         assert right.x() + right.width() <= ui.scrollAreaWidgetContents_nfo_editor.width(), "右字段越界"
 
 
-def test_overlay_buttons_pinned_to_bottom(win):
+def test_overlay_buttons_centered_and_pinned(win):
     ui = win.Ui
     _open_overlay(win)
     nfo = ui.widget_nfo
@@ -105,10 +120,43 @@ def test_overlay_buttons_pinned_to_bottom(win):
         win.resize(width, height)
         win._sync_nfo_overlay_geometry()
         save, close = ui.pushButton_nfo_save, ui.pushButton_nfo_close
+        expect_save, expect_close = _pair_geometry(nfo.width())
         assert save.y() == nfo.height() - 12 - 40, f"{width}x{height}: 保存按钮未钉底 (y={save.y()})"
-        assert close.x() == nfo.width() - 12 - 91, f"{width}x{height}: 关闭按钮未贴右缘"
+        assert save.x() == expect_save, f"{width}x{height}: 保存按钮未成对居中 (x={save.x()})"
+        assert close.x() == expect_close, f"{width}x{height}: 关闭按钮未成对居中 (x={close.x()})"
+        assert close.x() - (save.x() + save.width()) == 24, "保存/关闭间距应为 24px"
         assert scroll.y() + scroll.height() <= save.y(), "滚动区覆盖了底部操作条"
         assert save.x() + save.width() <= close.x(), "保存/关闭按钮重叠"
+
+
+def test_overlay_does_not_cover_result_tree(win):
+    ui = win.Ui
+    _open_overlay(win)
+    for width, height in ((1032, 737), (1920, 1080)):
+        win.resize(width, height)
+        win._sync_nfo_overlay_geometry()
+        nfo = ui.widget_nfo
+        tree_left = ui.stackedWidget.x() + ui.treeWidget_number.x()
+        assert nfo.x() + nfo.width() <= tree_left, (
+            f"{width}x{height}: 覆盖层盖住番号树 nfo_right={nfo.x() + nfo.width()} tree_left={tree_left}"
+        )
+        thumb_right = ui.stackedWidget.x() + ui.label_thumb.x() + ui.label_thumb.width()
+        assert nfo.x() + nfo.width() <= thumb_right + 1, (
+            f"{width}x{height}: 覆盖层超出缩略图右缘 nfo_right={nfo.x() + nfo.width()} thumb_right={thumb_right}"
+        )
+
+
+def test_overlay_title_centered_and_comma_hints_moved(win):
+    ui = win.Ui
+    _open_overlay(win)
+    win.resize(1032, 737)
+    win._sync_nfo_overlay_geometry()
+    assert ui.label_4.x() == 0
+    assert ui.label_4.width() == ui.widget_nfo.width()
+    assert ui.label_370.isHidden()
+    assert ui.label_379.isHidden()
+    assert ui.lineEdit_nfo_actor.placeholderText() == "多个以逗号隔开"
+    assert ui.textEdit_nfo_tag.placeholderText() == "多个以逗号隔开"
 
 
 def test_overlay_syncs_on_first_open_without_resize(win, monkeypatch):
@@ -120,4 +168,44 @@ def test_overlay_syncs_on_first_open_without_resize(win, monkeypatch):
     nfo = ui.widget_nfo
     assert not nfo.isHidden()
     assert ui.pushButton_nfo_save.y() == nfo.height() - 12 - 40, "首次打开未同步钉底几何"
+    expect_save, _ = _pair_geometry(nfo.width())
+    assert ui.pushButton_nfo_save.x() == expect_save, "首次打开按钮未成对居中"
     assert ui.scrollAreaWidgetContents_nfo_editor.layout() is not None, "首次打开未建立内容布局"
+
+
+def _select_result(win, item):
+    tree = win.Ui.treeWidget_number
+    tree.clearSelection()
+    item.setSelected(True)
+    QApplication.processEvents()
+
+
+def test_switching_number_keeps_overlay_and_refreshes(win):
+    ui = win.Ui
+    first = _add_result(win, "1-1.ABP-622", "ABP-622", "标题622")
+    second = _add_result(win, "1-2.ABP-608", "ABP-608", "标题608")
+    _select_result(win, first)
+    _open_overlay(win)
+    assert ui.lineEdit_nfo_number.text() == "ABP-622"
+
+    _select_result(win, second)
+    assert not ui.widget_nfo.isHidden(), "切番号后覆盖层被收起"
+    assert ui.lineEdit_nfo_number.text() == "ABP-608"
+    assert ui.lineEdit_nfo_title.text() == "标题608"
+
+
+def test_dirty_switch_cancel_keeps_current_number(win, monkeypatch):
+    ui = win.Ui
+    first = _add_result(win, "1-1.ABP-622", "ABP-622", "标题622")
+    second = _add_result(win, "1-2.ABP-608", "ABP-608", "标题608")
+    _select_result(win, first)
+    _open_overlay(win)
+    ui.lineEdit_nfo_title.setText("改过的标题")
+    monkeypatch.setattr(QMessageBox, "exec", lambda self: QMessageBox.StandardButton.Cancel)
+
+    _select_result(win, second)
+    assert win.show_name == first.text(0)
+    assert ui.lineEdit_nfo_title.text() == "改过的标题"
+    assert not ui.widget_nfo.isHidden()
+    selected = [item.text(0) for item in ui.treeWidget_number.selectedItems()]
+    assert selected == [first.text(0)]
