@@ -394,7 +394,8 @@ class CleanDataThread(QThread):
     """议题 #149: 存量数据清洗(简介噪声/非法生日), 不经取数流程。"""
 
     progress = Signal(int, int, str)
-    actor_done = Signal(str, bool)  # (actor_id, success)
+    # 议题 #162: actor_done 携带失败原因——此前 msg 在回调处被丢弃, 清洗失败只剩计数
+    actor_done = Signal(str, bool, str)  # (actor_id, success, 结果消息)
     clean_done = Signal(int, int)
     error = Signal(str)
 
@@ -407,7 +408,7 @@ class CleanDataThread(QThread):
             success, fail = clean_actor_data_batch(
                 self.items,
                 progress_callback=lambda c, t, m: self.progress.emit(c, t, m),
-                actor_callback=lambda actor, ok, _msg: self.actor_done.emit(actor.actor_id, ok),
+                actor_callback=lambda actor, ok, msg: self.actor_done.emit(actor.actor_id, ok, msg),
             )
             self.clean_done.emit(success, fail)
         except Exception as e:
@@ -461,6 +462,7 @@ class EmbyActorManagerDialog(QDialog):
         self._sync_thread = None
         self._clean_thread = None
         self._clean_items: dict[str, tuple[str, bool]] = {}
+        self._clean_failed: list[tuple[str, str]] = []  # 议题 #162: (actor_id, 失败消息)
         self._fetch_thread = None
         self._failed_names: set[str] = set()
         self._log_file: Path | None = None
@@ -1072,6 +1074,7 @@ class EmbyActorManagerDialog(QDialog):
         self._set_status("数据清洗中...")
         self.log(f"🧹 开始数据清洗，共 {len(dirty)} 个演员...")
         self._clean_items = {a.actor_id: (new_ov, fix_birth) for a, new_ov, fix_birth in dirty}
+        self._clean_failed = []
         self._clean_thread = CleanDataThread(self)
         self._clean_thread.items = dirty
         self._clean_thread.progress.connect(self._on_sync_progress)
@@ -1080,9 +1083,12 @@ class EmbyActorManagerDialog(QDialog):
         self._clean_thread.error.connect(self._on_thread_error)
         self._clean_thread.start()
 
-    def _on_clean_actor_done(self, actor_id: str, success: bool):
+    def _on_clean_actor_done(self, actor_id: str, success: bool, msg: str):
         # 清洗成功后立即就地更新内存状态; 失败保留原值, 下次清洗可重试
+        # 议题 #162: 失败逐条落日志(名字+服务器原因), 完成时汇总, 消除"只见计数不见原因"盲区
         if not success:
+            self._clean_failed.append((actor_id, msg))
+            self.log(f"🔴 清洗失败: {msg}")
             return
         actor = next((a for a in self._actors if a.actor_id == actor_id), None)
         item = self._clean_items.get(actor_id)
@@ -1100,7 +1106,20 @@ class EmbyActorManagerDialog(QDialog):
         self._set_status("数据清洗完成")
         self._clean_items = {}
         self.log(f"🧹 数据清洗完成！成功: {success}, 失败: {fail}")
-        QMessageBox.information(self, "数据清洗完成", f"✅ 成功: {success}\n❌ 失败: {fail}")
+        # 议题 #162: 清洗是直接改写服务器的, 无"待同步"残留——完成提示讲清这一点,
+        # 并列出失败者名单与重试指引, 避免用户误以为还要点「开始全部更新同步」。
+        names = []
+        for actor_id, _ in self._clean_failed:
+            actor = next((a for a in self._actors if a.actor_id == actor_id), None)
+            names.append(actor.name if actor else actor_id)
+        self._clean_failed = []
+        detail = ""
+        if names:
+            preview = "、".join(names[:20]) + ("…" if len(names) > 20 else "")
+            detail = f"\n\n❌ 失败 {len(names)} 个: {preview}\n失败原因见上方运行日志；再点一次「数据清洗」即可仅重试失败项。"
+        if fail == 0:
+            detail += "\n\n清洗已直接写入服务器，无需再点「开始全部更新同步」。"
+        QMessageBox.information(self, "数据清洗完成", f"✅ 成功: {success}\n❌ 失败: {fail}{detail}")
         self._populate_table(self._actors)
         self._update_statistics(self._actors)
 
