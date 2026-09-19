@@ -535,12 +535,12 @@ class EmbyActorManagerDialog(QDialog):
         self.cmb_fetch_mode = QComboBox()
         self.cmb_fetch_mode.addItems(
             [
-                "仅缺失头像或缺简介",
+                "缺失头像或缺失简介（并集）",
                 "仅缺失头像",
                 "仅缺失简介",
-                "仅缺失头像且简介（交集）",
-                "全部头像+简介（重新获取）",
-                "全部头像（重新获取）",
+                "头像和简介都缺（交集）",
+                "重新获取全部头像和简介",
+                "重新获取全部头像",
                 "更新所有演员数据（不含头像/影片数）",
             ]
         )
@@ -988,12 +988,12 @@ class EmbyActorManagerDialog(QDialog):
             self.btn_preview.setText("根据设定获取数据")
             return
         mode_map = {
-            "仅缺失头像或缺简介": "missing_all",
+            "缺失头像或缺失简介（并集）": "missing_all",
             "仅缺失头像": "missing_image",
             "仅缺失简介": "missing_info",
-            "仅缺失头像且简介（交集）": "missing_both",
-            "全部头像+简介（重新获取）": "force_all",
-            "全部头像（重新获取）": "force_image",
+            "头像和简介都缺（交集）": "missing_both",
+            "重新获取全部头像和简介": "force_all",
+            "重新获取全部头像": "force_image",
             "更新所有演员数据（不含头像/影片数）": "force_info",
         }
         mode = mode_map.get(self.cmb_fetch_mode.currentText(), "missing_all")

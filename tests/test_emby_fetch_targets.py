@@ -66,7 +66,7 @@ def test_missing_info_includes_placeholder_overview(actors):
 
 
 def test_missing_all_is_union_not_intersection(actors):
-    """「仅缺失头像或缺简介」的语义 = 缺任一字段者都处理 (并集), 完整者除外。"""
+    """「缺失头像或缺失简介（并集）」的语义 = 缺任一字段者都处理, 完整者除外。"""
     from mdcx.tools.emby_actor_manager_ui import PreparePreviewThread
 
     got = PreparePreviewThread.select_targets(actors, "missing_all")
@@ -162,7 +162,7 @@ def test_statistics_classes_share_missing_predicates(actors):
     assert sorted(a.name for a in has_none) == ["占位简介缺图", "都缺"]
 
     # 统计的「缺失」分项并集 == missing_all 取数候选: 二者都来自 _is_missing_info/_is_missing_image,
-    # 保证用户在统计栏看到的分项之和 = 选「仅缺失头像或缺简介」时实际取出的人数。
+    # 保证用户在统计栏看到的分项之和 = 选「缺失头像或缺失简介（并集）」时实际取出的人数。
     union = PreparePreviewThread.select_targets(actors, "missing_all")
     assert sorted(a.name for a in has_image_only + has_info_only + has_none) == _names(union)
 
@@ -230,7 +230,7 @@ def test_fetch_mode_dropdown_map_tooltip_in_sync():
             if isinstance(f, ast.Attribute) and f.attr == "addItems" and node.args:
                 for arg in node.args:
                     if isinstance(arg, ast.List) and any(
-                        isinstance(e, ast.Constant) and e.value == "仅缺失头像或缺简介" for e in arg.elts
+                        isinstance(e, ast.Constant) and e.value == "缺失头像或缺失简介（并集）" for e in arg.elts
                     ):
                         items = [e.value for e in arg.elts if isinstance(e, ast.Constant)]
             # 只统计获取模式下拉的 tooltip: setItemData 的 receiver 为 self.cmb_fetch_mode
@@ -251,6 +251,6 @@ def test_fetch_mode_dropdown_map_tooltip_in_sync():
         ):
             mode_map_keys = [k.value for k in node.value.keys if isinstance(k, ast.Constant)]
 
-    assert "仅缺失头像且简介（交集）" in items
+    assert "头像和简介都缺（交集）" in items
     assert items == mode_map_keys, "下拉项与 mode_map 必须一一对应且同序"
     assert tooltip_indexes == set(range(len(items))), "每个下拉项都必须有 tooltip"
