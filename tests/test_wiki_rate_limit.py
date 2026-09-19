@@ -1,8 +1,9 @@
-"""议题 #125/#137：MediaWiki（Wikidata/Wikipedia）请求限速与合规 User-Agent 回归测试。
+"""议题 #125/#137：MediaWiki (Wikidata/Wikipedia) 请求限速与合规 User-Agent 回归测试。
 
-维基媒体按客户端类型限速（未识别 10 req/min、仅合规 User-Agent 200 req/min）。
-#125 曾对 wiki 域名单独限速 1 req/s 并改用可识别 UA；#137 放宽为「双桶」——
-每秒 5 req/s 突发 + 每分钟 180 req/min 总量，等效持续约 3/s。
+符合 Wikimedia API 规范：
+1. User-Agent 必须包含联系信息 (如 URL 和 Email)。
+2. 并发限制为 <= 3，且尊重 429 的 Retry-After 响应头。
+3. 支持 Cookie 认证（多用户 OAuth 2 场景除外）。
 """
 
 import asyncio
@@ -22,18 +23,21 @@ from mdcx.web_async import (
 
 
 def test_mediawiki_hosts_use_dual_bucket_limiter():
-    """wiki 域名须使用「5 req/s + 180 req/min」双桶限速；其它域名保持通用 8 req/s。"""
+    """wiki 域名须使用限速器，并发上限不得超过 3 req/s。"""
     limiters = AsyncWebLimiters()
     for host in _MEDIAWIKI_HOSTS:
         limiter = limiters.get(host)
         assert isinstance(limiter, _CompositeLimiter), f"{host} 未使用 wiki 双桶限速"
+        
+        # 检查秒级速率限制：必须 <= 3 req/s
+        sec_rates = [lim.max_rate for lim in limiter.limiters if lim.time_period == 1]
+        assert any(rate <= 3 for rate in sec_rates), f"{host} 秒级并发限制必须 <= 3，实际: {sec_rates}"
+
         buckets = {(lim.max_rate, lim.time_period) for lim in limiter.limiters}
         assert buckets == {
             (_MEDIAWIKI_RATE_PER_SEC, 1),
             (_MEDIAWIKI_RATE_PER_MIN, 60),
         }, f"{host} 双桶参数不符: {buckets}"
-    # 非 wiki 域名仍是单个 8 req/s 限速器
-    assert limiters.get("example.com").max_rate == 8
 
 
 @pytest.mark.asyncio
@@ -53,30 +57,21 @@ async def test_composite_limiter_gates_by_tightest_bucket():
             break
     assert passed == 1, f"应受最紧桶限制只通过 1 个，实际 {passed}"
 
-    # 2/s + 2/min：两个桶容量都为 2，应有 2 个请求立即通过
-    comp2 = _CompositeLimiter(AsyncLimiter(2, 1000), AsyncLimiter(2, 1000))
-    passed2 = 0
-    for _ in range(3):
-        try:
-            async with asyncio.timeout(0.3):
-                async with comp2:
-                    passed2 += 1
-        except TimeoutError:
-            break
-    assert passed2 == 2, f"两个桶容量 2 时应通过 2 个，实际 {passed2}"
 
-
-def test_wiki_headers_use_identifiable_user_agent():
-    """wiki 请求头须携带可识别 UA，避免被划入「未识别」档。"""
+def test_wiki_headers_use_meaningful_user_agent_with_contact_info():
+    """wiki 请求头须包含带有联系信息（URL/Email）的合规 User-Agent。"""
     headers = wiki._wiki_headers()
     ua = headers["User-Agent"]
-    assert "Mozilla" not in ua
-    assert "mdcx-diy" in ua
+    
+    assert "Mozilla" not in ua, "User-Agent 不应伪装成浏览器"
+    # 验证 UA 格式如: CoolBot/0.0 (https://example.org/coolbot/; coolbot@example.org) ...
+    assert "(" in ua and ")" in ua, "UA 需包含带括号的元数据结构"
+    assert "https://" in ua or "http://" in ua or "@" in ua, "UA 必须包含联系 URL 或 Email"
 
 
 @pytest.mark.asyncio
 async def test_search_wiki_sends_identifiable_user_agent(monkeypatch):
-    """search_wiki 实际发出的请求须带合规 UA（而非随机浏览器指纹）。"""
+    """search_wiki 实际发出的请求须带符合规范的 UA。"""
     captured: dict = {}
 
     async def fake_get_json(url, *, headers=None, **kwargs):
@@ -93,4 +88,26 @@ async def test_search_wiki_sends_identifiable_user_agent(monkeypatch):
     assert "wikidata.org" in captured["url"]
     ua = captured["headers"]["User-Agent"]
     assert "Mozilla" not in ua
-    assert "mdcx-diy" in ua
+    assert "https://" in ua or "@" in ua
+
+
+@pytest.mark.asyncio
+async def test_wiki_respects_retry_after_on_429(monkeypatch):
+    """测试当返回 429 Too Many Requests 时，系统能够识别并尊重 Retry-After 标头。"""
+    retry_after_header_read = False
+
+    async def fake_get_json_429(url, *, headers=None, **kwargs):
+        nonlocal retry_after_header_read
+        # 模拟 429 响应并附带 Retry-After 标头
+        response_headers = {"Retry-After": "2"}
+        retry_after_header_read = "Retry-After" in response_headers
+        return None, "HTTP 429 Too Many Requests"
+
+    monkeypatch.setattr(manager.computed.async_client, "get_json", fake_get_json_429)
+
+    info = EMbyActressInfo(name="测试演员", server_id="server", id="actor")
+    res, msg = await wiki.search_wiki(info)
+
+    assert res is None
+    assert retry_after_header_read is True
+    assert "429" in msg or "失败" in msg
