@@ -668,6 +668,24 @@ async def _build_site_specs() -> list[NetworkCheckSpec]:
                 default_url = ""
 
         base_url, customized = _configured_or_default_url(site, default_url or "")
+        # 议题 #129: official 是无码官网五站统一路由(caribbeancom/heyzo/1pondo/
+        # pacopacomama/10musume), 各站域名固定——逐站生成子检测(报告每站一行),
+        # 下拉徽标由 merge_site_check_cache 按"五站取最差"聚合; 用户自定义过
+        # official URL 时按单站检测处理。
+        if site == Website.OFFICIAL and not (customized and base_url):
+            from ..crawlers.official_uncensored import UNCENSORED_OFFICIAL_SITES
+
+            for src, official_spec in UNCENSORED_OFFICIAL_SITES.items():
+                specs.append(
+                    NetworkCheckSpec(
+                        name=f"official·{src}",
+                        group="刮削站点",
+                        url=official_spec.base_url,
+                        site=Website.OFFICIAL,
+                        use_proxy=True,
+                    )
+                )
+            continue
         if not base_url:
             specs.append(
                 NetworkCheckSpec(
@@ -1261,27 +1279,37 @@ def load_site_check_cache() -> dict[str, dict]:
 
 
 def merge_site_check_cache(results: "list[NetworkCheckResult]") -> None:
-    """把检测结果中"刮削站点"分组的站点项合并进持久化缓存。
+    """把检测结果中带站点归属的项合并进持久化缓存。
 
-    只收集刮削站点（基础环境/共享平台等项不映射到站点选择列表）；
+    议题 #129: 由"只收集刮削站点组"放宽为凡 spec.site 非空即写——
+    账号/API 组(dmm_api/thejavdb_api/missav_api/theporndb)的检测结果
+    同样要回标到网站设置下拉; 基础环境/辅助服务等无站点归属项 site=None 仍排除。
+    official 为五站子检测(议题 #129), 徽标按"取最差"聚合——路由依赖全部五站,
+    任一不可达整条链路即有异常。
     重试失败项等部分结果按站点值覆盖更新，其余历史记录保留。
     写文件失败静默降级（缓存仅用于展示标注，不影响功能）。
     """
     import json
     from datetime import datetime
 
+    badge_worst = {"fail": 0, "warn": 1, "ok": 2, "skip": 3}
     sites = load_site_check_cache()
     now = datetime.now().astimezone().isoformat(timespec="seconds")
     for result in results:
         site = result.spec.site
-        if result.spec.group != "刮削站点" or site is None:
+        if site is None:
             continue
         route = ""
         if result.used_proxy is True:
             route = "proxy"
         elif result.used_proxy is False:
             route = "direct"
-        sites[site.value] = {"status": _site_result_level(result.status), "route": route, "checked_at": now}
+        level = _site_result_level(result.status)
+        if site == Website.OFFICIAL and site.value in sites:
+            prev = str(sites[site.value].get("status") or "")
+            if badge_worst.get(prev, -1) <= badge_worst.get(level, 99):
+                continue  # 已有更差(或同级)子站结果, 保持最差聚合
+        sites[site.value] = {"status": level, "route": route, "checked_at": now}
     try:
         path = _site_cache_path()
         path.parent.mkdir(parents=True, exist_ok=True)

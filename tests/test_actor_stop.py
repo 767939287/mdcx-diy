@@ -98,10 +98,18 @@ async def test_update_emby_actor_photo_execute_uploads_primary_and_backdrop(monk
     def fake_cut_pic(path):
         return None
 
-    # 直接 mock 底层 post_content, 从而能验证 Authorization 头(而非绕过它的 _upload_actor_photo)。
-    async def fake_post_content(url: str, data=None, headers=None, **kwargs):
+    # 议题 #133: _upload_actor_photo 走轻量直连 _emby_request, mock 它从而能验证
+    # Authorization 头与目标 URL。
+
+    class _Resp204:
+        status_code = 204
+
+        def json(self):
+            return {}
+
+    async def fake_emby_request(method: str, url: str, *, headers=None, data=None, token=None, **kwargs):
         uploads.append((url, dict(headers or {})))
-        return True, ""
+        return _Resp204(), ""
 
     monkeypatch.setattr(manager.config, "server_type", "emby")
     monkeypatch.setattr(manager.config, "emby_on", [])
@@ -110,7 +118,7 @@ async def test_update_emby_actor_photo_execute_uploads_primary_and_backdrop(monk
     monkeypatch.setattr(emby_actor_image, "_get_graphis_pic", fake_get_graphis_pic)
     monkeypatch.setattr(emby_actor_image, "fix_pic_async", fake_fix_pic_async)
     monkeypatch.setattr(emby_actor_image, "cut_pic", fake_cut_pic)
-    monkeypatch.setattr(manager.computed.async_client, "post_content", fake_post_content)
+    monkeypatch.setattr("mdcx.tools.emby_shared._emby_request", fake_emby_request)
 
     await emby_actor_image._update_emby_actor_photo_execute(
         [{"Name": "演员甲", "Id": "1", "ServerId": "server-1", "ImageTags": {}, "BackdropImageTags": []}],

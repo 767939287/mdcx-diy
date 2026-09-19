@@ -230,10 +230,15 @@ class GenericBaseCrawler[T: Context = Context](ABC):
         return await self.post_process(ctx, result)
 
     async def _search(self, ctx: T, search_urls: list[str]) -> list[str] | None:
+        # 议题 #128: 逐 URL 聚合失败原因进异常消息——旧版只报"搜索失败"四字,
+        # 请求失败(如 CF 挑战页)与"有结果但解析不到详情页"两种根因无法区分,
+        # 网络诊断报告里用户无从自查。
+        reasons: list[str] = []
         for search_url in search_urls:
             html, error = await self._fetch_search(ctx, search_url)
             if html is None:
                 ctx.debug(f"搜索页请求失败: {error=}")
+                reasons.append(f"请求失败: {(error or '未知错误')[:200]}")
                 continue
             ctx.debug(f"搜索页请求成功: {search_url=}")
             selector = Selector(text=html)
@@ -241,6 +246,8 @@ class GenericBaseCrawler[T: Context = Context](ABC):
             if detail_urls:
                 ctx.debug(f"详情页 URL: {detail_urls}")
                 return detail_urls if isinstance(detail_urls, list) else [detail_urls]
+            reasons.append("搜索页未解析到结果")
+        raise CrawlerException(f"搜索失败: {' | '.join(reasons)[:400]}")
 
     async def _detail(self, ctx: T, detail_urls: list[str]) -> CrawlerData | None:
         for detail_url in detail_urls:

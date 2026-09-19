@@ -44,6 +44,35 @@ def normalize_production_year(value: object) -> int | None:
     return None
 
 
+# 议题 #149: 演员简介历史噪声清洗。wiki 源拼接的 `===== 个人资料 =====` /
+# `===== 外部链接 =====` 段落标题(wiki.py)与 `\n`→`<br>` 转换产物在服务器上
+# 显示为无意义字符; minnano 占位文案则是「占位→判缺→重抓→再写占位」死循环的根源。
+# 清洗规则收口在模型层, 管理器「数据清洗」按钮(存量)与 dump()/update_person_info
+# (增量)共用同一出口, 保证未来写入不再产生同类噪声。
+_OVERVIEW_PLACEHOLDER_RE = re.compile(r"无维基百科信息\s*[,，]\s*从\s*minnano-av\s*数据库补全女优信息")
+_OVERVIEW_SECTION_RE = re.compile(r"={3,}\s*(?:个人资料|外部链接)\s*={3,}")
+_OVERVIEW_SEP_RE = re.compile(r"(?:<\s*br\s*/?\s*>|[\r\n])+", re.IGNORECASE)
+
+
+def clean_overview_text(value: object) -> str:
+    """清洗演员简介历史噪声（议题 #149），无噪声时原样返回；非字符串输入返回空串。
+
+    规则按序执行：①删 minnano 占位文案（占位整段清除，剩余内容保留）；
+    ②`===== 个人资料 / 外部链接 =====` 段落标题降级为分隔符（标题下内容保留）；
+    ③`<br>` 各变体（含内部空格、大小写）与换行 → 中文逗号；
+    ④折叠连续逗号、归一化逗号两侧空白、去首尾逗号与空白。
+    函数幂等：清洗结果再清洗不变。
+    """
+    if not isinstance(value, str):
+        return ""
+    text = _OVERVIEW_PLACEHOLDER_RE.sub("", value)
+    text = _OVERVIEW_SECTION_RE.sub("\n", text)
+    text = _OVERVIEW_SEP_RE.sub("，", text)
+    text = re.sub(r"，{2,}", "，", text)
+    text = re.sub(r"\s*，\s*", "，", text)
+    return text.strip("，, \t\r\n")
+
+
 @dataclass
 class EMbyActressInfo:
     name: str
@@ -72,6 +101,7 @@ class EMbyActressInfo:
             "ProductionLocations": self.locations,
             "PremiereDate": normalize_premiere_date(self.birthday),
             "ProductionYear": normalize_production_year(self.year),
-            "Overview": self.overview,
+            # 议题 #149: 简介出口统一清洗(段落标题/<br>/占位文案), 增量写入不再产生噪声
+            "Overview": clean_overview_text(self.overview),
             "Taglines": self.taglines,
         }

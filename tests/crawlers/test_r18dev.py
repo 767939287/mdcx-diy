@@ -429,3 +429,31 @@ async def test_upgrade_dmm_cover_uses_data_number(monkeypatch):
     await _upgrade_dmm_cover(ctx, data)
     assert data.thumb.endswith("3wanz00100pl.jpg")
     assert data.poster.endswith("3wanz00100ps.jpg")
+
+
+@pytest.mark.asyncio
+async def test_search_urls_follow_custom_base_url():
+    """议题 #128 遗留: 搜索/详情 URL 必须跟随 self.base_url(用户自定义站点域名),
+    不得硬编码 _API_BASE——否则「设置→站点自定义 URL」对 r18dev 搜索路径不生效。"""
+    import ast
+
+    crawler = R18devCrawler(client=None, base_url="https://r18-mirror.example", browser=None)
+    inp = CrawlerInput.empty()
+    inp.number = "SSNI-647"
+    ctx = crawler.new_context(inp)
+    url = await crawler._generate_search_url(ctx)
+    assert url and "https://r18-mirror.example/videos/vod/movies/detail/-/dvd_id=ssni00647/json" in (
+        url if isinstance(url, list) else [url]
+    ), f"搜索 URL 未使用自定义域名: {url}"
+
+    # AST 哨兵: 实例方法体内不得再出现 _API_BASE (类定义外 base_url_ 默认值除外)
+    from pathlib import Path
+
+    src = Path("mdcx/crawlers/r18dev.py").read_text(encoding="utf-8")
+    tree = ast.parse(src)
+    cls = next(n for n in ast.walk(tree) if isinstance(n, ast.ClassDef) and n.name == "R18devCrawler")
+    for fn in (n for n in ast.walk(cls) if isinstance(n, ast.AsyncFunctionDef | ast.FunctionDef)):
+        if fn.name == "base_url_":
+            continue
+        bad = [ast.unparse(node) for node in ast.walk(fn) if isinstance(node, ast.Name) and node.id == "_API_BASE"]
+        assert not bad, f"{fn.name} 内不应再硬编码 _API_BASE: {bad}"

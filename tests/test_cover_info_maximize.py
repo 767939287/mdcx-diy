@@ -1,9 +1,11 @@
-"""议题 #144 回归: 最大化时封面/缩略图随框同步放大; 简介/标签行高随窗口增高。
+"""议题 #144/#152/#154 回归: 最大化时封面/缩略图随框同步放大; 简介/标签恒高两行。
 
 三态纪律(MEMORY #110/#117): fresh 小窗 → 拉大 → 还原小窗, 断言
 1) 封面 pixmap 显示尺寸跟随 label 框几何(等比、随窗口变大变小), 且切换封面
-   不得再把已放大的框砸回设计尺寸(旧 resize(156,220) 硬编码回归);
-2) 简介/标签行高: 小窗 == 设计 40, 大窗 > 40, 下划线随行底, 后续行 = +2*grow;
+   后不得再把已放大的框砸回设计尺寸(旧 resize(156,220) 硬编码回归);
+2) 简介/标签行高恒定 40px、最多两行(#154 撤销 #152 的行高增长): 宽度越大
+   每行容纳越多、省略文本越长, 下划线贴行底, 后续行只随封面增高量下移,
+   末行不得被推出页底;
 3) 还原后与小窗 fresh 状态完全一致(双向幂等)。
 """
 
@@ -41,9 +43,10 @@ def win(app, monkeypatch, tmp_path):
     monkeypatch.setattr(mw_mod, "check_version", lambda: None)
     monkeypatch.setattr(mw_mod, "save_remain_list", lambda: None)
     monkeypatch.setattr(mw_mod, "apply_site_priority_theme", lambda _window: None)
-    # 本文件断言全部为几何公式驱动(pixmap scaled 尺寸/行高公式), 不涉字体度量
-    # 临界点; 保留 set_style stub 与 window_state_matrix 家族一致, 若未来涉及
-    # 换行/裁剪断言必须改挂真实样式(#117 教训)。
+    # 本文件断言以几何公式驱动(pixmap scaled 尺寸/固定 40px 行高/下划线偏移)为主;
+    # #154 的省略长度按字体度量计算, 因而只断言"宽度越大省略文本不更短"这类单调性,
+    # 不写死具体字数。保留 set_style stub 与 window_state_matrix 家族一致; 若未来
+    # 需要断言换行/裁剪的精确边界必须改挂真实样式(#117 教训)。
     monkeypatch.setattr(mw_mod.MyMAinWindow, "set_style", lambda self: None)
 
     monkeypatch.chdir(tmp_path)
@@ -113,30 +116,67 @@ def test_switching_cover_keeps_enlarged_box(win):
     assert ui.label_poster.size().height() > 220
 
 
-def test_info_rows_grow_for_taller_window(win):
+def _two_line_height(label) -> int:
+    metrics = label.fontMetrics()
+    return metrics.lineSpacing() * 2
+
+
+def test_info_rows_fixed_height_and_elide_by_width(win):
+    """议题 #154: 简介/标签恒 40px、最多两行; 宽度越大显示越多; 末行不出页底。"""
     ui = win.Ui
+    long_outline = "2017年6月23日发售作品 Prestige专属女优「水稀美里」与AV鬼才导演 " * 20
+    long_tag = ", ".join(f"标签{i}" for i in range(80))
+    win._main_outline_text = long_outline
+    win._main_tag_text = long_tag
+
     win.resize(1030, 700)
     win._sync_page_layouts()
-    assert ui.label_outline.height() == 40, "默认窗口(设计基准)简介行高必须保持 40"
-    small_outline_h = ui.label_outline.height()
+    assert ui.label_outline.height() == 40, "简介行高必须恒定 40"
+    assert ui.label_tag.height() == 40, "标签行高必须恒定 40"
+    small_w = ui.label_outline.width()
+    small_len = len(ui.label_outline.text())
+    assert ui.label_outline.text().endswith("…"), "超长简介必须省略"
+    assert ui.label_tag.text().endswith("…"), "超长标签必须省略"
+    from PyQt6.QtCore import QRect, Qt
+
+    for label in (ui.label_outline, ui.label_tag):
+        h = (
+            label.fontMetrics()
+            .boundingRect(QRect(0, 0, label.width(), 1_000_000), int(Qt.TextFlag.TextWordWrap), label.text())
+            .height()
+        )
+        assert h <= _two_line_height(label), f"省略后不得超两行: h={h}"
 
     win.resize(1700, 1100)
     win._sync_page_layouts()
-    big_outline_h = ui.label_outline.height()
-    grow = big_outline_h - 40
-    assert grow > 0, "窗口拉高后简介行高必须增高(可显示更多行)"
-    assert big_outline_h <= 100, "行高增幅必须有上限"
-    # 下划线贴行底(设计偏移 30 保持), 标签行在 underline 间距 20 之后
-    assert ui.line_6.y() - ui.label_outline.y() == 30 + grow
+    assert ui.label_outline.height() == 40, "放大不得增高行高"
+    assert ui.label_tag.height() == 40, "放大不得增高行高"
+    assert ui.label_outline.width() > small_w, "简介宽度应随缩略图右缘增大"
+    assert len(ui.label_outline.text()) >= small_len, "宽度越大, 简介显示内容不更少"
+    # 下划线贴行底(设计偏移 30)、标签行距 20、后续行只随 info_delta 下移
+    assert ui.line_6.y() - ui.label_outline.y() == 30
     assert ui.label_tag.y() - ui.line_6.y() == 20
-    assert ui.line_7.y() - ui.label_tag.y() == 30 + grow
-    # 简介/标签以下(日期行)再让出两行增高
+    assert ui.line_7.y() - ui.label_tag.y() == 30
     assert ui.label_release.y() - ui.line_7.y() >= 20
     assert ui.label_outline.y() <= ui.line_6.y() < ui.label_tag.y() < ui.line_7.y() <= ui.label_release.y()
+    # #152 教训: 不许把末行推出页底
+    last_row = ui.label_studio
+    assert last_row.y() + last_row.height() <= ui.page_main.height(), "末行不得被推出页底"
 
     win.resize(1030, 700)
     win._sync_page_layouts()
-    assert ui.label_outline.height() == small_outline_h == 40, "还原必须回到设计行高(双向幂等)"
+    assert ui.label_outline.height() == ui.label_tag.height() == 40, "还原必须回到设计行高(双向幂等)"
+    assert ui.label_outline.width() == small_w, "还原宽度必须与 fresh 小窗一致"
+
+
+def test_short_info_not_elided(win):
+    ui = win.Ui
+    win._main_outline_text = "短简介"
+    win._main_tag_text = "短标签"
+    win.resize(1600, 1000)
+    win._sync_page_layouts()
+    assert ui.label_outline.text() == "短简介"
+    assert ui.label_tag.text() == "短标签"
 
 
 def test_cover_off_placeholder_survives_resizes(win):

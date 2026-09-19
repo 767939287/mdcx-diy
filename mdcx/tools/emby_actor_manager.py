@@ -19,6 +19,7 @@ from ..config.manager import manager
 from ..config.resources import resources
 from ..models.emby import (
     EMbyActressInfo,
+    clean_overview_text,
     normalize_premiere_date,
     normalize_production_year,
 )
@@ -30,6 +31,9 @@ from .actress_db import ActressDB
 from .emby_shared import (  # noqa: F401
     _append_query,
     _build_jellyfin_headers,
+    _emby_api_prefix,
+    _emby_get_json,
+    _emby_request,
     _generate_server_url,
     _is_jellyfin_server,
     _upload_actor_photo,
@@ -158,15 +162,10 @@ async def get_emby_actor_list(filter_actor_only: bool = True) -> list[dict]:
 
 
 async def get_media_folders() -> list[dict]:
-    base_url = str(manager.config.emby_url).rstrip("/")
-    headers = _build_jellyfin_headers()
-    if "emby" == manager.config.server_type:
-        url = f"{base_url}/emby/Library/MediaFolders"
-    else:
-        url = f"{base_url}/Library/MediaFolders"
-    async with manager.acquire_computed() as computed:
-        response, error = await computed.async_client.get_json(url, headers=headers, use_proxy=False)
+    # 议题 #133: 用轻量直连 httpx(无指纹/无池/无限流), 避免对内网 Emby 握手拖分钟
+    response, error = await _emby_get_json(f"{_emby_api_prefix()}/Library/MediaFolders")
     if response is None:
+        signal.show_log_text(f"🔴 获取媒体库列表失败！{error}")
         return []
     return response.get("Items", [])
 
@@ -218,7 +217,6 @@ async def fetch_person_item_stats(
     counts: dict = {}
     titles: dict = {}
     person_names: set = set()
-    base_url = str(manager.config.emby_url).rstrip("/")
     headers = _build_jellyfin_headers()
     if parent_ids:
         # 每个媒体库独立分页；不带 ParentId 时统一走单循环（lib_id=None 不拼参数）
@@ -226,9 +224,9 @@ async def fetch_person_item_stats(
     else:
         target_lib_ids = [None]
 
-    def _items_url(lib_id: str | None, start_index: int) -> str:
-        prefix = f"{base_url}/emby" if "emby" == manager.config.server_type else base_url
-        url = (
+    def _items_path(lib_id: str | None, start_index: int) -> str:
+        prefix = _emby_api_prefix()
+        path = (
             f"{prefix}/Items?"
             "Recursive=true&Fields=People"
             "&IncludeItemTypes=Movie,Episode"
@@ -236,50 +234,52 @@ async def fetch_person_item_stats(
             f"&StartIndex={start_index}&Limit={page_limit}"
         )
         if lib_id:
-            url += f"&ParentId={lib_id}"
-        return url
+            path += f"&ParentId={lib_id}"
+        return path
 
-    async with manager.acquire_computed() as computed:
-        for lib_id in target_lib_ids:
-            start_index = 0
-            while True:
-                response, error = await computed.async_client.get_json(
-                    _items_url(lib_id, start_index), headers=headers, use_proxy=False
-                )
-                if response is None:
-                    # 该库失败（如超时）只跳过本库，其余库照常统计
-                    break
-                items = response.get("Items", [])
-                if not items:
-                    break
-                for item in items:
-                    people = item.get("People") or []
-                    item_name = item.get("Name", "")
-                    item_type = item.get("Type", "")
-                    seen_in_item = set()
-                    for person in people:
-                        # filter_actor_only: 只统计 Type=Actor 的角色（Emby 默认返回导演/编剧等）
-                        if filter_actor_only and person.get("Type") not in ("Actor", None):
-                            continue
-                        name = person.get("Name", "")
-                        if not name:
-                            continue
-                        seen_in_item.add(name)
-                        person_names.add(name)
-                    for name in seen_in_item:
-                        counts[name] = counts.get(name, 0) + 1
-                        if name not in titles:
-                            titles[name] = []
-                        titles[name].append(f"[{item_type}] {item_name}")
-                # TotalRecordCount 缺失/为 0 时不能短路退出：start_index(500) >= 0
-                # 恒真会让循环只拉第一页，出演统计大面积缺失——此时退化为
-                # 仅靠短页信号（len(items) < page_limit）判定终止（全库审查 M7）
-                total_count = response.get("TotalRecordCount")
-                start_index += page_limit
-                if (total_count is not None and int(total_count) > 0 and start_index >= int(total_count)) or (
-                    len(items) < page_limit
-                ):
-                    break
+    # 议题 #133: 出演统计是批量/分页路径(几十页), 走轻量直连避免多次指纹握手拖慢
+    for lib_id in target_lib_ids:
+        start_index = 0
+        while True:
+            response, _ = await _emby_request("GET", _items_path(lib_id, start_index), headers=headers)
+            if response is None:
+                # 该库失败(如超时)只跳过本库, 其余库照常统计
+                break
+            try:
+                data = response.json()
+            except Exception:
+                break
+            items = data.get("Items", [])
+            if not items:
+                break
+            for item in items:
+                people = item.get("People") or []
+                item_name = item.get("Name", "")
+                item_type = item.get("Type", "")
+                seen_in_item = set()
+                for person in people:
+                    # filter_actor_only: 只统计 Type=Actor 的角色（Emby 默认返回导演/编剧等）
+                    if filter_actor_only and person.get("Type") not in ("Actor", None):
+                        continue
+                    name = person.get("Name", "")
+                    if not name:
+                        continue
+                    seen_in_item.add(name)
+                    person_names.add(name)
+                for name in seen_in_item:
+                    counts[name] = counts.get(name, 0) + 1
+                    if name not in titles:
+                        titles[name] = []
+                    titles[name].append(f"[{item_type}] {item_name}")
+            # TotalRecordCount 缺失/为 0 时不能短路退出：start_index(500) >= 0
+            # 恒真会让循环只拉第一页，出演统计大面积缺失——此时退化为
+            # 仅靠短页信号（len(items) < page_limit）判定终止（全库审查 M7）
+            total_count = data.get("TotalRecordCount")
+            start_index += page_limit
+            if (total_count is not None and int(total_count) > 0 and start_index >= int(total_count)) or (
+                len(items) < page_limit
+            ):
+                break
     return counts, titles, person_names
 
 
@@ -291,7 +291,6 @@ async def fetch_all_actors(
     concurrency: int = 8,
 ) -> tuple[list[ActorInfo], int]:
     persons = await get_emby_actor_list(filter_actor_only=filter_actor_only)
-    raw_count = len(persons)
     if not persons:
         return [], 0
     seen_names = set()
@@ -302,14 +301,23 @@ async def fetch_all_actors(
     # 第一遍: 过滤+构建 stub (不发起网络请求)
     stubs: list[tuple[int, ActorInfo, dict]] = []  # (原索引, actor_stub, person_raw)
     skipped_not_in_lib: list[str] = []  # 指定媒体库过滤但不在影片 People 里
+    # 议题 #157: raw_count 语义 =「过滤后(库+角色)、去重前」条目数——统计栏「原始条目数」
+    # 与「重复 = raw − 唯一名字」都以过滤后的演员集合为基准, 不能含被剔除的非演出角色。
+    filtered_raw = 0
     for i, p in enumerate(persons):
         _raise_if_stop_requested()
         name = p.get("Name", "")
         if not name:
             continue
-        if parent_ids and name not in lib_person_names:
+        # 议题 #157: Emby 的 /Persons 端点不支持按角色过滤——personTypes 仅在配合 Person
+        # 参数时生效（官方 API 参考），服务端把导演/编剧/制片等非演出角色一并返回，
+        # 此前"只看演员"开关对 Emby 从未真正生效（Jellyfin 端 personTypes 有效）。
+        # 统一改为与「所选库(缺省全库)影片 People 中角色=Actor 的人名集合」交集过滤；
+        # 出演统计整体失败导致集合为空时不过滤（兜底防误删，与 #32 教训一致）。
+        if (parent_ids or filter_actor_only) and lib_person_names and name not in lib_person_names:
             skipped_not_in_lib.append(name)
             continue
+        filtered_raw += 1
         if deduplicate:
             if name in seen_names:
                 continue
@@ -333,7 +341,9 @@ async def fetch_all_actors(
     if skipped_not_in_lib:
         preview = ", ".join(skipped_not_in_lib[:5])
         more = f" 等共 {len(skipped_not_in_lib)} 人" if len(skipped_not_in_lib) > 5 else ""
-        signal.show_log_text(f"⚠️ 跳过 {len(skipped_not_in_lib)} 个不在所选媒体库影片中的演员: {preview}{more}")
+        signal.show_log_text(
+            f"⚠️ 跳过 {len(skipped_not_in_lib)} 个不在所选媒体库影片中出演(Actor)的人员: {preview}{more}"
+        )
 
     # 第二遍: 并发抓详情 (注意限流——Emby/Jellyfin 一般无速率压力, 8 并发保守)
     # 列表请求已带 fields 时可直接复用 Item 中的详情字段, 避免逐人二次请求
@@ -369,7 +379,7 @@ async def fetch_all_actors(
     await asyncio.gather(*(_fill(info, p) for _, info, p in stubs))
 
     # 按原顺序返回 (稳定性)
-    return [info for _, info, _ in stubs], raw_count
+    return [info for _, info, _ in stubs], filtered_raw
 
 
 def _gfriends_cdn_url(gfriends_github) -> str:
@@ -506,7 +516,8 @@ async def update_person_info(actor: ActorInfo) -> tuple[bool, str]:
     _, _, _, _, _, update_url = _generate_server_url(
         {"Name": actor.name, "Id": actor.actor_id, "ServerId": actor.server_id}
     )
-    overview = (actor.new_overview or actor.existing_overview or "").replace("\n", "<br/>")
+    # 议题 #149: 简介出口统一清洗(段落标题/<br>/占位文案), 存量脏数据随下次同步自愈
+    overview = clean_overview_text((actor.new_overview or actor.existing_overview or "").replace("\n", "<br/>"))
     # Genres/Tags/ProviderIds 必须恒为集合：Emby/Jellyfin 的 UpdateItem 会直接
     # Distinct()/ToList() 反序列化后的字段，缺省为 null 时抛 ArgumentNullException
     # （"Value cannot be null. (Parameter 'source')"）导致 HTTP 400（议题 #148）。
@@ -535,14 +546,75 @@ async def update_person_info(actor: ActorInfo) -> tuple[bool, str]:
         payload["PremiereDate"] = premiere_date
     # 议题 #56: Emby 4.9 对 POST /Items/{id} 无 Content-Type 的 JSON body 判 400
     headers = _build_jellyfin_headers({"Content-Type": "application/json"})
-    async with manager.acquire_computed() as computed:
-        body, err = await computed.async_client.post_content(
-            url=update_url, data=json.dumps(payload), headers=headers, use_proxy=False
-        )
+    # 议题 #133: 信息更新是同步批量路径(每演员一次), 走轻量直连
+    body, err = await _emby_request("POST", update_url, headers=headers, data=json.dumps(payload))
     # Emby POST 成功常返回 200/204 + 空 body; 不能 iff "ok": 空 bytes 是 falsy
     if err == "" and body is not None:
         return True, f"✅ {actor.name} 信息更新成功"
     return False, f"❌ {actor.name} 信息更新失败: {err or '服务器返回空响应'}"
+
+
+async def clean_actor_data(actor: ActorInfo, new_overview: str, fix_birth: bool) -> tuple[bool, str]:
+    """议题 #149: 原地清洗服务器存量演员数据(简介噪声/非法生日), 不经取数流程。
+
+    与 update_person_info 的区别: 允许显式写入空简介(清除占位文案)、把非法生日
+    (0000-00-00 等)重置为 Emby 原生零值 0001-01-01(服务器与列表均按未设置展示)。
+    Genres/Tags/ProviderIds 恒回填服务器已有值, 避免 Emby 4.9 空引用 400(议题 #148)。
+    """
+    _, _, _, _, _, update_url = _generate_server_url(
+        {"Name": actor.name, "Id": actor.actor_id, "ServerId": actor.server_id}
+    )
+    payload: dict[str, object] = {
+        "Name": actor.name,
+        "Id": actor.actor_id,
+        "ServerId": actor.server_id,
+        "Genres": [g for g in (actor.existing_genres or []) if g],
+        "Tags": [t for t in (actor.existing_tags or []) if t],
+        "ProviderIds": {k: v for k, v in (actor.existing_provider_ids or {}).items() if v},
+    }
+    if new_overview != (actor.existing_overview or ""):
+        payload["Overview"] = new_overview
+    if fix_birth:
+        payload["PremiereDate"] = "0001-01-01T00:00:00.0000000Z"
+    # 议题 #56: Emby 4.9 对 POST /Items/{id} 无 Content-Type 的 JSON body 判 400
+    headers = _build_jellyfin_headers({"Content-Type": "application/json"})
+    body, err = await _emby_request("POST", update_url, headers=headers, data=json.dumps(payload))
+    if err == "" and body is not None:
+        return True, f"✅ {actor.name} 数据清洗成功"
+    return False, f"❌ {actor.name} 数据清洗失败: {err or '服务器返回空响应'}"
+
+
+def clean_actor_data_batch(
+    items: list[tuple[ActorInfo, str, bool]],
+    progress_callback: Callable | None = None,
+    actor_callback: Callable | None = None,
+) -> tuple[int, int]:
+    """议题 #149: 批量清洗存量数据, 与 sync_batch 同一并发/进度模型。"""
+    total = len(items)
+
+    async def _run_batch() -> tuple[int, int]:
+        if not items:
+            return 0, 0
+        sem = asyncio.Semaphore(SYNC_CONCURRENCY)
+        completed = 0
+
+        async def _one(item: tuple[ActorInfo, str, bool]) -> bool:
+            nonlocal completed
+            actor, new_overview, fix_birth = item
+            async with sem:
+                ok, _msg = await clean_actor_data(actor, new_overview, fix_birth)
+            completed += 1
+            if progress_callback:
+                progress_callback(completed, total, f"正在清洗: {actor.name} ({completed}/{total})")
+            if actor_callback:
+                actor_callback(actor, ok, _msg)
+            return ok
+
+        results = await asyncio.gather(*(_one(i) for i in items))
+        success = sum(1 for r in results if r)
+        return success, len(results) - success
+
+    return executor.run(_run_batch())
 
 
 async def upload_actor_image(actor: ActorInfo, image_path: str | Path) -> tuple[bool, str]:
@@ -566,10 +638,10 @@ async def delete_actor_image(actor: ActorInfo) -> tuple[bool, str]:
     else:
         url = f"{base_url}/Items/{actor.actor_id}/Images/Primary"
     headers = _build_jellyfin_headers()
-    async with manager.acquire_computed() as computed:
-        resp, err = await computed.async_client.request("DELETE", url, headers=headers, use_proxy=False)
+    # 议题 #133: 删除属同步批量路径, 走轻量直连
+    resp, err = await _emby_request("DELETE", url, headers=headers)
     if resp is None:
-        # request() 对 HTTP>=400 返回 (None, err)，404 表示本来就没有，也视为"删干净了"
+        # _emby_request 对 HTTP>=400 返回 (None, "HTTP 404...")，404 表示本来就没有，也视为"删干净了"
         if "404" in str(err):
             return True, f"✅ {actor.name} 旧头像本来就不存在 (HTTP 404)"
         return False, f"❌ {actor.name} 删除旧头像请求失败: {err}"
@@ -587,8 +659,7 @@ async def delete_actor_backdrop(actor: ActorInfo) -> tuple[bool, str]:
     else:
         url = f"{base_url}/Items/{actor.actor_id}/Images/Backdrop/0"
     headers = _build_jellyfin_headers()
-    async with manager.acquire_computed() as computed:
-        resp, err = await computed.async_client.request("DELETE", url, headers=headers, use_proxy=False)
+    resp, err = await _emby_request("DELETE", url, headers=headers)
     if resp is None:
         if "404" in str(err):
             return True, f"✅ {actor.name} 旧背景本来就不存在 (HTTP 404)"

@@ -149,3 +149,15 @@ async def test_official_crawler_jimmy_prefix_routes_to_faleno():
     assert res.data.outline == "Faleno outline"
     assert "jimmy003" in res.data.thumb
     assert res.data.extrafanart == ["https://example.test/jimmy003-extra.jpg"]
+
+
+def test_official_description_three_tier_and_check_scope():
+    """议题 #165: 站点描述须讲清「有码 30 家 + 无码 5 站 + 检测仅覆盖无码五站」,
+    防止再被读成 official 只有无码路由。"""
+    from mdcx.crawlers.official import OfficialCrawler
+
+    desc = OfficialCrawler.site_description()
+    assert "有码 30" in desc, "有码官网档位必须出现在描述中"
+    assert "无码 5 站" in desc
+    assert "检测网络" in desc or "「检测网络」" in desc, "须注明检测覆盖面与抓取面的差异"
+    assert desc.index("有码 30") < desc.index("无码 5 站"), "有码在前, 与路由主体构成一致"

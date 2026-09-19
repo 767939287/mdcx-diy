@@ -412,7 +412,7 @@ def Init_Singal(self: "MyMAinWindow"):
     self.Ui.pushButton_success_list_save.clicked.connect(self.pushButton_success_list_save_clicked)
     self.Ui.pushButton_success_list_clear.clicked.connect(self.pushButton_success_list_clear_clicked)
     self.Ui.pushButton_show_tips_close.clicked.connect(self.Ui.widget_show_tips.hide)
-    self.Ui.pushButton_nfo_close.clicked.connect(self.Ui.widget_nfo.hide)
+    self.Ui.pushButton_nfo_close.clicked.connect(self._close_nfo_editor)
     self.Ui.pushButton_nfo_save.clicked.connect(self.save_nfo_info)
     # endregion
 

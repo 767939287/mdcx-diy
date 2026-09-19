@@ -5,7 +5,7 @@ import threading
 from pathlib import Path
 
 from pydantic import HttpUrl
-from PyQt6.QtCore import Qt, QThread, QTimer
+from PyQt6.QtCore import QEvent, Qt, QThread, QTimer
 from PyQt6.QtCore import pyqtSignal as Signal
 from PyQt6.QtGui import QColor, QGuiApplication
 from PyQt6.QtWidgets import (
@@ -38,10 +38,12 @@ from PyQt6.QtWidgets import (
 
 from ..config.manager import manager
 from ..config.resources import resources
+from ..models.emby import clean_overview_text, normalize_premiere_date
 from ..utils import executor
 from .emby_actor_manager import (
     ActorInfo,
     build_local_avatar_index,
+    clean_actor_data_batch,
     fetch_actor_info_from_source,
     fetch_all_actors,
     from_gfriends,
@@ -55,18 +57,41 @@ from .emby_actor_manager import (
 )
 
 
+def scan_actor_data_noise(actors: list[ActorInfo]) -> list[tuple[ActorInfo, str, bool]]:
+    """议题 #149: 扫描需要清洗的演员——简介含历史噪声(清洗后有变化)或生日非法(0000-00-00 等)。
+
+    返回 (actor, 清洗后简介, 是否重置生日) 三元组; 生日为 Emby 未设置零值 0001-01-01
+    或可被 normalize_premiere_date 正常解析时不算噪声。
+    """
+    dirty: list[tuple[ActorInfo, str, bool]] = []
+    for a in actors:
+        new_overview = clean_overview_text(a.existing_overview)
+        raw_birth = (a.existing_premiere_date or "").strip()
+        fix_birth = (
+            bool(raw_birth) and not raw_birth.startswith("0001-01-01") and normalize_premiere_date(raw_birth) is None
+        )
+        if new_overview != (a.existing_overview or "") or fix_birth:
+            dirty.append((a, new_overview, fix_birth))
+    return dirty
+
+
 class LibrarySelectDialog(QDialog):
     # 议题 #146: 默认最小尺寸只够 ~7 行, 媒体库多时需滚动半屏。
     # 现按库数自适应初始大小(最多同时展示 20 行, 宽高 16:9, 不超过屏幕可用区 85%)。
+    # 议题 #156: 行高由 item 显式 sizeHint 钉死为复选框高度, 并预留横向滚动条空间——
+    # 此前行高靠估算、与实际渲染行高无确定关系, Windows 上 20 行预算只容得下 19 行。
     MAX_VISIBLE_ROWS = 20
 
     @staticmethod
-    def initial_size(row_h: int, visible_rows: int, chrome_h: int, avail_w: int, avail_h: int) -> tuple[int, int]:
-        """计算对话框初始宽高: 高 = chrome + 可见行, 宽按 16:9, 双向钳制到屏幕可用区 85%。
+    def initial_size(
+        row_h: int, visible_rows: int, chrome_h: int, avail_w: int, avail_h: int, slack: int = 12
+    ) -> tuple[int, int]:
+        """计算对话框初始宽高: 高 = chrome + 可见行 + slack, 宽按 16:9, 双向钳制到屏幕可用区 85%。
 
-        纯函数便于测试: chrome_h 为除列表可视区外的窗口内容高度(layout sizeHint 差值)。
+        纯函数便于测试: chrome_h 为除列表可视区外的窗口内容高度(layout sizeHint 差值);
+        slack 覆盖列表边框与可能出现的横向滚动条高度(议题 #156)。
         """
-        target_h = chrome_h + visible_rows * row_h + 12
+        target_h = chrome_h + visible_rows * row_h + slack
         target_w = int(round(target_h * 16 / 9))
         target_w = max(420, min(target_w, int(avail_w * 0.85)))
         target_h = max(320, min(target_h, int(avail_h * 0.85)))
@@ -77,7 +102,11 @@ class LibrarySelectDialog(QDialog):
         self.setWindowTitle("选择媒体库")
         self.setMinimumWidth(420)
         self.setMinimumHeight(320)
-        self._libraries = libraries
+        # 议题 #156: 合集(boxsets)是 Emby 自动创建的空壳库(无演员/标签), 默认不展示;
+        # 极端情况下全部库都是合集时回退展示原始列表, 避免空对话框
+        filtered = [lib for lib in libraries if (lib.get("CollectionType") or "") != "boxsets"]
+        self._hidden_boxsets = len(libraries) - len(filtered)
+        self._libraries = filtered or list(libraries)
         self._checkboxes: list[QCheckBox] = []
         self._init_ui()
         self._apply_initial_size()
@@ -86,16 +115,21 @@ class LibrarySelectDialog(QDialog):
         parent = self.parentWidget()
         screen_obj = parent.screen() if parent is not None else QGuiApplication.primaryScreen()
         available = screen_obj.availableGeometry()
-        row_h = max((cb.sizeHint().height() for cb in self._checkboxes), default=0)
-        row_h = max(row_h, self.list_widget.fontMetrics().height() + 8, 26)
-        visible = max(1, min(len(self._libraries), self.MAX_VISIBLE_ROWS))
+        count = self.list_widget.count()
+        # 议题 #156: 行高取 item 显式 sizeHint(在 _init_ui 中 setSizeHint 钉死), 不再估算
+        row_h = self.list_widget.sizeHintForRow(0) if count else 26
+        visible = max(1, min(count, self.MAX_VISIBLE_ROWS))
         chrome_h = max(0, self.layout().sizeHint().height() - self.list_widget.sizeHint().height())
-        self.resize(*self.initial_size(row_h, visible, chrome_h, available.width(), available.height()))
+        # 预留横向滚动条高度: 长库名触发横向滚动条时会吃掉约一行可视高度
+        slack = 12 + self.list_widget.horizontalScrollBar().sizeHint().height()
+        self.resize(*self.initial_size(row_h, visible, chrome_h, available.width(), available.height(), slack))
 
     def _init_ui(self):
         layout = QVBoxLayout(self)
         count = len(self._libraries)
-        label = QLabel(f"选择要获取演员的媒体库（共 {count} 个，默认全选）：")
+        # 议题 #156: 隐藏合集库时在计数里明说, 避免"库数对不上"的疑惑
+        hidden_note = f"，已隐藏 {self._hidden_boxsets} 个合集库" if self._hidden_boxsets else ""
+        label = QLabel(f"选择要获取演员的媒体库（共 {count} 个{hidden_note}，默认全选）：")
         layout.addWidget(label)
         self.list_widget = QListWidget()
         for lib in self._libraries:
@@ -106,6 +140,8 @@ class LibrarySelectDialog(QDialog):
             cb.setChecked(True)
             self._checkboxes.append(cb)
             item = QListWidgetItem()
+            # 议题 #156: 行高钉死为复选框高度, 使 _apply_initial_size 的行数预算与实际渲染一致
+            item.setSizeHint(cb.sizeHint())
             self.list_widget.addItem(item)
             self.list_widget.setItemWidget(item, cb)
         layout.addWidget(self.list_widget)
@@ -167,24 +203,41 @@ class PreparePreviewThread(QThread):
     _INFO_PLACEHOLDER = "无维基百科信息"
 
     @classmethod
+    def _is_missing_image(cls, a: ActorInfo) -> bool:
+        """是否缺头像: 服务器无 Primary 头像标签。"""
+        return not a.has_image
+
+    @classmethod
+    def _is_missing_info(cls, a: ActorInfo) -> bool:
+        """是否缺简介: 无简介, 或简介仅剩「无维基百科信息」占位文案。
+
+        #147: 该判口径必须与「统计栏缺简介」保持一致——占位简介按缺处理,
+        否则取数模式选中的数与统计栏分项对不上。
+        """
+        return not a.has_overview or cls._INFO_PLACEHOLDER in a.existing_overview
+
+    @classmethod
     def select_targets(cls, actors: list[ActorInfo], mode: str) -> list[ActorInfo]:
-        """议题 #127: 按获取模式筛出需要处理的演员子集, 避免无效的逐人遍历与服务器复核。
+        """议题 #127: 按获取模式筛出需要处理的演员子集, 避免无效人次的遍历与服务器的复核。
 
         - missing_image: 仅缺头像的演员
-        - missing_info : 仅缺简介的演员（含服务器简介只剩占位文案的情况）
+        - missing_info : 仅缺简介的演员（含简介只剩占位文案的情况）
         - missing_all  : 缺头像或缺简介的并集
+        - missing_both : 缺头像且缺简介的交集（议题 #155，对应统计栏「全缺」）
         - force_*      : 用户显式选择「重新获取」, 不做筛选
         """
         if mode.startswith("force"):
             return list(actors)
 
+        if mode == "missing_both":
+            return [a for a in actors if cls._is_missing_image(a) and cls._is_missing_info(a)]
+
         want_image = mode in ("missing_all", "missing_image")
         want_info = mode in ("missing_all", "missing_info")
 
-        def missing_info(a: ActorInfo) -> bool:
-            return not a.has_overview or cls._INFO_PLACEHOLDER in a.existing_overview
-
-        return [a for a in actors if (want_image and not a.has_image) or (want_info and missing_info(a))]
+        return [
+            a for a in actors if (want_image and cls._is_missing_image(a)) or (want_info and cls._is_missing_info(a))
+        ]
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -211,8 +264,15 @@ class PreparePreviewThread(QThread):
             if total == 0:
                 self.preview_done.emit(self.actors)
                 return
-            need_image = self.mode in ("missing_all", "missing_image", "force_all", "force_image")
-            need_info = self.mode in ("missing_all", "missing_info", "force_all", "force_info")
+            need_image = self.mode in ("missing_all", "missing_image", "missing_both", "force_all", "force_image")
+            need_info = self.mode in (
+                "missing_all",
+                "missing_info",
+                "missing_both",
+                "force_all",
+                "force_info",
+                "force_overview",
+            )
             force = "force" in self.mode
             cancelled = False
             cancelled = executor.run(self._process_all(targets, need_image, need_info, force, total))
@@ -313,6 +373,16 @@ class PreparePreviewThread(QThread):
         result = await search_actor_info(actor)
         if result:
             actor.need_update_info = True
+        if getattr(self, "mode", "") == "force_overview":
+            # 议题 #164: 「重新获取所有演员简介」只回写简介——清空其余 new_* 字段,
+            # 同步出口(update_person_info)按真值逐字段写入, 出生日期/出生地/标签/
+            # ProviderIds 均保持服务器原值; 简介没取到则不标记待同步。
+            actor.new_taglines = []
+            actor.new_production_year = None
+            actor.new_premiere_date = ""
+            actor.new_production_locations = []
+            actor.new_provider_ids = {}
+            actor.need_update_info = bool(actor.new_overview)
 
 
 class SyncThread(QThread):
@@ -333,6 +403,31 @@ class SyncThread(QThread):
                 actor_callback=lambda actor, ok, msg: self.actor_done.emit(actor.actor_id, actor.name, ok, msg),
             )
             self.sync_done.emit(success, fail)
+        except Exception as e:
+            self.error.emit(str(e))
+
+
+class CleanDataThread(QThread):
+    """议题 #149: 存量数据清洗(简介噪声/非法生日), 不经取数流程。"""
+
+    progress = Signal(int, int, str)
+    # 议题 #162: actor_done 携带失败原因——此前 msg 在回调处被丢弃, 清洗失败只剩计数
+    actor_done = Signal(str, bool, str)  # (actor_id, success, 结果消息)
+    clean_done = Signal(int, int)
+    error = Signal(str)
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.items: list[tuple[ActorInfo, str, bool]] = []
+
+    def run(self):
+        try:
+            success, fail = clean_actor_data_batch(
+                self.items,
+                progress_callback=lambda c, t, m: self.progress.emit(c, t, m),
+                actor_callback=lambda actor, ok, msg: self.actor_done.emit(actor.actor_id, ok, msg),
+            )
+            self.clean_done.emit(success, fail)
         except Exception as e:
             self.error.emit(str(e))
 
@@ -382,6 +477,9 @@ class EmbyActorManagerDialog(QDialog):
         self._gfriends_index = None
         self._preview_thread = None
         self._sync_thread = None
+        self._clean_thread = None
+        self._clean_items: dict[str, tuple[str, bool]] = {}
+        self._clean_failed: list[tuple[str, str]] = []  # 议题 #162: (actor_id, 失败消息)
         self._fetch_thread = None
         self._failed_names: set[str] = set()
         self._log_file: Path | None = None
@@ -454,23 +552,71 @@ class EmbyActorManagerDialog(QDialog):
         self.btn_fetch.setEnabled(False)
         btn_layout.addWidget(self.btn_fetch)
         self.cmb_fetch_mode = QComboBox()
+        # 议题 #164: 按「单缺字段 → 双缺 → 并集 → 重新获取组」范围递增排序;
+        # 去掉（并集）（交集）标注——名称已自明, 集合术语保留在 tooltip。
         self.cmb_fetch_mode.addItems(
             [
-                "仅全部缺失头像+简介",
-                "仅全部缺失头像",
-                "仅全部缺失简介",
-                "全部头像+简介（重新获取）",
-                "全部头像（重新获取）",
-                "全部简介（重新获取）",
+                "仅缺失简介",
+                "仅缺失头像",
+                "头像和简介都缺",
+                "缺失头像或缺失简介",
+                "更新所有演员详情（不含头像/影片数）",
+                "重新获取所有演员简介",
+                "重新获取所有演员头像",
+                "重新获取所有演员头像和简介",
             ]
         )
-        self.cmb_fetch_mode.setCurrentIndex(0)
+        # 议题 #147: 明确「或=并集(缺任一即取)/且=交集(两者都缺)」, 并说明占位简介按缺失处理,
+        # 与统计栏分项统一口径。议题 #155: 补「交集」独立入口, 与统计栏「全缺」分项对应。
+        self.cmb_fetch_mode.setItemData(
+            0, "仅缺简介的演员（简介仅剩「无维基百科信息」占位也按缺处理）", Qt.ItemDataRole.ToolTipRole
+        )
+        self.cmb_fetch_mode.setItemData(1, "仅缺头像的演员（含缺简介者，只要缺头像）", Qt.ItemDataRole.ToolTipRole)
+        self.cmb_fetch_mode.setItemData(
+            2,
+            "缺头像 且 缺简介 = 交集（两者都缺才选取，对应统计栏「全缺」；占位简介按缺处理）",
+            Qt.ItemDataRole.ToolTipRole,
+        )
+        self.cmb_fetch_mode.setItemData(
+            3, "缺头像 或 缺简介 = 并集（缺任其一即选取；全缺也在内）", Qt.ItemDataRole.ToolTipRole
+        )
+        # 议题 #149: 全量刷新简介/出生日期/出生地/标签等信息; 影片数来自服务器、
+        # 头像交由第三方工具, 均不在本模式范围内。
+        self.cmb_fetch_mode.setItemData(
+            4,
+            "不筛缺失，为全部演员 重新获取 简介/出生日期/出生地/标签（不动头像与影片数）",
+            Qt.ItemDataRole.ToolTipRole,
+        )
+        # 议题 #164: 仅简介的重新获取——同步出口按真值逐字段写入, 只回写简介,
+        # 不覆盖手动修正过的出生日期/出生地/标签。
+        self.cmb_fetch_mode.setItemData(
+            5,
+            "不筛缺失，为全部演员 重新获取 简介（只回写简介，出生日期/出生地/标签/头像/影片数均不动）",
+            Qt.ItemDataRole.ToolTipRole,
+        )
+        self.cmb_fetch_mode.setItemData(6, "不筛缺失，为全部演员 重新获取 头像", Qt.ItemDataRole.ToolTipRole)
+        self.cmb_fetch_mode.setItemData(7, "不筛缺失，为全部演员 重新获取 头像+简介", Qt.ItemDataRole.ToolTipRole)
+        # 议题 #164: 重排后默认项显式锚定并集(index 3)——保持"打开即最通用模式"的既有行为
+        self.cmb_fetch_mode.setCurrentIndex(3)
         self.cmb_fetch_mode.setFixedWidth(220)
         btn_layout.addWidget(self.cmb_fetch_mode)
         self.btn_preview = QPushButton("根据设定获取数据")
         self.btn_preview.setObjectName("btnPrimary")
         self.btn_preview.setEnabled(False)
         btn_layout.addWidget(self.btn_preview)
+        # 议题 #149: 数据清洗按钮, 按需求置于「根据设定获取数据」与「开始全部更新同步」之间
+        self.btn_clean = QPushButton("数据清洗")
+        self.btn_clean.setObjectName("btnPrimary")
+        self.btn_clean.setEnabled(False)
+        self.btn_clean.setToolTip(
+            "原地清洗服务器存量演员数据（不经取数流程）:\n"
+            "① 0000-00-00 等非法生日 → 重置为未设置\n"
+            "② 「无维基百科信息」占位简介 → 清空\n"
+            "③ <br> 换行标签 → 替换为中文逗号\n"
+            "④ ===== 个人资料/外部链接 ===== 无意义段落标题 → 删除\n"
+            "清洗后可选「更新所有演员数据」做全量信息刷新；头像与影片数不受影响"
+        )
+        btn_layout.addWidget(self.btn_clean)
         self.btn_sync = QPushButton("开始全部更新同步")
         self.btn_sync.setObjectName("btnSync")
         self.btn_sync.setEnabled(False)
@@ -494,6 +640,12 @@ class EmbyActorManagerDialog(QDialog):
     def _build_actor_list(self, parent_layout: QVBoxLayout):
         stats_layout = QHBoxLayout()
         self.lbl_total = QLabel("总数: -")
+        # 议题 #157: 重复演员数 = 原始条目数 − 唯一名字数, 直接展示免用户两种计数方式手算
+        self.lbl_duplicate = QLabel("重复: -")
+        self.lbl_duplicate.setToolTip(
+            "重复演员数 = 同名演员产生的多余条目数（原始条目数 − 唯一名字数）。\n"
+            "可在「设置」中勾选「重复演员去重（按名称合并）」合并同名条目。"
+        )
         self.lbl_has_both = QLabel("完整: -")
         self.lbl_missing_image = QLabel("缺头像: -")
         self.lbl_missing_info = QLabel("缺简介: -")
@@ -501,6 +653,7 @@ class EmbyActorManagerDialog(QDialog):
         self.lbl_backdrop = QLabel("有背景图: -")
         for lbl in (
             self.lbl_total,
+            self.lbl_duplicate,
             self.lbl_has_both,
             self.lbl_missing_image,
             self.lbl_missing_info,
@@ -569,6 +722,11 @@ class EmbyActorManagerDialog(QDialog):
         self.table.setColumnWidth(8, 60)
         self.table.cellDoubleClicked.connect(self._on_table_double_clicked)
         parent_layout.addWidget(self.table)
+        # 议题 #160: 纵向滚动条显隐只改 viewport 几何、不触发窗口 resizeEvent;
+        # 监听 viewport 尺寸变化, 在其后按真实视口宽重算列宽, 消除随之出现的横向滚动条
+        table_viewport = self.table.viewport()
+        assert table_viewport is not None
+        table_viewport.installEventFilter(self)
 
     # 固定宽度列（0 状态/1 姓名/2 头像/3 简介/5 出生日期/6 出生地/8 影片数）；
     # 剩余宽度在 4 详情 与 7 标签 之间按 _DETAIL_WIDTH_RATIO 分配（议题 #136）。
@@ -587,8 +745,22 @@ class EmbyActorManagerDialog(QDialog):
         remain = max(viewport_w - fixed_sum, 120)
         detail_w = int(remain * self._DETAIL_WIDTH_RATIO)
         tags_w = remain - detail_w
-        table.setColumnWidth(4, detail_w)
-        table.setColumnWidth(7, tags_w)
+        # 防御性重入保护: setColumnWidth 实测不改 viewport 宽(不会自激), 嵌套调用为同值空操作
+        if getattr(self, "_applying_widths", False):
+            return
+        self._applying_widths = True
+        try:
+            table.setColumnWidth(4, detail_w)
+            table.setColumnWidth(7, tags_w)
+        finally:
+            self._applying_widths = False
+
+    def eventFilter(self, a0, a1):
+        """议题 #160: viewport 尺寸变化(含纵向滚动条显隐/DPI 变化)后重算列宽。"""
+        table = getattr(self, "table", None)
+        if table is not None and a0 is table.viewport() and a1 is not None and a1.type() == QEvent.Type.Resize:
+            self._apply_column_widths()
+        return super().eventFilter(a0, a1)
 
     def resizeEvent(self, a0):
         super().resizeEvent(a0)
@@ -612,6 +784,7 @@ class EmbyActorManagerDialog(QDialog):
         self.btn_connect.clicked.connect(self._on_connect)
         self.btn_fetch.clicked.connect(self._on_fetch)
         self.btn_preview.clicked.connect(self._on_prepare_preview)
+        self.btn_clean.clicked.connect(self._on_clean_data)
         self.btn_sync.clicked.connect(self._on_sync)
         self.btn_settings.clicked.connect(self._on_open_settings)
         self.btn_test_source.clicked.connect(self._on_open_test_source)
@@ -696,6 +869,7 @@ class EmbyActorManagerDialog(QDialog):
         self.btn_fetch.setEnabled(enabled and hasattr(self, "_connected") and self._connected)
         actors = getattr(self, "_actors", None) or []
         self.btn_preview.setEnabled(enabled and len(actors) > 0)
+        self.btn_clean.setEnabled(enabled and len(actors) > 0)
         pending = any(a.need_update_info or a.need_update_image or a.need_update_backdrop for a in actors)
         self.btn_sync.setEnabled(enabled and pending)
 
@@ -705,29 +879,24 @@ class EmbyActorManagerDialog(QDialog):
         if not url or not key:
             QMessageBox.warning(self, "提示", "请输入服务器地址和 API 密钥")
             return
-        from .emby_shared import _build_jellyfin_headers
+        from .emby_shared import _build_jellyfin_headers, _emby_api_prefix, _emby_get_json
 
-        if "emby" in str(manager.config.server_type):
-            headers = {"Authorization": f'MediaBrowser Token="{key}"'}
-        else:
-            # Jellyfin 10.11+/12.x 要求完整 MediaBrowser 设备标识, 复用统一构造器
-            headers = _build_jellyfin_headers(token=key)
         self._emby_url = url
         self._emby_key = key
 
         async def test():
-            async with manager.acquire_computed() as computed:
-                test_url = (
-                    f"{url.rstrip('/')}/emby/System/Info?api_key={key}"
-                    if "emby" in str(manager.config.server_type)
-                    else f"{url.rstrip('/')}/System/Info"
-                )
-                resp, err = await computed.async_client.get_json(test_url, headers=headers, use_proxy=False)
-                if resp:
-                    name = resp.get("ServerName", "Emby")
-                    version = resp.get("Version", "")
-                    return True, f"连接成功！{name} v{version}"
-                return False, f"连接失败: {err}"
+            # 议题 #133: 连接探测改用轻量直连 httpx(无指纹/无池/无限流)。
+            # Emby/Jellyfin 都用 Authorization 头携带 token, 统一走 header 校验,
+            # 不再为 Emby 单独拼 ?api_key=。传入用户刚输入的 token, 校验后才持久化。
+            resp, err = await _emby_get_json(
+                f"{_emby_api_prefix()}/System/Info",
+                headers=_build_jellyfin_headers(token=key),
+            )
+            if resp:
+                name = resp.get("ServerName", "Emby")
+                version = resp.get("Version", "")
+                return True, f"连接成功！{name} v{version}"
+            return False, f"连接失败: {err}"
 
         self.btn_connect.setEnabled(False)
         self.btn_connect.setText("连接中...")
@@ -849,12 +1018,14 @@ class EmbyActorManagerDialog(QDialog):
             self.btn_preview.setText("根据设定获取数据")
             return
         mode_map = {
-            "仅全部缺失头像+简介": "missing_all",
-            "仅全部缺失头像": "missing_image",
-            "仅全部缺失简介": "missing_info",
-            "全部头像+简介（重新获取）": "force_all",
-            "全部头像（重新获取）": "force_image",
-            "全部简介（重新获取）": "force_info",
+            "仅缺失简介": "missing_info",
+            "仅缺失头像": "missing_image",
+            "头像和简介都缺": "missing_both",
+            "缺失头像或缺失简介": "missing_all",
+            "更新所有演员详情（不含头像/影片数）": "force_info",
+            "重新获取所有演员简介": "force_overview",
+            "重新获取所有演员头像": "force_image",
+            "重新获取所有演员头像和简介": "force_all",
         }
         mode = mode_map.get(self.cmb_fetch_mode.currentText(), "missing_all")
         # 议题 #127: 「缺失」类模式只处理子集, 不再逐人遍历全库
@@ -897,6 +1068,89 @@ class EmbyActorManagerDialog(QDialog):
         self.btn_preview.setText("根据设定获取数据")
         self.progress_bar.setVisible(False)
         self._set_buttons_enabled(True)
+
+    def _on_clean_data(self):
+        """议题 #149: 扫描存量噪声 → 弹确认(含前 5 条 before/after) → 批量清洗。"""
+        if not self._actors:
+            return
+        dirty = scan_actor_data_noise(self._actors)
+        if not dirty:
+            QMessageBox.information(self, "数据清洗", "✅ 未发现需要清洗的数据")
+            return
+        samples = []
+        for a, new_ov, fix_birth in dirty[:5]:
+            parts = []
+            if new_ov != (a.existing_overview or ""):
+                before = (a.existing_overview or "")[:40] or "(空)"
+                after = new_ov[:40] or "(空)"
+                parts.append(f"简介: {before} → {after}")
+            if fix_birth:
+                parts.append(f"生日: {(a.existing_premiere_date or '')[:10]} → (置空)")
+            samples.append(f"· {a.name}: " + "; ".join(parts))
+        reply = QMessageBox.question(
+            self,
+            "确认数据清洗",
+            f"发现 {len(dirty)} 个演员的数据需要清洗（示例前 5 条）:\n\n"
+            + "\n".join(samples)
+            + "\n\n清洗将直接改写服务器数据且不可撤销（不动头像与影片数），建议先备份。是否继续？",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+        )
+        if reply != QMessageBox.StandardButton.Yes:
+            return
+        self._set_buttons_enabled(False)
+        self.progress_bar.setVisible(True)
+        self.progress_bar.setValue(0)
+        self._set_status("数据清洗中...")
+        self.log(f"🧹 开始数据清洗，共 {len(dirty)} 个演员...")
+        self._clean_items = {a.actor_id: (new_ov, fix_birth) for a, new_ov, fix_birth in dirty}
+        self._clean_failed = []
+        self._clean_thread = CleanDataThread(self)
+        self._clean_thread.items = dirty
+        self._clean_thread.progress.connect(self._on_sync_progress)
+        self._clean_thread.actor_done.connect(self._on_clean_actor_done)
+        self._clean_thread.clean_done.connect(self._on_clean_finished)
+        self._clean_thread.error.connect(self._on_thread_error)
+        self._clean_thread.start()
+
+    def _on_clean_actor_done(self, actor_id: str, success: bool, msg: str):
+        # 清洗成功后立即就地更新内存状态; 失败保留原值, 下次清洗可重试
+        # 议题 #162: 失败逐条落日志(名字+服务器原因), 完成时汇总, 消除"只见计数不见原因"盲区
+        if not success:
+            self._clean_failed.append((actor_id, msg))
+            self.log(f"🔴 清洗失败: {msg}")
+            return
+        actor = next((a for a in self._actors if a.actor_id == actor_id), None)
+        item = self._clean_items.get(actor_id)
+        if actor is None or item is None:
+            return
+        new_ov, fix_birth = item
+        actor.existing_overview = new_ov
+        actor.has_overview = bool(new_ov)
+        if fix_birth:
+            actor.existing_premiere_date = ""
+
+    def _on_clean_finished(self, success: int, fail: int):
+        self.progress_bar.setVisible(False)
+        self._set_buttons_enabled(True)
+        self._set_status("数据清洗完成")
+        self._clean_items = {}
+        self.log(f"🧹 数据清洗完成！成功: {success}, 失败: {fail}")
+        # 议题 #162: 清洗是直接改写服务器的, 无"待同步"残留——完成提示讲清这一点,
+        # 并列出失败者名单与重试指引, 避免用户误以为还要点「开始全部更新同步」。
+        names = []
+        for actor_id, _ in self._clean_failed:
+            actor = next((a for a in self._actors if a.actor_id == actor_id), None)
+            names.append(actor.name if actor else actor_id)
+        self._clean_failed = []
+        detail = ""
+        if names:
+            preview = "、".join(names[:20]) + ("…" if len(names) > 20 else "")
+            detail = f"\n\n❌ 失败 {len(names)} 个: {preview}\n失败原因见上方运行日志；再点一次「数据清洗」即可仅重试失败项。"
+        if fail == 0:
+            detail += "\n\n清洗已直接写入服务器，无需再点「开始全部更新同步」。"
+        QMessageBox.information(self, "数据清洗完成", f"✅ 成功: {success}\n❌ 失败: {fail}{detail}")
+        self._populate_table(self._actors)
+        self._update_statistics(self._actors)
 
     def _on_sync(self):
         to_sync = [a for a in self._actors if a.need_update_info or a.need_update_image or a.need_update_backdrop]
@@ -1111,7 +1365,10 @@ class EmbyActorManagerDialog(QDialog):
             raw_birthday = (actor.existing_premiere_date or "")[:10]
             # Emby 未设置生日时返回 0001-01-01，按空值展示，避免列表出现占位日期
             birthday_text = "" if raw_birthday.startswith("0001-01-01") else raw_birthday
-            self.table.setItem(row, 5, QTableWidgetItem(birthday_text))
+            birthday_item = QTableWidgetItem(birthday_text)
+            # 议题 #153：出生日期为定宽列, 居中显示与 状态/头像/影片数 列观感一致
+            birthday_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+            self.table.setItem(row, 5, birthday_item)
             location_text = (
                 ", ".join(actor.existing_production_locations) if actor.existing_production_locations else ""
             )
@@ -1144,15 +1401,33 @@ class EmbyActorManagerDialog(QDialog):
             self.log(f"🔶 计数方式保存失败: {e}")
 
     def _update_statistics(self, actors: list[ActorInfo]):
+        unique_all = {a.name for a in actors}
         if self._show_unique:
-            unique_names = {a.name for a in actors}
-            total = len(unique_names)
+            total = len(unique_all)
         else:
             total = self._raw_count if self._raw_count > 0 else len(actors)
-        has_both = sum(1 for a in actors if a.has_image and a.has_overview)
-        has_image_only = sum(1 for a in actors if a.has_image and not a.has_overview)
-        has_info_only = sum(1 for a in actors if not a.has_image and a.has_overview)
-        has_none = sum(1 for a in actors if not a.has_image and not a.has_overview)
+        # 议题 #157: 重复数 = 过滤后条目数 − 唯一名字数, 与计数方式切换无关, 恒为同名多余条目
+        self.lbl_duplicate.setText(f"重复: {max(self._raw_count - len(unique_all), 0)}")
+        # 议题 #147: 分项与「获取数据」模式用同一套缺失判定 (占位简介按缺处理),
+        # 保证统计栏的 缺头像/缺简介/全缺 之和与取数模式选中的候选数一致; 完整=两者皆不缺。
+        has_both = sum(
+            1
+            for a in actors
+            if not PreparePreviewThread._is_missing_image(a) and not PreparePreviewThread._is_missing_info(a)
+        )
+        has_image_only = sum(
+            1
+            for a in actors
+            if PreparePreviewThread._is_missing_info(a) and not PreparePreviewThread._is_missing_image(a)
+        )
+        has_info_only = sum(
+            1
+            for a in actors
+            if PreparePreviewThread._is_missing_image(a) and not PreparePreviewThread._is_missing_info(a)
+        )
+        has_none = sum(
+            1 for a in actors if PreparePreviewThread._is_missing_image(a) and PreparePreviewThread._is_missing_info(a)
+        )
         backdrop_count = sum(1 for a in actors if a.has_backdrop)
         self.lbl_total.setText(f"总数: {total}")
         self.lbl_has_both.setText(f"完整: {has_both}")

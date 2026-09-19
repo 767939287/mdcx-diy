@@ -11,11 +11,12 @@ from collections import deque
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal, cast
 
-from PyQt6.QtCore import QEvent, QItemSelectionModel, QPoint, QPointF, Qt, QTimer, pyqtSignal
+from PyQt6.QtCore import QEvent, QItemSelectionModel, QPoint, QPointF, QRect, Qt, QTimer, pyqtSignal
 from PyQt6.QtGui import QAction, QCursor, QGuiApplication, QHoverEvent, QIcon, QKeySequence, QPixmap, QShortcut
 from PyQt6.QtWidgets import (
     QApplication,
     QFileDialog,
+    QHBoxLayout,
     QInputDialog,
     QLineEdit,
     QMainWindow,
@@ -25,6 +26,7 @@ from PyQt6.QtWidgets import (
     QSystemTrayIcon,
     QTableWidgetItem,
     QTreeWidgetItem,
+    QVBoxLayout,
 )
 
 from mdcx.base.file import (
@@ -240,6 +242,7 @@ class MyMAinWindow(QMainWindow):
         self.start_click_pos: QPoint
         self.window_marjin = None
         self.now_show_name = None
+        self._nfo_editor_snapshot: tuple[str, ...] | None = None
         self.show_name = None
         self.t_net = None
         self.options: QFileDialog.Option
@@ -612,6 +615,154 @@ class MyMAinWindow(QMainWindow):
         ui.progressBar_scrape.setGeometry(209, -1, max(width - 211, 100), 7)
         self._sync_page_layouts()  # 同步动态页面的内部尺寸
 
+    # 议题 #154：「编辑 NFO」覆盖层内容区字段最小高度（设计值）
+    _NFO_EDITOR_TEXT_MIN_H = 150
+    _NFO_EDITOR_TAG_MIN_H = 100
+    _NFO_COMMA_HINT = "多个以逗号隔开"
+    _NFO_OVERLAY_X = 215
+    _NFO_OVERLAY_Y = 8
+    _NFO_OVERLAY_MARGIN = 12
+    _NFO_OVERLAY_BTN_W = 91
+    _NFO_OVERLAY_BTN_H = 40
+    _NFO_OVERLAY_BTN_GAP = 24
+    _NFO_OVERLAY_BAR_H = 52
+    _NFO_OVERLAY_TREE_GAP = 8
+
+    def _ensure_nfo_editor_layout(self) -> None:
+        """议题 #154/#166：覆盖层内容区改为行式布局，字段随宽度拉伸。
+
+        .ui 里内容区固定 860×1300、19 个字段按绝对坐标摆放。改为 QVBoxLayout
+        + 每行 QHBoxLayout；逗号提示改挂到演员/标签字段，不再占独立行。
+        仅首次构建。
+        """
+        ui = self.Ui
+        ui.label_370.hide()
+        ui.label_379.hide()
+        ui.lineEdit_nfo_actor.setPlaceholderText(self._NFO_COMMA_HINT)
+        ui.lineEdit_nfo_actor.setToolTip(self._NFO_COMMA_HINT)
+        ui.textEdit_nfo_tag.setPlaceholderText(self._NFO_COMMA_HINT)
+        ui.textEdit_nfo_tag.setToolTip(self._NFO_COMMA_HINT)
+        content = ui.scrollAreaWidgetContents_nfo_editor
+        if content.layout() is not None:
+            return
+        ui.scrollArea_nfo.set_content_bottom_margin(0)
+        outer = QVBoxLayout(content)
+        outer.setContentsMargins(9, 6, 9, 12)
+        outer.setSpacing(6)
+
+        def _label(text_label):
+            text_label.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+            text_label.setFixedWidth(82)
+            return text_label
+
+        def add_full_row(text_label, field) -> None:
+            row = QHBoxLayout()
+            row.setSpacing(10)
+            row.addWidget(_label(text_label))
+            row.addWidget(field, 1)
+            outer.addLayout(row)
+
+        def add_pair_row(l1, f1, l2, f2) -> None:
+            row = QHBoxLayout()
+            row.setSpacing(10)
+            row.addWidget(_label(l1))
+            row.addWidget(f1, 1)
+            row.addWidget(_label(l2))
+            row.addWidget(f2, 1)
+            outer.addLayout(row)
+
+        def add_triple_row(l1, f1, l2, f2, l3, f3) -> None:
+            row = QHBoxLayout()
+            row.setSpacing(10)
+            for text_label, field in ((l1, f1), (l2, f2), (l3, f3)):
+                row.addWidget(_label(text_label))
+                row.addWidget(field, 1)
+            outer.addLayout(row)
+
+        add_full_row(ui.label_381, ui.label_nfo)
+        add_triple_row(
+            ui.label_360,
+            ui.lineEdit_nfo_number,
+            ui.label_369,
+            ui.comboBox_nfo,
+            ui.label_380,
+            ui.lineEdit_nfo_year,
+        )
+        add_full_row(ui.label_359, ui.lineEdit_nfo_actor)
+        add_full_row(ui.label_361, ui.lineEdit_nfo_title)
+        add_full_row(ui.label_372, ui.lineEdit_nfo_originaltitle)
+        add_full_row(ui.label_19, ui.textEdit_nfo_outline)
+        add_full_row(ui.label_371, ui.textEdit_nfo_originalplot)
+        add_full_row(ui.label_362, ui.textEdit_nfo_tag)
+        add_pair_row(ui.label_363, ui.lineEdit_nfo_release, ui.label_364, ui.lineEdit_nfo_runtime)
+        add_pair_row(ui.label_373, ui.lineEdit_nfo_score, ui.label_374, ui.lineEdit_nfo_wanted)
+        add_pair_row(ui.label_366, ui.lineEdit_nfo_director, ui.label_365, ui.lineEdit_nfo_series)
+        add_pair_row(ui.label_368, ui.lineEdit_nfo_studio, ui.label_367, ui.lineEdit_nfo_publisher)
+        add_full_row(ui.label_375, ui.lineEdit_nfo_poster)
+        add_full_row(ui.label_376, ui.lineEdit_nfo_cover)
+        add_full_row(ui.label_377, ui.lineEdit_nfo_trailer)
+        add_full_row(ui.label_378, ui.lineEdit_nfo_website)
+        for box, height in (
+            (ui.textEdit_nfo_outline, self._NFO_EDITOR_TEXT_MIN_H),
+            (ui.textEdit_nfo_originalplot, self._NFO_EDITOR_TEXT_MIN_H),
+            (ui.textEdit_nfo_tag, self._NFO_EDITOR_TAG_MIN_H),
+        ):
+            box.setMinimumHeight(height)
+
+    def _nfo_overlay_right_edge(self) -> int:
+        """覆盖层右缘 = min(缩略图右缘, 结果树左缘 - 间距)，不盖住番号树。"""
+        ui = self.Ui
+        stacked_x = ui.stackedWidget.x()
+        thumb = ui.label_thumb
+        tree = ui.treeWidget_number
+        thumb_right = stacked_x + thumb.x() + thumb.width()
+        tree_left = stacked_x + tree.x()
+        return min(thumb_right, tree_left - self._NFO_OVERLAY_TREE_GAP)
+
+    def _sync_nfo_overlay_geometry(self) -> None:
+        """议题 #166：覆盖层作为主页伴侣面板，右缘收到缩略图/结果树之间。"""
+        ui = self.Ui
+        nfo = ui.widget_nfo
+        if nfo is None or nfo.isHidden():
+            return
+        self._ensure_nfo_editor_layout()
+        nfo_x, nfo_y, margin = self._NFO_OVERLAY_X, self._NFO_OVERLAY_Y, self._NFO_OVERLAY_MARGIN
+        nfo_right = self._nfo_overlay_right_edge()
+        nfo_w = max(nfo_right - nfo_x, 280)
+        tree_limit = ui.stackedWidget.x() + ui.treeWidget_number.x() - self._NFO_OVERLAY_TREE_GAP
+        if nfo_x + nfo_w > tree_limit:
+            nfo_w = max(tree_limit - nfo_x, 280)
+        max_h = max(self.height() - nfo_y - margin, 300)
+        content = ui.scrollAreaWidgetContents_nfo_editor
+        lay = content.layout()
+        if lay is not None:
+            lay.activate()
+            content_h = max(lay.sizeHint().height(), 200)
+        else:
+            content_h = 200
+        nfo_h = min(29 + content_h + self._NFO_OVERLAY_BAR_H, max_h)
+        nfo.setGeometry(nfo_x, nfo_y, nfo_w, nfo_h)
+        btn_w, btn_h, gap, bar_h = (
+            self._NFO_OVERLAY_BTN_W,
+            self._NFO_OVERLAY_BTN_H,
+            self._NFO_OVERLAY_BTN_GAP,
+            self._NFO_OVERLAY_BAR_H,
+        )
+        pair_w = btn_w + gap + btn_w
+        save_x = max((nfo_w - pair_w) // 2, 0)
+        close_x = save_x + btn_w + gap
+        btn_y = max(nfo_h - margin - btn_h, 0)
+        ui.pushButton_nfo_close.setGeometry(close_x, btn_y, btn_w, btn_h)
+        ui.pushButton_nfo_save.setGeometry(save_x, btn_y, btn_w, btn_h)
+        ui.pushButton_nfo_save.raise_()
+        ui.pushButton_nfo_close.raise_()
+        ui.label_save_tips.setGeometry(margin, max(nfo_h - margin - 24, 0), max(save_x - margin, 60), 20)
+        ui.label_4.setAlignment(Qt.AlignmentFlag.AlignHCenter | Qt.AlignmentFlag.AlignVCenter)
+        ui.label_4.setGeometry(0, 5, nfo_w, ui.label_4.height())
+        scroll = ui.scrollArea_nfo
+        if scroll is not None:
+            scroll.setGeometry(9, 29, max(nfo_w - 9 - margin, 200), max(nfo_h - 29 - bar_h, 200))
+
     def _sync_page_layouts(self) -> None:
         """让所有页面的内部组件跟随主窗口尺寸缩放。
 
@@ -671,10 +822,10 @@ class MyMAinWindow(QMainWindow):
         cover_bottom = int(160 + 220 * cover_scale)
         # 信息区下移量 = 封面框增高量；再夹到页面可用高度内，避免宽而矮的窗口把末行裁掉
         info_delta = min(cover_bottom - 380, max(main_page.height() - 700, 0))
-        # 议题 #144：简介/标签行高随窗口高度增高(最多各 60px)，屏大显示行数更多；
-        # 页面高度回到设计值时 row_grow=0，小窗布局零变化（双向幂等，由页面高度实时计算）。
-        row_grow = max(0, min((main_page.height() - info_delta - 700) // 2, 60))
-        info_grow = info_delta + 2 * row_grow  # 简介/标签以下各行的总下移量
+        # 议题 #154（撤销 #152 的行高增长）：简介/标签恒定 40px、最多两行，超出的文本
+        # 按当前宽度做两行省略（宽度越大每行容纳越多，最大化自然比最小化显示更多）；
+        # 下方各行只随封面增高 info_delta 下移，不再被行高增量推出页底。
+        info_grow = info_delta  # 简介/标签以下各行的总下移量
         ui.label_poster_size.setGeometry(
             int(80 * cover_scale), cover_bottom, int(411 * cover_scale), int(40 * cover_scale)
         )
@@ -690,22 +841,24 @@ class MyMAinWindow(QMainWindow):
         #   · 右列整体按 ×scale 右移，避免与加长后的左列窄字段重叠。
         thumb_right = int(580 * cover_scale)
         # 左列标签（x 固定，保持与番号/标题/封面竖向对齐）
-        # 简介/标签两行标签与其值行同顶（含 row_grow 行高增量），其余行用 info_grow
+        # 简介/标签两行标签与其值行同顶（#154 行高恒定），其余行用 info_grow
         ui.label_18.move(30, 430 + info_delta)
-        ui.label_33.move(30, 480 + row_grow + info_delta)
+        ui.label_33.move(30, 480 + info_delta)
         for name, y in (
             ("label_13", 530),
             ("label_23", 580),
             ("label_30", 630),
         ):
             getattr(ui, name).move(30, y + info_grow)
-        # 简介/标签：左缘 x=70，右缘延伸到缩略图右缘；行高按 row_grow 增高，
-        # 下划线贴行底(设计偏移 -10)，简介之下的各行整体再下移 2*row_grow（议题 #144）
+        # 简介/标签：左缘 x=70，右缘延伸到缩略图右缘；行高恒定 40px、最多两行（#154），
+        # 下划线贴行底(设计偏移 30)，简介之下的各行只随 info_delta 下移
         wide_w = max(thumb_right - 70, 60)
-        ui.label_outline.setGeometry(70, 430 + info_delta, wide_w, 40 + row_grow)
-        ui.line_6.setGeometry(70, 460 + row_grow + info_delta, wide_w, ui.line_6.height())
-        ui.label_tag.setGeometry(70, 480 + row_grow + info_delta, wide_w, 40 + row_grow)
-        ui.line_7.setGeometry(70, 510 + 2 * row_grow + info_delta, wide_w, ui.line_7.height())
+        ui.label_outline.setGeometry(70, 430 + info_delta, wide_w, 40)
+        ui.line_6.setGeometry(70, 460 + info_delta, wide_w, ui.line_6.height())
+        ui.label_tag.setGeometry(70, 480 + info_delta, wide_w, 40)
+        ui.line_7.setGeometry(70, 510 + info_delta, wide_w, ui.line_7.height())
+        # 宽度变化后按新宽度重算简介/标签的两行省略文本（#154：最大化显示更多内容）
+        self._refresh_main_outline_tag()
         # 左列窄字段（日期/导演/制作）：宽度按 ×scale 等比例加长
         narrow_w = max(int(220 * cover_scale), 60)
         for name, y in (
@@ -827,6 +980,10 @@ class MyMAinWindow(QMainWindow):
         ui.pushButton_view_failed_list.move(max(log_page.width() - 257, 20), 13)
         ui.pushButton_show_hide_logs.move(0, max(log_page.height() - 42, 13))
         ui.pushButton_save_failed_list.move(0, max(log_page.height() - 42, 13))
+
+        # ============ widget_nfo（「编辑 NFO」覆盖层）随主窗口缩放（议题 #152/#154/#166）============
+        # 可见时作为主页伴侣面板：左贴导航右缘、右收到缩略图/结果树之间，不盖住番号树。
+        self._sync_nfo_overlay_geometry()
 
         # ============ page_nfo_library: 简介/标签高度自适应（议题 #117）============
         self._sync_nfo_lib_form_fields()
@@ -1506,6 +1663,47 @@ class MyMAinWindow(QMainWindow):
             self.show_name = show_data.show_name
             self.set_main_info(show_data)
 
+    @staticmethod
+    def _elide_label_two_lines(label, text: str, max_lines: int = 2) -> str:
+        """议题 #154：把文本按标签当前宽度裁到最多两行，超出部分以省略号截断。
+
+        简介/标签恒定 40px 高，最多显示两行；不同窗口宽度下每行容纳的字数不同，
+        因此必须按实际宽度重算，最大化才能比最小化显示更多内容。
+        """
+        text = text or ""
+        if not text:
+            return text
+        width = label.width()
+        if width <= 0:
+            return text
+        metrics = label.fontMetrics()
+        max_h = metrics.lineSpacing() * max_lines
+        flags = int(Qt.TextFlag.TextWordWrap)
+        # 用无界高度测量真实换行高度，再与两行上限比较（受限高度会把返回值截断）
+        probe = QRect(0, 0, width, 1_000_000)
+        if metrics.boundingRect(probe, flags, text).height() <= max_h:
+            return text
+        low, high = 0, len(text)
+        while low < high:
+            mid = (low + high + 1) // 2
+            candidate = text[:mid].rstrip() + "…"
+            if metrics.boundingRect(probe, flags, candidate).height() <= max_h:
+                low = mid
+            else:
+                high = mid - 1
+        return text[:low].rstrip() + "…"
+
+    def _set_main_two_line(self, label, text: str) -> None:
+        label.setText(self._elide_label_two_lines(label, text))
+
+    def _refresh_main_outline_tag(self) -> None:
+        """议题 #154：窗口宽度变化后，按新宽度重算简介/标签的两行省略文本。"""
+        ui = getattr(self, "Ui", None)
+        if ui is None:
+            return
+        self._set_main_two_line(ui.label_outline, getattr(self, "_main_outline_text", ""))
+        self._set_main_two_line(ui.label_tag, getattr(self, "_main_tag_text", ""))
+
     def set_main_info(self, show_data: "ShowData | None"):
         if show_data is not None:
             self.show_data = show_data
@@ -1541,15 +1739,13 @@ class MyMAinWindow(QMainWindow):
                 title = title[:25] + "……"
             self.Ui.label_title.setText(title)
             outline = str(data.outline)
+            self._main_outline_text = outline
             self.Ui.label_outline.setToolTip(outline)
-            if len(outline) > 38:
-                outline = outline[:36] + "……"
-            self.Ui.label_outline.setText(outline)
+            self._set_main_two_line(self.Ui.label_outline, outline)
             tag = ", ".join(str(item) for item in data.tag) if isinstance(data.tag, list) else str(data.tag)
+            self._main_tag_text = tag
             self.Ui.label_tag.setToolTip(tag)
-            if len(tag) > 76:
-                tag = tag[:75] + "……"
-            self.Ui.label_tag.setText(tag)
+            self._set_main_two_line(self.Ui.label_tag, tag)
             self.Ui.label_release.setText(str(data.release))
             self.Ui.label_release.setToolTip(str(data.release))
             if data.runtime:
@@ -2094,13 +2290,78 @@ class MyMAinWindow(QMainWindow):
                     return child
         return None
 
-    def _clear_main_info_panel(self) -> None:
+    def _nfo_editor_field_values(self) -> tuple[str, ...]:
+        ui = self.Ui
+        return (
+            ui.lineEdit_nfo_number.text(),
+            ui.lineEdit_nfo_actor.text(),
+            ui.lineEdit_nfo_year.text(),
+            ui.lineEdit_nfo_title.text(),
+            ui.lineEdit_nfo_originaltitle.text(),
+            ui.textEdit_nfo_outline.toPlainText(),
+            ui.textEdit_nfo_originalplot.toPlainText(),
+            ui.textEdit_nfo_tag.toPlainText(),
+            ui.lineEdit_nfo_release.text(),
+            ui.lineEdit_nfo_runtime.text(),
+            ui.lineEdit_nfo_score.text(),
+            ui.lineEdit_nfo_wanted.text(),
+            ui.lineEdit_nfo_director.text(),
+            ui.lineEdit_nfo_series.text(),
+            ui.lineEdit_nfo_studio.text(),
+            ui.lineEdit_nfo_publisher.text(),
+            ui.lineEdit_nfo_poster.text(),
+            ui.lineEdit_nfo_cover.text(),
+            ui.lineEdit_nfo_trailer.text(),
+            ui.lineEdit_nfo_website.text(),
+            ui.comboBox_nfo.currentText(),
+        )
+
+    def _nfo_editor_is_dirty(self) -> bool:
+        if self.Ui.widget_nfo.isHidden() or self._nfo_editor_snapshot is None:
+            return False
+        return self._nfo_editor_field_values() != self._nfo_editor_snapshot
+
+    def _confirm_nfo_editor_leave(self) -> bool:
+        """离开当前编辑对象前确认未保存改动。False 表示取消本次离开。"""
+        if not self._nfo_editor_is_dirty():
+            return True
+        box = QMessageBox(QMessageBox.Icon.Question, "编辑 NFO", "当前 NFO 有未保存的修改，是否先保存？")
+        box.setStandardButtons(
+            QMessageBox.StandardButton.Save | QMessageBox.StandardButton.Discard | QMessageBox.StandardButton.Cancel
+        )
+        save_btn = box.button(QMessageBox.StandardButton.Save)
+        assert save_btn is not None
+        save_btn.setText("保存")
+        discard_btn = box.button(QMessageBox.StandardButton.Discard)
+        assert discard_btn is not None
+        discard_btn.setText("丢弃")
+        cancel_btn = box.button(QMessageBox.StandardButton.Cancel)
+        assert cancel_btn is not None
+        cancel_btn.setText("取消")
+        box.setDefaultButton(QMessageBox.StandardButton.Save)
+        reply = box.exec()
+        if reply == QMessageBox.StandardButton.Cancel:
+            return False
+        if reply == QMessageBox.StandardButton.Save:
+            self.save_nfo_info()
+        return True
+
+    def _close_nfo_editor(self) -> None:
+        if not self._confirm_nfo_editor_leave():
+            return
+        self.Ui.widget_nfo.hide()
+        self._nfo_editor_snapshot = None
+
+    def _clear_main_info_panel(self, *, force: bool = False) -> None:
+        if not force and not self.Ui.widget_nfo.isHidden() and not self._confirm_nfo_editor_leave():
+            return
         self.set_main_info(None)
         self.file_main_open_path = Path()
         self.show_name = None
         self.show_data = None
         if not self.Ui.widget_nfo.isHidden():
             self.Ui.widget_nfo.hide()
+        self._nfo_editor_snapshot = None
 
     def _remove_deleted_result_items(self, show_names: list[str]) -> None:
         if not show_names:
@@ -2120,7 +2381,7 @@ class MyMAinWindow(QMainWindow):
 
         self.Ui.treeWidget_number.clearSelection()
         if current_show_name in show_names:
-            self._clear_main_info_panel()
+            self._clear_main_info_panel(force=True)
 
     # 主界面-点击树状条目
     def treeWidget_number_clicked(self, *_args):
@@ -2133,11 +2394,24 @@ class MyMAinWindow(QMainWindow):
         item = selected_items[0]
         try:
             index_json = str(item.text(0))
+            if index_json == self.show_name:
+                return
+            overlay_open = not self.Ui.widget_nfo.isHidden()
+            if overlay_open and not self._confirm_nfo_editor_leave():
+                prev = self._find_result_item_by_name(self.show_name) if self.show_name else None
+                tree = self.Ui.treeWidget_number
+                tree.blockSignals(True)
+                try:
+                    tree.clearSelection()
+                    if prev is not None:
+                        prev.setSelected(True)
+                finally:
+                    tree.blockSignals(False)
+                return
             self.set_main_info(self.json_array[index_json])
-            # 收起 NFO 编辑器覆盖面板，避免遮挡主界面操作按钮（播放/打开文件夹/编辑NFO 等）
-            if not self.Ui.widget_nfo.isHidden():
-                self.Ui.widget_nfo.hide()
             self._show_nfo_info()
+            if overlay_open:
+                self._sync_nfo_overlay_geometry()
         except Exception:
             signal_qt.show_traceback_log(item.text(0) + ": No info!")
 
@@ -2201,6 +2475,9 @@ class MyMAinWindow(QMainWindow):
         QApplication.sendEvent(self.Ui.pushButton_open_nfo, event)
         if self._check_main_file_path():
             self.Ui.widget_nfo.show()
+            # 议题 #154：首次打开路径不经过 resizeEvent，需显式同步覆盖层几何，
+            # 否则沿用 .ui 设计尺寸、字段布局与钉底按钮错位。
+            self._sync_nfo_overlay_geometry()
             self._show_nfo_info()
 
     def main_show_similar_click(self):
@@ -2534,6 +2811,7 @@ class MyMAinWindow(QMainWindow):
             self.Ui.lineEdit_nfo_trailer.setText(json_data.trailer)
             all_items = [self.Ui.comboBox_nfo.itemText(i) for i in range(self.Ui.comboBox_nfo.count())]
             self.Ui.comboBox_nfo.setCurrentIndex(all_items.index(json_data.country))
+            self._nfo_editor_snapshot = self._nfo_editor_field_values()
         except Exception:
             if not signal_qt.stop:
                 signal_qt.show_traceback_log(traceback.format_exc())
@@ -2571,6 +2849,7 @@ class MyMAinWindow(QMainWindow):
             if executor.run(write_nfo(file_info, json_data, nfo_path, nfo_folder, update=True)):
                 self.Ui.label_save_tips.setText(f"已保存! {get_current_time()}")
                 self.set_main_info(show_data)
+                self._nfo_editor_snapshot = self._nfo_editor_field_values()
             else:
                 self.Ui.label_save_tips.setText(f"保存失败! {get_current_time()}")
         except Exception:

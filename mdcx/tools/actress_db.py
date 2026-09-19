@@ -97,7 +97,7 @@ class ActressDB:
             actor_info.locations = [birthplace]
         if not actor_info.taglines:
             actor_info.taglines = ["日本AV女优"]
-        if not actor_info.overview:
-            actor_info.overview = "无维基百科信息, 从 minnano-av 数据库补全女优信息"
+        # 议题 #149: 无简介时不再写入「无维基百科信息」占位文案——
+        # 占位写回服务器后被判为缺简介, 下次取数又重新写入同一占位, 形成死循环。保持空简介即可。
 
         return 1, "\n".join(messages)

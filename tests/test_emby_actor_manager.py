@@ -352,14 +352,15 @@ async def test_search_actor_info_reads_dump_pascalcase_keys(monkeypatch: pytest.
 @pytest.mark.asyncio
 async def test_delete_actor_image_404_treated_as_success(monkeypatch: pytest.MonkeyPatch):
     from mdcx.config.manager import manager
+    from mdcx.tools import emby_actor_manager
 
-    async def _fake_request(method, url, *, headers=None, use_proxy=None, **kwargs):
+    async def _fake_emby_request(method, url, *, headers=None, data=None, token=None, **kwargs):
         assert method == "DELETE"
-        return None, "DELETE 失败: HTTP 404"
+        return _JsonResp(404), ""
 
     monkeypatch.setattr(manager.config, "server_type", "emby")
     monkeypatch.setattr(manager.config, "emby_url", "http://127.0.0.1:8096")
-    monkeypatch.setattr(manager.computed.async_client, "request", _fake_request)
+    monkeypatch.setattr(emby_actor_manager, "_emby_request", _fake_emby_request)
 
     actor = ActorInfo(name="Test", actor_id="id1", server_id="srv1")
     ok, msg = await delete_actor_image(actor)
@@ -432,6 +433,40 @@ def _fake_acquire(monkeypatch: pytest.MonkeyPatch, fake_client) -> None:
     monkeypatch.setattr(manager, "acquire_computed", lambda: _FakeAcquire())
 
 
+class _JsonResp:
+    """伪造 httpx.Response 的轻量子集 (轻量直连 _emby_request 返回它)."""
+
+    def __init__(self, status_code: int = 200, json_data: dict | None = None):
+        self.status_code = status_code
+        self._json_data = json_data
+        self.text = ""
+
+    def json(self):
+        return self._json_data
+
+
+def _patch_emby_request(monkeypatch: pytest.MonkeyPatch, handler) -> list[str]:
+    """议题 #133: 批量/统计回调改走 _emby_request. 把 get_json(path)->(dict|None, err)
+    形式的 handler 接到 _emby_request 缝上, 同时 patch manager 与 shared 两个模块.
+    返回捕获到的原始 path 列表 (形如 "/Items?..."; 测试用 urlparse 解析 query)。
+    """
+    import mdcx.tools.emby_actor_manager as eam
+    import mdcx.tools.emby_shared as esh
+
+    captured: list[str] = []
+
+    async def fake(method: str, path: str, *, headers=None, data=None, token=None, **kwargs):
+        captured.append(path)
+        data, err = await handler(path)
+        if data is None:
+            return None, err
+        return _JsonResp(200, data), ""
+
+    monkeypatch.setattr(eam, "_emby_request", fake)
+    monkeypatch.setattr(esh, "_emby_request", fake)
+    return captured
+
+
 @pytest.mark.asyncio
 async def test_fetch_person_item_stats_pages_instead_of_limit_100000(monkeypatch: pytest.MonkeyPatch):
     """议题 #32：>1W 演员的服务器上 Limit=100000 单次响应过大导致服务端组装超时（真机 3 连超时放弃整库）。
@@ -442,24 +477,20 @@ async def test_fetch_person_item_stats_pages_instead_of_limit_100000(monkeypatch
     from mdcx.config.manager import manager
     from mdcx.tools import emby_actor_manager
 
-    captured_urls: list[str] = []
-
-    class _FakeClient:
-        async def get_json(self, url, headers=None, use_proxy=True, **kwargs):
-            captured_urls.append(url)
-            return {"Items": [], "TotalRecordCount": 0}, ""
+    async def handler(path):
+        return {"Items": [], "TotalRecordCount": 0}, ""
 
     monkeypatch.setattr(manager.config, "server_type", "jellyfin")
     monkeypatch.setattr(manager.config, "emby_url", "http://127.0.0.1:8096")
     monkeypatch.setattr(manager.config, "api_key", "token")
-    _fake_acquire(monkeypatch, _FakeClient())
+    paths = _patch_emby_request(monkeypatch, handler)
 
     await emby_actor_manager.fetch_person_item_stats(parent_ids=["lib-1"])
 
-    assert captured_urls, "至少发起一次请求"
-    for url in captured_urls:
-        assert "Limit=100000" not in url
-        assert "StartIndex=" in url
+    assert paths, "至少发起一次请求"
+    for path in paths:
+        assert "Limit=100000" not in path
+        assert "StartIndex=" in path
 
 
 @pytest.mark.asyncio
@@ -470,9 +501,8 @@ async def test_fetch_person_item_stats_paginates_and_counts_across_pages(monkeyp
     from mdcx.config.manager import manager
     from mdcx.tools import emby_actor_manager
 
-    PAGE_LIMIT = 500
     TOTAL = 600
-    captured_urls: list[str] = []
+    PAGE_LIMIT = 500
 
     def _make_items(start: int, count: int) -> list[dict]:
         return [
@@ -484,27 +514,28 @@ async def test_fetch_person_item_stats_paginates_and_counts_across_pages(monkeyp
             for i in range(count)
         ]
 
-    class _FakeClient:
-        async def get_json(self, url, headers=None, use_proxy=True, **kwargs):
-            captured_urls.append(url)
-            query = parse_qs(urlparse(url).query)
-            start = int(query["StartIndex"][0])
-            limit = int(query["Limit"][0])
-            items = _make_items(start, min(limit, TOTAL - start))
-            return {"Items": items, "TotalRecordCount": TOTAL}, ""
+    paths: list[str] = []
+
+    async def handler(path):
+        paths.append(path)
+        query = parse_qs(urlparse(path).query)
+        start = int(query["StartIndex"][0])
+        limit = int(query["Limit"][0])
+        items = _make_items(start, min(limit, TOTAL - start))
+        return {"Items": items, "TotalRecordCount": TOTAL}, ""
 
     monkeypatch.setattr(manager.config, "server_type", "jellyfin")
     monkeypatch.setattr(manager.config, "emby_url", "http://127.0.0.1:8096")
     monkeypatch.setattr(manager.config, "api_key", "token")
-    _fake_acquire(monkeypatch, _FakeClient())
+    _patch_emby_request(monkeypatch, handler)
 
     counts, titles, names = await emby_actor_manager.fetch_person_item_stats(parent_ids=["lib-1"])
 
     assert counts == {"田中": TOTAL}
     assert names == {"田中"}
     assert len(titles["田中"]) == TOTAL
-    assert len(captured_urls) == 2, "600 条按 500/页应拉 2 页"
-    starts = [int(parse_qs(urlparse(u).query)["StartIndex"][0]) for u in captured_urls]
+    assert len(paths) == 2, "600 条按 500/页应拉 2 页"
+    starts = [int(parse_qs(urlparse(u).query)["StartIndex"][0]) for u in paths]
     assert starts == [0, PAGE_LIMIT]
 
 
@@ -516,21 +547,17 @@ async def test_fetch_person_item_stats_slim_query_params(monkeypatch: pytest.Mon
     from mdcx.config.manager import manager
     from mdcx.tools import emby_actor_manager
 
-    captured_urls: list[str] = []
-
-    class _FakeClient:
-        async def get_json(self, url, headers=None, use_proxy=True, **kwargs):
-            captured_urls.append(url)
-            return {"Items": [], "TotalRecordCount": 0}, ""
+    async def handler(path):
+        return {"Items": [], "TotalRecordCount": 0}, ""
 
     monkeypatch.setattr(manager.config, "server_type", "jellyfin")
     monkeypatch.setattr(manager.config, "emby_url", "http://127.0.0.1:8096")
     monkeypatch.setattr(manager.config, "api_key", "token")
-    _fake_acquire(monkeypatch, _FakeClient())
+    paths = _patch_emby_request(monkeypatch, handler)
 
     await emby_actor_manager.fetch_person_item_stats(parent_ids=["lib-1"])
 
-    query = parse_qs(urlparse(captured_urls[0]).query)
+    query = parse_qs(urlparse(paths[0]).query)
     assert query["IncludeItemTypes"] == ["Movie,Episode"]
     assert query["EnableImages"] == ["false"]
     assert query["EnableUserData"] == ["false"]
@@ -543,19 +570,18 @@ async def test_fetch_person_item_stats_failed_lib_skipped(monkeypatch: pytest.Mo
     from mdcx.config.manager import manager
     from mdcx.tools import emby_actor_manager
 
-    class _FakeClient:
-        async def get_json(self, url, headers=None, use_proxy=True, **kwargs):
-            if "lib-bad" in url:
-                return None, "连接超时"
-            return {
-                "Items": [{"Name": "影片1", "Type": "Movie", "People": [{"Name": "小林", "Type": "Actor"}]}],
-                "TotalRecordCount": 1,
-            }, ""
+    async def handler(path):
+        if "lib-bad" in path:
+            return None, "连接超时"
+        return {
+            "Items": [{"Name": "影片1", "Type": "Movie", "People": [{"Name": "小林", "Type": "Actor"}]}],
+            "TotalRecordCount": 1,
+        }, ""
 
     monkeypatch.setattr(manager.config, "server_type", "jellyfin")
     monkeypatch.setattr(manager.config, "emby_url", "http://127.0.0.1:8096")
     monkeypatch.setattr(manager.config, "api_key", "token")
-    _fake_acquire(monkeypatch, _FakeClient())
+    _patch_emby_request(monkeypatch, handler)
 
     counts, titles, names = await emby_actor_manager.fetch_person_item_stats(parent_ids=["lib-bad", "lib-good"])
 
@@ -571,21 +597,17 @@ async def test_fetch_person_item_stats_emby_uses_emby_prefix(monkeypatch: pytest
     from mdcx.config.manager import manager
     from mdcx.tools import emby_actor_manager
 
-    captured_urls: list[str] = []
-
-    class _FakeClient:
-        async def get_json(self, url, headers=None, use_proxy=True, **kwargs):
-            captured_urls.append(url)
-            return {"Items": [], "TotalRecordCount": 0}, ""
+    async def handler(path):
+        return {"Items": [], "TotalRecordCount": 0}, ""
 
     monkeypatch.setattr(manager.config, "server_type", "emby")
     monkeypatch.setattr(manager.config, "emby_url", "http://127.0.0.1:8096")
     monkeypatch.setattr(manager.config, "api_key", "token")
-    _fake_acquire(monkeypatch, _FakeClient())
+    paths = _patch_emby_request(monkeypatch, handler)
 
     await emby_actor_manager.fetch_person_item_stats(parent_ids=["lib-1"])
 
-    assert urlparse(captured_urls[0]).path == "/emby/Items"
+    assert urlparse(paths[0]).path == "/emby/Items"
 
 
 @pytest.mark.asyncio
@@ -596,22 +618,22 @@ async def test_update_person_info_sends_json_content_type(monkeypatch: pytest.Mo
 
     captured: dict = {}
 
-    class _FakeClient:
-        async def post_content(self, url, *, data=None, headers=None, use_proxy=True, **kwargs):
-            captured["url"] = url
-            captured["data"] = data
-            captured["headers"] = headers or {}
-            return b"", ""
+    async def handler(method, url, *, headers=None, data=None, token=None, **kwargs):
+        captured["method"] = method
+        captured["url"] = url
+        captured["headers"] = headers or {}
+        return _JsonResp(204), ""
 
     monkeypatch.setattr(manager.config, "server_type", "emby")
     monkeypatch.setattr(manager.config, "emby_url", "http://127.0.0.1:8096")
     monkeypatch.setattr(manager.config, "api_key", "token")
-    _fake_acquire(monkeypatch, _FakeClient())
+    monkeypatch.setattr(emby_actor_manager, "_emby_request", handler)
 
     actor = ActorInfo(name="测试", actor_id="id1", server_id="srv1")
     ok, msg = await emby_actor_manager.update_person_info(actor)
 
     assert ok is True, msg
+    assert captured["method"] == "POST"
     assert str(captured["headers"].get("Content-Type", "")).lower() == "application/json", (
         f"headers 里缺 Content-Type: application/json（实际: {captured['headers']!r}）"
     )

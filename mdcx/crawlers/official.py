@@ -113,7 +113,15 @@ def split_csv(value: str) -> list[str]:
 
 
 class OfficialCrawler(BaseCrawler):
-    description = "无码官网按番号前缀自动路由：DLDSS→Dahlia、FNS/JIMMY→Faleno，1pondo/10musume/Pacopacomama/Caribbeancom/Heyzo 等无码官网直连；均走代理，综合有码+无码"
+    # 议题 #165: 原描述主句只列无码五站、"综合有码+无码"塞在句尾, 且把有码前缀
+    # DLDSS/FNS/JIMMY 归在"无码官网"下——易被读成 official 只有无码路由。
+    # 重写为三档结构, 并注明网络检测覆盖面(无码五站)与抓取面的差异。
+    description = (
+        "按番号前缀自动路由官网，综合有码+无码，均走代理："
+        "有码 30 家厂牌官网（S1/Moodyz/Prestige 等，DLDSS→Dahlia、FNS/JIMMY→Faleno 专用爬虫）；"
+        "无码 5 站官网（Caribbeancom/Heyzo/1pondo/pacopacomama/10musume，JSON API 直连）。"
+        "注：「检测网络」仅逐站检测无码 5 站官网，有码 30 家不参与检测"
+    )
 
     @classmethod
     @override

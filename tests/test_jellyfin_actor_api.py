@@ -32,20 +32,25 @@ def test_build_jellyfin_headers_keeps_extra_headers():
 
 @pytest.mark.asyncio
 async def test_upload_actor_photo_sends_base64_image_body_for_emby(monkeypatch: pytest.MonkeyPatch, tmp_path):
+    import base64
+
     captured: dict = {}
     pic_path = tmp_path / "actor.jpg"
     pic_bytes = b"\xff\xd8\xfftest-bytes"
     pic_path.write_bytes(pic_bytes)
 
-    async def fake_post_content(url: str, *, data=None, headers=None, use_proxy=True, **kwargs):
+    class _Resp:
+        status_code = 204
+
+    async def fake_request(method, url, *, headers=None, data=None, token=None, **kwargs):
+        captured["method"] = method
         captured["url"] = url
         captured["data"] = data
         captured["headers"] = headers
-        captured["use_proxy"] = use_proxy
-        return b"", ""
+        return _Resp(), ""
 
     monkeypatch.setattr(manager.config, "server_type", "emby")
-    monkeypatch.setattr(manager.computed.async_client, "post_content", fake_post_content)
+    monkeypatch.setattr("mdcx.tools.emby_shared._emby_request", fake_request)
     monkeypatch.setattr(emby_actor_image.signal, "show_log_text", lambda text: None)
 
     result, error = await emby_actor_image._upload_actor_photo(
@@ -54,12 +59,9 @@ async def test_upload_actor_photo_sends_base64_image_body_for_emby(monkeypatch: 
 
     assert result is True
     assert error == ""
-    import base64
-
     expected_b64 = base64.b64encode(pic_bytes).decode("ascii")
     assert captured["data"] == expected_b64  # 服务端期望 Base64 编码字符串而非原始二进制
     assert captured["headers"] == {"Content-Type": "image/jpeg", "Authorization": _expected_auth("")}
-    assert captured["use_proxy"] is False
 
 
 @pytest.mark.asyncio
@@ -102,36 +104,37 @@ async def test_get_emby_actor_list_uses_jellyfin_actor_endpoint(monkeypatch: pyt
 
 @pytest.mark.asyncio
 async def test_upload_actor_photo_sends_base64_image_body_for_jellyfin(monkeypatch: pytest.MonkeyPatch, tmp_path):
+    import base64
+
     captured: dict = {}
     pic_path = tmp_path / "actor.jpg"
     pic_bytes = b"\xff\xd8\xfftest-bytes"
     pic_path.write_bytes(pic_bytes)
 
-    async def fake_post_content(url: str, *, data=None, headers=None, use_proxy=True, **kwargs):
+    class _Resp:
+        status_code = 204
+
+    async def fake_request(method, url, *, headers=None, data=None, token=None, **kwargs):
         captured["url"] = url
         captured["data"] = data
         captured["headers"] = headers
-        captured["use_proxy"] = use_proxy
-        return b"", ""
+        return _Resp(), ""
 
     monkeypatch.setattr(manager.config, "server_type", "jellyfin")
     monkeypatch.setattr(manager.config, "api_key", "secret-token")
-    monkeypatch.setattr(manager.computed.async_client, "post_content", fake_post_content)
+    monkeypatch.setattr("mdcx.tools.emby_shared._emby_request", fake_request)
     monkeypatch.setattr(emby_actor_image.signal, "show_log_text", lambda text: None)
 
     result, error = await emby_actor_image._upload_actor_photo("http://127.0.0.1:8096/Items/1/Images/Primary", pic_path)
 
     assert result is True
     assert error == ""
-    import base64
-
     expected_b64 = base64.b64encode(pic_bytes).decode("ascii")
     assert captured["data"] == expected_b64  # 服务端期望 Base64 编码字符串而非原始二进制
     assert captured["headers"] == {
         "Content-Type": "image/jpeg",
         "Authorization": _expected_auth("secret-token"),
     }
-    assert captured["use_proxy"] is False
 
 
 @pytest.mark.asyncio

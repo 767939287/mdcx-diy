@@ -14,13 +14,17 @@
 
 实现说明
 --------
-emby_actor_manager 通过 ``async with manager.acquire_computed() as computed``
-拿 ``Computed`` 租约到 ``computed.async_client``。测试通过 patch
-``manager.acquire_computed`` 注入 fake client (避开真实 Computed 生命周期)。
+议题 #133 之后, POST/DELETE/fetch 类回调改走轻量直连 ``_emby_request`` (不再经
+``manager.acquire_computed`` 的重型恐怖栈)。对这类函数, 测试用 ``_patch_ctx``
+同时 patch 掉 ``emby_actor_manager`` 与 ``emby_shared`` 的 ``_emby_request`` 缝,
+伪造 ``httpx.Response`` 子集 (见 ``_EmbyResp``), 专注验证调用方的 payload 归一化
+与 200/5xx 状态判定。仍走重型列表查询的 ``fetch_all_actors`` (经 ``get_emby_actor_list``)
+保留用 patch ``manager.acquire_computed`` 注入 fake client。
 """
 
 from __future__ import annotations
 
+import contextlib
 import json
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -36,6 +40,45 @@ def _make_lease(client):
     lease.__aenter__ = AsyncMock(return_value=MagicMock(async_client=client))
     lease.__aexit__ = AsyncMock(return_value=False)
     return lease
+
+
+class _EmbyResp:
+    """伪造 httpx.Response 的轻量子集(轻量直连 _emby_request 返回它)."""
+
+    def __init__(self, status_code: int = 200, json_data: dict | None = None):
+        self.status_code = status_code
+        self._json_data = json_data
+        self.text = json.dumps(json_data) if json_data is not None else ""
+
+    def json(self):
+        return self._json_data
+
+
+# 议题 #133 之后, 回调函数改走轻量直连 _emby_request(不再经 manager.acquire_computed)。
+# _patch_ctx 把这个 _emby_request fake 同时打到 manager 与 shared 两个模块(见下)。
+
+
+def _capture_request(captured: dict, return_value):
+    """构造一个捕获 (method, path, data) 的 _emby_request fake."""
+
+    async def fake(method: str, path: str, *, headers=None, data=None, token=None, **kwargs):
+        captured["method"] = method
+        captured["path"] = path
+        captured["headers"] = headers or {}
+        captured["data"] = data
+        return return_value
+
+    return fake
+
+
+@contextlib.contextmanager
+def _patch_ctx(fake):
+    """把同一个 _emby_request fake 同时 patch 到 manager 与 shared 两个模块."""
+    with (
+        patch("mdcx.tools.emby_actor_manager._emby_request", fake),
+        patch("mdcx.tools.emby_shared._emby_request", fake),
+    ):
+        yield
 
 
 @pytest.fixture
@@ -64,20 +107,15 @@ def actor_stub():
 async def test_update_person_info_returns_success_on_200_empty_body(actor_stub):
     """Emby POST /Items/{id} 返回 200 + 空 body 必须判成功.
 
-    回归: post_content 成功时返回 (b"", "")，调用方 ``if ok:`` 不能
-    把空 bytes 当 False。
+    回归: update_person_info 走 _emby_request, 200/204 且 body 判成功;
+    调用方 ``if err == "" and body is not None`` 不能误判。
     """
     from mdcx.tools.emby_actor_manager import update_person_info
 
-    fake_client = MagicMock()
-    # 注意: post_content 返回 (bytes|None, str)。
-    # 服务器 200 + 空 body 时 post_content 返回 (b"", "")——必须算成功
-    fake_client.post_content = AsyncMock(return_value=(b"", ""))
+    resp = _EmbyResp(200)
+    ctx, _ = _captured_post(return_value=(resp, ""))
 
-    with patch(
-        "mdcx.tools.emby_actor_manager.manager.acquire_computed",
-        return_value=_make_lease(fake_client),
-    ):
+    with ctx:
         ok, msg = await update_person_info(actor_stub)
 
     assert ok, f"200 空 body 应成功, 实际: {msg!r}"
@@ -85,37 +123,29 @@ async def test_update_person_info_returns_success_on_200_empty_body(actor_stub):
 
 
 async def test_update_person_info_failure_on_error(actor_stub):
-    """post_content 返回 (None, err) 时判失败."""
+    """_emby_request 返回 (None, err) 时判失败."""
     from mdcx.tools.emby_actor_manager import update_person_info
 
-    fake_client = MagicMock()
-    fake_client.post_content = AsyncMock(return_value=(None, "HTTP 500"))
+    ctx, _ = _captured_post(return_value=(None, "HTTP 500"))
 
-    with patch(
-        "mdcx.tools.emby_actor_manager.manager.acquire_computed",
-        return_value=_make_lease(fake_client),
-    ):
+    with ctx:
         ok, msg = await update_person_info(actor_stub)
 
     assert not ok
     assert "失败" in msg
 
 
-def _captured_post(return_value=(b"", "")):
-    """返回 (patch_ctx, captured dict): patch 租约并捕获 update_person_info 的 post body."""
+def _captured_post(return_value=None):
+    """返回 (patch_ctx, captured dict): patch 掉 _emby_request 并捕获 update_person_info 的 POST body."""
+    if return_value is None:
+        return_value = (_EmbyResp(200), "")
     captured: dict = {}
 
-    async def _post(url, data, *, headers=None, use_proxy=None, **kwargs):
+    async def _fake_emby_request(method, path, *, headers=None, data=None, token=None, **kwargs):
         captured["payload"] = json.loads(data)
         return return_value
 
-    fake_client = MagicMock()
-    fake_client.post_content = AsyncMock(side_effect=_post)
-    ctx = patch(
-        "mdcx.tools.emby_actor_manager.manager.acquire_computed",
-        return_value=_make_lease(fake_client),
-    )
-    return ctx, captured
+    return _patch_ctx(_fake_emby_request), captured
 
 
 async def test_update_person_info_drops_sentinel_date_and_year(actor_stub):
@@ -265,13 +295,9 @@ async def test_upload_actor_image_success_on_204_empty(actor_stub, tmp_path: Pat
     img = tmp_path / "test.jpg"
     img.write_bytes(b"\xff\xd8\xff")
 
-    fake_client = MagicMock()
-    fake_client.post_content = AsyncMock(return_value=(b"", ""))
+    resp = _EmbyResp(204)
 
-    with patch(
-        "mdcx.tools.emby_actor_manager.manager.acquire_computed",
-        return_value=_make_lease(fake_client),
-    ):
+    with _patch_ctx(_capture_request({}, (resp, ""))):
         ok, msg = await upload_actor_image(actor_stub, img)
 
     assert ok, f"204 空 body 应成功, 实际: {msg!r}"
@@ -296,21 +322,15 @@ async def test_upload_actor_backdrop_targets_index_zero(actor_stub, tmp_path: Pa
 
     captured: dict[str, str] = {}
 
-    async def _post(url, data, *, headers=None, use_proxy=None, **kwargs):
-        captured["url"] = url
-        return b"", ""
+    async def _fake_emby_request(method, url, *, headers=None, data=None, token=None, **kwargs):
+        captured["path"] = url if isinstance(url, str) and url.startswith("http") else url
+        return _EmbyResp(204), ""
 
-    fake_client = MagicMock()
-    fake_client.post_content = AsyncMock(side_effect=_post)
-
-    with patch(
-        "mdcx.tools.emby_actor_manager.manager.acquire_computed",
-        return_value=_make_lease(fake_client),
-    ):
+    with _patch_ctx(_fake_emby_request):
         ok, msg = await upload_actor_backdrop(actor_stub, img)
 
     assert ok, f"上传应成功, 实际: {msg!r}"
-    assert captured["url"].endswith("/Items/actor-001/Images/Backdrop/0")
+    assert str(captured["path"]).endswith("/Items/actor-001/Images/Backdrop/0")
 
 
 async def test_delete_actor_image_200_is_success(actor_stub):
@@ -318,15 +338,7 @@ async def test_delete_actor_image_200_is_success(actor_stub):
     from mdcx.tools.emby_actor_manager import delete_actor_image
 
     for status in (200, 204):
-        fake_resp = MagicMock()
-        fake_resp.status_code = status
-        fake_client = MagicMock()
-        fake_client.request = AsyncMock(return_value=(fake_resp, ""))
-
-        with patch(
-            "mdcx.tools.emby_actor_manager.manager.acquire_computed",
-            return_value=_make_lease(fake_client),
-        ):
+        with _patch_ctx(_capture_request({}, (_EmbyResp(status), ""))):
             ok, msg = await delete_actor_image(actor_stub)
 
         assert ok, f"HTTP {status} 应成功, 实际: {msg!r}"
@@ -336,15 +348,7 @@ async def test_delete_actor_image_404_is_already_gone(actor_stub):
     """404 表示本来就没头像, 视为删除干净以便后续上传."""
     from mdcx.tools.emby_actor_manager import delete_actor_image
 
-    fake_resp = MagicMock()
-    fake_resp.status_code = 404
-    fake_client = MagicMock()
-    fake_client.request = AsyncMock(return_value=(fake_resp, ""))
-
-    with patch(
-        "mdcx.tools.emby_actor_manager.manager.acquire_computed",
-        return_value=_make_lease(fake_client),
-    ):
+    with _patch_ctx(_capture_request({}, (_EmbyResp(404), ""))):
         ok, _ = await delete_actor_image(actor_stub)
 
     assert ok
@@ -354,15 +358,7 @@ async def test_delete_actor_image_500_is_failure(actor_stub):
     """5xx 服务端错误必须判失败, 上层会跳过后续上传."""
     from mdcx.tools.emby_actor_manager import delete_actor_image
 
-    fake_resp = MagicMock()
-    fake_resp.status_code = 500
-    fake_client = MagicMock()
-    fake_client.request = AsyncMock(return_value=(fake_resp, ""))
-
-    with patch(
-        "mdcx.tools.emby_actor_manager.manager.acquire_computed",
-        return_value=_make_lease(fake_client),
-    ):
+    with _patch_ctx(_capture_request({}, (_EmbyResp(500), ""))):
         ok, msg = await delete_actor_image(actor_stub)
 
     assert not ok
@@ -370,16 +366,10 @@ async def test_delete_actor_image_500_is_failure(actor_stub):
 
 
 async def test_delete_actor_image_network_failure(actor_stub):
-    """request 返回 (None, err) 时判失败."""
+    """_emby_request 返回 (None, err) 时判失败."""
     from mdcx.tools.emby_actor_manager import delete_actor_image
 
-    fake_client = MagicMock()
-    fake_client.request = AsyncMock(return_value=(None, "ConnRefused"))
-
-    with patch(
-        "mdcx.tools.emby_actor_manager.manager.acquire_computed",
-        return_value=_make_lease(fake_client),
-    ):
+    with _patch_ctx(_capture_request({}, (None, "ConnRefused"))):
         ok, msg = await delete_actor_image(actor_stub)
 
     assert not ok
@@ -473,3 +463,81 @@ async def test_fetch_all_actors_reuses_list_fields_when_present(emby_configured)
     assert len(result) == 1
     assert result[0].existing_overview == "已有简介"
     assert call_log == []
+
+
+class _FakeResp:
+    def __init__(self, status_code: int = 200, json_data: dict | None = None):
+        self.status_code = status_code
+        self._json_data = json_data
+        self.text = json.dumps(json_data) if json_data is not None else ""
+
+    def json(self):
+        return self._json_data
+
+
+async def test_media_folders_uses_light_httpx_transport_not_computed(monkeypatch, emby_configured):
+    """议题 #133 回归：get_media_folders 走轻量 httpx(无指纹/无池), 不再走 manager.acquire_computed."""
+    from mdcx.tools import emby_actor_manager
+
+    captured: dict = {}
+
+    async def fake_get_json(path, **kwargs):
+        captured["path"] = path
+        return {"Items": [{"Name": "库A", "Id": "lib-1"}]}, ""
+
+    monkeypatch.setattr(emby_actor_manager, "_emby_get_json", fake_get_json)
+
+    # 若误回退到 computered async_client, acquire_computed 被调就应失败
+    def boom(*a, **k):
+        raise AssertionError("不应再走 manager.acquire_computed 重型客户端")
+
+    monkeypatch.setattr(emby_actor_manager.manager, "acquire_computed", boom)
+
+    result = await emby_actor_manager.get_media_folders()
+
+    assert result == [{"Name": "库A", "Id": "lib-1"}]
+    assert captured["path"] == "/emby/Library/MediaFolders", f"Emby 前缀错误: {captured['path']}"
+
+
+async def test_emby_api_prefix_differs_by_server_type(monkeypatch):
+    """Emby 带 /emby 前缀, Jellyfin 不带."""
+    from mdcx.config.manager import manager
+    from mdcx.tools.emby_shared import _emby_api_prefix
+
+    monkeypatch.setattr(manager.config, "server_type", "emby")
+    assert _emby_api_prefix() == "/emby"
+    monkeypatch.setattr(manager.config, "server_type", "ln")
+    assert _emby_api_prefix() == ""
+
+
+async def test_emby_request_builds_url_and_auth_header(monkeypatch, emby_configured):
+    """轻量客户端: URL=base+path, Authorization 用入参 token, 4xx 返回 (None, 错误)."""
+    from mdcx.tools import emby_shared
+
+    captured: dict = {}
+
+    class FakeAsyncClient:
+        def __init__(self, timeout=None, verify=None):
+            captured["verify"] = verify
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, *a):
+            return False
+
+        async def request(self, method, url, *, headers=None, content=None):
+            captured["url"] = url
+            captured["auth"] = (headers or {}).get("Authorization", "")
+            return _FakeResp(500, None)
+
+    monkeypatch.setattr(emby_shared.httpx, "AsyncClient", FakeAsyncClient)
+
+    resp, err = await emby_shared._emby_request(
+        "GET", "/System/Info", headers={"Content-Type": "application/json"}, token="secret-token"
+    )
+
+    assert resp is None
+    assert captured["url"] == "http://test:8096/System/Info"
+    assert "MediaBrowser" in captured["auth"] and "secret-token" in captured["auth"]
+    assert err.startswith("HTTP 500")
