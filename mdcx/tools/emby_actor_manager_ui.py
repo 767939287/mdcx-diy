@@ -38,10 +38,12 @@ from PyQt6.QtWidgets import (
 
 from ..config.manager import manager
 from ..config.resources import resources
+from ..models.emby import clean_overview_text, normalize_premiere_date
 from ..utils import executor
 from .emby_actor_manager import (
     ActorInfo,
     build_local_avatar_index,
+    clean_actor_data_batch,
     fetch_actor_info_from_source,
     fetch_all_actors,
     from_gfriends,
@@ -53,6 +55,24 @@ from .emby_actor_manager import (
     search_actor_info,
     sync_batch,
 )
+
+
+def scan_actor_data_noise(actors: list[ActorInfo]) -> list[tuple[ActorInfo, str, bool]]:
+    """议题 #149: 扫描需要清洗的演员——简介含历史噪声(清洗后有变化)或生日非法(0000-00-00 等)。
+
+    返回 (actor, 清洗后简介, 是否重置生日) 三元组; 生日为 Emby 未设置零值 0001-01-01
+    或可被 normalize_premiere_date 正常解析时不算噪声。
+    """
+    dirty: list[tuple[ActorInfo, str, bool]] = []
+    for a in actors:
+        new_overview = clean_overview_text(a.existing_overview)
+        raw_birth = (a.existing_premiere_date or "").strip()
+        fix_birth = (
+            bool(raw_birth) and not raw_birth.startswith("0001-01-01") and normalize_premiere_date(raw_birth) is None
+        )
+        if new_overview != (a.existing_overview or "") or fix_birth:
+            dirty.append((a, new_overview, fix_birth))
+    return dirty
 
 
 class LibrarySelectDialog(QDialog):
@@ -350,6 +370,30 @@ class SyncThread(QThread):
             self.error.emit(str(e))
 
 
+class CleanDataThread(QThread):
+    """议题 #149: 存量数据清洗(简介噪声/非法生日), 不经取数流程。"""
+
+    progress = Signal(int, int, str)
+    actor_done = Signal(str, bool)  # (actor_id, success)
+    clean_done = Signal(int, int)
+    error = Signal(str)
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.items: list[tuple[ActorInfo, str, bool]] = []
+
+    def run(self):
+        try:
+            success, fail = clean_actor_data_batch(
+                self.items,
+                progress_callback=lambda c, t, m: self.progress.emit(c, t, m),
+                actor_callback=lambda actor, ok, _msg: self.actor_done.emit(actor.actor_id, ok),
+            )
+            self.clean_done.emit(success, fail)
+        except Exception as e:
+            self.error.emit(str(e))
+
+
 def _future_result_or(future, default):
     """取 Future 结果；协程异常时返回 default，避免异常传播到后台 loop 线程。"""
     try:
@@ -395,6 +439,8 @@ class EmbyActorManagerDialog(QDialog):
         self._gfriends_index = None
         self._preview_thread = None
         self._sync_thread = None
+        self._clean_thread = None
+        self._clean_items: dict[str, tuple[str, bool]] = {}
         self._fetch_thread = None
         self._failed_names: set[str] = set()
         self._log_file: Path | None = None
@@ -474,7 +520,7 @@ class EmbyActorManagerDialog(QDialog):
                 "仅缺失简介",
                 "全部头像+简介（重新获取）",
                 "全部头像（重新获取）",
-                "全部简介（重新获取）",
+                "更新所有演员数据（不含头像/影片数）",
             ]
         )
         # 议题 #147: 明确「或=并集(缺任一即取)/且=交集(两者都缺)」, 并说明占位简介按缺失处理,
@@ -488,7 +534,13 @@ class EmbyActorManagerDialog(QDialog):
         )
         self.cmb_fetch_mode.setItemData(3, "不筛缺失，为全部演员 重新获取 头像+简介", Qt.ItemDataRole.ToolTipRole)
         self.cmb_fetch_mode.setItemData(4, "不筛缺失，为全部演员 重新获取 头像", Qt.ItemDataRole.ToolTipRole)
-        self.cmb_fetch_mode.setItemData(5, "不筛缺失，为全部演员 重新获取 简介", Qt.ItemDataRole.ToolTipRole)
+        # 议题 #149: 全量刷新简介/出生日期/出生地/标签等信息; 影片数来自服务器、
+        # 头像交由第三方工具, 均不在本模式范围内。
+        self.cmb_fetch_mode.setItemData(
+            5,
+            "不筛缺失，为全部演员 重新获取 简介/出生日期/出生地/标签（不动头像与影片数）",
+            Qt.ItemDataRole.ToolTipRole,
+        )
         self.cmb_fetch_mode.setCurrentIndex(0)
         self.cmb_fetch_mode.setFixedWidth(220)
         btn_layout.addWidget(self.cmb_fetch_mode)
@@ -496,6 +548,19 @@ class EmbyActorManagerDialog(QDialog):
         self.btn_preview.setObjectName("btnPrimary")
         self.btn_preview.setEnabled(False)
         btn_layout.addWidget(self.btn_preview)
+        # 议题 #149: 数据清洗按钮, 按需求置于「根据设定获取数据」与「开始全部更新同步」之间
+        self.btn_clean = QPushButton("数据清洗")
+        self.btn_clean.setObjectName("btnPrimary")
+        self.btn_clean.setEnabled(False)
+        self.btn_clean.setToolTip(
+            "原地清洗服务器存量演员数据（不经取数流程）:\n"
+            "① 0000-00-00 等非法生日 → 重置为未设置\n"
+            "② 「无维基百科信息」占位简介 → 清空\n"
+            "③ <br> 换行标签 → 替换为中文逗号\n"
+            "④ ===== 个人资料/外部链接 ===== 无意义段落标题 → 删除\n"
+            "清洗后可选「更新所有演员数据」做全量信息刷新；头像与影片数不受影响"
+        )
+        btn_layout.addWidget(self.btn_clean)
         self.btn_sync = QPushButton("开始全部更新同步")
         self.btn_sync.setObjectName("btnSync")
         self.btn_sync.setEnabled(False)
@@ -637,6 +702,7 @@ class EmbyActorManagerDialog(QDialog):
         self.btn_connect.clicked.connect(self._on_connect)
         self.btn_fetch.clicked.connect(self._on_fetch)
         self.btn_preview.clicked.connect(self._on_prepare_preview)
+        self.btn_clean.clicked.connect(self._on_clean_data)
         self.btn_sync.clicked.connect(self._on_sync)
         self.btn_settings.clicked.connect(self._on_open_settings)
         self.btn_test_source.clicked.connect(self._on_open_test_source)
@@ -721,6 +787,7 @@ class EmbyActorManagerDialog(QDialog):
         self.btn_fetch.setEnabled(enabled and hasattr(self, "_connected") and self._connected)
         actors = getattr(self, "_actors", None) or []
         self.btn_preview.setEnabled(enabled and len(actors) > 0)
+        self.btn_clean.setEnabled(enabled and len(actors) > 0)
         pending = any(a.need_update_info or a.need_update_image or a.need_update_backdrop for a in actors)
         self.btn_sync.setEnabled(enabled and pending)
 
@@ -874,7 +941,7 @@ class EmbyActorManagerDialog(QDialog):
             "仅缺失简介": "missing_info",
             "全部头像+简介（重新获取）": "force_all",
             "全部头像（重新获取）": "force_image",
-            "全部简介（重新获取）": "force_info",
+            "更新所有演员数据（不含头像/影片数）": "force_info",
         }
         mode = mode_map.get(self.cmb_fetch_mode.currentText(), "missing_all")
         # 议题 #127: 「缺失」类模式只处理子集, 不再逐人遍历全库
@@ -917,6 +984,72 @@ class EmbyActorManagerDialog(QDialog):
         self.btn_preview.setText("根据设定获取数据")
         self.progress_bar.setVisible(False)
         self._set_buttons_enabled(True)
+
+    def _on_clean_data(self):
+        """议题 #149: 扫描存量噪声 → 弹确认(含前 5 条 before/after) → 批量清洗。"""
+        if not self._actors:
+            return
+        dirty = scan_actor_data_noise(self._actors)
+        if not dirty:
+            QMessageBox.information(self, "数据清洗", "✅ 未发现需要清洗的数据")
+            return
+        samples = []
+        for a, new_ov, fix_birth in dirty[:5]:
+            parts = []
+            if new_ov != (a.existing_overview or ""):
+                before = (a.existing_overview or "")[:40] or "(空)"
+                after = new_ov[:40] or "(空)"
+                parts.append(f"简介: {before} → {after}")
+            if fix_birth:
+                parts.append(f"生日: {(a.existing_premiere_date or '')[:10]} → (置空)")
+            samples.append(f"· {a.name}: " + "; ".join(parts))
+        reply = QMessageBox.question(
+            self,
+            "确认数据清洗",
+            f"发现 {len(dirty)} 个演员的数据需要清洗（示例前 5 条）:\n\n"
+            + "\n".join(samples)
+            + "\n\n清洗将直接改写服务器数据且不可撤销（不动头像与影片数），建议先备份。是否继续？",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+        )
+        if reply != QMessageBox.StandardButton.Yes:
+            return
+        self._set_buttons_enabled(False)
+        self.progress_bar.setVisible(True)
+        self.progress_bar.setValue(0)
+        self._set_status("数据清洗中...")
+        self.log(f"🧹 开始数据清洗，共 {len(dirty)} 个演员...")
+        self._clean_items = {a.actor_id: (new_ov, fix_birth) for a, new_ov, fix_birth in dirty}
+        self._clean_thread = CleanDataThread(self)
+        self._clean_thread.items = dirty
+        self._clean_thread.progress.connect(self._on_sync_progress)
+        self._clean_thread.actor_done.connect(self._on_clean_actor_done)
+        self._clean_thread.clean_done.connect(self._on_clean_finished)
+        self._clean_thread.error.connect(self._on_thread_error)
+        self._clean_thread.start()
+
+    def _on_clean_actor_done(self, actor_id: str, success: bool):
+        # 清洗成功后立即就地更新内存状态; 失败保留原值, 下次清洗可重试
+        if not success:
+            return
+        actor = next((a for a in self._actors if a.actor_id == actor_id), None)
+        item = self._clean_items.get(actor_id)
+        if actor is None or item is None:
+            return
+        new_ov, fix_birth = item
+        actor.existing_overview = new_ov
+        actor.has_overview = bool(new_ov)
+        if fix_birth:
+            actor.existing_premiere_date = ""
+
+    def _on_clean_finished(self, success: int, fail: int):
+        self.progress_bar.setVisible(False)
+        self._set_buttons_enabled(True)
+        self._set_status("数据清洗完成")
+        self._clean_items = {}
+        self.log(f"🧹 数据清洗完成！成功: {success}, 失败: {fail}")
+        QMessageBox.information(self, "数据清洗完成", f"✅ 成功: {success}\n❌ 失败: {fail}")
+        self._populate_table(self._actors)
+        self._update_statistics(self._actors)
 
     def _on_sync(self):
         to_sync = [a for a in self._actors if a.need_update_info or a.need_update_image or a.need_update_backdrop]

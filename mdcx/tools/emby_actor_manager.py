@@ -19,6 +19,7 @@ from ..config.manager import manager
 from ..config.resources import resources
 from ..models.emby import (
     EMbyActressInfo,
+    clean_overview_text,
     normalize_premiere_date,
     normalize_production_year,
 )
@@ -505,7 +506,8 @@ async def update_person_info(actor: ActorInfo) -> tuple[bool, str]:
     _, _, _, _, _, update_url = _generate_server_url(
         {"Name": actor.name, "Id": actor.actor_id, "ServerId": actor.server_id}
     )
-    overview = (actor.new_overview or actor.existing_overview or "").replace("\n", "<br/>")
+    # 议题 #149: 简介出口统一清洗(段落标题/<br>/占位文案), 存量脏数据随下次同步自愈
+    overview = clean_overview_text((actor.new_overview or actor.existing_overview or "").replace("\n", "<br/>"))
     # Genres/Tags/ProviderIds 必须恒为集合：Emby/Jellyfin 的 UpdateItem 会直接
     # Distinct()/ToList() 反序列化后的字段，缺省为 null 时抛 ArgumentNullException
     # （"Value cannot be null. (Parameter 'source')"）导致 HTTP 400（议题 #148）。
@@ -540,6 +542,69 @@ async def update_person_info(actor: ActorInfo) -> tuple[bool, str]:
     if err == "" and body is not None:
         return True, f"✅ {actor.name} 信息更新成功"
     return False, f"❌ {actor.name} 信息更新失败: {err or '服务器返回空响应'}"
+
+
+async def clean_actor_data(actor: ActorInfo, new_overview: str, fix_birth: bool) -> tuple[bool, str]:
+    """议题 #149: 原地清洗服务器存量演员数据(简介噪声/非法生日), 不经取数流程。
+
+    与 update_person_info 的区别: 允许显式写入空简介(清除占位文案)、把非法生日
+    (0000-00-00 等)重置为 Emby 原生零值 0001-01-01(服务器与列表均按未设置展示)。
+    Genres/Tags/ProviderIds 恒回填服务器已有值, 避免 Emby 4.9 空引用 400(议题 #148)。
+    """
+    _, _, _, _, _, update_url = _generate_server_url(
+        {"Name": actor.name, "Id": actor.actor_id, "ServerId": actor.server_id}
+    )
+    payload: dict[str, object] = {
+        "Name": actor.name,
+        "Id": actor.actor_id,
+        "ServerId": actor.server_id,
+        "Genres": [g for g in (actor.existing_genres or []) if g],
+        "Tags": [t for t in (actor.existing_tags or []) if t],
+        "ProviderIds": {k: v for k, v in (actor.existing_provider_ids or {}).items() if v},
+    }
+    if new_overview != (actor.existing_overview or ""):
+        payload["Overview"] = new_overview
+    if fix_birth:
+        payload["PremiereDate"] = "0001-01-01T00:00:00.0000000Z"
+    # 议题 #56: Emby 4.9 对 POST /Items/{id} 无 Content-Type 的 JSON body 判 400
+    headers = _build_jellyfin_headers({"Content-Type": "application/json"})
+    body, err = await _emby_request("POST", update_url, headers=headers, data=json.dumps(payload))
+    if err == "" and body is not None:
+        return True, f"✅ {actor.name} 数据清洗成功"
+    return False, f"❌ {actor.name} 数据清洗失败: {err or '服务器返回空响应'}"
+
+
+def clean_actor_data_batch(
+    items: list[tuple[ActorInfo, str, bool]],
+    progress_callback: Callable | None = None,
+    actor_callback: Callable | None = None,
+) -> tuple[int, int]:
+    """议题 #149: 批量清洗存量数据, 与 sync_batch 同一并发/进度模型。"""
+    total = len(items)
+
+    async def _run_batch() -> tuple[int, int]:
+        if not items:
+            return 0, 0
+        sem = asyncio.Semaphore(SYNC_CONCURRENCY)
+        completed = 0
+
+        async def _one(item: tuple[ActorInfo, str, bool]) -> bool:
+            nonlocal completed
+            actor, new_overview, fix_birth = item
+            async with sem:
+                ok, _msg = await clean_actor_data(actor, new_overview, fix_birth)
+            completed += 1
+            if progress_callback:
+                progress_callback(completed, total, f"正在清洗: {actor.name} ({completed}/{total})")
+            if actor_callback:
+                actor_callback(actor, ok, _msg)
+            return ok
+
+        results = await asyncio.gather(*(_one(i) for i in items))
+        success = sum(1 for r in results if r)
+        return success, len(results) - success
+
+    return executor.run(_run_batch())
 
 
 async def upload_actor_image(actor: ActorInfo, image_path: str | Path) -> tuple[bool, str]:
