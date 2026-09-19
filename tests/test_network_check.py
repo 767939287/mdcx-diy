@@ -1225,13 +1225,26 @@ def test_merge_and_load_cache_roundtrip(monkeypatch: pytest.MonkeyPatch, tmp_pat
     assert loaded["javdb"]["checked_at"]
 
 
-def test_merge_cache_ignores_non_scrape_groups(monkeypatch: pytest.MonkeyPatch, tmp_path):
+def test_merge_cache_includes_any_site_attributed_group(monkeypatch: pytest.MonkeyPatch, tmp_path):
+    """议题 #129 语义反转: 缓存收集以"有无 site 归属"为准, 不再按组过滤——
+    账号/API 组要标注; 无 site 归属项(基础连通性等)仍排除。"""
     cache = tmp_path / "cache.json"
     monkeypatch.setattr(nc, "_site_cache_path", lambda: cache)
 
-    merge_site_check_cache([_mk_cache_result(Website.JAVDB, NetworkCheckStatus.OK, group="基础环境")])
+    merge_site_check_cache(
+        [
+            _mk_cache_result(Website.JAVDB, NetworkCheckStatus.OK, group="账号/API"),
+            NetworkCheckResult(
+                spec=NetworkCheckSpec(name="通用 HTTPS", group="基础环境", url="https://x.test"),
+                status=NetworkCheckStatus.OK,
+                message="m",
+            ),
+        ]
+    )
 
-    assert load_site_check_cache() == {}
+    loaded = load_site_check_cache()
+    assert loaded["javdb"]["status"] == "ok"
+    assert len(loaded) == 1
 
 
 def test_merge_cache_partial_overwrite_preserves_history(monkeypatch: pytest.MonkeyPatch, tmp_path):
@@ -1300,3 +1313,91 @@ async def test_run_network_check_reports_structured_progress(monkeypatch: pytest
     # "基础环境"组不参与计数：total=3，done 单调递增到 3
     assert seen == [(1, 3), (2, 3), (3, 3)]
     assert len(results) == 3  # "基础环境"组是输出横幅非实际检测项，不执行也不计进度
+
+
+# ==================== 议题 #129: API 组入缓存 + official 五站子检测/最差聚合 ====================
+
+
+def _result(site: Website, status: NetworkCheckStatus, group: str = "刮削站点", name: str = "") -> NetworkCheckResult:
+    spec = NetworkCheckSpec(name=name or site.value, group=group, url="https://x.test", site=site)
+    return NetworkCheckResult(spec=spec, status=status, message="m", used_proxy=True)
+
+
+def test_merge_cache_includes_api_group_sites(monkeypatch, tmp_path):
+    """账号/API 组(带 site 归属)的检测结果须写入站点缓存→网站设置下拉有标注 (#129)。"""
+    monkeypatch.setattr(nc, "_site_cache_path", lambda: tmp_path / "cache.json")
+    merge_site_check_cache(
+        [
+            _result(Website.DMM_API, NetworkCheckStatus.OK, group="账号/API"),
+            _result(Website.THEJAVDB_API, NetworkCheckStatus.WARNING, group="账号/API"),
+            _result(Website.MISSAV_API, NetworkCheckStatus.FAILED, group="账号/API"),
+            _result(None or Website.THEPORNDB, NetworkCheckStatus.OK, group="账号/API"),
+            # 无站点归属项(基础环境等)不入库
+            NetworkCheckResult(
+                spec=NetworkCheckSpec(name="通用 HTTPS", group="基础连通性", url="https://x.test"),
+                status=NetworkCheckStatus.OK,
+                message="m",
+            ),
+        ]
+    )
+    cache = load_site_check_cache()
+    assert cache["dmm_api"]["status"] == "ok"
+    assert cache["thejavdb_api"]["status"] == "warn"
+    assert cache["missav_api"]["status"] == "fail"
+    assert cache["theporndb"]["status"] == "ok"
+    assert "通用 HTTPS" not in cache and all(v.get("status") for v in cache.values())
+
+
+def test_merge_cache_official_aggregates_worst(monkeypatch, tmp_path):
+    """official 五站子结果按"取最差"聚合: 任一 fail 整条链路标红, 且不被后续 ok 覆盖。"""
+    monkeypatch.setattr(nc, "_site_cache_path", lambda: tmp_path / "cache.json")
+    merge_site_check_cache(
+        [
+            _result(Website.OFFICIAL, NetworkCheckStatus.OK, name="official·1pondo"),
+            _result(Website.OFFICIAL, NetworkCheckStatus.FAILED, name="official·heyzo"),
+            _result(Website.OFFICIAL, NetworkCheckStatus.OK, name="official·caribbeancom"),
+        ]
+    )
+    assert load_site_check_cache()["official"]["status"] == "fail"
+
+    # 反序: 先 fail 后 ok 也必须保持 fail
+    monkeypatch.setattr(nc, "_site_cache_path", lambda: tmp_path / "cache2.json")
+    merge_site_check_cache(
+        [
+            _result(Website.OFFICIAL, NetworkCheckStatus.FAILED, name="official·1pondo"),
+            _result(Website.OFFICIAL, NetworkCheckStatus.OK, name="official·heyzo"),
+        ]
+    )
+    assert load_site_check_cache()["official"]["status"] == "fail"
+
+
+@pytest.mark.anyio
+async def test_official_generates_five_sub_specs(monkeypatch):
+    """official 未自定义 URL 时逐站生成 5 个子检测(报告每站一行)。"""
+    from mdcx.crawlers.official_uncensored import UNCENSORED_OFFICIAL_SITES
+
+    class OfficialCrawler:
+        @classmethod
+        def base_url_(cls):
+            return ""
+
+    class NoCustomConfig(FakeConfig):
+        def get_site_url(self, site, default=""):
+            return ""
+
+    class Mgr:
+        config = NoCustomConfig()
+        computed = None
+
+    fake_crawlers = SimpleNamespace(
+        get_registered_crawler_sites=lambda include_hidden=False: [Website.OFFICIAL],
+        get_crawler=lambda site: OfficialCrawler,
+    )
+    monkeypatch.setitem(sys.modules, "mdcx.crawlers", fake_crawlers)
+    monkeypatch.setattr("mdcx.core.network_check._manager", lambda: Mgr())
+
+    specs = await build_network_check_specs()
+    official_specs = [s for s in specs if s.site == Website.OFFICIAL]
+    assert len(official_specs) == len(UNCENSORED_OFFICIAL_SITES) == 5
+    assert {s.name for s in official_specs} == {f"official·{src}" for src in UNCENSORED_OFFICIAL_SITES}
+    assert all(s.url and s.url.startswith("https://") for s in official_specs)
