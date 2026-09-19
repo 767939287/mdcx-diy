@@ -11,7 +11,7 @@ from collections import deque
 from pathlib import Path
 from typing import TYPE_CHECKING, Literal, cast
 
-from PyQt6.QtCore import QEvent, QItemSelectionModel, QPoint, QPointF, Qt, QTimer, pyqtSignal
+from PyQt6.QtCore import QEvent, QItemSelectionModel, QPoint, QPointF, QRect, Qt, QTimer, pyqtSignal
 from PyQt6.QtGui import QAction, QCursor, QGuiApplication, QHoverEvent, QIcon, QKeySequence, QPixmap, QShortcut
 from PyQt6.QtWidgets import (
     QApplication,
@@ -671,12 +671,10 @@ class MyMAinWindow(QMainWindow):
         cover_bottom = int(160 + 220 * cover_scale)
         # 信息区下移量 = 封面框增高量；再夹到页面可用高度内，避免宽而矮的窗口把末行裁掉
         info_delta = min(cover_bottom - 380, max(main_page.height() - 700, 0))
-        # 议题 #152（撤销 #144 的 60px 拉伸行高）：简介/标签每行恒定 40px、自动换行、
-        # 行数随页高真实余量增长（行数不限，最大化比最小化显示更多）；页面高度回到设计
-        # 值时 row_grow=0，小窗布局零变化（双向幂等，由页面高度实时计算）。最多 4 行防溢出。
-        _free_h = max(0, main_page.height() - info_delta - 660)
-        row_grow = min(_free_h // 40, 4) * 40
-        info_grow = info_delta + 2 * row_grow  # 简介/标签以下各行的总下移量
+        # 议题 #154（撤销 #152 的行高增长）：简介/标签恒定 40px、最多两行，超出的文本
+        # 按当前宽度做两行省略（宽度越大每行容纳越多，最大化自然比最小化显示更多）；
+        # 下方各行只随封面增高 info_delta 下移，不再被行高增量推出页底。
+        info_grow = info_delta  # 简介/标签以下各行的总下移量
         ui.label_poster_size.setGeometry(
             int(80 * cover_scale), cover_bottom, int(411 * cover_scale), int(40 * cover_scale)
         )
@@ -692,22 +690,24 @@ class MyMAinWindow(QMainWindow):
         #   · 右列整体按 ×scale 右移，避免与加长后的左列窄字段重叠。
         thumb_right = int(580 * cover_scale)
         # 左列标签（x 固定，保持与番号/标题/封面竖向对齐）
-        # 简介/标签两行标签与其值行同顶（含 row_grow 行高增量），其余行用 info_grow
+        # 简介/标签两行标签与其值行同顶（#154 行高恒定），其余行用 info_grow
         ui.label_18.move(30, 430 + info_delta)
-        ui.label_33.move(30, 480 + row_grow + info_delta)
+        ui.label_33.move(30, 480 + info_delta)
         for name, y in (
             ("label_13", 530),
             ("label_23", 580),
             ("label_30", 630),
         ):
             getattr(ui, name).move(30, y + info_grow)
-        # 简介/标签：左缘 x=70，右缘延伸到缩略图右缘；行高按 row_grow 增高，
-        # 下划线贴行底(设计偏移 -10)，简介之下的各行整体再下移 2*row_grow（议题 #144）
+        # 简介/标签：左缘 x=70，右缘延伸到缩略图右缘；行高恒定 40px、最多两行（#154），
+        # 下划线贴行底(设计偏移 30)，简介之下的各行只随 info_delta 下移
         wide_w = max(thumb_right - 70, 60)
-        ui.label_outline.setGeometry(70, 430 + info_delta, wide_w, 40 + row_grow)
-        ui.line_6.setGeometry(70, 460 + row_grow + info_delta, wide_w, ui.line_6.height())
-        ui.label_tag.setGeometry(70, 480 + row_grow + info_delta, wide_w, 40 + row_grow)
-        ui.line_7.setGeometry(70, 510 + 2 * row_grow + info_delta, wide_w, ui.line_7.height())
+        ui.label_outline.setGeometry(70, 430 + info_delta, wide_w, 40)
+        ui.line_6.setGeometry(70, 460 + info_delta, wide_w, ui.line_6.height())
+        ui.label_tag.setGeometry(70, 480 + info_delta, wide_w, 40)
+        ui.line_7.setGeometry(70, 510 + info_delta, wide_w, ui.line_7.height())
+        # 宽度变化后按新宽度重算简介/标签的两行省略文本（#154：最大化显示更多内容）
+        self._refresh_main_outline_tag()
         # 左列窄字段（日期/导演/制作）：宽度按 ×scale 等比例加长
         narrow_w = max(int(220 * cover_scale), 60)
         for name, y in (
@@ -1527,6 +1527,47 @@ class MyMAinWindow(QMainWindow):
             self.show_name = show_data.show_name
             self.set_main_info(show_data)
 
+    @staticmethod
+    def _elide_label_two_lines(label, text: str, max_lines: int = 2) -> str:
+        """议题 #154：把文本按标签当前宽度裁到最多两行，超出部分以省略号截断。
+
+        简介/标签恒定 40px 高，最多显示两行；不同窗口宽度下每行容纳的字数不同，
+        因此必须按实际宽度重算，最大化才能比最小化显示更多内容。
+        """
+        text = text or ""
+        if not text:
+            return text
+        width = label.width()
+        if width <= 0:
+            return text
+        metrics = label.fontMetrics()
+        max_h = metrics.lineSpacing() * max_lines
+        flags = int(Qt.TextFlag.TextWordWrap)
+        # 用无界高度测量真实换行高度，再与两行上限比较（受限高度会把返回值截断）
+        probe = QRect(0, 0, width, 1_000_000)
+        if metrics.boundingRect(probe, flags, text).height() <= max_h:
+            return text
+        low, high = 0, len(text)
+        while low < high:
+            mid = (low + high + 1) // 2
+            candidate = text[:mid].rstrip() + "…"
+            if metrics.boundingRect(probe, flags, candidate).height() <= max_h:
+                low = mid
+            else:
+                high = mid - 1
+        return text[:low].rstrip() + "…"
+
+    def _set_main_two_line(self, label, text: str) -> None:
+        label.setText(self._elide_label_two_lines(label, text))
+
+    def _refresh_main_outline_tag(self) -> None:
+        """议题 #154：窗口宽度变化后，按新宽度重算简介/标签的两行省略文本。"""
+        ui = getattr(self, "Ui", None)
+        if ui is None:
+            return
+        self._set_main_two_line(ui.label_outline, getattr(self, "_main_outline_text", ""))
+        self._set_main_two_line(ui.label_tag, getattr(self, "_main_tag_text", ""))
+
     def set_main_info(self, show_data: "ShowData | None"):
         if show_data is not None:
             self.show_data = show_data
@@ -1562,15 +1603,13 @@ class MyMAinWindow(QMainWindow):
                 title = title[:25] + "……"
             self.Ui.label_title.setText(title)
             outline = str(data.outline)
+            self._main_outline_text = outline
             self.Ui.label_outline.setToolTip(outline)
-            if len(outline) > 38:
-                outline = outline[:36] + "……"
-            self.Ui.label_outline.setText(outline)
+            self._set_main_two_line(self.Ui.label_outline, outline)
             tag = ", ".join(str(item) for item in data.tag) if isinstance(data.tag, list) else str(data.tag)
+            self._main_tag_text = tag
             self.Ui.label_tag.setToolTip(tag)
-            if len(tag) > 76:
-                tag = tag[:75] + "……"
-            self.Ui.label_tag.setText(tag)
+            self._set_main_two_line(self.Ui.label_tag, tag)
             self.Ui.label_release.setText(str(data.release))
             self.Ui.label_release.setToolTip(str(data.release))
             if data.runtime:
