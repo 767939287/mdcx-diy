@@ -5,7 +5,7 @@ import threading
 from pathlib import Path
 
 from pydantic import HttpUrl
-from PyQt6.QtCore import Qt, QThread, QTimer
+from PyQt6.QtCore import QEvent, Qt, QThread, QTimer
 from PyQt6.QtCore import pyqtSignal as Signal
 from PyQt6.QtGui import QColor, QGuiApplication
 from PyQt6.QtWidgets import (
@@ -675,6 +675,11 @@ class EmbyActorManagerDialog(QDialog):
         self.table.setColumnWidth(8, 60)
         self.table.cellDoubleClicked.connect(self._on_table_double_clicked)
         parent_layout.addWidget(self.table)
+        # 议题 #160: 纵向滚动条显隐只改 viewport 几何、不触发窗口 resizeEvent;
+        # 监听 viewport 尺寸变化, 在其后按真实视口宽重算列宽, 消除随之出现的横向滚动条
+        table_viewport = self.table.viewport()
+        assert table_viewport is not None
+        table_viewport.installEventFilter(self)
 
     # 固定宽度列（0 状态/1 姓名/2 头像/3 简介/5 出生日期/6 出生地/8 影片数）；
     # 剩余宽度在 4 详情 与 7 标签 之间按 _DETAIL_WIDTH_RATIO 分配（议题 #136）。
@@ -693,8 +698,22 @@ class EmbyActorManagerDialog(QDialog):
         remain = max(viewport_w - fixed_sum, 120)
         detail_w = int(remain * self._DETAIL_WIDTH_RATIO)
         tags_w = remain - detail_w
-        table.setColumnWidth(4, detail_w)
-        table.setColumnWidth(7, tags_w)
+        # 防御性重入保护: setColumnWidth 实测不改 viewport 宽(不会自激), 嵌套调用为同值空操作
+        if getattr(self, "_applying_widths", False):
+            return
+        self._applying_widths = True
+        try:
+            table.setColumnWidth(4, detail_w)
+            table.setColumnWidth(7, tags_w)
+        finally:
+            self._applying_widths = False
+
+    def eventFilter(self, a0, a1):
+        """议题 #160: viewport 尺寸变化(含纵向滚动条显隐/DPI 变化)后重算列宽。"""
+        table = getattr(self, "table", None)
+        if table is not None and a0 is table.viewport() and a1 is not None and a1.type() == QEvent.Type.Resize:
+            self._apply_column_widths()
+        return super().eventFilter(a0, a1)
 
     def resizeEvent(self, a0):
         super().resizeEvent(a0)

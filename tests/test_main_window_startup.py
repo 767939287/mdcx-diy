@@ -166,3 +166,36 @@ def test_emby_actor_manager_blank_birthday_placeholder(app):
         dlg.close()
         dlg.deleteLater()
         app.processEvents()
+
+
+def test_emby_actor_manager_columns_fit_after_vertical_scrollbar(app):
+    """议题 #160：纵向滚动条显隐后列宽应重算，不产生横向滚动条。"""
+    from PyQt6.QtCore import Qt
+
+    from mdcx.tools.emby_actor_manager_ui import EmbyActorManagerDialog
+
+    dlg = EmbyActorManagerDialog()
+    try:
+        dlg.resize(1600, 900)
+        dlg.show()
+        app.processEvents()
+        table = dlg.table
+        hbar = table.horizontalScrollBar()
+
+        # 强制显示纵向滚动条（模拟演员数量多时的场景），视口变窄
+        table.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOn)
+        app.processEvents()
+        total_on = sum(table.columnWidth(i) for i in range(table.columnCount()))
+        assert total_on == pytest.approx(table.viewport().width(), abs=4), "纵滚动条显示后列宽未铺满视口"
+        assert hbar.maximum() == 0, f"纵滚动条显示后出现横向滚动条: {hbar.maximum()}"
+
+        # 隐藏纵向滚动条，视口变宽，同样不应出现横向滚动条
+        table.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        app.processEvents()
+        total_off = sum(table.columnWidth(i) for i in range(table.columnCount()))
+        assert total_off == pytest.approx(table.viewport().width(), abs=4), "纵滚动条隐藏后列宽未铺满视口"
+        assert hbar.maximum() == 0, f"纵滚动条隐藏后出现横向滚动条: {hbar.maximum()}"
+    finally:
+        dlg.close()
+        dlg.deleteLater()
+        app.processEvents()
