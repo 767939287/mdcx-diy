@@ -54,6 +54,8 @@
 
 - **Dependabot/OSV 安全告警：soupsieve 2.8.4 → 2.9.2**（beautifulsoup4 的传递依赖，生产依赖）：2.8.x 在 selector 正则上存在两处多项式时间 ReDoS（O(n²)，CVSS Low，仅可用性）。CSS 选择器由代码固定、并非来自被抓取内容，实际可利用性很低，但升级零成本且向下兼容，现升级到 2.9.2；升级后 OSV 复扫 123 个锁定依赖 **0 已知漏洞**
 
+- **Dependabot/OSV 安全告警：anyio 4.11.0 → 4.14.2**（httpx 的传递依赖，生产依赖）：两条公告均修复于 4.14.2——①CRITICAL（CVE-2026-63374）TLSStream 按 IDNA 2003 编码主机名，可致 TLS 证书欺骗；②MODERATE（CVE-2026-64847）进程池 worker 的 stderr 未排空时可无限阻塞。软件网络栈以 httpx/curl_cffi 为主，TLS 路径可触达①，故直接升级；4.x 内补丁级升级零 API 变更，升级后全量测试通过、OSV 复扫 124 个锁定依赖 **0 已知漏洞**
+
 - **#130 启动自检纳入 FC2PPVDB，且 cookie 检查只告警不清空**：启动自检由「数据库 / ThePornDB / JavDb / JavBus」扩展为含 **FC2PPVDB** cookie 有效性检测（未填写时不发请求），并在日志输出其连接状态。同时修正 javdb cookie 检查"自动清空保存"的激进行为——网络/站点不可达、或页面未出现 `/logout` 只说明"未检测到登录态"，都不构成 cookie 失效的确凿证据：现一律**只告警、保留 cookie**，由用户手动替换。另修正 fc2cmadb 实际下发的会话 cookie 名为 `fc2cmadb-session`（连字符）而白名单只列了下划线写法的问题
 
 - **#132 托盘隐藏主窗后操作演员管理器仍会弹出主窗**：`eventFilter` 在应用激活时对「非最小化隐藏态」调用 `show()`，托盘隐藏（`hide()`）后操作演员管理器即把主窗拉出。现移除该自动 `show()`，恢复显示只由托盘图标/菜单负责（最小化态由 Qt 自行保持）
