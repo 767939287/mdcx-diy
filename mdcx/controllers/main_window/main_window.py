@@ -16,6 +16,7 @@ from PyQt6.QtGui import QAction, QCursor, QGuiApplication, QHoverEvent, QIcon, Q
 from PyQt6.QtWidgets import (
     QApplication,
     QFileDialog,
+    QHBoxLayout,
     QInputDialog,
     QLineEdit,
     QMainWindow,
@@ -25,6 +26,7 @@ from PyQt6.QtWidgets import (
     QSystemTrayIcon,
     QTableWidgetItem,
     QTreeWidgetItem,
+    QVBoxLayout,
 )
 
 from mdcx.base.file import (
@@ -612,6 +614,118 @@ class MyMAinWindow(QMainWindow):
         ui.progressBar_scrape.setGeometry(209, -1, max(width - 211, 100), 7)
         self._sync_page_layouts()  # 同步动态页面的内部尺寸
 
+    # 议题 #154：「编辑 NFO」覆盖层内容区字段最小高度（设计值）
+    _NFO_EDITOR_TEXT_MIN_H = 150
+    _NFO_EDITOR_TAG_MIN_H = 100
+
+    def _ensure_nfo_editor_layout(self) -> None:
+        """议题 #154：把「编辑 NFO」覆盖层内容区从绝对定位改为行式布局。
+
+        .ui 里内容区固定 860×1300、19 个字段按绝对坐标摆放，`widgetResizable`
+        只把内容区拉宽（字段仍定宽、右侧大片留白）。改为 QVBoxLayout + 每行
+        QHBoxLayout，字段列按可用宽度拉伸；多行框给最小高度。仅首次构建。
+        """
+        content = self.Ui.scrollAreaWidgetContents_nfo_editor
+        if content.layout() is not None:
+            return
+        ui = self.Ui
+        outer = QVBoxLayout(content)
+        outer.setContentsMargins(9, 6, 9, 12)
+        outer.setSpacing(6)
+
+        def _label(text_label):
+            text_label.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+            text_label.setFixedWidth(82)
+            return text_label
+
+        def add_full_row(text_label, field) -> None:
+            row = QHBoxLayout()
+            row.setSpacing(10)
+            row.addWidget(_label(text_label))
+            row.addWidget(field, 1)
+            outer.addLayout(row)
+
+        def add_pair_row(l1, f1, l2, f2) -> None:
+            row = QHBoxLayout()
+            row.setSpacing(10)
+            row.addWidget(_label(l1))
+            row.addWidget(f1, 1)
+            row.addWidget(_label(l2))
+            row.addWidget(f2, 1)
+            outer.addLayout(row)
+
+        def add_triple_row(l1, f1, l2, f2, l3, f3) -> None:
+            row = QHBoxLayout()
+            row.setSpacing(10)
+            for text_label, field in ((l1, f1), (l2, f2), (l3, f3)):
+                row.addWidget(_label(text_label))
+                row.addWidget(field, 1)
+            outer.addLayout(row)
+
+        def add_hint(label_widget) -> None:
+            label_widget.setFixedHeight(20)
+            outer.addWidget(label_widget)
+
+        add_full_row(ui.label_381, ui.label_nfo)
+        add_triple_row(
+            ui.label_360,
+            ui.lineEdit_nfo_number,
+            ui.label_369,
+            ui.comboBox_nfo,
+            ui.label_380,
+            ui.lineEdit_nfo_year,
+        )
+        add_full_row(ui.label_359, ui.lineEdit_nfo_actor)
+        add_hint(ui.label_370)
+        add_full_row(ui.label_361, ui.lineEdit_nfo_title)
+        add_full_row(ui.label_372, ui.lineEdit_nfo_originaltitle)
+        add_full_row(ui.label_19, ui.textEdit_nfo_outline)
+        add_full_row(ui.label_371, ui.textEdit_nfo_originalplot)
+        add_full_row(ui.label_362, ui.textEdit_nfo_tag)
+        add_hint(ui.label_379)
+        add_pair_row(ui.label_363, ui.lineEdit_nfo_release, ui.label_364, ui.lineEdit_nfo_runtime)
+        add_pair_row(ui.label_373, ui.lineEdit_nfo_score, ui.label_374, ui.lineEdit_nfo_wanted)
+        add_pair_row(ui.label_366, ui.lineEdit_nfo_director, ui.label_365, ui.lineEdit_nfo_series)
+        add_pair_row(ui.label_368, ui.lineEdit_nfo_studio, ui.label_367, ui.lineEdit_nfo_publisher)
+        add_full_row(ui.label_375, ui.lineEdit_nfo_poster)
+        add_full_row(ui.label_376, ui.lineEdit_nfo_cover)
+        add_full_row(ui.label_377, ui.lineEdit_nfo_trailer)
+        add_full_row(ui.label_378, ui.lineEdit_nfo_website)
+        for box, height in (
+            (ui.textEdit_nfo_outline, self._NFO_EDITOR_TEXT_MIN_H),
+            (ui.textEdit_nfo_originalplot, self._NFO_EDITOR_TEXT_MIN_H),
+            (ui.textEdit_nfo_tag, self._NFO_EDITOR_TAG_MIN_H),
+        ):
+            box.setMinimumHeight(height)
+        outer.addStretch(1)
+
+    def _sync_nfo_overlay_geometry(self) -> None:
+        """议题 #154：覆盖层铺满右侧内容区，字段布局自适应，保存/关闭钉底。"""
+        ui = self.Ui
+        nfo = ui.widget_nfo
+        if nfo is None or nfo.isHidden():
+            return
+        self._ensure_nfo_editor_layout()
+        nfo_x, nfo_y, margin = 215, 8, 12
+        nfo_w = max(self.width() - nfo_x - margin, 400)
+        nfo_h = max(self.height() - nfo_y - margin, 300)
+        nfo.setGeometry(nfo_x, nfo_y, nfo_w, nfo_h)
+        # 底部操作条：保存/关闭钉底右下，保存提示左下，标题贴右上
+        bar_h, btn_w, btn_h, gap = 52, 91, 40, 10
+        close_x = max(nfo_w - margin - btn_w, 0)
+        save_x = max(close_x - gap - btn_w, 0)
+        btn_y = max(nfo_h - margin - btn_h, 0)
+        ui.pushButton_nfo_close.setGeometry(close_x, btn_y, btn_w, btn_h)
+        ui.pushButton_nfo_save.setGeometry(save_x, btn_y, btn_w, btn_h)
+        ui.pushButton_nfo_save.raise_()
+        ui.pushButton_nfo_close.raise_()
+        ui.label_save_tips.setGeometry(margin, max(nfo_h - margin - 24, 0), max(save_x - margin, 60), 20)
+        ui.label_4.setGeometry(max(nfo_w - margin - ui.label_4.width(), 0), 5, ui.label_4.width(), ui.label_4.height())
+        # 内容滚动区填满标题之下、操作条之上
+        scroll = ui.scrollArea_nfo
+        if scroll is not None:
+            scroll.setGeometry(9, 29, max(nfo_w - 9 - margin, 300), max(nfo_h - 29 - bar_h, 200))
+
     def _sync_page_layouts(self) -> None:
         """让所有页面的内部组件跟随主窗口尺寸缩放。
 
@@ -830,24 +944,11 @@ class MyMAinWindow(QMainWindow):
         ui.pushButton_show_hide_logs.move(0, max(log_page.height() - 42, 13))
         ui.pushButton_save_failed_list.move(0, max(log_page.height() - 42, 13))
 
-        # ============ widget_nfo（「编辑 NFO」覆盖层）随主窗口缩放（议题 #152）============
+        # ============ widget_nfo（「编辑 NFO」覆盖层）随主窗口缩放（议题 #152/#154）============
         # widget_nfo 是 centralwidget 的绝对定位覆盖层（设计 (10,10,791,681)），主窗口放大后
-        # 固定几何会让 NFO 编辑器滞留在左上角。可见时将其铺满右侧内容区（nav 栏 x=210 之右），
-        # 内部 scrollArea 随 widget 填满，用户无需再横向滚动即可边编辑边看更多字段。
-        nfo = ui.widget_nfo
-        if nfo is not None and not nfo.isHidden():
-            nfo_x, nfo_y, nfo_margin = 215, 8, 12
-            nfo.setGeometry(
-                nfo_x, nfo_y, max(self.width() - nfo_x - nfo_margin, 400), max(self.height() - nfo_y - nfo_margin, 300)
-            )
-            nfo_scroll = ui.scrollArea_nfo
-            if nfo_scroll is not None:
-                nfo_scroll.setGeometry(
-                    nfo_scroll.x(),
-                    nfo_scroll.y(),
-                    max(nfo.width() - nfo_scroll.x() - nfo_margin, 300),
-                    max(nfo.height() - nfo_scroll.y() - nfo_margin, 200),
-                )
+        # 固定几何会让 NFO 编辑器滞留在左上角。可见时将其铺满右侧内容区（nav 栏 x=210 之右）、
+        # 内部内容区改行式布局随宽度拉伸、保存/关闭钉底（#154）。
+        self._sync_nfo_overlay_geometry()
 
         # ============ page_nfo_library: 简介/标签高度自适应（议题 #117）============
         self._sync_nfo_lib_form_fields()
@@ -2261,6 +2362,9 @@ class MyMAinWindow(QMainWindow):
         QApplication.sendEvent(self.Ui.pushButton_open_nfo, event)
         if self._check_main_file_path():
             self.Ui.widget_nfo.show()
+            # 议题 #154：首次打开路径不经过 resizeEvent，需显式同步覆盖层几何，
+            # 否则沿用 .ui 设计尺寸、字段布局与钉底按钮错位。
+            self._sync_nfo_overlay_geometry()
             self._show_nfo_info()
 
     def main_show_similar_click(self):
