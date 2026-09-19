@@ -78,15 +78,20 @@ def scan_actor_data_noise(actors: list[ActorInfo]) -> list[tuple[ActorInfo, str,
 class LibrarySelectDialog(QDialog):
     # 议题 #146: 默认最小尺寸只够 ~7 行, 媒体库多时需滚动半屏。
     # 现按库数自适应初始大小(最多同时展示 20 行, 宽高 16:9, 不超过屏幕可用区 85%)。
+    # 议题 #156: 行高由 item 显式 sizeHint 钉死为复选框高度, 并预留横向滚动条空间——
+    # 此前行高靠估算、与实际渲染行高无确定关系, Windows 上 20 行预算只容得下 19 行。
     MAX_VISIBLE_ROWS = 20
 
     @staticmethod
-    def initial_size(row_h: int, visible_rows: int, chrome_h: int, avail_w: int, avail_h: int) -> tuple[int, int]:
-        """计算对话框初始宽高: 高 = chrome + 可见行, 宽按 16:9, 双向钳制到屏幕可用区 85%。
+    def initial_size(
+        row_h: int, visible_rows: int, chrome_h: int, avail_w: int, avail_h: int, slack: int = 12
+    ) -> tuple[int, int]:
+        """计算对话框初始宽高: 高 = chrome + 可见行 + slack, 宽按 16:9, 双向钳制到屏幕可用区 85%。
 
-        纯函数便于测试: chrome_h 为除列表可视区外的窗口内容高度(layout sizeHint 差值)。
+        纯函数便于测试: chrome_h 为除列表可视区外的窗口内容高度(layout sizeHint 差值);
+        slack 覆盖列表边框与可能出现的横向滚动条高度(议题 #156)。
         """
-        target_h = chrome_h + visible_rows * row_h + 12
+        target_h = chrome_h + visible_rows * row_h + slack
         target_w = int(round(target_h * 16 / 9))
         target_w = max(420, min(target_w, int(avail_w * 0.85)))
         target_h = max(320, min(target_h, int(avail_h * 0.85)))
@@ -97,7 +102,11 @@ class LibrarySelectDialog(QDialog):
         self.setWindowTitle("选择媒体库")
         self.setMinimumWidth(420)
         self.setMinimumHeight(320)
-        self._libraries = libraries
+        # 议题 #156: 合集(boxsets)是 Emby 自动创建的空壳库(无演员/标签), 默认不展示;
+        # 极端情况下全部库都是合集时回退展示原始列表, 避免空对话框
+        filtered = [lib for lib in libraries if (lib.get("CollectionType") or "") != "boxsets"]
+        self._hidden_boxsets = len(libraries) - len(filtered)
+        self._libraries = filtered or list(libraries)
         self._checkboxes: list[QCheckBox] = []
         self._init_ui()
         self._apply_initial_size()
@@ -106,16 +115,21 @@ class LibrarySelectDialog(QDialog):
         parent = self.parentWidget()
         screen_obj = parent.screen() if parent is not None else QGuiApplication.primaryScreen()
         available = screen_obj.availableGeometry()
-        row_h = max((cb.sizeHint().height() for cb in self._checkboxes), default=0)
-        row_h = max(row_h, self.list_widget.fontMetrics().height() + 8, 26)
-        visible = max(1, min(len(self._libraries), self.MAX_VISIBLE_ROWS))
+        count = self.list_widget.count()
+        # 议题 #156: 行高取 item 显式 sizeHint(在 _init_ui 中 setSizeHint 钉死), 不再估算
+        row_h = self.list_widget.sizeHintForRow(0) if count else 26
+        visible = max(1, min(count, self.MAX_VISIBLE_ROWS))
         chrome_h = max(0, self.layout().sizeHint().height() - self.list_widget.sizeHint().height())
-        self.resize(*self.initial_size(row_h, visible, chrome_h, available.width(), available.height()))
+        # 预留横向滚动条高度: 长库名触发横向滚动条时会吃掉约一行可视高度
+        slack = 12 + self.list_widget.horizontalScrollBar().sizeHint().height()
+        self.resize(*self.initial_size(row_h, visible, chrome_h, available.width(), available.height(), slack))
 
     def _init_ui(self):
         layout = QVBoxLayout(self)
         count = len(self._libraries)
-        label = QLabel(f"选择要获取演员的媒体库（共 {count} 个，默认全选）：")
+        # 议题 #156: 隐藏合集库时在计数里明说, 避免"库数对不上"的疑惑
+        hidden_note = f"，已隐藏 {self._hidden_boxsets} 个合集库" if self._hidden_boxsets else ""
+        label = QLabel(f"选择要获取演员的媒体库（共 {count} 个{hidden_note}，默认全选）：")
         layout.addWidget(label)
         self.list_widget = QListWidget()
         for lib in self._libraries:
@@ -126,6 +140,8 @@ class LibrarySelectDialog(QDialog):
             cb.setChecked(True)
             self._checkboxes.append(cb)
             item = QListWidgetItem()
+            # 议题 #156: 行高钉死为复选框高度, 使 _apply_initial_size 的行数预算与实际渲染一致
+            item.setSizeHint(cb.sizeHint())
             self.list_widget.addItem(item)
             self.list_widget.setItemWidget(item, cb)
         layout.addWidget(self.list_widget)

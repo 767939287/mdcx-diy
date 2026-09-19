@@ -73,8 +73,8 @@ def test_dialog_resizes_beyond_minimum_on_large_screen(monkeypatch):
     dlg = LibrarySelectDialog(_make_libs(25))
     assert dlg.width() > 420, "宽应随 16:9 放宽"
     assert dlg.height() > 320
-    # 全库上限场景: 不低于 20 行按行高下限估算的高度
-    assert dlg.height() >= 20 * 26
+    # 全库上限场景: 不低于 20 行按实际行高(议题 #156 起取真实行高, 不再用 26px 估算下限)的高度
+    assert dlg.height() >= 20 * dlg.list_widget.sizeHintForRow(0)
 
 
 def test_dialog_clamps_on_small_screen(monkeypatch):
@@ -106,3 +106,60 @@ def test_dialog_few_libraries_not_taller(monkeypatch):
     big = LibrarySelectDialog(_make_libs(24))
     small = LibrarySelectDialog(_make_libs(2))
     assert small.height() < big.height()
+
+
+def _make_libs_mixed(n: int, boxsets: int) -> list[dict]:
+    libs = _make_libs(n)
+    libs += [{"Id": f"box-{i}", "Name": f"合集{i}", "CollectionType": "boxsets"} for i in range(boxsets)]
+    return libs
+
+
+def test_boxsets_hidden_by_default():
+    """议题 #156: 合集(boxsets)是 Emby 自动创建的空壳库(无演员/标签), 默认不展示。"""
+    _ensure_app()
+    from mdcx.tools.emby_actor_manager_ui import LibrarySelectDialog
+
+    dlg = LibrarySelectDialog(_make_libs_mixed(24, 1))
+    assert dlg._hidden_boxsets == 1
+    assert dlg.list_widget.count() == 24
+    assert len(dlg.get_selected_ids()) == 24
+    assert all(not lid.startswith("box-") for lid in dlg.get_selected_ids())
+
+
+def test_boxsets_only_falls_back_to_original_list():
+    """议题 #156: 极端情况——全部库都是合集时回退展示原始列表, 避免空对话框。"""
+    _ensure_app()
+    from mdcx.tools.emby_actor_manager_ui import LibrarySelectDialog
+
+    dlg = LibrarySelectDialog(_make_libs_mixed(0, 3))
+    assert dlg.list_widget.count() == 3
+
+
+def test_row_height_pinned_to_checkbox():
+    """议题 #156: 行高由 item 显式 sizeHint 钉死为复选框高度——此前从未设置 sizeHint,
+    行高由默认代理字号决定、与预算行高无确定关系, Windows 上 20 行预算只容得下 19 行。"""
+    _ensure_app()
+    from mdcx.tools.emby_actor_manager_ui import LibrarySelectDialog
+
+    dlg = LibrarySelectDialog(_make_libs(25))
+    cb_h = dlg._checkboxes[0].sizeHint().height()
+    assert dlg.list_widget.item(0).sizeHint().height() == cb_h
+    assert dlg.list_widget.sizeHintForRow(0) == cb_h
+
+
+def test_twenty_rows_fully_visible_on_large_screen(monkeypatch):
+    """议题 #156 集成回归: 25 库 + 1920x1080 → 视口至少完整容纳 20 行。"""
+    _ensure_app()
+    from types import SimpleNamespace
+
+    import mdcx.tools.emby_actor_manager_ui as ui_mod
+    from mdcx.tools.emby_actor_manager_ui import LibrarySelectDialog
+
+    fake_screen = SimpleNamespace(availableGeometry=lambda: QRect(0, 0, 1920, 1080))
+    monkeypatch.setattr(ui_mod, "QGuiApplication", SimpleNamespace(primaryScreen=lambda: fake_screen))
+
+    dlg = LibrarySelectDialog(_make_libs(25))
+    dlg.show()
+    row_h = dlg.list_widget.sizeHintForRow(0)
+    assert row_h > 0
+    assert dlg.list_widget.viewport().height() // row_h >= 20
