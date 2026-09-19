@@ -62,6 +62,11 @@ def _create_application() -> tuple[QApplication, MyMAinWindow]:
     QApplication.setHighDpiScaleFactorRoundingPolicy(Qt.HighDpiScaleFactorRoundingPolicy.PassThrough)
 
     app = QApplication(sys.argv)
+    # 议题 #159：Qt 默认在「最后一个可见顶层窗口」被关闭时自动退出；主窗经托盘
+    # 隐藏后不再计入可见窗口，此时关闭演员管理器（无父级、非模态顶层窗口）会
+    # 直接炸掉整个进程。托盘驻留应用的退出不应由任意工具窗口驱动，退出统一
+    # 走主窗 exit_app()/托盘菜单的显式 QApplication.quit()。
+    app.setQuitOnLastWindowClosed(False)
     if platform.system() != "Windows":
         app.setStyle("Fusion")
     apply_application_palette(False)
